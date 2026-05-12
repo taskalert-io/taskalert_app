@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'LoginPage.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:taskalert_app/screens/WelcomePage.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -10,7 +11,6 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
-
   late AnimationController _circleController;
   late AnimationController _contentController;
 
@@ -35,14 +35,8 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     // Circle grows behind logo
-    _circleAnimation = Tween<double>(
-      begin: 0,
-      end: 900,
-    ).animate(
-      CurvedAnimation(
-        parent: _circleController,
-        curve: Curves.easeInOutCubic,
-      ),
+    _circleAnimation = Tween<double>(begin: 0, end: 900).animate(
+      CurvedAnimation(parent: _circleController, curve: Curves.easeInOutCubic),
     );
 
     // Background color transition
@@ -61,7 +55,6 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> startAnimation() async {
-
     // Start expanding circle
     await _circleController.forward();
 
@@ -82,46 +75,50 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-
     return AnimatedBuilder(
-      animation: Listenable.merge([
-        _circleController,
-        _contentController,
-      ]),
+      animation: Listenable.merge([_circleController, _contentController]),
       builder: (context, child) {
-
         return Scaffold(
           backgroundColor: _backgroundAnimation.value,
           body: Stack(
+            clipBehavior: Clip.none,
             children: [
-
-              // TOP CURVE EFFECT
+              // TOP PURPLE CURVE
               Positioned(
-                top: -60,
-                left: -40,
-                right: -40,
-                child: Container(
-                  height: 140,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(200),
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.purple.withOpacity(0.18),
-                        Colors.transparent,
-                      ],
+                top: -140,
+                left: -90,
+                right: -90,
+                child: IgnorePointer(
+                  child: Container(
+                    height: 260,
+                    decoration: BoxDecoration(
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(260),
+                        bottomRight: Radius.circular(260),
+                      ),
+
+                      // USE RADIAL GRADIENT
+                      gradient: RadialGradient(
+                        center: Alignment.topCenter,
+                        radius: 1.35,
+                        colors: [
+                          const Color(0xFFEACAFF).withOpacity(0.95),
+                          const Color(0xFFEACAFF).withOpacity(0.45),
+                          const Color(0xFFEACAFF).withOpacity(0.12),
+                          Colors.transparent,
+                        ],
+                        stops: const [0.15, 0.45, 0.75, 1],
+                      ),
+
                     ),
                   ),
                 ),
               ),
-
               // CENTER AREA
               Center(
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-
                     // EXPANDING CIRCLE
                     Container(
                       width: _circleAnimation.value,
@@ -136,7 +133,6 @@ class _SplashScreenState extends State<SplashScreen>
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-
                         Image.asset(
                           "assets/images/prologoadd.png",
                           width: 65,
@@ -150,31 +146,29 @@ class _SplashScreenState extends State<SplashScreen>
                           duration: const Duration(seconds: 3),
                           curve: Curves.linear,
                           builder: (context, value, child) {
-
-                            bool darkBackground = _circleController.value > 0.55;
+                            bool darkBackground =
+                                _circleController.value > 0.55;
 
                             return Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-
                                 // TASK ANIMATION
                                 ShaderMask(
                                   shaderCallback: (bounds) {
-
                                     return LinearGradient(
                                       begin: Alignment.centerLeft,
                                       end: Alignment.centerRight,
                                       colors: darkBackground
                                           ? [
-                                        Colors.white,
-                                        const Color(0xFF4FE0C5),
-                                        Colors.white,
-                                      ]
+                                              Colors.white,
+                                              const Color(0xFF4FE0C5),
+                                              Colors.white,
+                                            ]
                                           : [
-                                        const Color(0xFF0B045A),
-                                        const Color(0xFF4FE0C5),
-                                        const Color(0xFF0B045A),
-                                      ],
+                                              const Color(0xFF0B045A),
+                                              const Color(0xFF4FE0C5),
+                                              const Color(0xFF0B045A),
+                                            ],
                                       stops: [
                                         (value - 0.3).clamp(0.0, 1.0),
                                         value.clamp(0.0, 1.0),
@@ -188,7 +182,7 @@ class _SplashScreenState extends State<SplashScreen>
                                       color: darkBackground
                                           ? Colors.white
                                           : const Color(0xFF0B045A),
-                                      fontSize: 24,
+                                      fontSize: 30,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -197,7 +191,6 @@ class _SplashScreenState extends State<SplashScreen>
                                 // ALERT STATIC LINEAR GRADIENT
                                 ShaderMask(
                                   shaderCallback: (bounds) {
-
                                     return const LinearGradient(
                                       begin: Alignment.centerLeft,
                                       end: Alignment.centerRight,
@@ -211,7 +204,7 @@ class _SplashScreenState extends State<SplashScreen>
                                     "alert",
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 24,
+                                      fontSize: 30,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -224,7 +217,7 @@ class _SplashScreenState extends State<SplashScreen>
                                     color: darkBackground
                                         ? Colors.white
                                         : const Color(0xFF0B045A),
-                                    fontSize: 24,
+                                    fontSize: 30,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -242,22 +235,17 @@ class _SplashScreenState extends State<SplashScreen>
               if (showButton)
                 Positioned(
                   bottom: 80,
-                  left: 40,
-                  right: 40,
+                  left: 50,
+                  right: 50,
                   child: FadeTransition(
                     opacity: _buttonOpacity,
-                    child: SizedBox(
-                      height: 50,
+                    child: Container(
                       child: ElevatedButton(
                         onPressed: () {
-
                           Navigator.pushReplacement(
                             context,
-                            MaterialPageRoute(
-                              builder: (_) => LoginPage(),
-                            ),
+                            MaterialPageRoute(builder: (_) => WelcomePage()),
                           );
-
                         },
                         style: ElevatedButton.styleFrom(
                           padding: EdgeInsets.zero,
@@ -271,20 +259,18 @@ class _SplashScreenState extends State<SplashScreen>
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
                             gradient: const LinearGradient(
-                              colors: [
-                                Color(0xFFDD6BFF),
-                                Color(0xFF4FE0C5),
-                              ],
+                              colors: [Color(0xFFDD6BFF), Color(0xFF4FE0C5)],
                             ),
                           ),
                           child: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 10,vertical: 10),
                             alignment: Alignment.center,
-                            child: const Text(
+                            child: Text(
                               "Continue",
-                              style: TextStyle(
+                              style: GoogleFonts.inter(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w600,
-                                fontSize: 16,
+                                fontSize: 12,
                               ),
                             ),
                           ),
