@@ -8,6 +8,8 @@ import 'SignInScreen.dart';
 import 'package:flutter/services.dart';
 
 class SignUpScreen extends StatefulWidget {
+  const SignUpScreen({super.key});
+
   @override
   State<StatefulWidget> createState() => SignUpScreenState();
 }
@@ -271,7 +273,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                           width: 200,
                         ),
                         SizedBox(height: 10),
-                        Container(
+                        SizedBox(
                           width: double.infinity,
                           child: Text(
                             "Sign up to your account",
@@ -284,7 +286,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                           ),
                         ),
                         SizedBox(height: 10),
-                        Container(
+                        SizedBox(
                           width: double.infinity,
                           child: Text(
                             "Create an account or log in to explore about our app",

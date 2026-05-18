@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:taskalert_app/screens/DashboardPage.dart';
-import 'package:taskalert_app/screens/LoginPage.dart';
+import 'package:taskalert_app/screens/SignInScreen.dart';
 import 'package:taskalert_app/screens/SplashScreen.dart';
 
 final RouteObserver<ModalRoute<void>> routeObserver =
@@ -54,7 +53,7 @@ class MyApp extends StatelessWidget {
             } else if (snapshot.hasData) {
               return snapshot.data!;
             } else {
-              return LoginPage(); // fallback
+              return SignInScreen(); // fallback
             }
           },
         ),

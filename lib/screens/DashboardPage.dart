@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class DashboardPage extends StatefulWidget{
+  const DashboardPage({super.key});
+
   @override
   State<StatefulWidget> createState() => DashboardPageState();
 

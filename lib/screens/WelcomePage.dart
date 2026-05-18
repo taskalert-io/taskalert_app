@@ -1,10 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:taskalert_app/screens/LoginPage.dart';
+import 'package:taskalert_app/screens/SignInScreen.dart';
 import 'package:taskalert_app/screens/SignUpScreen.dart';
 
 class WelcomePage extends StatefulWidget {
+  const WelcomePage({super.key});
+
   @override
   State<StatefulWidget> createState() => WelcomePageState();
 }
@@ -40,7 +42,7 @@ class WelcomePageState extends State<WelcomePage> {
                   width: 254,
                 ),
                 SizedBox(height: 35),
-                Container(
+                SizedBox(
                   width: 300,
                   child: Text(
                     "Welcome to the taskalert.io",
@@ -70,7 +72,7 @@ class WelcomePageState extends State<WelcomePage> {
                       onPressed: () {
                         Navigator.pushReplacement(
                           context,
-                          MaterialPageRoute(builder: (_) => LoginPage()),
+                          MaterialPageRoute(builder: (_) => SignInScreen()),
                         );
                       },
                       style: ElevatedButton.styleFrom(
