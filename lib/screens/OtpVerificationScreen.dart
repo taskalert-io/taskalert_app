@@ -1,6 +1,6 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:taskalert_app/screens/LoginConfirmationScreen.dart';
 
@@ -44,22 +44,22 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     children: [
                       // TOP RIGHT GLOW
                       Positioned(
-                        top: -140,
-                        left: -90,
-                        right: -90,
+                        top: -140.h,
+                        left: -90.w,
+                        right: -90.w,
                         child: IgnorePointer(
                           child: Container(
-                            height: 260,
+                            height: 260.h,
                             decoration: BoxDecoration(
-                              borderRadius: const BorderRadius.only(
-                                bottomLeft: Radius.circular(260),
-                                bottomRight: Radius.circular(260),
+                              borderRadius: BorderRadius.only(
+                                bottomLeft: Radius.circular(260.r),
+                                bottomRight: Radius.circular(260.r),
                               ),
 
                               // USE RADIAL GRADIENT
                               gradient: RadialGradient(
                                 center: Alignment.topCenter,
-                                radius: 1.35,
+                                radius: 1.35.r,
                                 colors: [
                                   const Color(0xFFEACAFF).withOpacity(0.95),
                                   const Color(0xFFEACAFF).withOpacity(0.45),
@@ -88,17 +88,17 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             Image.asset(
                               "assets/images/antprolgo.png",
                               fit: BoxFit.cover,
-                              width: 200,
+                              width: 200.w,
                             ),
 
-                            SizedBox(height: 10),
+                            SizedBox(height: 10.h),
 
                             SizedBox(
                               width: double.infinity,
                               child: Text(
                                 "Sign in to your account",
                                 style: GoogleFonts.inter(
-                                  fontSize: 25,
+                                  fontSize: 25.sp,
                                   fontWeight: FontWeight.w700,
                                   color: Color(0xFFFFFFFF),
                                 ),
@@ -106,14 +106,14 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                               ),
                             ),
 
-                            const SizedBox(height: 10),
+                            SizedBox(height: 10.h),
 
                             SizedBox(
                               width: double.infinity,
                               child: Text(
                                 "Enter your phone number and password to sign in",
                                 style: GoogleFonts.inter(
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                   fontWeight: FontWeight.w400,
                                   color: Color(0xFFFFFFFF),
                                 ),
@@ -121,7 +121,7 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                               ),
                             ),
 
-                            const SizedBox(height: 45),
+                            SizedBox(height: 45.h),
                           ],
                         ),
                       ),
@@ -147,7 +147,7 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.08),
-                          blurRadius: 20,
+                          blurRadius: 20.r,
                           offset: const Offset(0, 8),
                         ),
                       ],
@@ -160,13 +160,13 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           "OTP Verification",
 
                           style: GoogleFonts.inter(
-                            fontSize: 13.5,
+                            fontSize: 13.5.sp,
                             fontWeight: FontWeight.w600,
                             color: const Color(0xFF000000),
                           ),
                         ),
 
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12.h),
 
                         // DESCRIPTION
                         Text(
@@ -175,13 +175,13 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           textAlign: TextAlign.center,
 
                           style: GoogleFonts.inter(
-                            fontSize: 12,
+                            fontSize: 12.sp,
                             fontWeight: FontWeight.w400,
                             color: const Color(0xFF7B7B7B),
                           ),
                         ),
 
-                        const SizedBox(height: 22),
+                        SizedBox(height: 22.h),
 
                         // OTP BOXES
                         // OTP BOXES
@@ -189,8 +189,10 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: List.generate(
                             6,
-                                (index) => Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 5),
+                            (index) => Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 5,
+                              ),
 
                               child: SizedBox(
                                 width: 42,
@@ -206,13 +208,15 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
                                   inputFormatters: [
                                     FilteringTextInputFormatter.digitsOnly,
-                                    LengthLimitingTextInputFormatter(1), // ONLY 1 NUMBER
+                                    LengthLimitingTextInputFormatter(
+                                      1,
+                                    ), // ONLY 1 NUMBER
                                   ],
 
                                   maxLength: 1,
 
                                   style: GoogleFonts.inter(
-                                    fontSize: 14,
+                                    fontSize: 14.sp,
                                     fontWeight: FontWeight.w600,
                                     color: const Color(0xFF0A0258),
                                   ),
@@ -231,7 +235,7 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                     ),
 
                                     enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(6),
+                                      borderRadius: BorderRadius.circular(6.r),
 
                                       borderSide: const BorderSide(
                                         color: Color(0xFFD8DCE3),
@@ -239,11 +243,11 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                     ),
 
                                     focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(6),
+                                      borderRadius: BorderRadius.circular(6.r),
 
-                                      borderSide: const BorderSide(
+                                      borderSide: BorderSide(
                                         color: Color(0xFF0A0258),
-                                        width: 1.2,
+                                        width: 1.2.w,
                                       ),
                                     ),
                                   ),
@@ -265,7 +269,7 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           ),
                         ),
 
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12.h),
 
                         // TIMER
                         Align(
@@ -275,14 +279,14 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             "00:60 sec",
 
                             style: GoogleFonts.inter(
-                              fontSize: 11,
+                              fontSize: 11.sp,
                               color: const Color(0xFF7B7B7B),
                               fontWeight: FontWeight.w400,
                             ),
                           ),
                         ),
 
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12.h),
 
                         // VERIFY BUTTON
                         SizedBox(
@@ -293,11 +297,11 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             onPressed: () {
                               // CHECK EMPTY OTP
                               bool isOtpComplete = otpControllers.every(
-                                    (controller) => controller.text.trim().isNotEmpty,
+                                (controller) =>
+                                    controller.text.trim().isNotEmpty,
                               );
 
                               if (!isOtpComplete) {
-
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text("Please enter complete OTP"),
@@ -322,7 +326,7 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                   padding: EdgeInsets.zero,
 
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(8.r),
                                   ),
                                 ).copyWith(
                                   backgroundColor: WidgetStateProperty.all(
@@ -332,7 +336,7 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
                             child: Ink(
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(8.r),
 
                                 gradient: const LinearGradient(
                                   colors: [
@@ -350,7 +354,7 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                   "Verify Code",
 
                                   style: GoogleFonts.inter(
-                                    fontSize: 12,
+                                    fontSize: 12.sp,
                                     fontWeight: FontWeight.w600,
                                     color: Colors.white,
                                   ),
@@ -360,7 +364,7 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           ),
                         ),
 
-                        const SizedBox(height: 10),
+                        SizedBox(height: 10.h),
 
                         // RESEND
                         Row(
@@ -369,7 +373,7 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             Text(
                               "Didn’t receive the code? ",
                               style: GoogleFonts.inter(
-                                fontSize: 12,
+                                fontSize: 12.sp,
                                 color: const Color(0xFF6C7278),
                                 fontWeight: FontWeight.w400,
                               ),
@@ -394,7 +398,7 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                               child: Text(
                                 "Resend",
                                 style: GoogleFonts.inter(
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                   color: const Color(0xFF4D81E7),
                                   fontWeight: FontWeight.w500,
                                   decoration: TextDecoration.underline,

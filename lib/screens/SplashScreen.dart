@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:taskalert_app/screens/WelcomePage.dart';
 
@@ -85,22 +86,22 @@ class _SplashScreenState extends State<SplashScreen>
             children: [
               // TOP PURPLE CURVE
               Positioned(
-                top: -140,
-                left: -90,
-                right: -90,
+                top: -140.h,
+                left: -90.w,
+                right: -90.w,
                 child: IgnorePointer(
                   child: Container(
-                    height: 260,
+                    height: 260.h,
                     decoration: BoxDecoration(
-                      borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(260),
-                        bottomRight: Radius.circular(260),
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(260.r),
+                        bottomRight: Radius.circular(260.r),
                       ),
 
                       // USE RADIAL GRADIENT
                       gradient: RadialGradient(
                         center: Alignment.topCenter,
-                        radius: 1.35,
+                        radius: 1.35.r,
                         colors: [
                           const Color(0xFFEACAFF).withOpacity(0.95),
                           const Color(0xFFEACAFF).withOpacity(0.45),
@@ -109,7 +110,6 @@ class _SplashScreenState extends State<SplashScreen>
                         ],
                         stops: const [0.15, 0.45, 0.75, 1],
                       ),
-
                     ),
                   ),
                 ),
@@ -135,11 +135,11 @@ class _SplashScreenState extends State<SplashScreen>
                       children: [
                         Image.asset(
                           "assets/images/prologoadd.png",
-                          width: 65,
-                          height: 54,
+                          width: 65.w,
+                          height: 54.h,
                         ),
 
-                        const SizedBox(width: 10),
+                        SizedBox(width: 10.h),
 
                         TweenAnimationBuilder<double>(
                           tween: Tween(begin: -1.0, end: 2.0),
@@ -182,7 +182,7 @@ class _SplashScreenState extends State<SplashScreen>
                                       color: darkBackground
                                           ? Colors.white
                                           : const Color(0xFF0B045A),
-                                      fontSize: 30,
+                                      fontSize: 30.sp,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -200,11 +200,11 @@ class _SplashScreenState extends State<SplashScreen>
                                       ],
                                     ).createShader(bounds);
                                   },
-                                  child: const Text(
+                                  child: Text(
                                     "alert",
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 30,
+                                      fontSize: 30.sp,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -217,7 +217,7 @@ class _SplashScreenState extends State<SplashScreen>
                                     color: darkBackground
                                         ? Colors.white
                                         : const Color(0xFF0B045A),
-                                    fontSize: 30,
+                                    fontSize: 30.sp,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -234,9 +234,9 @@ class _SplashScreenState extends State<SplashScreen>
               // BUTTON
               if (showButton)
                 Positioned(
-                  bottom: 80,
-                  left: 50,
-                  right: 50,
+                  bottom: 80.h,
+                  left: 50.w,
+                  right: 50.w,
                   child: FadeTransition(
                     opacity: _buttonOpacity,
                     child: Container(
@@ -252,25 +252,28 @@ class _SplashScreenState extends State<SplashScreen>
                           elevation: 0,
                           backgroundColor: Colors.transparent,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(8.r),
                           ),
                         ),
                         child: Ink(
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(8.r),
                             gradient: const LinearGradient(
                               colors: [Color(0xFFDD6BFF), Color(0xFF4FE0C5)],
                             ),
                           ),
                           child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 10,vertical: 10),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 10,
+                            ),
                             alignment: Alignment.center,
                             child: Text(
                               "Continue",
                               style: GoogleFonts.inter(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w600,
-                                fontSize: 12,
+                                fontSize: 12.sp,
                               ),
                             ),
                           ),

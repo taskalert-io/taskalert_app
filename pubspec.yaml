@@ -20,6 +20,7 @@ dependencies:
   country_code_picker: ^3.4.1
   syncfusion_flutter_datepicker: ^31.1.19
   dropdown_button2: ^3.1.0
+  flutter_screenutil: ^5.9.3
 
 dev_dependencies:
   flutter_test:

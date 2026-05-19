@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:taskalert_app/screens/DashboardPage.dart';
 import 'package:taskalert_app/screens/SignInScreen.dart';
 import 'package:taskalert_app/screens/SplashScreen.dart';
 
 final RouteObserver<ModalRoute<void>> routeObserver =
-RouteObserver<ModalRoute<void>>();
+    RouteObserver<ModalRoute<void>>();
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,36 +31,44 @@ class MyApp extends StatelessWidget {
     }
   }
 
-
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MediaQuery(
-      data: MediaQuery.of(context).copyWith(
-        // You can set this to 1.0 to disable all scaling,
-        // or a maximum value like 1.2 to limit it.
-        textScaler: const TextScaler.linear(1.0),
-      ),
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        navigatorObservers: [routeObserver],
-        // theme: ThemeData(
-        //   colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        // ),
-        home: FutureBuilder<Widget>(
-          future: _getInitialScreen(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return SplashScreen();
-            } else if (snapshot.hasData) {
-              return snapshot.data!;
-            } else {
-              return SignInScreen(); // fallback
-            }
-          },
-        ),
-      ),
+    return ScreenUtilInit(
+      designSize: const Size(360, 690),
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            // Disable text scaling
+            textScaler: const TextScaler.linear(1.0),
+          ),
+
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            navigatorObservers: [routeObserver],
+
+            theme: ThemeData(textTheme: GoogleFonts.interTextTheme()),
+
+            home: FutureBuilder<Widget>(
+              future: _getInitialScreen(),
+
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SplashScreen();
+                }
+
+                if (snapshot.hasData) {
+                  return snapshot.data!;
+                }
+
+                return const SignInScreen();
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 }
-

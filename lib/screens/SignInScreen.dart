@@ -1,6 +1,6 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'OtpVerificationScreen.dart';
 import 'SignUpScreen.dart';
@@ -36,31 +36,29 @@ class SignInScreenState extends State<SignInScreen> {
                   width: double.infinity,
                   height: MediaQuery.of(context).size.height * 0.5,
 
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF12006C),
-                  ),
+                  decoration: const BoxDecoration(color: Color(0xFF12006C)),
 
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
                       // TOP RIGHT GLOW
                       Positioned(
-                        top: -140,
-                        left: -90,
-                        right: -90,
+                        top: -140.h,
+                        left: -90.w,
+                        right: -90.w,
                         child: IgnorePointer(
                           child: Container(
-                            height: 260,
+                            height: 260.h,
                             decoration: BoxDecoration(
-                              borderRadius: const BorderRadius.only(
-                                bottomLeft: Radius.circular(260),
-                                bottomRight: Radius.circular(260),
+                              borderRadius: BorderRadius.only(
+                                bottomLeft: Radius.circular(260.r),
+                                bottomRight: Radius.circular(260.r),
                               ),
 
                               // USE RADIAL GRADIENT
                               gradient: RadialGradient(
                                 center: Alignment.topCenter,
-                                radius: 1.35,
+                                radius: 1.35.r,
                                 colors: [
                                   const Color(0xFFEACAFF).withOpacity(0.95),
                                   const Color(0xFFEACAFF).withOpacity(0.45),
@@ -69,18 +67,17 @@ class SignInScreenState extends State<SignInScreen> {
                                 ],
                                 stops: const [0.15, 0.45, 0.75, 1],
                               ),
-
                             ),
                           ),
                         ),
                       ),
 
                       Padding(
-                        padding:  EdgeInsets.only(
+                        padding: EdgeInsets.only(
                           left: 10,
                           right: 10,
                           top: 150,
-                          bottom: 20
+                          bottom: 20,
                         ),
 
                         child: Column(
@@ -90,17 +87,17 @@ class SignInScreenState extends State<SignInScreen> {
                             Image.asset(
                               "assets/images/antprolgo.png",
                               fit: BoxFit.cover,
-                              width: 200,
+                              width: 200.w,
                             ),
 
-                            SizedBox(height: 10),
+                            SizedBox(height: 10.h),
 
                             SizedBox(
                               width: double.infinity,
                               child: Text(
                                 "Log in to your account",
                                 style: GoogleFonts.inter(
-                                  fontSize: 25,
+                                  fontSize: 25.sp,
                                   fontWeight: FontWeight.w700,
                                   color: Color(0xFFFFFFFF),
                                 ),
@@ -108,14 +105,14 @@ class SignInScreenState extends State<SignInScreen> {
                               ),
                             ),
 
-                            const SizedBox(height: 10),
+                            SizedBox(height: 10.h),
 
                             SizedBox(
                               width: double.infinity,
                               child: Text(
                                 "Enter your phone number and password to sign in",
                                 style: GoogleFonts.inter(
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                   fontWeight: FontWeight.w400,
                                   color: Color(0xFFFFFFFF),
                                 ),
@@ -123,7 +120,7 @@ class SignInScreenState extends State<SignInScreen> {
                               ),
                             ),
 
-                            const SizedBox(height: 45),
+                            SizedBox(height: 45.h),
                           ],
                         ),
                       ),
@@ -143,11 +140,11 @@ class SignInScreenState extends State<SignInScreen> {
 
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(18.r),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.08),
-                          blurRadius: 20,
+                          blurRadius: 20.r,
                           offset: const Offset(0, 8),
                         ),
                       ],
@@ -175,7 +172,7 @@ class SignInScreenState extends State<SignInScreen> {
                                   elevation: 0,
 
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(8.r),
                                   ),
                                 ),
 
@@ -184,16 +181,16 @@ class SignInScreenState extends State<SignInScreen> {
                                   children: [
                                     Image.asset(
                                       "assets/images/google.png",
-                                      height: 14,
-                                      width: 14,
+                                      height: 14.h,
+                                      width: 14.w,
                                     ),
 
-                                    const SizedBox(width: 12),
+                                    SizedBox(width: 12.w),
 
                                     Text(
                                       "Continue with Email",
                                       style: GoogleFonts.inter(
-                                        fontSize: 12,
+                                        fontSize: 12.sp,
                                         fontWeight: FontWeight.w500,
                                         color: const Color(0xFF0A0258),
                                       ),
@@ -204,7 +201,7 @@ class SignInScreenState extends State<SignInScreen> {
                             ),
                           ),
 
-                          const SizedBox(height: 18),
+                          SizedBox(height: 18.h),
 
                           // OR DIVIDER
                           Row(
@@ -217,12 +214,14 @@ class SignInScreenState extends State<SignInScreen> {
                               ),
 
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                ),
 
                                 child: Text(
                                   "Or",
                                   style: GoogleFonts.inter(
-                                    fontSize: 12,
+                                    fontSize: 12.sp,
                                     fontWeight: FontWeight.w500,
                                     color: const Color(0xFF667085),
                                   ),
@@ -238,7 +237,7 @@ class SignInScreenState extends State<SignInScreen> {
                             ],
                           ),
 
-                          const SizedBox(height: 24),
+                          SizedBox(height: 24.h),
 
                           // PHONE LABEL
                           Align(
@@ -247,13 +246,13 @@ class SignInScreenState extends State<SignInScreen> {
                             child: Text(
                               "Phone Number",
                               style: GoogleFonts.inter(
-                                fontSize: 12,
+                                fontSize: 12.sp,
                                 color: const Color(0xFF6C7278),
                               ),
                             ),
                           ),
 
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8.h),
 
                           // PHONE FIELD
                           buildTextField(
@@ -267,7 +266,6 @@ class SignInScreenState extends State<SignInScreen> {
                             ],
 
                             validator: (value) {
-
                               if (value == null || value.trim().isEmpty) {
                                 return "Enter phone number";
                               }
@@ -280,7 +278,7 @@ class SignInScreenState extends State<SignInScreen> {
                             },
                           ),
 
-                          const SizedBox(height: 10),
+                          SizedBox(height: 10.h),
 
                           // LOGIN BUTTON
                           SizedBox(
@@ -303,7 +301,6 @@ class SignInScreenState extends State<SignInScreen> {
                               ),
 
                               onPressed: () {
-
                                 FocusScope.of(context).unfocus();
 
                                 // VALIDATION
@@ -322,13 +319,13 @@ class SignInScreenState extends State<SignInScreen> {
                                 "Log In",
                                 style: GoogleFonts.inter(
                                   fontWeight: FontWeight.w600,
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                 ),
                               ),
                             ),
                           ),
 
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8.h),
 
                           // SIGN UP
                           Row(
@@ -337,7 +334,7 @@ class SignInScreenState extends State<SignInScreen> {
                               Text(
                                 "Don’t have an account? ",
                                 style: GoogleFonts.inter(
-                                  fontSize: 12,
+                                  fontSize: 12.sp,
                                   color: const Color(0xFF6C7278),
                                   fontWeight: FontWeight.w400,
                                 ),
@@ -357,18 +354,17 @@ class SignInScreenState extends State<SignInScreen> {
                                   padding: EdgeInsets.zero,
                                   minimumSize: Size.zero,
                                   tapTargetSize:
-                                  MaterialTapTargetSize.shrinkWrap,
+                                      MaterialTapTargetSize.shrinkWrap,
                                 ),
 
                                 child: Text(
                                   "Sign Up",
                                   style: GoogleFonts.inter(
-                                    fontSize: 12,
+                                    fontSize: 12.sp,
                                     color: const Color(0xFF4D81E7),
                                     fontWeight: FontWeight.w500,
                                     decoration: TextDecoration.underline,
-                                    decorationColor:
-                                    const Color(0xFF4D81E7),
+                                    decorationColor: const Color(0xFF4D81E7),
                                   ),
                                 ),
                               ),
@@ -386,6 +382,7 @@ class SignInScreenState extends State<SignInScreen> {
       ),
     );
   }
+
   Widget buildTextField({
     required String hint,
     Widget? prefix,
@@ -406,7 +403,7 @@ class SignInScreenState extends State<SignInScreen> {
       validator: validator,
 
       style: GoogleFonts.inter(
-        fontSize: 12,
+        fontSize: 12.sp,
         fontWeight: FontWeight.w400,
         color: const Color(0xFF6C7278),
       ),
@@ -422,7 +419,7 @@ class SignInScreenState extends State<SignInScreen> {
         hintText: hint,
 
         hintStyle: GoogleFonts.inter(
-          fontSize: 12,
+          fontSize: 12.sp,
           fontWeight: FontWeight.w400,
           color: const Color(0xFFB8BEC5),
         ),
@@ -430,7 +427,7 @@ class SignInScreenState extends State<SignInScreen> {
         helperText: " ",
         helperStyle: const TextStyle(height: 0),
 
-        errorStyle: const TextStyle(fontSize: 10, height: 1),
+        errorStyle: TextStyle(fontSize: 10.sp, height: 1.h),
 
         prefixIcon: prefix,
         suffixIcon: suffix,
@@ -439,27 +436,27 @@ class SignInScreenState extends State<SignInScreen> {
         fillColor: const Color(0xFFF9FAFC),
 
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
           borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
         ),
 
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
           borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
         ),
 
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
           borderSide: const BorderSide(color: Color(0xFF0A0258)),
         ),
 
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
           borderSide: const BorderSide(color: Colors.red),
         ),
 
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
           borderSide: const BorderSide(color: Colors.red),
         ),
       ),
