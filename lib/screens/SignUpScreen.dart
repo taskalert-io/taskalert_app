@@ -274,7 +274,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                           fit: BoxFit.cover,
                           width: 200.h,
                         ),
-                        SizedBox(height: 10.h),
+                        SizedBox(height: 8.h),
                         SizedBox(
                           width: double.infinity,
                           child: Text(
@@ -287,7 +287,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                             textAlign: TextAlign.center,
                           ),
                         ),
-                        SizedBox(height: 10.h),
+                        SizedBox(height: 5.h),
                         SizedBox(
                           width: double.infinity,
                           child: Text(
@@ -300,12 +300,12 @@ class SignUpScreenState extends State<SignUpScreen> {
                             textAlign: TextAlign.center,
                           ),
                         ),
-                        SizedBox(height: 15.h),
+                        SizedBox(height: 8.h),
 
                         // FORM CARD
                         Container(
-                          height: 450.h,
-                          padding: const EdgeInsets.all(20),
+                          height: 460.h,
+                          padding: EdgeInsets.only(top:20,left: 20,right: 20,bottom: 10),
                           margin: EdgeInsets.symmetric(horizontal: 20),
                           decoration: BoxDecoration(
                             color: Colors.white,
@@ -345,7 +345,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                                               ),
                                             ),
 
-                                            SizedBox(height: 5.h),
+                                            SizedBox(height: 3.h),
 
                                             buildTextField(
                                               hint: "",
@@ -378,7 +378,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                                               ),
                                             ),
 
-                                            const SizedBox(height: 5),
+                                             SizedBox(height: 3.h),
 
                                             buildTextField(
                                               hint: "",
@@ -409,7 +409,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                                     ),
                                   ),
 
-                                  SizedBox(height: 5.h),
+                                  SizedBox(height: 3.h),
 
                                   buildTextField(
                                     hint: "",
@@ -450,7 +450,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                                     ),
                                   ),
 
-                                  SizedBox(height: 5.h),
+                                  SizedBox(height: 3.h),
 
                                   buildTextField(
                                     hint: "Phone Number",
@@ -545,7 +545,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                                               ),
                                             ),
 
-                                            SizedBox(height: 5.h),
+                                            SizedBox(height: 3.h),
 
                                             DropdownButtonFormField<String>(
                                               value: selectedGender,
@@ -712,23 +712,20 @@ class SignUpScreenState extends State<SignUpScreen> {
                                               },
                                             ),
 
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                top: 5,
-                                                left: 4,
-                                              ),
-
-                                              child: Text(
-                                                isGenderError
-                                                    ? "Please select gender"
-                                                    : "",
-
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 10.sp,
-                                                  color: Colors.red,
+                                            if (isGenderError)
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                  top: 5,
+                                                  left: 4,
+                                                ),
+                                                child: Text(
+                                                  "Please select gender",
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 10.sp,
+                                                    color: Colors.red,
+                                                  ),
                                                 ),
                                               ),
-                                            ),
                                           ],
                                         ),
                                       ),
@@ -754,7 +751,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                                               ),
                                             ),
 
-                                            SizedBox(height: 5.h),
+                                            SizedBox(height: 3.h),
 
                                             Row(
                                               children: [
@@ -1044,23 +1041,20 @@ class SignUpScreenState extends State<SignUpScreen> {
                                               ],
                                             ),
 
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                top: 5,
-                                                left: 4,
-                                              ),
-
-                                              child: Text(
-                                                isDobError
-                                                    ? "Please select date of birth"
-                                                    : "",
-
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 10.sp,
-                                                  color: Colors.red,
+                                            if (isDobError)
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                  top: 5,
+                                                  left: 4,
+                                                ),
+                                                child: Text(
+                                                  "Please select date of birth",
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 10.sp,
+                                                    color: Colors.red,
+                                                  ),
                                                 ),
                                               ),
-                                            ),
                                           ],
                                         ),
                                       ),
@@ -1082,7 +1076,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                                         ),
                                       ),
 
-                                      SizedBox(height: 5.h),
+                                      SizedBox(height: 3.h),
 
                                       TextFormField(
                                         controller: passwordController,
@@ -1124,11 +1118,6 @@ class SignUpScreenState extends State<SignUpScreen> {
                                               ),
 
                                           hintText: "********",
-
-                                          helperText: " ",
-                                          helperStyle: const TextStyle(
-                                            height: 0,
-                                          ),
 
                                           errorStyle: TextStyle(
                                             fontSize: 10.sp,
@@ -1233,7 +1222,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                                         ),
                                       ),
 
-                                      SizedBox(height: 5.h),
+                                      SizedBox(height: 3.h),
 
                                       TextFormField(
                                         controller: rePasswordController,
@@ -1276,11 +1265,6 @@ class SignUpScreenState extends State<SignUpScreen> {
                                               ),
 
                                           hintText: "********",
-
-                                          helperText: " ",
-                                          helperStyle: const TextStyle(
-                                            height: 0,
-                                          ),
 
                                           errorStyle: TextStyle(
                                             fontSize: 10.sp,
@@ -1437,8 +1421,6 @@ class SignUpScreenState extends State<SignUpScreen> {
                                       ),
                                     ],
                                   ),
-
-                                  SizedBox(height: 8.h),
 
                                   /// CREATE ACCOUNT BUTTON
                                   Container(
@@ -1707,7 +1689,6 @@ class SignUpScreenState extends State<SignUpScreen> {
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       autovalidateMode: AutovalidateMode.onUserInteraction,
-
       validator: validator,
 
       style: GoogleFonts.inter(
@@ -1732,10 +1713,13 @@ class SignUpScreenState extends State<SignUpScreen> {
           color: const Color(0xFFB8BEC5),
         ),
 
-        helperText: " ",
-        helperStyle: TextStyle(height: 0.h),
+        // REMOVE THESE
+        // helperText: " ",
+        // helperStyle: TextStyle(height: 0.h),
 
-        errorStyle: TextStyle(fontSize: 10.sp, height: 1.h),
+        errorStyle: TextStyle(
+          fontSize: 10.sp,
+        ),
 
         prefixIcon: prefix,
         suffixIcon: suffix,
@@ -1745,27 +1729,37 @@ class SignUpScreenState extends State<SignUpScreen> {
 
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.r),
-          borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+          borderSide: const BorderSide(
+            color: Color(0xFFD9DEE5),
+          ),
         ),
 
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.r),
-          borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+          borderSide: const BorderSide(
+            color: Color(0xFFD9DEE5),
+          ),
         ),
 
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.r),
-          borderSide: const BorderSide(color: Color(0xFF0A0258)),
+          borderSide: const BorderSide(
+            color: Color(0xFF0A0258),
+          ),
         ),
 
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.r),
-          borderSide: const BorderSide(color: Colors.red),
+          borderSide: const BorderSide(
+            color: Colors.red,
+          ),
         ),
 
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.r),
-          borderSide: const BorderSide(color: Colors.red),
+          borderSide: const BorderSide(
+            color: Colors.red,
+          ),
         ),
       ),
     );
