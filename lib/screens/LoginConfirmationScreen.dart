@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'HomeScreen.dart';
+
 class LoginConfirmationScreen extends StatefulWidget {
   const LoginConfirmationScreen({super.key});
 
@@ -246,7 +248,15 @@ class LoginConfirmationScreenState extends State<LoginConfirmationScreen>
                             height: 42,
 
                             child: ElevatedButton(
-                              onPressed: () {},
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        HomeScreen(userId: ''), // your next screen
+                                  ),
+                                );
+                              },
 
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.transparent,
