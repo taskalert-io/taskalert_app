@@ -7,6 +7,8 @@ import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 
+import 'IdentityAssignmentScreen.dart';
+
 class HomeScreen extends StatefulWidget {
   final String userId;
   const HomeScreen({super.key, required this.userId});
@@ -21,15 +23,33 @@ class HomeScreenState extends State<HomeScreen> {
 
   /// PAGE CONTROLLER
   final PageController _pageController = PageController(
-    viewportFraction: .50,
-    initialPage: 1,
+    viewportFraction: .62,
+    initialPage: 1000,
   );
 
   final PageController _todoController = PageController();
 
+  /// DATA LIST
+  final List<Map<String, String>> workList = [
+    {
+      "number": "01",
+      "title": "Pending\nWork List",
+    },
+
+    {
+      "number": "02",
+      "title": "High Priority\nWork List",
+    },
+
+    {
+      "number": "03",
+      "title": "Scheduled\nWork List",
+    },
+  ];
+
   int todoCurrentPage = 0;
 
-  int currentPage = 1;
+  int currentPage = 1000;
   String selectedSort = "All";
   @override
   Widget build(BuildContext context) {
@@ -112,11 +132,14 @@ class HomeScreenState extends State<HomeScreen> {
                       SizedBox(height: 14.h),
 
                       /// PAGEVIEW
+                      /// PAGEVIEW
                       SizedBox(
                         height: 105.h,
 
-                        child: PageView(
+                        child: PageView.builder(
                           controller: _pageController,
+
+                          itemCount: null,
 
                           onPageChanged: (index) {
                             setState(() {
@@ -124,75 +147,40 @@ class HomeScreenState extends State<HomeScreen> {
                             });
                           },
 
-                          children: [
-                            /// CARD 1
-                            GestureDetector(
+                          itemBuilder: (context, index) {
+                            final realIndex = index % workList.length;
+
+                            final item = workList[realIndex];
+
+                            return GestureDetector(
                               onTap: () {
                                 _pageController.animateToPage(
-                                  0,
+                                  index,
                                   duration: const Duration(milliseconds: 300),
                                   curve: Curves.easeInOut,
                                 );
 
                                 setState(() {
-                                  currentPage = 0;
+                                  currentPage = index;
                                 });
                               },
 
-                              child: _buildCard(
-                                number: "01",
-                                title: "Pending\nWork List",
-                                isActive: currentPage == 0,
+                              child: Center(
+                                child: _buildCard(
+                                  number: item["number"]!,
+                                  title: item["title"]!,
+                                  isActive:
+                                  currentPage % workList.length == realIndex,
+                                ),
                               ),
-                            ),
-
-                            /// CARD 2
-                            GestureDetector(
-                              onTap: () {
-                                _pageController.animateToPage(
-                                  1,
-                                  duration: const Duration(milliseconds: 300),
-                                  curve: Curves.easeInOut,
-                                );
-
-                                setState(() {
-                                  currentPage = 1;
-                                });
-                              },
-
-                              child: _buildCard(
-                                number: "02",
-                                title: "High Priority\nWork List",
-                                isActive: currentPage == 1,
-                              ),
-                            ),
-
-                            /// CARD 3
-                            GestureDetector(
-                              onTap: () {
-                                _pageController.animateToPage(
-                                  2,
-                                  duration: const Duration(milliseconds: 300),
-                                  curve: Curves.easeInOut,
-                                );
-
-                                setState(() {
-                                  currentPage = 2;
-                                });
-                              },
-
-                              child: _buildCard(
-                                number: "03",
-                                title: "Scheduled\nWork List",
-                                isActive: currentPage == 2,
-                              ),
-                            ),
-                          ],
+                            );
+                          },
                         ),
                       ),
 
                       SizedBox(height: 15.h),
 
+                      /// DOT INDICATOR
                       /// DOT INDICATOR
                       Padding(
                         padding: const EdgeInsets.only(bottom: 12),
@@ -201,13 +189,28 @@ class HomeScreenState extends State<HomeScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
 
                           children: List.generate(
-                            3,
-                            (index) => Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 3,
-                              ),
+                            workList.length,
+                                (index) => GestureDetector(
+                              onTap: () {
+                                final targetPage =
+                                    currentPage -
+                                        (currentPage % workList.length) +
+                                        index;
 
-                              child: _dot(currentPage == index),
+                                _pageController.animateToPage(
+                                  targetPage,
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeInOut,
+                                );
+                              },
+
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 3),
+
+                                child: _dot(
+                                  currentPage % workList.length == index,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -303,7 +306,6 @@ class HomeScreenState extends State<HomeScreen> {
                                       mainAxisSize: MainAxisSize.min,
 
                                       children: [
-
                                         Text(
                                           selectedSort,
                                           style: GoogleFonts.inter(
@@ -325,14 +327,14 @@ class HomeScreenState extends State<HomeScreen> {
                                       ],
                                     ),
                                   ),
-                                )
+                                ),
                               ],
-                            )
+                            ),
                           ],
                         ),
                       ),
 
-                       SizedBox(height: 18.h),
+                      SizedBox(height: 18.h),
 
                       /// SLIDER
                       SizedBox(
@@ -411,7 +413,8 @@ class HomeScreenState extends State<HomeScreen> {
 
                                       statusColor: Colors.green,
 
-                                      requestedBy: "Requested by Guadalupe Miró",
+                                      requestedBy:
+                                          "Requested by Guadalupe Miró",
 
                                       priority: "Low",
 
@@ -513,16 +516,230 @@ class HomeScreenState extends State<HomeScreen> {
 
                         children: List.generate(
                           3,
-                          (index) => Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 3),
+                          (index) => GestureDetector(
+                            onTap: () {
+                              _todoController.animateToPage(
+                                index,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              );
 
-                            child: _dot(todoCurrentPage == index),
+                              setState(() {
+                                todoCurrentPage = index;
+                              });
+                            },
+
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 3,
+                              ),
+
+                              child: _dot(todoCurrentPage == index),
+                            ),
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
+                GestureDetector(
+                  onTap: () {
+                    // Your action here
+
+                    // Navigator.push(
+                    //   context,
+                    //   MaterialPageRoute(
+                    //     builder: (context) => WorkspaceScreen(),
+                    //   ),
+                    // );
+                  },
+                  child: Container(
+                    margin:  EdgeInsets.only(left: 15,right:15,bottom: 15),
+
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+
+                      borderRadius: BorderRadius.circular(15.r),
+
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+
+                    child: Row(
+                      children: [
+                        /// LEFT ICON
+                        Container(
+                          height: 27.h,
+                          width: 30.w,
+
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(6.r),
+
+                            gradient: const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Color(0xFF0F0C8B),
+                                Color(0xFF5B46F4),
+                              ],
+                            ),
+                          ),
+
+                          child: Padding(
+                            padding: const EdgeInsets.all(6),
+
+                            child: Image.asset(
+                              width: 20.w,
+                              height: 20.h,
+                              "assets/images/wrksp3d.png",
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+
+                         SizedBox(width: 10.w),
+
+                        /// TITLE
+                        Expanded(
+                          child: Text(
+                            "Workspaces",
+                            style: GoogleFonts.inter(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w700,
+                              color:  Color(0xFF0D095B),
+                            ),
+                          ),
+                        ),
+
+                        /// RIGHT BUTTON
+                        Container(
+                          height: 22.h,
+                          width: 26.w,
+
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF4F5FA),
+                            borderRadius: BorderRadius.circular(5.r),
+                          ),
+
+                          child:  Icon(
+                            Icons.arrow_forward,
+                            size: 15.r,
+                            color: Color(0xFF0A0258),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Container(
+                  width: double.infinity,
+                  clipBehavior: Clip.hardEdge,
+                  margin:  EdgeInsets.only(left: 15,right: 15,bottom: 20),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20.r),
+
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFF0A0F7A),
+                        Color(0xFF1B1F9E),
+                      ],
+                    ),
+                  ),
+
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      /// BACKGROUND SHAPE
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+
+                        child: Image.asset(
+                          width: 146.w,
+                          height: 135.h,
+                          "assets/images/wrksprm.png",
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+
+                      /// CONTENT
+                      Padding(
+                        padding: EdgeInsets.only(top: 15,bottom: 15,left: 15,right: 10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+
+                          children: [
+                            Text(
+                              "Need Help?",
+                              style: GoogleFonts.inter(
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF46BAEB),
+                              ),
+                            ),
+
+                            SizedBox(height: 6.h),
+
+                            Text(
+                              "Smarter Solutions.\nBetter Results.",
+                              style: GoogleFonts.inter(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+
+                            SizedBox(height: 10.h),
+
+                            GestureDetector(
+                              onTap: () {},
+
+                              child: Container(
+                                padding:  EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 10,
+                                ),
+
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(6.r),
+
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFFB26BFF),
+                                      Color(0xFF57D5FF),
+                                    ],
+                                  ),
+                                ),
+
+                                child: Text(
+                                  "Connect With Us",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
               ],
             ),
           ),
@@ -535,7 +752,14 @@ class HomeScreenState extends State<HomeScreen> {
         child: FloatingActionButton(
           backgroundColor: const Color(0xFF0A0258),
           shape: CircleBorder(),
-          onPressed: () {},
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => IdentityAssignmentScreen(),
+              ),
+            );
+          },
 
           child: Icon(Icons.add, color: Colors.white, size: 34.r),
         ),
@@ -648,7 +872,7 @@ class HomeScreenState extends State<HomeScreen> {
                     color: Color(0xFF324054),
                   ),
 
-                   SizedBox(width: 4.w),
+                  SizedBox(width: 4.w),
 
                   Text(
                     "12.05.2026",
@@ -659,15 +883,11 @@ class HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
 
-                   SizedBox(width: 14.w),
+                  SizedBox(width: 14.w),
 
-                  Icon(
-                    Icons.access_time,
-                    size: 14.r,
-                    color: Color(0xFF324054),
-                  ),
+                  Icon(Icons.access_time, size: 14.r, color: Color(0xFF324054)),
 
-                   SizedBox(width: 4.w),
+                  SizedBox(width: 4.w),
 
                   Text(
                     "09:30 AM",
@@ -689,7 +909,7 @@ class HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
 
-                   SizedBox(width: 5.w),
+                  SizedBox(width: 5.w),
 
                   Text(
                     priority,
@@ -715,7 +935,7 @@ class HomeScreenState extends State<HomeScreen> {
   }) {
     return Container(
       margin: const EdgeInsets.only(left: 8, right: 8),
-
+      width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
 
       decoration: BoxDecoration(

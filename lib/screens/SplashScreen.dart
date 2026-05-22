@@ -177,7 +177,7 @@ class _SplashScreenState extends State<SplashScreen>
                                     ).createShader(bounds);
                                   },
                                   child: Text(
-                                    "task1",
+                                    "task",
                                     style: TextStyle(
                                       color: darkBackground
                                           ? Colors.white
