@@ -9,7 +9,8 @@ void main(List<String> arguments) {
 }
 
 Future<bool> preCommit() async {
-  print('Checking if your local branch is up-to-date with main...');
+  // Using stdout.writeln forces the terminal stream to flush immediately on Windows
+  stdout.writeln('Checking if your local branch is up-to-date with main...');
 
   // 1. Silent fetch from origin main
   ProcessResult fetchResult = await Process.run('git', [
@@ -18,7 +19,7 @@ Future<bool> preCommit() async {
     'main',
   ]);
   if (fetchResult.exitCode != 0) {
-    print('❌ Error: Failed to fetch from origin main.');
+    stdout.writeln('❌ Error: Failed to fetch from origin main.');
     return false;
   }
 
@@ -30,18 +31,28 @@ Future<bool> preCommit() async {
   ]);
 
   if (revListResult.exitCode == 0) {
-    int commitsBehind = int.parse(revListResult.stdout.toString().trim());
+    // CRITICAL FOR WINDOWS: Strips out non-numeric hidden shell artifacts like \r\n
+    String cleanOutput = revListResult.stdout
+        .toString()
+        .replaceAll(RegExp(r'[^0-9]'), '')
+        .trim();
+    int commitsBehind = int.tryParse(cleanOutput) ?? 0;
 
     if (commitsBehind > 0) {
-      print('\n❌ COMMIT DENIED!');
-      print('Your branch is behind "main" by $commitsBehind commit(s).');
-      print(
+      stdout.writeln('\n❌ COMMIT DENIED!');
+      stdout.writeln(
+        'Your branch is behind "main" by $commitsBehind commit(s).',
+      );
+      stdout.writeln(
         'You must run "git merge origin/main" before committing new work.\n',
       );
       return false; // Blocks the commit
     }
+  } else {
+    stdout.writeln('❌ Error: Failed to evaluate branch synchronization state.');
+    return false;
   }
 
-  print('✅ Branch is up-to-date. Proceeding with commit.');
+  stdout.writeln('✅ Branch is up-to-date. Proceeding with commit.');
   return true; // Allows the commit
 }
