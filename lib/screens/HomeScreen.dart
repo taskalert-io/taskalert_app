@@ -118,7 +118,7 @@ class HomeScreenState extends State<HomeScreen> {
 
                           children: [
                             Text(
-                              "Work List testing",
+                              "Work List",
                               style: GoogleFonts.inter(
                                 fontSize: 14.sp,
                                 fontWeight: FontWeight.w700,
