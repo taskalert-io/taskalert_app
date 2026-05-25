@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
@@ -22,9 +23,40 @@ class IdentityAssignmentScreenState extends State<IdentityAssignmentScreen> {
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
   String selectedDepartment = "Retail";
   String selectedPriority = "High";
+  String SelectedReporting = "Select Users";
+  bool isAssignmentEnabled = false;
+  bool isProofEnabled = false;
+  bool isReportEnabled = false;
 
-  int selectedTabIndex = 0;
+  /// FIRST DATE & TIME
+  final TextEditingController assignDateController = TextEditingController();
 
+  final TextEditingController assignTimeController = TextEditingController();
+
+  DateTime? assignSelectedDate;
+
+  String assignSelectedAmPm = "AM";
+
+  /// SECOND DATE & TIME
+  final TextEditingController dueDateController = TextEditingController();
+
+  final TextEditingController dueTimeController = TextEditingController();
+
+  DateTime? dueSelectedDate;
+
+  String dueSelectedAmPm = "AM";
+  TextEditingController dayController = TextEditingController();
+  TextEditingController monthController = TextEditingController();
+  TextEditingController yearController = TextEditingController();
+  final FocusNode dayFocus = FocusNode();
+  final FocusNode monthFocus = FocusNode();
+  final FocusNode yearFocus = FocusNode();
+  bool isDayFocused = false;
+  bool isMonthFocused = false;
+  bool isYearFocused = false;
+  bool isTermsAccepted = false;
+  final _formKey = GlobalKey<FormState>();
+  bool isDobError = false;
   List<String> selectedFiles = [];
 
   Future<void> pickFiles() async {
@@ -50,14 +82,217 @@ class IdentityAssignmentScreenState extends State<IdentityAssignmentScreen> {
     // }
     if (result != null && result.files.isNotEmpty) {
       setState(() {
-        selectedFiles = result.files
-            .map((file) => file.name)
-            .toList();
+        selectedFiles = result.files.map((file) => file.name).toList();
       });
     }
   }
 
   final titleNameController = TextEditingController();
+  String selectedRepeatType = "Daily";
+
+  int selectedEveryNumber = 1;
+
+  String selectedWeekDay = "Monday";
+
+  @override
+  void initState() {
+    super.initState();
+
+    final now = DateTime.now();
+
+    /// FIRST
+    assignSelectedDate = now;
+
+    assignDateController.text =
+        "${now.day.toString().padLeft(2, '0')}-"
+        "${now.month.toString().padLeft(2, '0')}-"
+        "${now.year}";
+
+    assignTimeController.text = "10:00";
+
+    /// SECOND
+    dueSelectedDate = now;
+
+    dueDateController.text =
+        "${now.day.toString().padLeft(2, '0')}-"
+        "${now.month.toString().padLeft(2, '0')}-"
+        "${now.year}";
+
+    dueTimeController.text = "12:00";
+  }
+
+  /// SYNCFUSION DATE PICKER
+  /// COMMON SYNCFUSION DATE PICKER
+  void showCustomDatePicker({
+    required BuildContext context,
+    required TextEditingController controller,
+    required DateTime? initialDate,
+    required Function(DateTime pickedDate) onDateSelected,
+  }) {
+    DateTime tempSelectedDate = initialDate ?? DateTime.now();
+
+    showModalBottomSheet(
+      context: context,
+
+      backgroundColor: Colors.transparent,
+
+      isScrollControlled: true,
+
+      builder: (BuildContext builder) {
+        return StatefulBuilder(
+          builder: (context, dialogSetState) {
+            return SafeArea(
+              child: Container(
+                height: 420,
+
+                padding: const EdgeInsets.fromLTRB(15, 15, 15, 25),
+
+                decoration: BoxDecoration(
+                  color: Colors.white,
+
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(20.r),
+                  ),
+
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 10.r,
+                      spreadRadius: 1.r,
+                      offset: const Offset(0, -2),
+                    ),
+                  ],
+                ),
+
+                child: Column(
+                  children: [
+                    /// DATE PICKER
+                    Expanded(
+                      child: SfDateRangePicker(
+                        initialSelectedDate: tempSelectedDate,
+
+                        selectionMode: DateRangePickerSelectionMode.single,
+
+                        view: DateRangePickerView.month,
+
+                        allowViewNavigation: true,
+
+                        showNavigationArrow: true,
+
+                        backgroundColor: Colors.white,
+
+                        selectionColor: const Color(0xFF0A0258),
+
+                        todayHighlightColor: const Color(0xFF0A0258),
+
+                        startRangeSelectionColor: Colors.white,
+
+                        endRangeSelectionColor: Colors.white,
+
+                        rangeSelectionColor: Colors.white,
+
+                        headerStyle: DateRangePickerHeaderStyle(
+                          backgroundColor: Colors.transparent,
+
+                          textStyle: GoogleFonts.inter(
+                            color: const Color(0xFF3F4B4B),
+
+                            fontSize: 16.sp,
+
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+
+                        onSelectionChanged:
+                            (DateRangePickerSelectionChangedArgs args) {
+                              if (args.value is DateTime) {
+                                dialogSetState(() {
+                                  tempSelectedDate = args.value;
+                                });
+                              }
+                            },
+                      ),
+                    ),
+
+                    SizedBox(height: 10.h),
+
+                    /// BUTTONS
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+                      children: [
+                        /// CANCEL
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+
+                          child: Text(
+                            "Cancel",
+
+                            style: GoogleFonts.inter(
+                              color: Colors.red,
+
+                              fontSize: 14.sp,
+                            ),
+                          ),
+                        ),
+
+                        /// OK
+                        TextButton(
+                          onPressed: () {
+                            controller.text =
+                                "${tempSelectedDate.day.toString().padLeft(2, '0')}-"
+                                "${tempSelectedDate.month.toString().padLeft(2, '0')}-"
+                                "${tempSelectedDate.year}";
+
+                            onDateSelected(tempSelectedDate);
+
+                            Navigator.pop(context);
+                          },
+
+                          child: Text(
+                            "OK",
+
+                            style: GoogleFonts.inter(
+                              color: const Color(0xFF0DA99E),
+
+                              fontSize: 14.sp,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> showCustomTimePicker({
+    required BuildContext context,
+    required TextEditingController controller,
+    required Function(String value) onAmPmChanged,
+  }) async {
+    TimeOfDay? pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+
+    if (pickedTime != null) {
+      final hour = pickedTime.hourOfPeriod.toString().padLeft(2, '0');
+
+      final minute = pickedTime.minute.toString().padLeft(2, '0');
+
+      controller.text = "$hour:$minute";
+
+      onAmPmChanged(pickedTime.period == DayPeriod.am ? "AM" : "PM");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +301,6 @@ class IdentityAssignmentScreenState extends State<IdentityAssignmentScreen> {
       appBar: CustomAppBar(
         scaffoldKey: _scaffoldKey,
         userId: widget.userId, // ✅ Pass the correct userId
-        showLeading: true, // ✅ Set to true to show the back button
         onBackPressed: () {
           Navigator.pop(context); // Optional: customize back behavior if needed
         },
@@ -78,723 +312,2083 @@ class IdentityAssignmentScreenState extends State<IdentityAssignmentScreen> {
         onTap: () {
           FocusScope.of(context).unfocus();
         },
-    child: LayoutBuilder(
-          builder: (context, constraints){
-          return SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.only(bottom: 120.h),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: constraints.maxHeight,
-              ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
 
                 child: Container(
                   color: const Color(0xFFF5F7FB),
-                  padding: EdgeInsets.symmetric(horizontal: 15,vertical: 10),
+                  padding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
                   width: double.infinity,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      /// Tabs
-                      Row(
+                      /// BACK BUTTON + TITLE
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        spacing: 5.h,
                         children: [
-                          Expanded(
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(12),
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.pop(context);
+                            },
 
-                              onTap: () {
-                                setState(() {
-                                  selectedTabIndex = 0;
-                                });
+                            child: Icon(
+                              Icons.arrow_back,
+                              size: 17.r,
+                              color: const Color(0xFF0A0258),
+                            ),
+                          ),
+                          Text(
+                            "Core Identity & Media",
+                            style: GoogleFonts.inter(
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF0A0258),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: 14.h),
+
+                      /// Main Card
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24.r),
+                        ),
+
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+
+                          children: [
+                            _buildLabel("Title"),
+
+                            SizedBox(height: 3.h),
+
+                            buildTextField(
+                              suffixIcon: Icon(
+                                CupertinoIcons.pencil,
+                                size: 18.r,
+                                color: Colors.black54,
+                              ),
+
+                              hint: "Clean Production Floor",
+                              controller: titleNameController,
+
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return "Enter title";
+                                }
+                                return null;
                               },
+                            ),
 
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 6),
+                            SizedBox(height: 8.h),
 
-                                child: _buildTab(
-                                  title: "Store Identity & Media",
-                                  isSelected: selectedTabIndex == 0,
+                            _buildLabel("Department"),
+
+                            SizedBox(height: 3.h),
+
+                            Theme(
+                              data: Theme.of(context).copyWith(
+                                canvasColor: Colors.white,
+                                splashColor: Colors.transparent,
+                                highlightColor: Colors.transparent,
+                                hoverColor: Colors.transparent,
+                              ),
+
+                              child: ButtonTheme(
+                                alignedDropdown: true,
+                                child: DropdownButtonFormField<String>(
+                                  value: selectedDepartment,
+
+                                  isExpanded: true,
+                                  isDense: true,
+
+                                  alignment: AlignmentDirectional.centerStart,
+
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w400,
+                                    color: const Color(0xFF6C7278),
+                                  ),
+
+                                  icon: Icon(
+                                    CupertinoIcons.chevron_down,
+                                    size: 11.r,
+                                    color: const Color(0xFF6C7278),
+                                  ),
+
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: const Color(0xFFF9FAFC),
+
+                                    isDense: true,
+
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 10.w,
+                                      vertical: 8.h,
+                                    ),
+
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8.r),
+
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFFD9DEE5),
+                                      ),
+                                    ),
+
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8.r),
+
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFFD9DEE5),
+                                      ),
+                                    ),
+
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8.r),
+
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFF0A0258),
+                                      ),
+                                    ),
+                                  ),
+
+                                  items: ["Retail", "Marketing", "Sales"]
+                                      .map(
+                                        (e) => DropdownMenuItem<String>(
+                                          value: e,
+
+                                          alignment: Alignment.centerLeft,
+
+                                          child: Padding(
+                                            padding: EdgeInsets.only(
+                                              right: 12.w,
+                                            ),
+
+                                            child: Text(
+                                              e,
+
+                                              style: GoogleFonts.inter(
+                                                fontSize: 12.sp,
+                                                fontWeight: FontWeight.w400,
+                                                color: const Color(0xFF6C7278),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                      .toList(),
+
+                                  onChanged: (value) {
+                                    setState(() {
+                                      selectedDepartment = value!;
+                                    });
+                                  },
                                 ),
                               ),
                             ),
-                          ),
 
-                          SizedBox(width: 10.w),
+                            SizedBox(height: 8.h),
 
-                          Expanded(
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(12.r),
+                            _buildLabel("Priority"),
 
-                              onTap: () {
-                                setState(() {
-                                  selectedTabIndex = 1;
-                                });
+                            SizedBox(height: 3.h),
+
+                            Theme(
+                              data: Theme.of(context).copyWith(
+                                canvasColor: Colors.white,
+                                splashColor: Colors.transparent,
+                                highlightColor: Colors.transparent,
+                                hoverColor: Colors.transparent,
+                              ),
+
+                              child: ButtonTheme(
+                                alignedDropdown: true,
+                                child: DropdownButtonFormField<String>(
+                                  value: selectedPriority,
+
+                                  isExpanded: true,
+                                  isDense: true,
+
+                                  alignment: AlignmentDirectional.centerStart,
+
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w400,
+                                    color: const Color(0xFF6C7278),
+                                  ),
+
+                                  icon: Icon(
+                                    CupertinoIcons.chevron_down,
+                                    size: 11.r,
+                                    color: const Color(0xFF6C7278),
+                                  ),
+
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: const Color(0xFFF9FAFC),
+
+                                    isDense: true,
+
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 10.w,
+                                      vertical: 8.h,
+                                    ),
+
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8.r),
+
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFFD9DEE5),
+                                      ),
+                                    ),
+
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8.r),
+
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFFD9DEE5),
+                                      ),
+                                    ),
+
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8.r),
+
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFF0A0258),
+                                      ),
+                                    ),
+                                  ),
+
+                                  items: ["High", "Medium", "Low"]
+                                      .map(
+                                        (e) => DropdownMenuItem<String>(
+                                          value: e,
+
+                                          alignment: Alignment.centerLeft,
+
+                                          child: Padding(
+                                            padding: EdgeInsets.only(
+                                              right: 12.w,
+                                            ),
+
+                                            child: Text(
+                                              e,
+
+                                              style: GoogleFonts.inter(
+                                                fontSize: 12.sp,
+                                                fontWeight: FontWeight.w400,
+                                                color: const Color(0xFF6C7278),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                      .toList(),
+
+                                  onChanged: (value) {
+                                    setState(() {
+                                      selectedPriority = value!;
+                                    });
+                                  },
+                                ),
+                              ),
+                            ),
+
+                            SizedBox(height: 8.h),
+
+                            /// ASSIGN DATE & TIME
+                            Row(
+                              children: [
+                                /// ASSIGN DATE
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+
+                                    children: [
+                                      _buildLabel("Assign Date"),
+
+                                      SizedBox(height: 4.h),
+
+                                      GestureDetector(
+                                        onTap: () {
+                                          showCustomDatePicker(
+                                            context: context,
+
+                                            controller: assignDateController,
+
+                                            initialDate: assignSelectedDate,
+
+                                            onDateSelected: (date) {
+                                              setState(() {
+                                                assignSelectedDate = date;
+                                              });
+                                            },
+                                          );
+                                        },
+
+                                        child: AbsorbPointer(
+                                          child: TextFormField(
+                                            controller: assignDateController,
+
+                                            style: GoogleFonts.inter(
+                                              fontSize: 12.sp,
+                                              fontWeight: FontWeight.w400,
+                                              color: const Color(0xFF6C7278),
+                                            ),
+
+                                            decoration: InputDecoration(
+                                              hintText: "mm/dd/yyyy",
+
+                                              hintStyle: GoogleFonts.inter(
+                                                fontSize: 12.sp,
+                                                color: const Color(0xFFB8BEC5),
+                                              ),
+
+                                              isDense: true,
+
+                                              filled: true,
+                                              fillColor: const Color(
+                                                0xFFF9FAFC,
+                                              ),
+
+                                              contentPadding:
+                                                  EdgeInsets.symmetric(
+                                                    horizontal: 10.w,
+                                                    vertical: 10.h,
+                                                  ),
+
+                                              suffixIcon: Padding(
+                                                padding: EdgeInsets.only(
+                                                  right: 10.w,
+                                                ),
+
+                                                child: Icon(
+                                                  CupertinoIcons.calendar,
+                                                  size: 18.r,
+                                                  color: const Color(
+                                                    0xFF4338CA,
+                                                  ),
+                                                ),
+                                              ),
+
+                                              suffixIconConstraints:
+                                                  BoxConstraints(
+                                                    minWidth: 30.w,
+                                                  ),
+
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(10.r),
+
+                                                borderSide: const BorderSide(
+                                                  color: Color(0xFFD9DEE5),
+                                                ),
+                                              ),
+
+                                              enabledBorder: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(10.r),
+
+                                                borderSide: const BorderSide(
+                                                  color: Color(0xFFD9DEE5),
+                                                ),
+                                              ),
+
+                                              focusedBorder: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(10.r),
+
+                                                borderSide: const BorderSide(
+                                                  color: Color(0xFF0A0258),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                SizedBox(width: 12.w),
+
+                                /// ASSIGN TIME
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+
+                                    children: [
+                                      _buildLabel("Assign Time"),
+
+                                      SizedBox(height: 4.h),
+
+                                      Row(
+                                        children: [
+                                          /// TIME FIELD
+                                          Expanded(
+                                            child: GestureDetector(
+                                              onTap: () async {
+                                                TimeOfDay?
+                                                pickedTime = await showTimePicker(
+                                                  context: context,
+
+                                                  initialTime: TimeOfDay.now(),
+
+                                                  builder: (context, child) {
+                                                    return Theme(
+                                                      data: Theme.of(context)
+                                                          .copyWith(
+                                                            colorScheme:
+                                                                const ColorScheme.light(
+                                                                  primary: Color(
+                                                                    0xFF0A0258,
+                                                                  ),
+                                                                ),
+                                                          ),
+
+                                                      child: child!,
+                                                    );
+                                                  },
+                                                );
+
+                                                if (pickedTime != null) {
+                                                  final hour = pickedTime
+                                                      .hourOfPeriod
+                                                      .toString()
+                                                      .padLeft(2, '0');
+
+                                                  final minute = pickedTime
+                                                      .minute
+                                                      .toString()
+                                                      .padLeft(2, '0');
+
+                                                  setState(() {
+                                                    /// ONLY THIS FIELD VALUE CHANGE
+                                                    assignTimeController.text =
+                                                        "$hour:$minute";
+
+                                                    /// ONLY THIS AM PM CHANGE
+                                                    assignSelectedAmPm =
+                                                        pickedTime.period ==
+                                                            DayPeriod.am
+                                                        ? "AM"
+                                                        : "PM";
+                                                  });
+                                                }
+                                              },
+
+                                              child: AbsorbPointer(
+                                                child: TextFormField(
+                                                  controller:
+                                                      assignTimeController,
+
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 12.sp,
+                                                    fontWeight: FontWeight.w400,
+                                                    color: const Color(
+                                                      0xFF6C7278,
+                                                    ),
+                                                  ),
+
+                                                  decoration: InputDecoration(
+                                                    hintText: "00:00",
+
+                                                    hintStyle:
+                                                        GoogleFonts.inter(
+                                                          fontSize: 12.sp,
+                                                          color: const Color(
+                                                            0xFFB8BEC5,
+                                                          ),
+                                                        ),
+
+                                                    isDense: true,
+
+                                                    filled: true,
+                                                    fillColor: const Color(
+                                                      0xFFF9FAFC,
+                                                    ),
+
+                                                    contentPadding:
+                                                        EdgeInsets.symmetric(
+                                                          horizontal: 10.w,
+                                                          vertical: 10.h,
+                                                        ),
+
+                                                    suffixIcon: Padding(
+                                                      padding: EdgeInsets.only(
+                                                        right: 10.w,
+                                                      ),
+
+                                                      child: Icon(
+                                                        CupertinoIcons.clock,
+                                                        size: 17.r,
+                                                        color: const Color(
+                                                          0xFF4338CA,
+                                                        ),
+                                                      ),
+                                                    ),
+
+                                                    suffixIconConstraints:
+                                                        BoxConstraints(
+                                                          minWidth: 30.w,
+                                                        ),
+
+                                                    border: OutlineInputBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            10.r,
+                                                          ),
+
+                                                      borderSide:
+                                                          const BorderSide(
+                                                            color: Color(
+                                                              0xFFD9DEE5,
+                                                            ),
+                                                          ),
+                                                    ),
+
+                                                    enabledBorder:
+                                                        OutlineInputBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                10.r,
+                                                              ),
+
+                                                          borderSide:
+                                                              const BorderSide(
+                                                                color: Color(
+                                                                  0xFFD9DEE5,
+                                                                ),
+                                                              ),
+                                                        ),
+
+                                                    focusedBorder:
+                                                        OutlineInputBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                10.r,
+                                                              ),
+
+                                                          borderSide:
+                                                              const BorderSide(
+                                                                color: Color(
+                                                                  0xFF0A0258,
+                                                                ),
+                                                              ),
+                                                        ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+
+                                          SizedBox(width: 8.w),
+
+                                          /// AM PM DROPDOWN
+                                          SizedBox(
+                                            width: 58.w,
+
+                                            child: Theme(
+                                              data: Theme.of(context).copyWith(
+                                                canvasColor: Colors.white,
+                                              ),
+
+                                              child: DropdownButtonFormField<String>(
+                                                value: assignSelectedAmPm,
+
+                                                isDense: true,
+
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 12.sp,
+                                                  fontWeight: FontWeight.w400,
+                                                  color: const Color(
+                                                    0xFF6C7278,
+                                                  ),
+                                                ),
+
+                                                icon: Icon(
+                                                  CupertinoIcons.chevron_down,
+                                                  size: 10.r,
+                                                  color: const Color(
+                                                    0xFF6C7278,
+                                                  ),
+                                                ),
+
+                                                decoration: InputDecoration(
+                                                  filled: true,
+                                                  fillColor: const Color(
+                                                    0xFFF9FAFC,
+                                                  ),
+
+                                                  isDense: true,
+
+                                                  contentPadding:
+                                                      EdgeInsets.symmetric(
+                                                        horizontal: 8.w,
+                                                        vertical: 10.h,
+                                                      ),
+
+                                                  border: OutlineInputBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          10.r,
+                                                        ),
+
+                                                    borderSide:
+                                                        const BorderSide(
+                                                          color: Color(
+                                                            0xFFD9DEE5,
+                                                          ),
+                                                        ),
+                                                  ),
+
+                                                  enabledBorder:
+                                                      OutlineInputBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              10.r,
+                                                            ),
+
+                                                        borderSide:
+                                                            const BorderSide(
+                                                              color: Color(
+                                                                0xFFD9DEE5,
+                                                              ),
+                                                            ),
+                                                      ),
+
+                                                  focusedBorder:
+                                                      OutlineInputBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              10.r,
+                                                            ),
+
+                                                        borderSide:
+                                                            const BorderSide(
+                                                              color: Color(
+                                                                0xFF0A0258,
+                                                              ),
+                                                            ),
+                                                      ),
+                                                ),
+
+                                                items: ["AM", "PM"]
+                                                    .map(
+                                                      (
+                                                        e,
+                                                      ) => DropdownMenuItem<String>(
+                                                        value: e,
+
+                                                        child: Text(
+                                                          e,
+
+                                                          style:
+                                                              GoogleFonts.inter(
+                                                                fontSize: 12.sp,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w400,
+                                                                color:
+                                                                    const Color(
+                                                                      0xFF6C7278,
+                                                                    ),
+                                                              ),
+                                                        ),
+                                                      ),
+                                                    )
+                                                    .toList(),
+
+                                                onChanged: (value) {
+                                                  setState(() {
+                                                    assignSelectedAmPm = value!;
+                                                  });
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            SizedBox(height: 8.h),
+
+                            _buildLabel("Description"),
+
+                            SizedBox(height: 3.h),
+
+                            TextFormField(
+                              maxLines: 3,
+
+                              style: GoogleFonts.inter(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w400,
+                                color: const Color(0xFF6C7278),
+                              ),
+
+                              decoration: InputDecoration(
+                                isDense: true,
+
+                                hintText: "Write a description....",
+
+                                hintStyle: GoogleFonts.inter(
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w400,
+                                  color: const Color(0xFFB8BEC5),
+                                ),
+
+                                contentPadding: EdgeInsets.all(14.w),
+
+                                filled: true,
+                                fillColor: const Color(0xFFF9FAFC),
+
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8.r),
+
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFFD9DEE5),
+                                  ),
+                                ),
+
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8.r),
+
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFFD9DEE5),
+                                  ),
+                                ),
+
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8.r),
+
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF0A0258),
+                                  ),
+                                ),
+
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8.r),
+
+                                  borderSide: const BorderSide(
+                                    color: Colors.red,
+                                  ),
+                                ),
+
+                                focusedErrorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8.r),
+
+                                  borderSide: const BorderSide(
+                                    color: Colors.red,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            SizedBox(height: 8.h),
+
+                            Text(
+                              "Add Attachments",
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13.sp,
+                                color: Color(0xFF3F3F3F),
+                              ),
+                            ),
+
+                            Text(
+                              "File must be in pdf, doc, png, jpg, gif or mp4 format\nand upto 5 file(s) at a time.",
+
+                              style: GoogleFonts.inter(
+                                color: Color(0xFF797979),
+                                fontSize: 11.sp,
+                              ),
+                            ),
+
+                            SizedBox(height: 3.h),
+
+                            GestureDetector(
+                              onTap: pickFiles,
+
+                              child: Container(
+                                width: double.infinity,
+
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 28,
+                                ),
+
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF9FAFF),
+
+                                  borderRadius: BorderRadius.circular(8.r),
+
+                                  border: Border.all(
+                                    color: const Color(0xFFB9C3FF),
+                                  ),
+                                ),
+
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      "Drag & drop your file(s) here or",
+
+                                      style: GoogleFonts.inter(
+                                        color: Color(0xFF797979),
+                                        fontSize: 11.sp,
+                                      ),
+                                    ),
+
+                                    SizedBox(height: 3.h),
+
+                                    Text(
+                                      "Browse",
+
+                                      style: GoogleFonts.inter(
+                                        color: const Color(0xFF304DDB),
+
+                                        fontWeight: FontWeight.w600,
+
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            Padding(
+                              padding: EdgeInsets.only(top: 14.h),
+
+                              child: Column(
+                                children: [
+                                  /// FILE LIST
+                                  if (selectedFiles.isNotEmpty)
+                                    Column(
+                                      children: List.generate(selectedFiles.length, (
+                                        index,
+                                      ) {
+                                        final fileName = selectedFiles[index];
+
+                                        final progress = index == 0
+                                            ? 0.30
+                                            : 0.82;
+
+                                        return Container(
+                                          margin: EdgeInsets.only(bottom: 10.h),
+
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 10.w,
+                                            vertical: 10.h,
+                                          ),
+
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+
+                                            borderRadius: BorderRadius.circular(
+                                              8.r,
+                                            ),
+
+                                            border: Border.all(
+                                              color: const Color(0xFFE4E7EC),
+                                            ),
+                                          ),
+
+                                          child: Column(
+                                            children: [
+                                              /// TOP ROW
+                                              Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons
+                                                        .insert_drive_file_outlined,
+                                                    size: 18.r,
+                                                    color: const Color(
+                                                      0xFF667085,
+                                                    ),
+                                                  ),
+
+                                                  SizedBox(width: 8.w),
+
+                                                  Expanded(
+                                                    child: Text(
+                                                      fileName,
+
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 11.sp,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                        color: const Color(
+                                                          0xFF475467,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+
+                                                  SizedBox(width: 10.w),
+
+                                                  Text(
+                                                    "${(progress * 100).toInt()}%",
+
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 11.sp,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      color: const Color(
+                                                        0xFF667085,
+                                                      ),
+                                                    ),
+                                                  ),
+
+                                                  SizedBox(width: 6.w),
+
+                                                  GestureDetector(
+                                                    onTap: () {
+                                                      setState(() {
+                                                        selectedFiles.removeAt(
+                                                          index,
+                                                        );
+                                                      });
+                                                    },
+
+                                                    child: Icon(
+                                                      Icons.close,
+                                                      size: 15.r,
+                                                      color: const Color(
+                                                        0xFF98A2B3,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+
+                                              SizedBox(height: 8.h),
+
+                                              /// PROGRESS BAR
+                                              ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(20.r),
+
+                                                child: LinearProgressIndicator(
+                                                  value: progress,
+                                                  minHeight: 2.5.h,
+
+                                                  backgroundColor: const Color(
+                                                    0xFFE4E7EC,
+                                                  ),
+
+                                                  valueColor:
+                                                      const AlwaysStoppedAnimation(
+                                                        Color(0xFF4F6EF7),
+                                                      ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 20),
+
+                      /// TOGGLE SECTIONS
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 5),
+                        child: Column(
+                          children: [
+                            /// ASSIGNMENT & RECURRENCE
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+                              children: [
+                                Text(
+                                  "Assignment & Recurrence",
+
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF0A0258),
+                                  ),
+                                ),
+
+                                /// ASSIGNMENT & RECURRENCE
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      isAssignmentEnabled =
+                                          !isAssignmentEnabled;
+                                    });
+                                  },
+
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 250),
+
+                                    width: 30.w,
+                                    height: 15.h,
+
+                                    padding: EdgeInsets.all(1.w),
+
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+
+                                      borderRadius: BorderRadius.circular(30.r),
+
+                                      border: Border.all(
+                                        color: isAssignmentEnabled
+                                            ? const Color(0xFF1DC230)
+                                            : const Color(0xFF676299),
+
+                                        width: 1.2,
+                                      ),
+                                    ),
+
+                                    child: AnimatedAlign(
+                                      duration: const Duration(
+                                        milliseconds: 250,
+                                      ),
+
+                                      alignment: isAssignmentEnabled
+                                          ? Alignment.centerRight
+                                          : Alignment.centerLeft,
+
+                                      child: Container(
+                                        width: 14.w,
+                                        height: 14.h,
+
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+
+                                          color: isAssignmentEnabled
+                                              ? const Color(0xFF1DC230)
+                                              : const Color(0xFF676299),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (isAssignmentEnabled)
+                              Container(
+                                width: double.infinity,
+
+                                padding: const EdgeInsets.all(16),
+
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(24.r),
+                                ),
+
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+
+                                  children: [
+                                    _buildLabel("Reporting To"),
+
+                                    SizedBox(height: 3.h),
+
+                                    Theme(
+                                      data: Theme.of(context).copyWith(
+                                        canvasColor: Colors.white,
+                                        splashColor: Colors.transparent,
+                                        highlightColor: Colors.transparent,
+                                        hoverColor: Colors.transparent,
+                                      ),
+
+                                      child: ButtonTheme(
+                                        alignedDropdown: true,
+
+                                        child: DropdownButtonFormField<String>(
+                                          value: SelectedReporting,
+
+                                          isExpanded: true,
+                                          isDense: true,
+
+                                          alignment:
+                                              AlignmentDirectional.centerStart,
+
+                                          style: GoogleFonts.inter(
+                                            fontSize: 12.sp,
+                                            fontWeight: FontWeight.w400,
+                                            color: const Color(0xFF6C7278),
+                                          ),
+
+                                          icon: Icon(
+                                            CupertinoIcons.chevron_down,
+                                            size: 11.r,
+                                            color: const Color(0xFF6C7278),
+                                          ),
+
+                                          decoration: InputDecoration(
+                                            filled: true,
+                                            fillColor: const Color(0xFFF9FAFC),
+
+                                            isDense: true,
+
+                                            contentPadding:
+                                                EdgeInsets.symmetric(
+                                                  horizontal: 10.w,
+                                                  vertical: 8.h,
+                                                ),
+
+                                            border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8.r),
+
+                                              borderSide: const BorderSide(
+                                                color: Color(0xFFD9DEE5),
+                                              ),
+                                            ),
+
+                                            enabledBorder: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8.r),
+
+                                              borderSide: const BorderSide(
+                                                color: Color(0xFFD9DEE5),
+                                              ),
+                                            ),
+
+                                            focusedBorder: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8.r),
+
+                                              borderSide: const BorderSide(
+                                                color: Color(0xFF0A0258),
+                                              ),
+                                            ),
+                                          ),
+
+                                          items:
+                                              [
+                                                    "Select Users",
+                                                    "Manager",
+                                                    "Someone",
+                                                  ]
+                                                  .map(
+                                                    (
+                                                      e,
+                                                    ) => DropdownMenuItem<String>(
+                                                      value: e,
+
+                                                      alignment:
+                                                          Alignment.centerLeft,
+
+                                                      child: Padding(
+                                                        padding:
+                                                            EdgeInsets.only(
+                                                              right: 12.w,
+                                                            ),
+
+                                                        child: Text(
+                                                          e,
+
+                                                          style:
+                                                              GoogleFonts.inter(
+                                                                fontSize: 12.sp,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w400,
+                                                                color:
+                                                                    const Color(
+                                                                      0xFF6C7278,
+                                                                    ),
+                                                              ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  )
+                                                  .toList(),
+
+                                          onChanged: (value) {
+                                            setState(() {
+                                              SelectedReporting = value!;
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(height: 8.h),
+                                    Row(
+                                      children: [
+                                        /// SECOND DATE
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+
+                                            children: [
+                                              _buildLabel("Due Date"),
+
+                                              SizedBox(height: 4.h),
+
+                                              GestureDetector(
+                                                onTap: () {
+                                                  showCustomDatePicker(
+                                                    context: context,
+
+                                                    controller:
+                                                        dueDateController,
+
+                                                    initialDate:
+                                                        dueSelectedDate,
+
+                                                    onDateSelected:
+                                                        (pickedDate) {
+                                                          setState(() {
+                                                            dueSelectedDate =
+                                                                pickedDate;
+                                                          });
+                                                        },
+                                                  );
+                                                },
+
+                                                child: AbsorbPointer(
+                                                  child: TextFormField(
+                                                    controller:
+                                                        dueDateController,
+
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 12.sp,
+                                                      fontWeight:
+                                                          FontWeight.w400,
+                                                      color: const Color(
+                                                        0xFF6C7278,
+                                                      ),
+                                                    ),
+
+                                                    decoration: InputDecoration(
+                                                      hintText: "mm/dd/yyyy",
+
+                                                      hintStyle:
+                                                          GoogleFonts.inter(
+                                                            fontSize: 12.sp,
+                                                            color: const Color(
+                                                              0xFFB8BEC5,
+                                                            ),
+                                                          ),
+
+                                                      isDense: true,
+
+                                                      filled: true,
+                                                      fillColor: const Color(
+                                                        0xFFF9FAFC,
+                                                      ),
+
+                                                      contentPadding:
+                                                          EdgeInsets.symmetric(
+                                                            horizontal: 10.w,
+                                                            vertical: 10.h,
+                                                          ),
+
+                                                      suffixIcon: Padding(
+                                                        padding:
+                                                            EdgeInsets.only(
+                                                              right: 10.w,
+                                                            ),
+
+                                                        child: Icon(
+                                                          CupertinoIcons
+                                                              .calendar,
+                                                          size: 18.r,
+                                                          color: const Color(
+                                                            0xFF4338CA,
+                                                          ),
+                                                        ),
+                                                      ),
+
+                                                      suffixIconConstraints:
+                                                          BoxConstraints(
+                                                            minWidth: 30.w,
+                                                          ),
+
+                                                      border: OutlineInputBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              10.r,
+                                                            ),
+
+                                                        borderSide:
+                                                            const BorderSide(
+                                                              color: Color(
+                                                                0xFFD9DEE5,
+                                                              ),
+                                                            ),
+                                                      ),
+
+                                                      enabledBorder:
+                                                          OutlineInputBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  10.r,
+                                                                ),
+
+                                                            borderSide:
+                                                                const BorderSide(
+                                                                  color: Color(
+                                                                    0xFFD9DEE5,
+                                                                  ),
+                                                                ),
+                                                          ),
+
+                                                      focusedBorder:
+                                                          OutlineInputBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  10.r,
+                                                                ),
+
+                                                            borderSide:
+                                                                const BorderSide(
+                                                                  color: Color(
+                                                                    0xFF0A0258,
+                                                                  ),
+                                                                ),
+                                                          ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+
+                                        SizedBox(width: 12.w),
+
+                                        /// SECOND TIME
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+
+                                            children: [
+                                              _buildLabel("Due Time"),
+
+                                              SizedBox(height: 4.h),
+
+                                              Row(
+                                                children: [
+                                                  /// TIME FIELD
+                                                  Expanded(
+                                                    child: GestureDetector(
+                                                      onTap: () async {
+                                                        TimeOfDay?
+                                                        pickedTime = await showTimePicker(
+                                                          context: context,
+
+                                                          initialTime:
+                                                              TimeOfDay.now(),
+
+                                                          builder: (context, child) {
+                                                            return Theme(
+                                                              data:
+                                                                  Theme.of(
+                                                                    context,
+                                                                  ).copyWith(
+                                                                    colorScheme: const ColorScheme.light(
+                                                                      primary:
+                                                                          Color(
+                                                                            0xFF0A0258,
+                                                                          ),
+                                                                    ),
+                                                                  ),
+
+                                                              child: child!,
+                                                            );
+                                                          },
+                                                        );
+
+                                                        if (pickedTime !=
+                                                            null) {
+                                                          final hour =
+                                                              pickedTime
+                                                                  .hourOfPeriod
+                                                                  .toString()
+                                                                  .padLeft(
+                                                                    2,
+                                                                    '0',
+                                                                  );
+
+                                                          final minute =
+                                                              pickedTime.minute
+                                                                  .toString()
+                                                                  .padLeft(
+                                                                    2,
+                                                                    '0',
+                                                                  );
+
+                                                          setState(() {
+                                                            dueTimeController
+                                                                    .text =
+                                                                "$hour:$minute";
+
+                                                            dueSelectedAmPm =
+                                                                pickedTime
+                                                                        .period ==
+                                                                    DayPeriod.am
+                                                                ? "AM"
+                                                                : "PM";
+                                                          });
+                                                        }
+                                                      },
+
+                                                      child: AbsorbPointer(
+                                                        child: TextFormField(
+                                                          controller:
+                                                              dueTimeController,
+
+                                                          style:
+                                                              GoogleFonts.inter(
+                                                                fontSize: 12.sp,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w400,
+                                                                color:
+                                                                    const Color(
+                                                                      0xFF6C7278,
+                                                                    ),
+                                                              ),
+
+                                                          decoration: InputDecoration(
+                                                            hintText: "00:00",
+
+                                                            hintStyle:
+                                                                GoogleFonts.inter(
+                                                                  fontSize:
+                                                                      12.sp,
+                                                                  color: const Color(
+                                                                    0xFFB8BEC5,
+                                                                  ),
+                                                                ),
+
+                                                            isDense: true,
+
+                                                            filled: true,
+                                                            fillColor:
+                                                                const Color(
+                                                                  0xFFF9FAFC,
+                                                                ),
+
+                                                            contentPadding:
+                                                                EdgeInsets.symmetric(
+                                                                  horizontal:
+                                                                      10.w,
+                                                                  vertical:
+                                                                      10.h,
+                                                                ),
+
+                                                            suffixIcon: Padding(
+                                                              padding:
+                                                                  EdgeInsets.only(
+                                                                    right: 10.w,
+                                                                  ),
+
+                                                              child: Icon(
+                                                                CupertinoIcons
+                                                                    .clock,
+                                                                size: 17.r,
+                                                                color:
+                                                                    const Color(
+                                                                      0xFF4338CA,
+                                                                    ),
+                                                              ),
+                                                            ),
+
+                                                            suffixIconConstraints:
+                                                                BoxConstraints(
+                                                                  minWidth:
+                                                                      30.w,
+                                                                ),
+
+                                                            border: OutlineInputBorder(
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    10.r,
+                                                                  ),
+
+                                                              borderSide:
+                                                                  const BorderSide(
+                                                                    color: Color(
+                                                                      0xFFD9DEE5,
+                                                                    ),
+                                                                  ),
+                                                            ),
+
+                                                            enabledBorder: OutlineInputBorder(
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    10.r,
+                                                                  ),
+
+                                                              borderSide:
+                                                                  const BorderSide(
+                                                                    color: Color(
+                                                                      0xFFD9DEE5,
+                                                                    ),
+                                                                  ),
+                                                            ),
+
+                                                            focusedBorder: OutlineInputBorder(
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    10.r,
+                                                                  ),
+
+                                                              borderSide:
+                                                                  const BorderSide(
+                                                                    color: Color(
+                                                                      0xFF0A0258,
+                                                                    ),
+                                                                  ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+
+                                                  SizedBox(width: 8.w),
+
+                                                  /// AM PM
+                                                  SizedBox(
+                                                    width: 52.w,
+
+                                                    child: Theme(
+                                                      data: Theme.of(context)
+                                                          .copyWith(
+                                                            canvasColor:
+                                                                Colors.white,
+                                                          ),
+
+                                                      child: DropdownButtonFormField<String>(
+                                                        value: dueSelectedAmPm,
+
+                                                        isDense: true,
+
+                                                        style:
+                                                            GoogleFonts.inter(
+                                                              fontSize: 12.sp,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w400,
+                                                              color:
+                                                                  const Color(
+                                                                    0xFF6C7278,
+                                                                  ),
+                                                            ),
+
+                                                        icon: Icon(
+                                                          CupertinoIcons
+                                                              .chevron_down,
+                                                          size: 10.r,
+                                                          color: const Color(
+                                                            0xFF6C7278,
+                                                          ),
+                                                        ),
+
+                                                        decoration: InputDecoration(
+                                                          filled: true,
+                                                          fillColor:
+                                                              const Color(
+                                                                0xFFF9FAFC,
+                                                              ),
+
+                                                          isDense: true,
+
+                                                          contentPadding:
+                                                              EdgeInsets.symmetric(
+                                                                horizontal: 8.w,
+                                                                vertical: 10.h,
+                                                              ),
+
+                                                          border: OutlineInputBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  10.r,
+                                                                ),
+
+                                                            borderSide:
+                                                                const BorderSide(
+                                                                  color: Color(
+                                                                    0xFFD9DEE5,
+                                                                  ),
+                                                                ),
+                                                          ),
+
+                                                          enabledBorder: OutlineInputBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  10.r,
+                                                                ),
+
+                                                            borderSide:
+                                                                const BorderSide(
+                                                                  color: Color(
+                                                                    0xFFD9DEE5,
+                                                                  ),
+                                                                ),
+                                                          ),
+
+                                                          focusedBorder: OutlineInputBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  10.r,
+                                                                ),
+
+                                                            borderSide:
+                                                                const BorderSide(
+                                                                  color: Color(
+                                                                    0xFF0A0258,
+                                                                  ),
+                                                                ),
+                                                          ),
+                                                        ),
+
+                                                        items: ["AM", "PM"]
+                                                            .map(
+                                                              (
+                                                                e,
+                                                              ) => DropdownMenuItem<String>(
+                                                                value: e,
+
+                                                                child: Text(
+                                                                  e,
+
+                                                                  style: GoogleFonts.inter(
+                                                                    fontSize:
+                                                                        12.sp,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w400,
+                                                                    color: const Color(
+                                                                      0xFF6C7278,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            )
+                                                            .toList(),
+
+                                                        onChanged: (value) {
+                                                          setState(() {
+                                                            dueSelectedAmPm =
+                                                                value!;
+                                                          });
+                                                        },
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 8.h),
+                                    /// REPEAT SECTION
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        _buildLabel("Select Time Period"),
+
+                                        SizedBox(height: 10.h),
+
+                                        /// RADIO OPTIONS
+                                        Wrap(
+                                          spacing: 14.w,
+                                          runSpacing: 10.h,
+                                          children: [
+                                            _buildRepeatOption("Daily", "Daily"),
+
+                                            _buildRepeatOption("Weekly", "Weekly"),
+
+                                            _buildRepeatOption("Monthly", "Monthly"),
+
+                                            _buildRepeatOption("Yearly", "Yearly"),
+                                          ],
+                                        ),
+
+                                        SizedBox(height: 14.h),
+
+                                        /// SELECT EVERY
+                                        _buildLabel("Select Every"),
+                                        SizedBox(height: 8.h),
+
+                                        SingleChildScrollView(
+                                          scrollDirection: Axis.horizontal,
+                                          child: Wrap(
+                                            spacing: 5.w,
+                                            runSpacing: 8.h,
+                                            crossAxisAlignment: WrapCrossAlignment.center,
+
+                                            children: [
+                                              /// NUMBER DROPDOWN
+                                              SizedBox(
+                                                width: 65.w,
+
+                                                child: DropdownButtonFormField<int>(
+                                                  value: selectedEveryNumber,
+
+                                                  isDense: true,
+                                                  isExpanded: true,
+
+                                                  icon: Icon(
+                                                    CupertinoIcons.chevron_down,
+                                                    size: 10.r,
+                                                    color: const Color(0xFF667085),
+                                                  ),
+
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 12.sp,
+                                                    fontWeight: FontWeight.w400,
+                                                    color: const Color(0xFF6C7278),
+                                                  ),
+
+                                                  decoration: InputDecoration(
+                                                    filled: true,
+                                                    fillColor: const Color(0xFFF9FAFC),
+
+                                                    isDense: true,
+
+                                                    contentPadding: EdgeInsets.symmetric(
+                                                      horizontal: 8.w,
+                                                      vertical: 8.h,
+                                                    ),
+
+                                                    border: OutlineInputBorder(
+                                                      borderRadius: BorderRadius.circular(10.r),
+                                                      borderSide: const BorderSide(
+                                                        color: Color(0xFFD9DEE5),
+                                                      ),
+                                                    ),
+
+                                                    enabledBorder: OutlineInputBorder(
+                                                      borderRadius: BorderRadius.circular(10.r),
+                                                      borderSide: const BorderSide(
+                                                        color: Color(0xFFD9DEE5),
+                                                      ),
+                                                    ),
+
+                                                    focusedBorder: OutlineInputBorder(
+                                                      borderRadius: BorderRadius.circular(10.r),
+                                                      borderSide: const BorderSide(
+                                                        color: Color(0xFF0A0258),
+                                                      ),
+                                                    ),
+                                                  ),
+
+                                                  items: List.generate(
+                                                    30,
+                                                        (index) => DropdownMenuItem<int>(
+                                                      value: index + 1,
+
+                                                      child: Text(
+                                                        "${index + 1}",
+
+                                                        style: GoogleFonts.inter(
+                                                          fontSize: 12.sp,
+                                                          fontWeight: FontWeight.w400,
+                                                          color: const Color(0xFF6C7278),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+
+                                                  onChanged: (value) {
+                                                    setState(() {
+                                                      selectedEveryNumber = value!;
+                                                    });
+                                                  },
+                                                ),
+                                              ),
+
+                                              /// TEXT
+                                              Text(
+                                                "week(s) on",
+
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 11.sp,
+                                                  color: const Color(0xFF667085),
+                                                ),
+                                              ),
+
+                                              /// DAY DROPDOWN
+                                              SizedBox(
+                                                width: 100.w,
+
+                                                child: DropdownButtonFormField<String>(
+                                                  value: selectedWeekDay,
+
+                                                  isExpanded: true,
+                                                  isDense: true,
+
+                                                  icon: Icon(
+                                                    CupertinoIcons.chevron_down,
+                                                    size: 10.r,
+                                                    color: const Color(0xFF667085),
+                                                  ),
+
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 12.sp,
+                                                    fontWeight: FontWeight.w400,
+                                                    color: const Color(0xFF6C7278),
+                                                  ),
+
+                                                  decoration: InputDecoration(
+                                                    filled: true,
+                                                    fillColor: const Color(0xFFF9FAFC),
+
+                                                    isDense: true,
+
+                                                    contentPadding: EdgeInsets.symmetric(
+                                                      horizontal: 8.w,
+                                                      vertical: 8.h,
+                                                    ),
+
+                                                    border: OutlineInputBorder(
+                                                      borderRadius: BorderRadius.circular(10.r),
+                                                      borderSide: const BorderSide(
+                                                        color: Color(0xFFD9DEE5),
+                                                      ),
+                                                    ),
+
+                                                    enabledBorder: OutlineInputBorder(
+                                                      borderRadius: BorderRadius.circular(10.r),
+                                                      borderSide: const BorderSide(
+                                                        color: Color(0xFFD9DEE5),
+                                                      ),
+                                                    ),
+
+                                                    focusedBorder: OutlineInputBorder(
+                                                      borderRadius: BorderRadius.circular(10.r),
+                                                      borderSide: const BorderSide(
+                                                        color: Color(0xFF0A0258),
+                                                      ),
+                                                    ),
+                                                  ),
+
+                                                  items: [
+                                                    "Monday",
+                                                    "Tuesday",
+                                                    "Wednesday",
+                                                    "Thursday",
+                                                    "Friday",
+                                                    "Saturday",
+                                                    "Sunday",
+                                                  ]
+                                                      .map(
+                                                        (e) => DropdownMenuItem<String>(
+                                                      value: e,
+
+                                                      child: Text(
+                                                        e,
+                                                        overflow: TextOverflow.ellipsis,
+                                                        maxLines: 1,
+
+                                                        style: GoogleFonts.inter(
+                                                          fontSize: 12.sp,
+                                                          fontWeight: FontWeight.w400,
+                                                          color: const Color(0xFF6C7278),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  )
+                                                      .toList(),
+
+                                                  onChanged: (value) {
+                                                    setState(() {
+                                                      selectedWeekDay = value!;
+                                                    });
+                                                  },
+                                                ),
+                                              ),
+
+                                              /// TEXT
+                                              Text(
+                                                "day(s) on",
+
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 11.sp,
+                                                  color: const Color(0xFF667085),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            SizedBox(height: 10.h),
+
+                            Divider(height: 1, color: const Color(0xFFE4E7EC)),
+
+                            SizedBox(height: 10.h),
+
+                            /// PROOF & AI VALIDATION
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+                              children: [
+                                Text(
+                                  'The "Proof" & AI Validation',
+
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF0A0258),
+                                  ),
+                                ),
+
+                                /// PROOF & AI VALIDATION
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      isProofEnabled = !isProofEnabled;
+                                    });
+                                  },
+
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 250),
+
+                                    width: 30.w,
+                                    height: 15.h,
+
+                                    padding: EdgeInsets.all(1.w),
+
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+
+                                      borderRadius: BorderRadius.circular(30.r),
+
+                                      border: Border.all(
+                                        color: isProofEnabled
+                                            ? const Color(0xFF1DC230)
+                                            : const Color(0xFF676299),
+
+                                        width: 1.1,
+                                      ),
+                                    ),
+
+                                    child: AnimatedAlign(
+                                      duration: const Duration(
+                                        milliseconds: 250,
+                                      ),
+
+                                      alignment: isProofEnabled
+                                          ? Alignment.centerRight
+                                          : Alignment.centerLeft,
+
+                                      child: Container(
+                                        width: 14.w,
+                                        height: 14.h,
+
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+
+                                          color: isProofEnabled
+                                              ? const Color(0xFF1DC230)
+                                              : const Color(0xFF676299),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 20),
+
+                      /// BUTTONS ALWAYS VISIBLE
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+
+                        children: [
+                          /// SAVE BUTTON
+                          Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8.r),
+
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFD96CFF), Color(0xFF5CE1E6)],
+                              ),
+                            ),
+
+                            child: ElevatedButton(
+                              onPressed: () {
+                                /// SUBMIT FORM HERE
                               },
 
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 6),
+                              style: ElevatedButton.styleFrom(
+                                elevation: 0,
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
 
-                                child: _buildTab(
-                                  title: "Assignment & Recurrence",
-                                  isSelected: selectedTabIndex == 1,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 18.w,
+                                  vertical: 8.h,
+                                ),
+
+                                minimumSize: Size.zero,
+
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8.r),
+                                ),
+                              ),
+
+                              child: Text(
+                                "Save Changes",
+
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
                                 ),
                               ),
                             ),
                           ),
                         ],
                       ),
-
-                      SizedBox(height: 12.h),
-
-                      /// Main Card
-                      if (selectedTabIndex == 0) Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(16),
-
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(24.r),
-                              ),
-
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-
-                                children: [
-                                  _buildLabel("Title"),
-
-                                  SizedBox(height: 3.h),
-
-                                  buildTextField(
-                                    suffixIcon: Icon(
-                                      CupertinoIcons.pencil,
-                                      size: 18.r,
-                                      color: Colors.black54,
-                                    ),
-
-                                    hint: "Clean Production Floor",
-                                    controller: titleNameController,
-
-                                    validator: (value) {
-                                      if (value == null || value.trim().isEmpty) {
-                                        return "Enter title";
-                                      }
-                                      return null;
-                                    },
-                                  ),
-
-                                  SizedBox(height: 8.h),
-
-                                  _buildLabel("Department"),
-
-                                  SizedBox(height: 3.h),
-
-                                  Theme(
-                                    data: Theme.of(context).copyWith(
-                                      canvasColor: Colors.white,
-                                      splashColor: Colors.transparent,
-                                      highlightColor: Colors.transparent,
-                                      hoverColor: Colors.transparent,
-                                    ),
-
-                                    child: ButtonTheme(
-                                      alignedDropdown: true,
-                                      child: DropdownButtonFormField<String>(
-                                        value: selectedDepartment,
-
-                                        isExpanded: true,
-                                        isDense: true,
-
-                                        alignment: AlignmentDirectional.centerStart,
-
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12.sp,
-                                          fontWeight: FontWeight.w400,
-                                          color: const Color(0xFF6C7278),
-                                        ),
-
-                                        icon: Icon(
-                                          CupertinoIcons.chevron_down,
-                                          size: 11.r,
-                                          color: const Color(0xFF6C7278),
-                                        ),
-
-                                        decoration: InputDecoration(
-                                          filled: true,
-                                          fillColor: const Color(0xFFF9FAFC),
-
-                                          isDense: true,
-
-                                          contentPadding: EdgeInsets.symmetric(
-                                            horizontal: 10.w,
-                                            vertical: 8.h,
-                                          ),
-
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(8.r),
-
-                                            borderSide: const BorderSide(
-                                              color: Color(0xFFD9DEE5),
-                                            ),
-                                          ),
-
-                                          enabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(8.r),
-
-                                            borderSide: const BorderSide(
-                                              color: Color(0xFFD9DEE5),
-                                            ),
-                                          ),
-
-                                          focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(8.r),
-
-                                            borderSide: const BorderSide(
-                                              color: Color(0xFF0A0258),
-                                            ),
-                                          ),
-                                        ),
-
-                                        items: ["Retail", "Marketing", "Sales"]
-                                            .map(
-                                              (e) => DropdownMenuItem<String>(
-                                                value: e,
-
-                                                alignment: Alignment.centerLeft,
-
-                                                child: Padding(
-                                                  padding: EdgeInsets.only(right: 12.w),
-
-                                                  child: Text(
-                                                    e,
-
-                                                    style: GoogleFonts.inter(
-                                                      fontSize: 12.sp,
-                                                      fontWeight: FontWeight.w400,
-                                                      color: const Color(0xFF6C7278),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                        )
-                                            .toList(),
-
-                                        onChanged: (value) {
-                                          setState(() {
-                                            selectedDepartment = value!;
-                                          });
-                                        },
-                                      ),
-                                    ),
-                                  ),
-
-                                  SizedBox(height: 8.h),
-
-                                  _buildLabel("Priority"),
-
-                                  SizedBox(height: 3.h),
-
-                                  Theme(
-                                    data: Theme.of(context).copyWith(
-                                      canvasColor: Colors.white,
-                                      splashColor: Colors.transparent,
-                                      highlightColor: Colors.transparent,
-                                      hoverColor: Colors.transparent,
-                                    ),
-
-                                    child: ButtonTheme(
-                                      alignedDropdown: true,
-                                      child: DropdownButtonFormField<String>(
-                                        value: selectedPriority,
-
-                                        isExpanded: true,
-                                        isDense: true,
-
-                                        alignment: AlignmentDirectional.centerStart,
-
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12.sp,
-                                          fontWeight: FontWeight.w400,
-                                          color: const Color(0xFF6C7278),
-                                        ),
-
-                                        icon: Icon(
-                                          CupertinoIcons.chevron_down,
-                                          size: 11.r,
-                                          color: const Color(0xFF6C7278),
-                                        ),
-
-                                        decoration: InputDecoration(
-                                          filled: true,
-                                          fillColor: const Color(0xFFF9FAFC),
-
-                                          isDense: true,
-
-                                          contentPadding: EdgeInsets.symmetric(
-                                            horizontal: 10.w,
-                                            vertical: 8.h,
-                                          ),
-
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(8.r),
-
-                                            borderSide: const BorderSide(
-                                              color: Color(0xFFD9DEE5),
-                                            ),
-                                          ),
-
-                                          enabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(8.r),
-
-                                            borderSide: const BorderSide(
-                                              color: Color(0xFFD9DEE5),
-                                            ),
-                                          ),
-
-                                          focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(8.r),
-
-                                            borderSide: const BorderSide(
-                                              color: Color(0xFF0A0258),
-                                            ),
-                                          ),
-                                        ),
-
-                                        items: ["High", "Medium", "Low"]
-                                            .map(
-                                              (e) => DropdownMenuItem<String>(
-                                            value: e,
-
-                                            alignment: Alignment.centerLeft,
-
-                                            child: Padding(
-                                              padding: EdgeInsets.only(right: 12.w),
-
-                                              child: Text(
-                                                e,
-
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 12.sp,
-                                                  fontWeight: FontWeight.w400,
-                                                  color: const Color(0xFF6C7278),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        )
-                                            .toList(),
-
-                                        onChanged: (value) {
-                                          setState(() {
-                                            selectedPriority = value!;
-                                          });
-                                        },
-                                      ),
-                                    ),
-                                  ),
-
-                                  SizedBox(height: 8.h),
-
-                                  _buildLabel("Description"),
-
-                                  SizedBox(height: 3.h),
-
-                                  TextFormField(
-                                    maxLines: 3,
-
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12.sp,
-                                      fontWeight: FontWeight.w400,
-                                      color: const Color(0xFF6C7278),
-                                    ),
-
-                                    decoration: InputDecoration(
-                                      isDense: true,
-
-                                      hintText: "Write a description....",
-
-                                      hintStyle: GoogleFonts.inter(
-                                        fontSize: 12.sp,
-                                        fontWeight: FontWeight.w400,
-                                        color: const Color(0xFFB8BEC5),
-                                      ),
-
-                                      contentPadding: EdgeInsets.all(14.w),
-
-                                      filled: true,
-                                      fillColor: const Color(0xFFF9FAFC),
-
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8.r),
-
-                                        borderSide: const BorderSide(
-                                          color: Color(0xFFD9DEE5),
-                                        ),
-                                      ),
-
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8.r),
-
-                                        borderSide: const BorderSide(
-                                          color: Color(0xFFD9DEE5),
-                                        ),
-                                      ),
-
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8.r),
-
-                                        borderSide: const BorderSide(
-                                          color: Color(0xFF0A0258),
-                                        ),
-                                      ),
-
-                                      errorBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8.r),
-
-                                        borderSide: const BorderSide(
-                                          color: Colors.red,
-                                        ),
-                                      ),
-
-                                      focusedErrorBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8.r),
-
-                                        borderSide: const BorderSide(
-                                          color: Colors.red,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-
-                                  SizedBox(height: 8.h),
-
-                                  Text(
-                                    "Add Attachments",
-                                    style: GoogleFonts.inter(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13.sp,
-                                      color: Color(0xFF3F3F3F)
-                                    ),
-                                  ),
-
-                                  Text(
-                                    "File must be in pdf, doc, png, jpg, gif or mp4 format\nand upto 5 file(s) at a time.",
-
-                                    style: GoogleFonts.inter(
-                                      color: Color(0xFF797979),
-                                      fontSize: 11.sp,
-                                    ),
-                                  ),
-
-                                  SizedBox(height: 3.h),
-
-                                  GestureDetector(
-                                    onTap: pickFiles,
-
-                                    child: Container(
-                                      width: double.infinity,
-
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 28,
-                                      ),
-
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF9FAFF),
-
-                                        borderRadius: BorderRadius.circular(8.r),
-
-                                        border: Border.all(
-                                          color: const Color(0xFFB9C3FF),
-                                        ),
-                                      ),
-
-                                      child: Column(
-                                        children: [
-                                          Text(
-                                            "Drag & drop your file(s) here or",
-
-                                            style: GoogleFonts.inter(
-                                              color: Color(0xFF797979),
-                                              fontSize: 11.sp,
-                                            ),
-                                          ),
-
-                                          SizedBox(height: 3.h),
-
-                                          Text(
-                                            "Browse",
-
-                                            style: GoogleFonts.inter(
-                                              color: const Color(0xFF304DDB),
-
-                                              fontWeight: FontWeight.w600,
-
-                                              decoration: TextDecoration.underline,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-
-                                  Padding(
-                                    padding: EdgeInsets.only(top: 14.h),
-
-                                    child: Column(
-                                      children: [
-
-                                        /// FILE LIST
-                                        if (selectedFiles.isNotEmpty)
-                                          ...List.generate(selectedFiles.length, (index) {
-
-                                            final fileName = selectedFiles[index];
-
-                                            final progress = index == 0 ? 0.30 : 0.82;
-
-                                            return Padding(
-                                              padding: EdgeInsets.only(bottom: 12.h),
-
-                                              child: Column(
-                                                children: [
-                                                  Row(
-                                                    children: [
-                                                      Icon(
-                                                        Icons.insert_drive_file_outlined,
-                                                        size: 18.r,
-                                                        color: const Color(0xFF7B7B7B),
-                                                      ),
-
-                                                      SizedBox(width: 6.w),
-
-                                                      Expanded(
-                                                        child: Text(
-                                                          fileName,
-                                                          overflow: TextOverflow.ellipsis,
-
-                                                          style: GoogleFonts.inter(
-                                                            fontSize: 11.sp,
-                                                            fontWeight: FontWeight.w500,
-                                                            color: const Color(0xFF5F6368),
-                                                          ),
-                                                        ),
-                                                      ),
-
-                                                      SizedBox(width: 8.w),
-
-                                                      Text(
-                                                        "${(progress * 100).toInt()}%",
-
-                                                        style: GoogleFonts.inter(
-                                                          fontSize: 11.sp,
-                                                          fontWeight: FontWeight.w500,
-                                                          color: const Color(0xFF5F6368),
-                                                        ),
-                                                      ),
-
-                                                      SizedBox(width: 6.w),
-
-                                                      GestureDetector(
-                                                        onTap: () {
-                                                          setState(() {
-                                                            selectedFiles.removeAt(index);
-                                                          });
-                                                        },
-
-                                                        child: Icon(
-                                                          Icons.close,
-                                                          size: 16.r,
-                                                          color: const Color(0xFF7B7B7B),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-
-                                                  SizedBox(height: 6.h),
-
-                                                  ClipRRect(
-                                                    borderRadius: BorderRadius.circular(20.r),
-
-                                                    child: LinearProgressIndicator(
-                                                      value: progress,
-                                                      minHeight: 2.5.h,
-                                                      backgroundColor: const Color(0xFFE5E7EB),
-                                                      valueColor: const AlwaysStoppedAnimation(
-                                                        Color(0xFF304DDB),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            );
-                                          }),
-
-                                        SizedBox(height: 20.h),
-
-                                        /// BUTTONS ALWAYS VISIBLE
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.end,
-
-                                          children: [
-
-                                            /// CANCEL BUTTON
-                                            OutlinedButton(
-                                              onPressed: () {
-                                                setState(() {
-                                                  selectedFiles.clear();
-                                                });
-                                              },
-
-                                              style: OutlinedButton.styleFrom(
-                                                minimumSize: Size(90.w, 40.h),
-
-                                                side: const BorderSide(
-                                                  color: Color(0xFF21187F),
-                                                ),
-
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(10.r),
-                                                ),
-                                              ),
-
-                                              child: Text(
-                                                "Cancel",
-
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 12.sp,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: const Color(0xFF21187F),
-                                                ),
-                                              ),
-                                            ),
-
-                                            SizedBox(width: 10.w),
-
-                                            /// SAVE BUTTON
-                                            Container(
-                                              height: 40.h,
-
-                                              decoration: BoxDecoration(
-                                                borderRadius: BorderRadius.circular(10.r),
-
-                                                gradient: const LinearGradient(
-                                                  colors: [
-                                                    Color(0xFFD96CFF),
-                                                    Color(0xFF5CE1E6),
-                                                  ],
-                                                ),
-                                              ),
-
-                                              child: ElevatedButton(
-                                                onPressed: () {
-
-                                                  /// SUBMIT FORM HERE
-
-                                                },
-
-                                                style: ElevatedButton.styleFrom(
-                                                  elevation: 0,
-                                                  backgroundColor: Colors.transparent,
-                                                  shadowColor: Colors.transparent,
-
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius: BorderRadius.circular(10.r),
-                                                  ),
-                                                ),
-
-                                                child: Padding(
-                                                  padding: EdgeInsets.symmetric(horizontal: 20.w),
-
-                                                  child: Text(
-                                                    "Save",
-
-                                                    style: GoogleFonts.inter(
-                                                      fontSize: 12.sp,
-                                                      fontWeight: FontWeight.w600,
-                                                      color: Colors.white,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ) else Container(
-                              width: double.infinity,
-
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(24.r),
-                              ),
-
-                              child: Center(
-                                child: Text(
-                                  "Assignment & Recurrence",
-                                  style: TextStyle(
-                                    fontSize: 18.sp,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                      SizedBox(height: 100.h),
+                      SizedBox(height: 20.h),
                     ],
                   ),
                 ),
-
-            ),
-          );})
-
+              ),
+            );
+          },
+        ),
       ),
       bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 0),
-    );
-  }
-
-  Widget _buildTab({required String title, required bool isSelected}) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          title,
-          textAlign: TextAlign.center,
-
-          style: GoogleFonts.inter(
-            fontSize: 12.sp,
-            fontWeight: FontWeight.w600,
-            color: isSelected ? const Color(0xFF1E1B4B) : Colors.grey,
-          ),
-        ),
-
-        SizedBox(height: 3.h),
-
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-
-          height: 2.h,
-          width: double.infinity,
-
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20.r),
-
-            gradient: isSelected
-                ? const LinearGradient(
-                    colors: [
-                      Color(0xFFD969FF),
-                      Color(0xFF4DA5FB),
-                      Color(0xFF54DBC6),
-                    ],
-                  )
-                : LinearGradient(
-                    colors: [Colors.grey.shade300, Colors.grey.shade300],
-                  ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -890,6 +2484,63 @@ class IdentityAssignmentScreenState extends State<IdentityAssignmentScreen> {
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.r),
           borderSide: const BorderSide(color: Colors.red),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRepeatOption(String title, String value) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          selectedRepeatType = value;
+        });
+      },
+
+      child: IntrinsicWidth(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 16.w,
+              height: 16.w,
+
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: const Color(0xFF4338CA),
+                  width: 1.3,
+                ),
+              ),
+
+              child: Center(
+                child: Container(
+                  width: 8.w,
+                  height: 8.w,
+
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: selectedRepeatType == value
+                        ? const Color(0xFF24116A)
+                        : Colors.transparent,
+                  ),
+                ),
+              ),
+            ),
+
+            SizedBox(width: 6.w),
+
+            Text(
+              title,
+              overflow: TextOverflow.ellipsis,
+
+              style: GoogleFonts.inter(
+                fontSize: 11.5.sp,
+                fontWeight: FontWeight.w400,
+                color: const Color(0xFF344054),
+              ),
+            ),
+          ],
         ),
       ),
     );
