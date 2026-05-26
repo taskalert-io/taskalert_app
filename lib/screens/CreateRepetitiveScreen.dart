@@ -11,14 +11,14 @@ import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
 
-class IdentityAssignmentScreen extends StatefulWidget {
-  const IdentityAssignmentScreen({super.key, required this.userId});
+class CreateRepetitiveScreen extends StatefulWidget {
+  const CreateRepetitiveScreen({super.key, required this.userId});
   final String userId;
   @override
-  State<StatefulWidget> createState() => IdentityAssignmentScreenState();
+  State<StatefulWidget> createState() => CreateRepetitiveScreenState();
 }
 
-class IdentityAssignmentScreenState extends State<IdentityAssignmentScreen> {
+class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
   String selectedDepartment = "Retail";
@@ -45,6 +45,13 @@ class IdentityAssignmentScreenState extends State<IdentityAssignmentScreen> {
   DateTime? dueSelectedDate;
 
   String dueSelectedAmPm = "AM";
+
+  ///Third Date
+  final TextEditingController startDateController = TextEditingController();
+  final TextEditingController endDateController = TextEditingController();
+  DateTime? startSelectedDate;
+  DateTime? endSelectedDate;
+
   TextEditingController dayController = TextEditingController();
   TextEditingController monthController = TextEditingController();
   TextEditingController yearController = TextEditingController();
@@ -89,11 +96,14 @@ class IdentityAssignmentScreenState extends State<IdentityAssignmentScreen> {
 
   final titleNameController = TextEditingController();
   String selectedRepeatType = "Daily";
+  String selectedEndType = "End by :";
+  String selectedProofType = "";
+  String selectedProofRadioType = "";
 
   int selectedEveryNumber = 1;
 
   String selectedWeekDay = "Monday";
-
+  int occurrencesCount = 1;
   @override
   void initState() {
     super.initState();
@@ -1341,6 +1351,10 @@ class IdentityAssignmentScreenState extends State<IdentityAssignmentScreen> {
                                     setState(() {
                                       isAssignmentEnabled =
                                           !isAssignmentEnabled;
+
+                                      if (isAssignmentEnabled) {
+                                        isProofEnabled = false;
+                                      }
                                     });
                                   },
 
@@ -1392,6 +1406,7 @@ class IdentityAssignmentScreenState extends State<IdentityAssignmentScreen> {
                                 ),
                               ],
                             ),
+                            SizedBox(height: 8.h),
                             if (isAssignmentEnabled)
                               Container(
                                 width: double.infinity,
@@ -2010,9 +2025,11 @@ class IdentityAssignmentScreenState extends State<IdentityAssignmentScreen> {
                                       ],
                                     ),
                                     SizedBox(height: 8.h),
+
                                     /// REPEAT SECTION
                                     Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         _buildLabel("Select Time Period"),
 
@@ -2023,17 +2040,29 @@ class IdentityAssignmentScreenState extends State<IdentityAssignmentScreen> {
                                           spacing: 14.w,
                                           runSpacing: 10.h,
                                           children: [
-                                            _buildRepeatOption("Daily", "Daily"),
+                                            _buildRepeatOption(
+                                              "Daily",
+                                              "Daily",
+                                            ),
 
-                                            _buildRepeatOption("Weekly", "Weekly"),
+                                            _buildRepeatOption(
+                                              "Weekly",
+                                              "Weekly",
+                                            ),
 
-                                            _buildRepeatOption("Monthly", "Monthly"),
+                                            _buildRepeatOption(
+                                              "Monthly",
+                                              "Monthly",
+                                            ),
 
-                                            _buildRepeatOption("Yearly", "Yearly"),
+                                            _buildRepeatOption(
+                                              "Yearly",
+                                              "Yearly",
+                                            ),
                                           ],
                                         ),
 
-                                        SizedBox(height: 14.h),
+                                        SizedBox(height: 8.h),
 
                                         /// SELECT EVERY
                                         _buildLabel("Select Every"),
@@ -2044,7 +2073,8 @@ class IdentityAssignmentScreenState extends State<IdentityAssignmentScreen> {
                                           child: Wrap(
                                             spacing: 5.w,
                                             runSpacing: 8.h,
-                                            crossAxisAlignment: WrapCrossAlignment.center,
+                                            crossAxisAlignment:
+                                                WrapCrossAlignment.center,
 
                                             children: [
                                               /// NUMBER DROPDOWN
@@ -2060,68 +2090,104 @@ class IdentityAssignmentScreenState extends State<IdentityAssignmentScreen> {
                                                   icon: Icon(
                                                     CupertinoIcons.chevron_down,
                                                     size: 10.r,
-                                                    color: const Color(0xFF667085),
+                                                    color: const Color(
+                                                      0xFF667085,
+                                                    ),
                                                   ),
 
                                                   style: GoogleFonts.inter(
                                                     fontSize: 12.sp,
                                                     fontWeight: FontWeight.w400,
-                                                    color: const Color(0xFF6C7278),
+                                                    color: const Color(
+                                                      0xFF6C7278,
+                                                    ),
                                                   ),
 
                                                   decoration: InputDecoration(
                                                     filled: true,
-                                                    fillColor: const Color(0xFFF9FAFC),
+                                                    fillColor: const Color(
+                                                      0xFFF9FAFC,
+                                                    ),
 
                                                     isDense: true,
 
-                                                    contentPadding: EdgeInsets.symmetric(
-                                                      horizontal: 8.w,
-                                                      vertical: 8.h,
-                                                    ),
+                                                    contentPadding:
+                                                        EdgeInsets.symmetric(
+                                                          horizontal: 8.w,
+                                                          vertical: 8.h,
+                                                        ),
 
                                                     border: OutlineInputBorder(
-                                                      borderRadius: BorderRadius.circular(10.r),
-                                                      borderSide: const BorderSide(
-                                                        color: Color(0xFFD9DEE5),
-                                                      ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            10.r,
+                                                          ),
+                                                      borderSide:
+                                                          const BorderSide(
+                                                            color: Color(
+                                                              0xFFD9DEE5,
+                                                            ),
+                                                          ),
                                                     ),
 
-                                                    enabledBorder: OutlineInputBorder(
-                                                      borderRadius: BorderRadius.circular(10.r),
-                                                      borderSide: const BorderSide(
-                                                        color: Color(0xFFD9DEE5),
-                                                      ),
-                                                    ),
+                                                    enabledBorder:
+                                                        OutlineInputBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                10.r,
+                                                              ),
+                                                          borderSide:
+                                                              const BorderSide(
+                                                                color: Color(
+                                                                  0xFFD9DEE5,
+                                                                ),
+                                                              ),
+                                                        ),
 
-                                                    focusedBorder: OutlineInputBorder(
-                                                      borderRadius: BorderRadius.circular(10.r),
-                                                      borderSide: const BorderSide(
-                                                        color: Color(0xFF0A0258),
-                                                      ),
-                                                    ),
+                                                    focusedBorder:
+                                                        OutlineInputBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                10.r,
+                                                              ),
+                                                          borderSide:
+                                                              const BorderSide(
+                                                                color: Color(
+                                                                  0xFF0A0258,
+                                                                ),
+                                                              ),
+                                                        ),
                                                   ),
 
                                                   items: List.generate(
                                                     30,
-                                                        (index) => DropdownMenuItem<int>(
+                                                    (
+                                                      index,
+                                                    ) => DropdownMenuItem<int>(
                                                       value: index + 1,
 
                                                       child: Text(
                                                         "${index + 1}",
 
-                                                        style: GoogleFonts.inter(
-                                                          fontSize: 12.sp,
-                                                          fontWeight: FontWeight.w400,
-                                                          color: const Color(0xFF6C7278),
-                                                        ),
+                                                        style:
+                                                            GoogleFonts.inter(
+                                                              fontSize: 12.sp,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w400,
+                                                              color:
+                                                                  const Color(
+                                                                    0xFF6C7278,
+                                                                  ),
+                                                            ),
                                                       ),
                                                     ),
                                                   ),
 
                                                   onChanged: (value) {
                                                     setState(() {
-                                                      selectedEveryNumber = value!;
+                                                      selectedEveryNumber =
+                                                          value!;
                                                     });
                                                   },
                                                 ),
@@ -2133,7 +2199,9 @@ class IdentityAssignmentScreenState extends State<IdentityAssignmentScreen> {
 
                                                 style: GoogleFonts.inter(
                                                   fontSize: 11.sp,
-                                                  color: const Color(0xFF667085),
+                                                  color: const Color(
+                                                    0xFF667085,
+                                                  ),
                                                 ),
                                               ),
 
@@ -2150,75 +2218,112 @@ class IdentityAssignmentScreenState extends State<IdentityAssignmentScreen> {
                                                   icon: Icon(
                                                     CupertinoIcons.chevron_down,
                                                     size: 10.r,
-                                                    color: const Color(0xFF667085),
+                                                    color: const Color(
+                                                      0xFF667085,
+                                                    ),
                                                   ),
 
                                                   style: GoogleFonts.inter(
                                                     fontSize: 12.sp,
                                                     fontWeight: FontWeight.w400,
-                                                    color: const Color(0xFF6C7278),
+                                                    color: const Color(
+                                                      0xFF6C7278,
+                                                    ),
                                                   ),
 
                                                   decoration: InputDecoration(
                                                     filled: true,
-                                                    fillColor: const Color(0xFFF9FAFC),
+                                                    fillColor: const Color(
+                                                      0xFFF9FAFC,
+                                                    ),
 
                                                     isDense: true,
 
-                                                    contentPadding: EdgeInsets.symmetric(
-                                                      horizontal: 8.w,
-                                                      vertical: 8.h,
-                                                    ),
+                                                    contentPadding:
+                                                        EdgeInsets.symmetric(
+                                                          horizontal: 8.w,
+                                                          vertical: 8.h,
+                                                        ),
 
                                                     border: OutlineInputBorder(
-                                                      borderRadius: BorderRadius.circular(10.r),
-                                                      borderSide: const BorderSide(
-                                                        color: Color(0xFFD9DEE5),
-                                                      ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            10.r,
+                                                          ),
+                                                      borderSide:
+                                                          const BorderSide(
+                                                            color: Color(
+                                                              0xFFD9DEE5,
+                                                            ),
+                                                          ),
                                                     ),
 
-                                                    enabledBorder: OutlineInputBorder(
-                                                      borderRadius: BorderRadius.circular(10.r),
-                                                      borderSide: const BorderSide(
-                                                        color: Color(0xFFD9DEE5),
-                                                      ),
-                                                    ),
+                                                    enabledBorder:
+                                                        OutlineInputBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                10.r,
+                                                              ),
+                                                          borderSide:
+                                                              const BorderSide(
+                                                                color: Color(
+                                                                  0xFFD9DEE5,
+                                                                ),
+                                                              ),
+                                                        ),
 
-                                                    focusedBorder: OutlineInputBorder(
-                                                      borderRadius: BorderRadius.circular(10.r),
-                                                      borderSide: const BorderSide(
-                                                        color: Color(0xFF0A0258),
-                                                      ),
-                                                    ),
+                                                    focusedBorder:
+                                                        OutlineInputBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                10.r,
+                                                              ),
+                                                          borderSide:
+                                                              const BorderSide(
+                                                                color: Color(
+                                                                  0xFF0A0258,
+                                                                ),
+                                                              ),
+                                                        ),
                                                   ),
 
-                                                  items: [
-                                                    "Monday",
-                                                    "Tuesday",
-                                                    "Wednesday",
-                                                    "Thursday",
-                                                    "Friday",
-                                                    "Saturday",
-                                                    "Sunday",
-                                                  ]
-                                                      .map(
-                                                        (e) => DropdownMenuItem<String>(
-                                                      value: e,
+                                                  items:
+                                                      [
+                                                            "Monday",
+                                                            "Tuesday",
+                                                            "Wednesday",
+                                                            "Thursday",
+                                                            "Friday",
+                                                            "Saturday",
+                                                            "Sunday",
+                                                          ]
+                                                          .map(
+                                                            (
+                                                              e,
+                                                            ) => DropdownMenuItem<String>(
+                                                              value: e,
 
-                                                      child: Text(
-                                                        e,
-                                                        overflow: TextOverflow.ellipsis,
-                                                        maxLines: 1,
+                                                              child: Text(
+                                                                e,
+                                                                overflow:
+                                                                    TextOverflow
+                                                                        .ellipsis,
+                                                                maxLines: 1,
 
-                                                        style: GoogleFonts.inter(
-                                                          fontSize: 12.sp,
-                                                          fontWeight: FontWeight.w400,
-                                                          color: const Color(0xFF6C7278),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  )
-                                                      .toList(),
+                                                                style: GoogleFonts.inter(
+                                                                  fontSize:
+                                                                      12.sp,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w400,
+                                                                  color: const Color(
+                                                                    0xFF6C7278,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          )
+                                                          .toList(),
 
                                                   onChanged: (value) {
                                                     setState(() {
@@ -2234,11 +2339,419 @@ class IdentityAssignmentScreenState extends State<IdentityAssignmentScreen> {
 
                                                 style: GoogleFonts.inter(
                                                   fontSize: 11.sp,
-                                                  color: const Color(0xFF667085),
+                                                  color: const Color(
+                                                    0xFF667085,
+                                                  ),
                                                 ),
                                               ),
                                             ],
                                           ),
+                                        ),
+                                        SizedBox(height: 8.h),
+                                        Text(
+                                          'Range of Time',
+
+                                          style: GoogleFonts.inter(
+                                            fontSize: 12.sp,
+                                            fontWeight: FontWeight.w700,
+                                            color: const Color(0xFF0A0258),
+                                          ),
+                                        ),
+                                        SizedBox(height: 4.h),
+                                        Row(
+                                          spacing: 10.w,
+                                          children: [
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    "Start :",
+                                                    style: GoogleFonts.inter(
+                                                      color: const Color(
+                                                        0xFF3F3F3F,
+                                                      ),
+                                                      fontSize: 13.sp,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                  SizedBox(height: 3.h),
+                                                  GestureDetector(
+                                                    onTap: () {
+                                                      showCustomDatePicker(
+                                                        context: context,
+                                                        controller:
+                                                            startDateController,
+                                                        initialDate:
+                                                            startSelectedDate,
+                                                        onDateSelected:
+                                                            (pickedDate) {
+                                                              setState(() {
+                                                                startSelectedDate =
+                                                                    pickedDate;
+                                                              });
+                                                            },
+                                                      );
+                                                    },
+
+                                                    child: AbsorbPointer(
+                                                      child: TextFormField(
+                                                        controller:
+                                                            startDateController,
+
+                                                        style:
+                                                            GoogleFonts.inter(
+                                                              fontSize: 12.sp,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w400,
+                                                              color:
+                                                                  const Color(
+                                                                    0xFF6C7278,
+                                                                  ),
+                                                            ),
+
+                                                        decoration: InputDecoration(
+                                                          hintText:
+                                                              "mm/dd/yyyy",
+
+                                                          hintStyle:
+                                                              GoogleFonts.inter(
+                                                                fontSize: 12.sp,
+                                                                color:
+                                                                    const Color(
+                                                                      0xFFB8BEC5,
+                                                                    ),
+                                                              ),
+
+                                                          isDense: true,
+                                                          filled: true,
+                                                          fillColor:
+                                                              const Color(
+                                                                0xFFF9FAFC,
+                                                              ),
+
+                                                          contentPadding:
+                                                              EdgeInsets.symmetric(
+                                                                horizontal:
+                                                                    10.w,
+                                                                vertical: 10.h,
+                                                              ),
+
+                                                          suffixIcon: Padding(
+                                                            padding:
+                                                                EdgeInsets.only(
+                                                                  right: 10.w,
+                                                                ),
+
+                                                            child: Icon(
+                                                              CupertinoIcons
+                                                                  .calendar,
+                                                              size: 18.r,
+                                                              color:
+                                                                  const Color(
+                                                                    0xFF4338CA,
+                                                                  ),
+                                                            ),
+                                                          ),
+
+                                                          suffixIconConstraints:
+                                                              BoxConstraints(
+                                                                minWidth: 30.w,
+                                                              ),
+
+                                                          border: OutlineInputBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  10.r,
+                                                                ),
+                                                            borderSide:
+                                                                const BorderSide(
+                                                                  color: Color(
+                                                                    0xFFD9DEE5,
+                                                                  ),
+                                                                ),
+                                                          ),
+
+                                                          enabledBorder: OutlineInputBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  10.r,
+                                                                ),
+                                                            borderSide:
+                                                                const BorderSide(
+                                                                  color: Color(
+                                                                    0xFFD9DEE5,
+                                                                  ),
+                                                                ),
+                                                          ),
+
+                                                          focusedBorder: OutlineInputBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  10.r,
+                                                                ),
+                                                            borderSide:
+                                                                const BorderSide(
+                                                                  color: Color(
+                                                                    0xFF0A0258,
+                                                                  ),
+                                                                ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            if (selectedEndType !=
+                                                "No end date")
+                                              Expanded(
+                                                child:
+                                                    selectedEndType ==
+                                                        "End after:"
+                                                    ? Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        children: [
+                                                          Text(
+                                                            "Occurrences :",
+                                                            style: GoogleFonts.inter(
+                                                              color:
+                                                                  const Color(
+                                                                    0xFF3F3F3F,
+                                                                  ),
+                                                              fontSize: 13.sp,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                            ),
+                                                          ),
+
+                                                          SizedBox(height: 3.h),
+
+                                                          Container(
+                                                            height: 36.h,
+
+                                                            decoration: BoxDecoration(
+                                                              color:
+                                                                  const Color(
+                                                                    0xFFF9FAFC,
+                                                                  ),
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    10.r,
+                                                                  ),
+                                                              border: Border.all(
+                                                                color:
+                                                                    const Color(
+                                                                      0xFFD9DEE5,
+                                                                    ),
+                                                              ),
+                                                            ),
+
+                                                            padding:
+                                                                EdgeInsets.symmetric(
+                                                                  horizontal:
+                                                                      10.w,
+                                                                ),
+
+                                                            child: Row(
+                                                              children: [
+                                                                Expanded(
+                                                                  child: Text(
+                                                                    occurrencesCount
+                                                                        .toString(),
+
+                                                                    style: GoogleFonts.inter(
+                                                                      fontSize:
+                                                                          13.sp,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w500,
+                                                                      color: const Color(
+                                                                        0xFF344054,
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                ),
+
+                                                                Column(
+                                                                  mainAxisAlignment:
+                                                                      MainAxisAlignment
+                                                                          .center,
+                                                                  children: [
+                                                                    GestureDetector(
+                                                                      onTap: () {
+                                                                        setState(
+                                                                          () {
+                                                                            occurrencesCount++;
+                                                                          },
+                                                                        );
+                                                                      },
+
+                                                                      child: Icon(
+                                                                        Icons
+                                                                            .keyboard_arrow_up,
+                                                                        size: 18
+                                                                            .r,
+                                                                        color: const Color(
+                                                                          0xFF4338CA,
+                                                                        ),
+                                                                      ),
+                                                                    ),
+
+                                                                    GestureDetector(
+                                                                      onTap: () {
+                                                                        setState(() {
+                                                                          if (occurrencesCount >
+                                                                              1) {
+                                                                            occurrencesCount--;
+                                                                          }
+                                                                        });
+                                                                      },
+
+                                                                      child: Icon(
+                                                                        Icons
+                                                                            .keyboard_arrow_down,
+                                                                        size: 18
+                                                                            .r,
+                                                                        color: const Color(
+                                                                          0xFF4338CA,
+                                                                        ),
+                                                                      ),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      )
+                                                    : Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Text(
+                                                          "End :",
+                                                          style: GoogleFonts.inter(
+                                                            color: const Color(0xFF3F3F3F),
+                                                            fontSize: 13.sp,
+                                                            fontWeight: FontWeight.w600,
+                                                          ),
+                                                        ),
+
+                                                        SizedBox(height: 3.h),
+
+                                                        GestureDetector(
+                                                          onTap: () {
+                                                            showCustomDatePicker(
+                                                              context: context,
+                                                              controller: endDateController,
+                                                              initialDate: endSelectedDate,
+                                                              onDateSelected: (pickedDate) {
+                                                                setState(() {
+                                                                  endSelectedDate = pickedDate;
+                                                                });
+                                                              },
+                                                            );
+                                                          },
+
+                                                          child: AbsorbPointer(
+                                                            child: TextFormField(
+                                                              controller: endDateController,
+
+                                                              style: GoogleFonts.inter(
+                                                                fontSize: 12.sp,
+                                                                fontWeight: FontWeight.w400,
+                                                                color: const Color(0xFF6C7278),
+                                                              ),
+
+                                                              decoration: InputDecoration(
+                                                                hintText: "mm/dd/yyyy",
+
+                                                                hintStyle: GoogleFonts.inter(
+                                                                  fontSize: 12.sp,
+                                                                  color: const Color(0xFFB8BEC5),
+                                                                ),
+
+                                                                isDense: true,
+                                                                filled: true,
+                                                                fillColor: const Color(0xFFF9FAFC),
+
+                                                                contentPadding: EdgeInsets.symmetric(
+                                                                  horizontal: 10.w,
+                                                                  vertical: 10.h,
+                                                                ),
+
+                                                                suffixIcon: Padding(
+                                                                  padding: EdgeInsets.only(right: 10.w),
+
+                                                                  child: Icon(
+                                                                    CupertinoIcons.calendar,
+                                                                    size: 18.r,
+                                                                    color: const Color(0xFF4338CA),
+                                                                  ),
+                                                                ),
+
+                                                                suffixIconConstraints: BoxConstraints(
+                                                                  minWidth: 30.w,
+                                                                ),
+
+                                                                border: OutlineInputBorder(
+                                                                  borderRadius: BorderRadius.circular(10.r),
+                                                                  borderSide: const BorderSide(
+                                                                    color: Color(0xFFD9DEE5),
+                                                                  ),
+                                                                ),
+
+                                                                enabledBorder: OutlineInputBorder(
+                                                                  borderRadius: BorderRadius.circular(10.r),
+                                                                  borderSide: const BorderSide(
+                                                                    color: Color(0xFFD9DEE5),
+                                                                  ),
+                                                                ),
+
+                                                                focusedBorder: OutlineInputBorder(
+                                                                  borderRadius: BorderRadius.circular(10.r),
+                                                                  borderSide: const BorderSide(
+                                                                    color: Color(0xFF0A0258),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                              ),
+                                          ],
+                                        ),
+                                        SizedBox(height: 8.h),
+
+                                        /// RADIO OPTIONS
+                                        Wrap(
+                                          spacing: 14.w,
+                                          runSpacing: 10.h,
+                                          children: [
+                                            _buildEndRepeatOption(
+                                              "End by :",
+                                              "End by :",
+                                            ),
+
+                                            _buildEndRepeatOption(
+                                              "End after:",
+                                              "End after:",
+                                            ),
+
+                                            _buildEndRepeatOption(
+                                              "No end date",
+                                              "No end date",
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
@@ -2271,6 +2784,10 @@ class IdentityAssignmentScreenState extends State<IdentityAssignmentScreen> {
                                   onTap: () {
                                     setState(() {
                                       isProofEnabled = !isProofEnabled;
+
+                                      if (isProofEnabled) {
+                                        isAssignmentEnabled = false;
+                                      }
                                     });
                                   },
 
@@ -2322,6 +2839,87 @@ class IdentityAssignmentScreenState extends State<IdentityAssignmentScreen> {
                                 ),
                               ],
                             ),
+                            SizedBox(height: 8.h),
+                            if (isProofEnabled)
+                              Container(
+                                width: double.infinity,
+
+                                padding: const EdgeInsets.all(16),
+
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(24.r),
+                                ),
+
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+
+                                  children: [
+                                    _buildLabel("Proof Type"),
+
+                                    SizedBox(height: 8.h),
+
+                                    /// RADIO OPTIONS
+                                    Wrap(
+                                      spacing: 14.w,
+                                      runSpacing: 10.h,
+                                      children: [
+                                        _buildProofOption("Image", "Image"),
+
+                                        _buildProofOption("Video", "Video"),
+
+                                        _buildProofOption(
+                                          "Recording",
+                                          "Recording",
+                                        ),
+
+                                        _buildProofOption("Pdf", "Pdf"),
+                                        _buildProofOption("Doc", "Doc"),
+                                      ],
+                                    ),
+                                    SizedBox(height: 10.h),
+                                    /// SHOW ONLY WHEN ANY PROOF OPTION IS SELECTED
+                                    if (selectedProofType.isNotEmpty)
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            "AI Validation (Optional)",
+                                            style: GoogleFonts.inter(
+                                              color: const Color(0xFF3F3F3F),
+                                              fontSize: 13.sp,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+
+                                          SizedBox(height: 8.h),
+
+                                          /// RADIO OPTIONS
+                                          Wrap(
+                                            spacing: 14.w,
+                                            runSpacing: 10.h,
+                                            children: [
+                                              _buildProoftypeOption("Yes", "Yes"),
+
+                                              _buildProoftypeOption("No", "No"),
+                                            ],
+                                          ),
+
+                                          SizedBox(height: 8.h),
+
+                                          Text(
+                                            'If enabled, the system uses Vision AI to scan the uploaded image to ensure it matches the task (e.g., "Scanning for a clean floor" or "Checking for a signed form").',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 11.sp,
+                                              fontWeight: FontWeight.w400,
+                                              color: const Color(0xFF797979),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                  ],
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -2493,7 +3091,11 @@ class IdentityAssignmentScreenState extends State<IdentityAssignmentScreen> {
     return GestureDetector(
       onTap: () {
         setState(() {
-          selectedRepeatType = value;
+          if (selectedRepeatType == value) {
+            selectedRepeatType = "";
+          } else {
+            selectedRepeatType = value;
+          }
         });
       },
 
@@ -2521,6 +3123,178 @@ class IdentityAssignmentScreenState extends State<IdentityAssignmentScreen> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: selectedRepeatType == value
+                        ? const Color(0xFF24116A)
+                        : Colors.transparent,
+                  ),
+                ),
+              ),
+            ),
+
+            SizedBox(width: 6.w),
+
+            Text(
+              title,
+              overflow: TextOverflow.ellipsis,
+
+              style: GoogleFonts.inter(
+                fontSize: 11.5.sp,
+                fontWeight: FontWeight.w400,
+                color: const Color(0xFF344054),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEndRepeatOption(String title, String value) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          selectedEndType = value;
+        });
+      },
+
+      child: IntrinsicWidth(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 16.w,
+              height: 16.w,
+
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFF4338CA), width: 1.3),
+              ),
+
+              child: Center(
+                child: Container(
+                  width: 8.w,
+                  height: 8.w,
+
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: selectedEndType == value
+                        ? const Color(0xFF24116A)
+                        : Colors.transparent,
+                  ),
+                ),
+              ),
+            ),
+
+            SizedBox(width: 6.w),
+
+            Text(
+              title,
+              overflow: TextOverflow.ellipsis,
+
+              style: GoogleFonts.inter(
+                fontSize: 11.5.sp,
+                fontWeight: FontWeight.w400,
+                color: const Color(0xFF344054),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProofOption(String title, String value) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (selectedProofType == value) {
+            selectedProofType = "";
+          } else {
+            selectedProofType = value;
+          }
+        });
+      },
+
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 16.w,
+            height: 16.w,
+
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4.r),
+              border: Border.all(
+                color: const Color(0xFF4338CA),
+                width: 1.4,
+              ),
+
+              color: selectedProofType == value
+                  ? const Color(0xFF24116A)
+                  : Colors.transparent,
+            ),
+
+            child: selectedProofType == value
+                ? Icon(
+              Icons.check,
+              size: 12.r,
+              color: Colors.white,
+            )
+                : null,
+          ),
+
+          SizedBox(width: 6.w),
+
+          Text(
+            title,
+            overflow: TextOverflow.ellipsis,
+
+            style: GoogleFonts.inter(
+              fontSize: 11.5.sp,
+              fontWeight: FontWeight.w400,
+              color: const Color(0xFF344054),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProoftypeOption(String title, String value) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (selectedProofRadioType == value) {
+            selectedProofRadioType = "";
+          } else {
+            selectedProofRadioType = value;
+          }
+        });
+      },
+
+      child: IntrinsicWidth(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 16.w,
+              height: 16.w,
+
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: const Color(0xFF4338CA),
+                  width: 1.3,
+                ),
+              ),
+
+              child: Center(
+                child: Container(
+                  width: 8.w,
+                  height: 8.w,
+
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: selectedProofRadioType == value
                         ? const Color(0xFF24116A)
                         : Colors.transparent,
                   ),

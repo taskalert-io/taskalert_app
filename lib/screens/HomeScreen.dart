@@ -7,7 +7,7 @@ import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 
-import 'IdentityAssignmentScreen.dart';
+import 'CreateRepetitiveScreen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String userId;
@@ -756,7 +756,7 @@ class HomeScreenState extends State<HomeScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => IdentityAssignmentScreen(userId: '',),
+                builder: (context) => CreateRepetitiveScreen(userId: '',),
               ),
             );
           },
