@@ -841,12 +841,12 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
 
                                                     suffixIcon: Padding(
                                                       padding: EdgeInsets.only(
-                                                        right: 10.w,
+                                                        right: 8.w,
                                                       ),
 
                                                       child: Icon(
                                                         CupertinoIcons.clock,
-                                                        size: 17.r,
+                                                        size: 15.r,
                                                         color: const Color(
                                                           0xFF4338CA,
                                                         ),
@@ -855,7 +855,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
 
                                                     suffixIconConstraints:
                                                         BoxConstraints(
-                                                          minWidth: 30.w,
+                                                          minWidth: 20.w,
                                                         ),
 
                                                     border: OutlineInputBorder(
