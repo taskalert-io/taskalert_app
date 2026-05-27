@@ -104,6 +104,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
   String selectedWeekDay = "Monday";
   int occurrencesCount = 1;
+  int timePeriodCount = 1;
   @override
   void initState() {
     super.initState();
@@ -301,6 +302,21 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       controller.text = "$hour:$minute";
 
       onAmPmChanged(pickedTime.period == DayPeriod.am ? "AM" : "PM");
+    }
+  }
+
+  String get repeatLabel {
+    switch (selectedRepeatType) {
+      case "Daily":
+        return "day(s) on";
+      case "Weekly":
+        return "week(s) on";
+      case "Monthly":
+        return "month(s) on";
+      case "Yearly":
+        return "year(s) on";
+      default:
+        return "day(s) on";
     }
   }
 
@@ -2078,270 +2094,79 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
                                             children: [
                                               /// NUMBER DROPDOWN
-                                              SizedBox(
-                                                width: 65.w,
+                                              Container(
+                                                width: MediaQuery.of(context).size.width * 0.4,
+                                                height: 36.h,
 
-                                                child: DropdownButtonFormField<int>(
-                                                  value: selectedEveryNumber,
-
-                                                  isDense: true,
-                                                  isExpanded: true,
-
-                                                  icon: Icon(
-                                                    CupertinoIcons.chevron_down,
-                                                    size: 10.r,
-                                                    color: const Color(
-                                                      0xFF667085,
-                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFFF9FAFC),
+                                                  borderRadius: BorderRadius.circular(10.r),
+                                                  border: Border.all(
+                                                    color: const Color(0xFFD9DEE5),
                                                   ),
+                                                ),
 
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 12.sp,
-                                                    fontWeight: FontWeight.w400,
-                                                    color: const Color(
-                                                      0xFF6C7278,
-                                                    ),
-                                                  ),
+                                                padding: EdgeInsets.symmetric(horizontal: 10.w),
 
-                                                  decoration: InputDecoration(
-                                                    filled: true,
-                                                    fillColor: const Color(
-                                                      0xFFF9FAFC,
-                                                    ),
-
-                                                    isDense: true,
-
-                                                    contentPadding:
-                                                        EdgeInsets.symmetric(
-                                                          horizontal: 8.w,
-                                                          vertical: 8.h,
-                                                        ),
-
-                                                    border: OutlineInputBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            10.r,
-                                                          ),
-                                                      borderSide:
-                                                          const BorderSide(
-                                                            color: Color(
-                                                              0xFFD9DEE5,
-                                                            ),
-                                                          ),
-                                                    ),
-
-                                                    enabledBorder:
-                                                        OutlineInputBorder(
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                10.r,
-                                                              ),
-                                                          borderSide:
-                                                              const BorderSide(
-                                                                color: Color(
-                                                                  0xFFD9DEE5,
-                                                                ),
-                                                              ),
-                                                        ),
-
-                                                    focusedBorder:
-                                                        OutlineInputBorder(
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                10.r,
-                                                              ),
-                                                          borderSide:
-                                                              const BorderSide(
-                                                                color: Color(
-                                                                  0xFF0A0258,
-                                                                ),
-                                                              ),
-                                                        ),
-                                                  ),
-
-                                                  items: List.generate(
-                                                    30,
-                                                    (
-                                                      index,
-                                                    ) => DropdownMenuItem<int>(
-                                                      value: index + 1,
-
+                                                child: Row(
+                                                  children: [
+                                                    Expanded(
                                                       child: Text(
-                                                        "${index + 1}",
+                                                        timePeriodCount.toString(),
 
-                                                        style:
-                                                            GoogleFonts.inter(
-                                                              fontSize: 12.sp,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w400,
-                                                              color:
-                                                                  const Color(
-                                                                    0xFF6C7278,
-                                                                  ),
-                                                            ),
+                                                        style: GoogleFonts.inter(
+                                                          fontSize: 13.sp,
+                                                          fontWeight: FontWeight.w500,
+                                                          color: const Color(0xFF344054),
+                                                        ),
                                                       ),
                                                     ),
-                                                  ),
 
-                                                  onChanged: (value) {
-                                                    setState(() {
-                                                      selectedEveryNumber =
-                                                          value!;
-                                                    });
-                                                  },
+                                                    Column(
+                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      children: [
+                                                        GestureDetector(
+                                                          onTap: () {
+                                                            setState(() {
+                                                              timePeriodCount++;
+                                                            });
+                                                          },
+
+                                                          child: Icon(
+                                                            Icons.keyboard_arrow_up,
+                                                            size: 18.r,
+                                                            color: const Color(0xFF4338CA),
+                                                          ),
+                                                        ),
+
+                                                        GestureDetector(
+                                                          onTap: () {
+                                                            setState(() {
+                                                              if (timePeriodCount > 1) {
+                                                                timePeriodCount--;
+                                                              }
+                                                            });
+                                                          },
+
+                                                          child: Icon(
+                                                            Icons.keyboard_arrow_down,
+                                                            size: 18.r,
+                                                            color: const Color(0xFF4338CA),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
 
                                               /// TEXT
                                               Text(
-                                                "week(s) on",
+                                                repeatLabel,
 
                                                 style: GoogleFonts.inter(
                                                   fontSize: 11.sp,
-                                                  color: const Color(
-                                                    0xFF667085,
-                                                  ),
-                                                ),
-                                              ),
-
-                                              /// DAY DROPDOWN
-                                              SizedBox(
-                                                width: 100.w,
-
-                                                child: DropdownButtonFormField<String>(
-                                                  value: selectedWeekDay,
-
-                                                  isExpanded: true,
-                                                  isDense: true,
-
-                                                  icon: Icon(
-                                                    CupertinoIcons.chevron_down,
-                                                    size: 10.r,
-                                                    color: const Color(
-                                                      0xFF667085,
-                                                    ),
-                                                  ),
-
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 12.sp,
-                                                    fontWeight: FontWeight.w400,
-                                                    color: const Color(
-                                                      0xFF6C7278,
-                                                    ),
-                                                  ),
-
-                                                  decoration: InputDecoration(
-                                                    filled: true,
-                                                    fillColor: const Color(
-                                                      0xFFF9FAFC,
-                                                    ),
-
-                                                    isDense: true,
-
-                                                    contentPadding:
-                                                        EdgeInsets.symmetric(
-                                                          horizontal: 8.w,
-                                                          vertical: 8.h,
-                                                        ),
-
-                                                    border: OutlineInputBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            10.r,
-                                                          ),
-                                                      borderSide:
-                                                          const BorderSide(
-                                                            color: Color(
-                                                              0xFFD9DEE5,
-                                                            ),
-                                                          ),
-                                                    ),
-
-                                                    enabledBorder:
-                                                        OutlineInputBorder(
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                10.r,
-                                                              ),
-                                                          borderSide:
-                                                              const BorderSide(
-                                                                color: Color(
-                                                                  0xFFD9DEE5,
-                                                                ),
-                                                              ),
-                                                        ),
-
-                                                    focusedBorder:
-                                                        OutlineInputBorder(
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                10.r,
-                                                              ),
-                                                          borderSide:
-                                                              const BorderSide(
-                                                                color: Color(
-                                                                  0xFF0A0258,
-                                                                ),
-                                                              ),
-                                                        ),
-                                                  ),
-
-                                                  items:
-                                                      [
-                                                            "Monday",
-                                                            "Tuesday",
-                                                            "Wednesday",
-                                                            "Thursday",
-                                                            "Friday",
-                                                            "Saturday",
-                                                            "Sunday",
-                                                          ]
-                                                          .map(
-                                                            (
-                                                              e,
-                                                            ) => DropdownMenuItem<String>(
-                                                              value: e,
-
-                                                              child: Text(
-                                                                e,
-                                                                overflow:
-                                                                    TextOverflow
-                                                                        .ellipsis,
-                                                                maxLines: 1,
-
-                                                                style: GoogleFonts.inter(
-                                                                  fontSize:
-                                                                      12.sp,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w400,
-                                                                  color: const Color(
-                                                                    0xFF6C7278,
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                            ),
-                                                          )
-                                                          .toList(),
-
-                                                  onChanged: (value) {
-                                                    setState(() {
-                                                      selectedWeekDay = value!;
-                                                    });
-                                                  },
-                                                ),
-                                              ),
-
-                                              /// TEXT
-                                              Text(
-                                                "day(s) on",
-
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 11.sp,
-                                                  color: const Color(
-                                                    0xFF667085,
-                                                  ),
+                                                  color: const Color(0xFF667085),
                                                 ),
                                               ),
                                             ],

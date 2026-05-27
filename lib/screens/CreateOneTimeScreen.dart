@@ -1324,7 +1324,59 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                         ),
                       ),
                       SizedBox(height: 20),
-                      SizedBox(height: 20.h),
+                      /// BUTTONS ALWAYS VISIBLE
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+
+                        children: [
+                          /// SAVE BUTTON
+                          Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8.r),
+
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFD96CFF), Color(0xFF5CE1E6)],
+                              ),
+                            ),
+
+                            child: ElevatedButton(
+                              onPressed: () {
+                                /// SUBMIT FORM HERE
+                              },
+
+                              style: ElevatedButton.styleFrom(
+                                elevation: 0,
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 18.w,
+                                  vertical: 8.h,
+                                ),
+
+                                minimumSize: Size.zero,
+
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8.r),
+                                ),
+                              ),
+
+                              child: Text(
+                                "Save Changes",
+
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 20),
                     ],
                   ),
                 ),
