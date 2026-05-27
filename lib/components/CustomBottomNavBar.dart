@@ -13,10 +13,7 @@ import '../screens/HomeScreen.dart';
 class CustomBottomNavBar extends StatefulWidget {
   final int selectedIndex;
 
-  const CustomBottomNavBar({
-    super.key,
-    required this.selectedIndex,
-  });
+  const CustomBottomNavBar({super.key, required this.selectedIndex});
 
   @override
   State<CustomBottomNavBar> createState() => _CustomBottomNavBarState();
@@ -24,6 +21,7 @@ class CustomBottomNavBar extends StatefulWidget {
 
 class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
   String memberName = '';
+  int? hoverIndex;
 
   @override
   void initState() {
@@ -42,154 +40,156 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
   @override
   Widget build(BuildContext context) {
     final double bottomPadding = MediaQuery.of(context).padding.bottom;
+    return FutureBuilder(
+      future: SharedPreferences.getInstance(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const SizedBox(); // Show nothing until SharedPreferences is loaded
+        }
+        List<Map<String, dynamic>> items = [
+          {
+            'icon': Icons.home_rounded,
+            'label': 'Home',
+            'route': HomeScreen(userId: ''),
+          },
 
-    List<Map<String, dynamic>> items = [
-      {
-        'icon': Icons.home_rounded,
-        'label': 'Home',
-        'route': HomeScreen(userId: ''),
-      },
+          {
+            'icon': Icons.fact_check_outlined,
+            'label': 'My Task',
+            'route': MyTaskScreen(),
+          },
 
-      {
-        'icon': Icons.fact_check_outlined,
-        'label': 'My Task',
-        'route':  MyTaskScreen(),
-      },
+          {
+            'icon': Icons.notifications_none_rounded,
+            'label': 'Notification',
+            'route': NotificationScreen(),
+          },
 
-      {
-        'icon': Icons.notifications_none_rounded,
-        'label': 'Notification',
-        'route':  NotificationScreen(),
-      },
+          {
+            'icon': Icons.more_horiz_rounded,
+            'label': 'More',
+            'route': MoreScreen(),
+          },
+        ];
 
-      {
-        'icon': Icons.more_horiz_rounded,
-        'label': 'More',
-        'route':  MoreScreen(),
-      },
-    ];
+        return Container(
+          width: double.infinity,
 
-    return SafeArea(
-      top: false,
+          padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 6.h + bottomPadding),
 
-      child: Container(
-        width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
 
-        padding: EdgeInsets.only(
-          top: 8,
-          bottom: bottomPadding > 0 ? 6 : 8,
-        ),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24.r),
+              topRight: Radius.circular(24.r),
+            ),
 
-        decoration:  BoxDecoration(
-          color: Colors.white,
-
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(24.r),
-            topRight: Radius.circular(24.r),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 15.r,
+                offset: const Offset(0, -2),
+              ),
+            ],
           ),
 
-          boxShadow: [
-            BoxShadow(
-              color: Color.fromRGBO(0, 0, 0, 0.08),
-              blurRadius: 15.r,
-              offset: Offset(0, -2),
-            ),
-          ],
-        ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
 
-        child: Row(
-          children: List.generate(items.length, (index) {
-            bool isSelected = widget.selectedIndex == index;
+            children: List.generate(items.length, (index) {
+              bool isSelected = widget.selectedIndex == index;
 
-            return Expanded(
-              child: InkWell(
-                onTap: () {
-                  if (!isSelected) {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => items[index]['route'],
-                      ),
-                    );
-                  }
-                },
+              return Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14.r),
 
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-
-                    children: [
-                      isSelected
-                          ? ShaderMask(
-                        shaderCallback: (bounds) => const LinearGradient(
-                          colors: [
-                            Color(0xFF52EBB9),
-                            Color(0xFF42A8FF),
-                            Color(0xFFF15EFF),
-                          ],
-                          stops: [0.0, 0.45, 1.0],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ).createShader(bounds),
-
-                        child: Icon(
-                          items[index]['icon'],
-                          size: 22.r,
-                          color: Colors.white,
+                  onTap: () {
+                    if (!isSelected) {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => items[index]['route'],
                         ),
-                      )
-                          : Icon(
-                        items[index]['icon'],
-                        size: 22.r,
-                        color: const Color(0xFF667085),
-                      ),
+                      );
+                    }
+                  },
 
-                       SizedBox(height: 2.h),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 4.h),
 
-                      isSelected
-                          ? ShaderMask(
-                        shaderCallback: (bounds) => const LinearGradient(
-                          colors: [
-                            Color(0xFF52EBB9),
-                            Color(0xFF42A8FF),
-                            Color(0xFFF15EFF),
-                          ],
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
 
-                          stops: [0.0, 0.45, 1.0],
+                      children: [
+                        isSelected
+                            ? ShaderMask(
+                                shaderCallback: (bounds) =>
+                                    const LinearGradient(
+                                      colors: [
+                                        Color(0xFF52EBB9),
+                                        Color(0xFF42A8FF),
+                                        Color(0xFFF15EFF),
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ).createShader(bounds),
 
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ).createShader(bounds),
+                                child: Icon(
+                                  items[index]['icon'],
+                                  size: 22.r,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Icon(
+                                items[index]['icon'],
+                                size: 22.r,
+                                color: const Color(0xFF667085),
+                              ),
 
-                        child: Text(
-                          items[index]['label'],
+                        SizedBox(height: 3.h),
 
-                          style: GoogleFonts.inter(
-                            fontSize: 10.sp,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white,
-                          ),
-                        ),
-                      )
-                          : Text(
-                        items[index]['label'],
+                        isSelected
+                            ? ShaderMask(
+                                shaderCallback: (bounds) =>
+                                    const LinearGradient(
+                                      colors: [
+                                        Color(0xFF52EBB9),
+                                        Color(0xFF42A8FF),
+                                        Color(0xFFF15EFF),
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ).createShader(bounds),
 
-                        style: GoogleFonts.inter(
-                          fontSize: 10.sp,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF667085),
-                        ),
-                      ),
-                    ],
+                                child: Text(
+                                  items[index]['label'],
+
+                                  style: GoogleFonts.inter(
+                                    fontSize: 10.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              )
+                            : Text(
+                                items[index]['label'],
+
+                                style: GoogleFonts.inter(
+                                  fontSize: 10.sp,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF667085),
+                                ),
+                              ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            );
-          }),
-        ),
-      ),
+              );
+            }),
+          ),
+        );
+      },
     );
   }
 }
