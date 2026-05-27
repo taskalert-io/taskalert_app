@@ -82,6 +82,7 @@ class SignUpScreenState extends State<SignUpScreen> {
       backgroundColor: Colors.transparent,
 
       isScrollControlled: true,
+      useRootNavigator: true,
 
       builder: (BuildContext builder) {
         return StatefulBuilder(

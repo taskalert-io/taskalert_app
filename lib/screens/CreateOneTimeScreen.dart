@@ -147,6 +147,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
       backgroundColor: Colors.transparent,
 
       isScrollControlled: true,
+      useRootNavigator: true,
 
       builder: (BuildContext builder) {
         return StatefulBuilder(
@@ -906,73 +907,61 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                             ),
                                           ),
 
-                                          SizedBox(width: 8.w),
+                                          SizedBox(width: 6.w),
 
                                           /// AM PM DROPDOWN
-                                          SizedBox(
-                                            width: 58.w,
+      
 
-                                            child: Theme(
-                                              data: Theme.of(context).copyWith(
-                                                canvasColor: Colors.white,
-                                              ),
-
-                                              child: DropdownButtonFormField<String>(
-                                                value: assignSelectedAmPm,
-
-                                                isDense: true,
-
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 12.sp,
-                                                  fontWeight: FontWeight.w400,
-                                                  color: const Color(
-                                                    0xFF6C7278,
+                                             Flexible(
+                                               child: ConstrainedBox(
+                                                 constraints: BoxConstraints(maxWidth: 65.w, minWidth: 45.w),
+                                                 child: Theme(
+                                                  data: Theme.of(context).copyWith(
+                                                    canvasColor: Colors.white,
                                                   ),
-                                                ),
+                                                 
+                                                  child: DropdownButtonFormField<String>(
+                                                    value: assignSelectedAmPm,
+                                                 
+                                                    isDense: true,
+                                                    isExpanded: true,
 
-                                                icon: Icon(
-                                                  CupertinoIcons.chevron_down,
-                                                  size: 10.r,
-                                                  color: const Color(
-                                                    0xFF6C7278,
-                                                  ),
-                                                ),
-
-                                                decoration: InputDecoration(
-                                                  filled: true,
-                                                  fillColor: const Color(
-                                                    0xFFF9FAFC,
-                                                  ),
-
-                                                  isDense: true,
-
-                                                  contentPadding:
-                                                      EdgeInsets.symmetric(
-                                                        horizontal: 8.w,
-                                                        vertical: 10.h,
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 12.sp,
+                                                      fontWeight: FontWeight.w400,
+                                                      color: const Color(
+                                                        0xFF6C7278,
                                                       ),
-
-                                                  border: OutlineInputBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          10.r,
-                                                        ),
-
-                                                    borderSide:
-                                                        const BorderSide(
-                                                          color: Color(
-                                                            0xFFD9DEE5,
+                                                    ),
+                                                 
+                                                    icon: Icon(
+                                                      CupertinoIcons.chevron_down,
+                                                      size: 10.r,
+                                                      color: const Color(
+                                                        0xFF6C7278,
+                                                      ),
+                                                    ),
+                                                 
+                                                    decoration: InputDecoration(
+                                                      filled: true,
+                                                      fillColor: const Color(
+                                                        0xFFF9FAFC,
+                                                      ),
+                                                 
+                                                      isDense: true,
+                                                 
+                                                      contentPadding:
+                                                          EdgeInsets.symmetric(
+                                                            horizontal: 8.w,
+                                                            vertical: 10.h,
                                                           ),
-                                                        ),
-                                                  ),
-
-                                                  enabledBorder:
-                                                      OutlineInputBorder(
+                                                 
+                                                      border: OutlineInputBorder(
                                                         borderRadius:
                                                             BorderRadius.circular(
                                                               10.r,
                                                             ),
-
+                                                 
                                                         borderSide:
                                                             const BorderSide(
                                                               color: Color(
@@ -980,57 +969,74 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                                               ),
                                                             ),
                                                       ),
-
-                                                  focusedBorder:
-                                                      OutlineInputBorder(
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              10.r,
+                                                 
+                                                      enabledBorder:
+                                                          OutlineInputBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  10.r,
+                                                                ),
+                                                 
+                                                            borderSide:
+                                                                const BorderSide(
+                                                                  color: Color(
+                                                                    0xFFD9DEE5,
+                                                                  ),
+                                                                ),
+                                                          ),
+                                                 
+                                                      focusedBorder:
+                                                          OutlineInputBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  10.r,
+                                                                ),
+                                                 
+                                                            borderSide:
+                                                                const BorderSide(
+                                                                  color: Color(
+                                                                    0xFF0A0258,
+                                                                  ),
+                                                                ),
+                                                          ),
+                                                    ),
+                                                 
+                                                    items: ["AM", "PM"]
+                                                        .map(
+                                                          (
+                                                            e,
+                                                          ) => DropdownMenuItem<String>(
+                                                            value: e,
+                                                 
+                                                            child: Text(
+                                                              e,
+                                                 
+                                                              style:
+                                                                  GoogleFonts.inter(
+                                                                    fontSize: 12.sp,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w400,
+                                                                    color:
+                                                                        const Color(
+                                                                          0xFF6C7278,
+                                                                        ),
+                                                                  ),
                                                             ),
-
-                                                        borderSide:
-                                                            const BorderSide(
-                                                              color: Color(
-                                                                0xFF0A0258,
-                                                              ),
-                                                            ),
-                                                      ),
-                                                ),
-
-                                                items: ["AM", "PM"]
-                                                    .map(
-                                                      (
-                                                        e,
-                                                      ) => DropdownMenuItem<String>(
-                                                        value: e,
-
-                                                        child: Text(
-                                                          e,
-
-                                                          style:
-                                                              GoogleFonts.inter(
-                                                                fontSize: 12.sp,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w400,
-                                                                color:
-                                                                    const Color(
-                                                                      0xFF6C7278,
-                                                                    ),
-                                                              ),
-                                                        ),
-                                                      ),
-                                                    )
-                                                    .toList(),
-
-                                                onChanged: (value) {
-                                                  setState(() {
-                                                    assignSelectedAmPm = value!;
-                                                  });
-                                                },
-                                              ),
-                                            ),
-                                          ),
+                                                          ),
+                                                        )
+                                                        .toList(),
+                                                 
+                                                    onChanged: (value) {
+                                                      setState(() {
+                                                        assignSelectedAmPm = value!;
+                                                      });
+                                                    },
+                                                  ),
+                                                                                             ),
+                                               ),
+                                             ),
+                                          
                                         ],
                                       ),
                                     ],
@@ -1481,239 +1487,6 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.r),
           borderSide: const BorderSide(color: Colors.red),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRepeatOption(String title, String value) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          if (selectedRepeatType == value) {
-            selectedRepeatType = "";
-          } else {
-            selectedRepeatType = value;
-          }
-        });
-      },
-
-      child: IntrinsicWidth(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 16.w,
-              height: 16.w,
-
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: const Color(0xFF4338CA),
-                  width: 1.3,
-                ),
-              ),
-
-              child: Center(
-                child: Container(
-                  width: 8.w,
-                  height: 8.w,
-
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: selectedRepeatType == value
-                        ? const Color(0xFF24116A)
-                        : Colors.transparent,
-                  ),
-                ),
-              ),
-            ),
-
-            SizedBox(width: 6.w),
-
-            Text(
-              title,
-              overflow: TextOverflow.ellipsis,
-
-              style: GoogleFonts.inter(
-                fontSize: 11.5.sp,
-                fontWeight: FontWeight.w400,
-                color: const Color(0xFF344054),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEndRepeatOption(String title, String value) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedEndType = value;
-        });
-      },
-
-      child: IntrinsicWidth(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 16.w,
-              height: 16.w,
-
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFF4338CA), width: 1.3),
-              ),
-
-              child: Center(
-                child: Container(
-                  width: 8.w,
-                  height: 8.w,
-
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: selectedEndType == value
-                        ? const Color(0xFF24116A)
-                        : Colors.transparent,
-                  ),
-                ),
-              ),
-            ),
-
-            SizedBox(width: 6.w),
-
-            Text(
-              title,
-              overflow: TextOverflow.ellipsis,
-
-              style: GoogleFonts.inter(
-                fontSize: 11.5.sp,
-                fontWeight: FontWeight.w400,
-                color: const Color(0xFF344054),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProofOption(String title, String value) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          if (selectedProofType == value) {
-            selectedProofType = "";
-          } else {
-            selectedProofType = value;
-          }
-        });
-      },
-
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 16.w,
-            height: 16.w,
-
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4.r),
-              border: Border.all(
-                color: const Color(0xFF4338CA),
-                width: 1.4,
-              ),
-
-              color: selectedProofType == value
-                  ? const Color(0xFF24116A)
-                  : Colors.transparent,
-            ),
-
-            child: selectedProofType == value
-                ? Icon(
-              Icons.check,
-              size: 12.r,
-              color: Colors.white,
-            )
-                : null,
-          ),
-
-          SizedBox(width: 6.w),
-
-          Text(
-            title,
-            overflow: TextOverflow.ellipsis,
-
-            style: GoogleFonts.inter(
-              fontSize: 11.5.sp,
-              fontWeight: FontWeight.w400,
-              color: const Color(0xFF344054),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProoftypeOption(String title, String value) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          if (selectedProofRadioType == value) {
-            selectedProofRadioType = "";
-          } else {
-            selectedProofRadioType = value;
-          }
-        });
-      },
-
-      child: IntrinsicWidth(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 16.w,
-              height: 16.w,
-
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: const Color(0xFF4338CA),
-                  width: 1.3,
-                ),
-              ),
-
-              child: Center(
-                child: Container(
-                  width: 8.w,
-                  height: 8.w,
-
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: selectedProofRadioType == value
-                        ? const Color(0xFF24116A)
-                        : Colors.transparent,
-                  ),
-                ),
-              ),
-            ),
-
-            SizedBox(width: 6.w),
-
-            Text(
-              title,
-              overflow: TextOverflow.ellipsis,
-
-              style: GoogleFonts.inter(
-                fontSize: 11.5.sp,
-                fontWeight: FontWeight.w400,
-                color: const Color(0xFF344054),
-              ),
-            ),
-          ],
         ),
       ),
     );

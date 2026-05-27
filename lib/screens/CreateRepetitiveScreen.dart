@@ -148,6 +148,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       backgroundColor: Colors.transparent,
 
       isScrollControlled: true,
+      useRootNavigator: true,
 
       builder: (BuildContext builder) {
         return StatefulBuilder(
@@ -749,7 +750,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                   ),
                                 ),
 
-                                SizedBox(width: 12.w),
+                                SizedBox(width: 6.w),
 
                                 /// ASSIGN TIME
                                 Expanded(
@@ -856,12 +857,12 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
                                                     suffixIcon: Padding(
                                                       padding: EdgeInsets.only(
-                                                        right: 10.w,
+                                                        right: 8.w,
                                                       ),
 
                                                       child: Icon(
                                                         CupertinoIcons.clock,
-                                                        size: 17.r,
+                                                        size: 15.r,
                                                         color: const Color(
                                                           0xFF4338CA,
                                                         ),
@@ -870,7 +871,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
                                                     suffixIconConstraints:
                                                         BoxConstraints(
-                                                          minWidth: 30.w,
+                                                          minWidth: 20.w,
                                                         ),
 
                                                     border: OutlineInputBorder(
@@ -922,73 +923,60 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                             ),
                                           ),
 
-                                          SizedBox(width: 8.w),
+                                          SizedBox(width: 6.w),
 
                                           /// AM PM DROPDOWN
-                                          SizedBox(
-                                            width: 58.w,
 
-                                            child: Theme(
-                                              data: Theme.of(context).copyWith(
-                                                canvasColor: Colors.white,
-                                              ),
 
-                                              child: DropdownButtonFormField<String>(
-                                                value: assignSelectedAmPm,
-
-                                                isDense: true,
-
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 12.sp,
-                                                  fontWeight: FontWeight.w400,
-                                                  color: const Color(
-                                                    0xFF6C7278,
+                                             Flexible(
+                                               child: ConstrainedBox(
+                                                 constraints: BoxConstraints(maxWidth: 65.w, minWidth: 45.w),
+                                                 child: Theme(
+                                                  data: Theme.of(context).copyWith(
+                                                    canvasColor: Colors.white,
                                                   ),
-                                                ),
-
-                                                icon: Icon(
-                                                  CupertinoIcons.chevron_down,
-                                                  size: 10.r,
-                                                  color: const Color(
-                                                    0xFF6C7278,
-                                                  ),
-                                                ),
-
-                                                decoration: InputDecoration(
-                                                  filled: true,
-                                                  fillColor: const Color(
-                                                    0xFFF9FAFC,
-                                                  ),
-
-                                                  isDense: true,
-
-                                                  contentPadding:
-                                                      EdgeInsets.symmetric(
-                                                        horizontal: 8.w,
-                                                        vertical: 10.h,
+                                                 
+                                                  child: DropdownButtonFormField<String>(
+                                                    value: assignSelectedAmPm,
+                                                 
+                                                    isDense: true,
+                                                    isExpanded: true,
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 12.sp,
+                                                      fontWeight: FontWeight.w400,
+                                                      color: const Color(
+                                                        0xFF6C7278,
                                                       ),
-
-                                                  border: OutlineInputBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          10.r,
-                                                        ),
-
-                                                    borderSide:
-                                                        const BorderSide(
-                                                          color: Color(
-                                                            0xFFD9DEE5,
+                                                    ),
+                                                 
+                                                    icon: Icon(
+                                                      CupertinoIcons.chevron_down,
+                                                      size: 10.r,
+                                                      color: const Color(
+                                                        0xFF6C7278,
+                                                      ),
+                                                    ),
+                                                 
+                                                    decoration: InputDecoration(
+                                                      filled: true,
+                                                      fillColor: const Color(
+                                                        0xFFF9FAFC,
+                                                      ),
+                                                 
+                                                      isDense: true,
+                                                 
+                                                      contentPadding:
+                                                          EdgeInsets.symmetric(
+                                                            horizontal: 8.w,
+                                                            vertical: 10.h,
                                                           ),
-                                                        ),
-                                                  ),
-
-                                                  enabledBorder:
-                                                      OutlineInputBorder(
+                                                 
+                                                      border: OutlineInputBorder(
                                                         borderRadius:
                                                             BorderRadius.circular(
                                                               10.r,
                                                             ),
-
+                                                 
                                                         borderSide:
                                                             const BorderSide(
                                                               color: Color(
@@ -996,57 +984,74 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                                               ),
                                                             ),
                                                       ),
-
-                                                  focusedBorder:
-                                                      OutlineInputBorder(
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              10.r,
+                                                 
+                                                      enabledBorder:
+                                                          OutlineInputBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  10.r,
+                                                                ),
+                                                 
+                                                            borderSide:
+                                                                const BorderSide(
+                                                                  color: Color(
+                                                                    0xFFD9DEE5,
+                                                                  ),
+                                                                ),
+                                                          ),
+                                                 
+                                                      focusedBorder:
+                                                          OutlineInputBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  10.r,
+                                                                ),
+                                                 
+                                                            borderSide:
+                                                                const BorderSide(
+                                                                  color: Color(
+                                                                    0xFF0A0258,
+                                                                  ),
+                                                                ),
+                                                          ),
+                                                    ),
+                                                 
+                                                    items: ["AM", "PM"]
+                                                        .map(
+                                                          (
+                                                            e,
+                                                          ) => DropdownMenuItem<String>(
+                                                            value: e,
+                                                 
+                                                            child: Text(
+                                                              e,
+                                                 
+                                                              style:
+                                                                  GoogleFonts.inter(
+                                                                    fontSize: 12.sp,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w400,
+                                                                    color:
+                                                                        const Color(
+                                                                          0xFF6C7278,
+                                                                        ),
+                                                                  ),
                                                             ),
+                                                          ),
+                                                        )
+                                                        .toList(),
+                                                 
+                                                    onChanged: (value) {
+                                                      setState(() {
+                                                        assignSelectedAmPm = value!;
+                                                      });
+                                                    },
+                                                  ),
+                                                                                             ),
+                                               ),
+                                             ),
 
-                                                        borderSide:
-                                                            const BorderSide(
-                                                              color: Color(
-                                                                0xFF0A0258,
-                                                              ),
-                                                            ),
-                                                      ),
-                                                ),
-
-                                                items: ["AM", "PM"]
-                                                    .map(
-                                                      (
-                                                        e,
-                                                      ) => DropdownMenuItem<String>(
-                                                        value: e,
-
-                                                        child: Text(
-                                                          e,
-
-                                                          style:
-                                                              GoogleFonts.inter(
-                                                                fontSize: 12.sp,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w400,
-                                                                color:
-                                                                    const Color(
-                                                                      0xFF6C7278,
-                                                                    ),
-                                                              ),
-                                                        ),
-                                                      ),
-                                                    )
-                                                    .toList(),
-
-                                                onChanged: (value) {
-                                                  setState(() {
-                                                    assignSelectedAmPm = value!;
-                                                  });
-                                                },
-                                              ),
-                                            ),
-                                          ),
                                         ],
                                       ),
                                     ],
@@ -1639,13 +1644,13 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                                       suffixIcon: Padding(
                                                         padding:
                                                             EdgeInsets.only(
-                                                              right: 10.w,
+                                                              right: 8.w,
                                                             ),
 
                                                         child: Icon(
                                                           CupertinoIcons
                                                               .calendar,
-                                                          size: 18.r,
+                                                          size: 15.r,
                                                           color: const Color(
                                                             0xFF4338CA,
                                                           ),
@@ -1654,7 +1659,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
                                                       suffixIconConstraints:
                                                           BoxConstraints(
-                                                            minWidth: 30.w,
+                                                            minWidth: 20.w,
                                                           ),
 
                                                       border: OutlineInputBorder(
@@ -1708,7 +1713,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                           ),
                                         ),
 
-                                        SizedBox(width: 12.w),
+                                        SizedBox(width: 6.w),
 
                                         /// SECOND TIME
                                         Expanded(
@@ -1835,13 +1840,13 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                                             suffixIcon: Padding(
                                                               padding:
                                                                   EdgeInsets.only(
-                                                                    right: 10.w,
+                                                                    right: 8.w,
                                                                   ),
 
                                                               child: Icon(
                                                                 CupertinoIcons
                                                                     .clock,
-                                                                size: 17.r,
+                                                                size: 15.r,
                                                                 color:
                                                                     const Color(
                                                                       0xFF4338CA,
@@ -1852,7 +1857,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                                             suffixIconConstraints:
                                                                 BoxConstraints(
                                                                   minWidth:
-                                                                      30.w,
+                                                                      20.w,
                                                                 ),
 
                                                             border: OutlineInputBorder(
@@ -1902,137 +1907,140 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                                     ),
                                                   ),
 
-                                                  SizedBox(width: 8.w),
+                                                  SizedBox(width: 6.w),
 
                                                   /// AM PM
-                                                  SizedBox(
-                                                    width: 52.w,
 
-                                                    child: Theme(
-                                                      data: Theme.of(context)
-                                                          .copyWith(
-                                                            canvasColor:
-                                                                Colors.white,
-                                                          ),
-
-                                                      child: DropdownButtonFormField<String>(
-                                                        value: dueSelectedAmPm,
-
-                                                        isDense: true,
-
-                                                        style:
-                                                            GoogleFonts.inter(
-                                                              fontSize: 12.sp,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w400,
-                                                              color:
-                                                                  const Color(
-                                                                    0xFF6C7278,
-                                                                  ),
+                                                  Flexible(
+                                                       child: ConstrainedBox(
+                                                         constraints: BoxConstraints(maxWidth: 65.w, minWidth: 45.w),
+                                                         child: Theme(
+                                                          data: Theme.of(context)
+                                                              .copyWith(
+                                                                canvasColor:
+                                                                    Colors.white,
+                                                              ),
+                                                         
+                                                          child: DropdownButtonFormField<String>(
+                                                            value: dueSelectedAmPm,
+                                                         
+                                                            isDense: true,
+                                                            isExpanded: true,
+                                                            style:
+                                                                GoogleFonts.inter(
+                                                                  fontSize: 12.sp,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w400,
+                                                                  color:
+                                                                      const Color(
+                                                                        0xFF6C7278,
+                                                                      ),
+                                                                ),
+                                                         
+                                                            icon: Icon(
+                                                              CupertinoIcons
+                                                                  .chevron_down,
+                                                              size: 10.r,
+                                                              color: const Color(
+                                                                0xFF6C7278,
+                                                              ),
                                                             ),
-
-                                                        icon: Icon(
-                                                          CupertinoIcons
-                                                              .chevron_down,
-                                                          size: 10.r,
-                                                          color: const Color(
-                                                            0xFF6C7278,
-                                                          ),
-                                                        ),
-
-                                                        decoration: InputDecoration(
-                                                          filled: true,
-                                                          fillColor:
-                                                              const Color(
-                                                                0xFFF9FAFC,
+                                                         
+                                                            decoration: InputDecoration(
+                                                              filled: true,
+                                                              fillColor:
+                                                                  const Color(
+                                                                    0xFFF9FAFC,
+                                                                  ),
+                                                         
+                                                              isDense: true,
+                                                         
+                                                              contentPadding:
+                                                                  EdgeInsets.symmetric(
+                                                                    horizontal: 8.w,
+                                                                    vertical: 10.h,
+                                                                  ),
+                                                         
+                                                              border: OutlineInputBorder(
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      10.r,
+                                                                    ),
+                                                         
+                                                                borderSide:
+                                                                    const BorderSide(
+                                                                      color: Color(
+                                                                        0xFFD9DEE5,
+                                                                      ),
+                                                                    ),
                                                               ),
-
-                                                          isDense: true,
-
-                                                          contentPadding:
-                                                              EdgeInsets.symmetric(
-                                                                horizontal: 8.w,
-                                                                vertical: 10.h,
+                                                         
+                                                              enabledBorder: OutlineInputBorder(
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      10.r,
+                                                                    ),
+                                                         
+                                                                borderSide:
+                                                                    const BorderSide(
+                                                                      color: Color(
+                                                                        0xFFD9DEE5,
+                                                                      ),
+                                                                    ),
                                                               ),
-
-                                                          border: OutlineInputBorder(
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  10.r,
-                                                                ),
-
-                                                            borderSide:
-                                                                const BorderSide(
-                                                                  color: Color(
-                                                                    0xFFD9DEE5,
-                                                                  ),
-                                                                ),
-                                                          ),
-
-                                                          enabledBorder: OutlineInputBorder(
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  10.r,
-                                                                ),
-
-                                                            borderSide:
-                                                                const BorderSide(
-                                                                  color: Color(
-                                                                    0xFFD9DEE5,
-                                                                  ),
-                                                                ),
-                                                          ),
-
-                                                          focusedBorder: OutlineInputBorder(
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  10.r,
-                                                                ),
-
-                                                            borderSide:
-                                                                const BorderSide(
-                                                                  color: Color(
-                                                                    0xFF0A0258,
-                                                                  ),
-                                                                ),
-                                                          ),
-                                                        ),
-
-                                                        items: ["AM", "PM"]
-                                                            .map(
-                                                              (
-                                                                e,
-                                                              ) => DropdownMenuItem<String>(
-                                                                value: e,
-
-                                                                child: Text(
-                                                                  e,
-
-                                                                  style: GoogleFonts.inter(
-                                                                    fontSize:
-                                                                        12.sp,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w400,
-                                                                    color: const Color(
-                                                                      0xFF6C7278,
+                                                         
+                                                              focusedBorder: OutlineInputBorder(
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      10.r,
+                                                                    ),
+                                                         
+                                                                borderSide:
+                                                                    const BorderSide(
+                                                                      color: Color(
+                                                                        0xFF0A0258,
+                                                                      ),
+                                                                    ),
+                                                              ),
+                                                            ),
+                                                         
+                                                            items: ["AM", "PM"]
+                                                                .map(
+                                                                  (
+                                                                    e,
+                                                                  ) => DropdownMenuItem<String>(
+                                                                    value: e,
+                                                         
+                                                                    child: Text(
+                                                                      e,
+                                                         
+                                                                      style: GoogleFonts.inter(
+                                                                        fontSize:
+                                                                            12.sp,
+                                                                        fontWeight:
+                                                                            FontWeight
+                                                                                .w400,
+                                                                        color: const Color(
+                                                                          0xFF6C7278,
+                                                                        ),
+                                                                      ),
                                                                     ),
                                                                   ),
-                                                                ),
-                                                              ),
-                                                            )
-                                                            .toList(),
+                                                                )
+                                                                .toList(),
+                                                         
+                                                            onChanged: (value) {
+                                                              setState(() {
+                                                                dueSelectedAmPm =
+                                                                    value!;
+                                                              });
+                                                            },
+                                                          ),
+                                                                                                             ),
+                                                       ),
+                                                     ),
 
-                                                        onChanged: (value) {
-                                                          setState(() {
-                                                            dueSelectedAmPm =
-                                                                value!;
-                                                          });
-                                                        },
-                                                      ),
-                                                    ),
-                                                  ),
                                                 ],
                                               ),
                                             ],

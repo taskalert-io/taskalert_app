@@ -759,6 +759,7 @@ class HomeScreenState extends State<HomeScreen> {
             showModalBottomSheet(
               context: context,
               useSafeArea: true,
+              useRootNavigator: true,
               backgroundColor: Colors.transparent,
               isScrollControlled: true,
 
@@ -767,13 +768,14 @@ class HomeScreenState extends State<HomeScreen> {
 
                 return StatefulBuilder(
                   builder: (context, modalSetState) {
-                    return SafeArea(
-                      child: Container(
+                    final bottomInset = MediaQuery.of(context).padding.bottom;
+
+                      return Container(
                         padding: EdgeInsets.only(
                           left: 20.w,
                           right: 20.w,
                           top: 18.h,
-                          bottom: 25.h,
+                          bottom: bottomInset > 0 ? bottomInset : 25.h,
                         ),
 
                         decoration: BoxDecoration(
@@ -1107,10 +1109,11 @@ class HomeScreenState extends State<HomeScreen> {
                                 ),
                               ],
                             ),
+                            SizedBox(height: 15.h),
                           ],
                         ),
-                      ),
-                    );
+                      );
+
                   },
                 );
               },
