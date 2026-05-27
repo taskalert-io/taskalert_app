@@ -548,7 +548,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                                             SizedBox(height: 3.h),
 
                                             DropdownButtonFormField<String>(
-                                              value: selectedGender,
+                                              initialValue: selectedGender,
 
                                               isExpanded: true,
 

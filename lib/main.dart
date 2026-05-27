@@ -5,11 +5,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:taskalert_app/screens/DashboardPage.dart';
 import 'package:taskalert_app/screens/SignInScreen.dart';
 import 'package:taskalert_app/screens/SplashScreen.dart';
+import 'package:taskalert_app/utils/injection_container.dart' as di;
 
 final RouteObserver<ModalRoute<void>> routeObserver =
     RouteObserver<ModalRoute<void>>();
 
 void main() {
+  di.init(); // Initialize dependency injection
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
@@ -18,7 +20,7 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   Future<Widget> _getInitialScreen() async {
-    final storage = const FlutterSecureStorage();
+    final storage = di.sl<FlutterSecureStorage>();
     String? isLoggedIn = await storage.read(key: 'isLoggedIn');
     String? token = await storage.read(key: 'accessToken');
 
