@@ -1,4 +1,8 @@
 import 'dart:io';
+// import 'package:taskalert_app/core/features/auth/data/models/user_model.dart';
+
+import 'package:taskalert_app/core/features/auth/data/models/user_model.dart';
+
 import '../../../../network/api_result.dart';
 import '../../../../network/base_api_response.dart';
 // import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -33,13 +37,13 @@ abstract class AuthRepository {
     required String phoneNumber, // Mapping phone to email for passwordless flow
   });
 
-  Future<ApiResult<UserModel>> verifySignInOtp({
-    required String email,
-    required String otp,
+  Future<ApiResult<BaseApiResponse<dynamic>>> verifySignInOtp({
+    required String phoneNumber, // Mapping phone to email for passwordless flow
+    required String otpCode,
   });
 
   Future<ApiResult<BaseApiResponse<dynamic>>> resendSignInOtp({
-    required String email,
+    required String phoneNumber, // Mapping phone to email for passwordless flow
   });
 
   // --- Session Management ---
@@ -48,9 +52,9 @@ abstract class AuthRepository {
   Future<void> logout();
 
   // --- Profile Management ---
-  Future<ApiResult<UserModel>> getProfile();
+  Future<ApiResult<BaseApiResponse<dynamic>>> getProfile();
 
-  Future<ApiResult<UserModel>> updateProfile({
+  Future<ApiResult<BaseApiResponse<dynamic>>> updateProfile({
     required String firstName,
     required String lastName,
     File? avatarFile,
@@ -60,42 +64,4 @@ abstract class AuthRepository {
     required String oldPassword,
     required String newPassword,
   });
-}
-
-class UserModel {
-  final String id;
-  final String email;
-  final String firstName;
-  final String lastName;
-  final String? phoneNumber;
-  final String? avatarUrl;
-  final String?
-  token; // This captures the accessToken returned on verification responses
-
-  UserModel({
-    required this.id,
-    required this.email,
-    required this.firstName,
-    required this.lastName,
-    this.phoneNumber,
-    this.avatarUrl,
-    this.token,
-  });
-
-  factory UserModel.fromJson(Map<String, dynamic> json) {
-    return UserModel(
-      // Handles both traditional SQL 'id' and MongoDB '_id' systems automatically
-      id: (json['id'] ?? json['_id'] ?? '').toString(),
-      email: json['email'] ?? '',
-      firstName: json['firstName'] ?? '',
-      lastName: json['lastName'] ?? '',
-      phoneNumber: json['phoneNumber'],
-      avatarUrl:
-          json['avatarUrl'] ??
-          json['avatar'], // Catches variations in profile image field naming
-      token:
-          json['accessToken'] ??
-          json['token'], // Maps 'accessToken' post-response dynamically
-    );
-  }
 }

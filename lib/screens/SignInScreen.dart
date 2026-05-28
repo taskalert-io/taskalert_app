@@ -330,7 +330,11 @@ class SignInScreenState extends State<SignInScreen> {
                                           context,
                                           MaterialPageRoute(
                                             builder: (_) =>
-                                                const OtpVerificationScreen(),
+                                                OtpVerificationScreen(
+                                                  phoneNumber: phoneController
+                                                      .text
+                                                      .trim(),
+                                                ),
                                           ),
                                         );
                                       } else if (_loginController

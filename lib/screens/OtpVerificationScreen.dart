@@ -1,13 +1,16 @@
-// ignore_for_file: deprecated_member_use
+// ignore_for_file: use_build_context_synchronously, avoid_function_literals_in_foreach_calls, deprecated_member_use
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:taskalert_app/screens/LoginConfirmationScreen.dart';
+import 'package:taskalert_app/utils/injection_container.dart';
+import '../core/features/auth/controllers/login_controller.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
-  const OtpVerificationScreen({super.key});
+  final String phoneNumber;
+  const OtpVerificationScreen({super.key, required this.phoneNumber});
 
   @override
   State<StatefulWidget> createState() => OtpVerificationScreenState();
@@ -18,6 +21,25 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
     6,
     (_) => TextEditingController(),
   );
+
+  final _loginController = sl<LoginController>();
+
+  @override
+  void initState() {
+    super.initState();
+    _loginController.addListener(_onControllerChanged);
+  }
+
+  @override
+  void dispose() {
+    _loginController.removeListener(_onControllerChanged);
+    otpControllers.forEach((controller) => controller.dispose());
+    super.dispose();
+  }
+
+  void _onControllerChanged() {
+    if (mounted) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,9 +60,7 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 Container(
                   width: double.infinity,
                   height: MediaQuery.of(context).size.height * 0.5,
-
                   decoration: const BoxDecoration(color: Color(0xFF12006C)),
-
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
@@ -57,8 +77,6 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                 bottomLeft: Radius.circular(260.r),
                                 bottomRight: Radius.circular(260.r),
                               ),
-
-                              // USE RADIAL GRADIENT
                               gradient: RadialGradient(
                                 center: Alignment.topCenter,
                                 radius: 1.35.r,
@@ -74,15 +92,13 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           ),
                         ),
                       ),
-
                       Padding(
-                        padding: EdgeInsets.only(
+                        padding: const EdgeInsets.only(
                           left: 10,
                           right: 10,
                           top: 150,
                           bottom: 20,
                         ),
-
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
@@ -92,9 +108,7 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                               fit: BoxFit.cover,
                               width: 200.w,
                             ),
-
                             SizedBox(height: 10.h),
-
                             SizedBox(
                               width: double.infinity,
                               child: Text(
@@ -102,14 +116,12 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                 style: GoogleFonts.inter(
                                   fontSize: 25.sp,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFFFFFFFF),
+                                  color: const Color(0xFFFFFFFF),
                                 ),
                                 textAlign: TextAlign.center,
                               ),
                             ),
-
                             SizedBox(height: 10.h),
-
                             SizedBox(
                               width: double.infinity,
                               child: Text(
@@ -117,12 +129,11 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                 style: GoogleFonts.inter(
                                   fontSize: 12.sp,
                                   fontWeight: FontWeight.w400,
-                                  color: Color(0xFFFFFFFF),
+                                  color: const Color(0xFFFFFFFF),
                                 ),
                                 textAlign: TextAlign.center,
                               ),
                             ),
-
                             SizedBox(height: 45.h),
                           ],
                         ),
@@ -133,19 +144,15 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 // OTP CARD
                 Transform.translate(
                   offset: const Offset(0, -130),
-
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 10),
-
                     padding: const EdgeInsets.symmetric(
                       horizontal: 18,
                       vertical: 22,
                     ),
-
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(10),
-
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.08),
@@ -154,38 +161,30 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         ),
                       ],
                     ),
-
                     child: Column(
                       children: [
                         // TITLE
                         Text(
                           "OTP Verification",
-
                           style: GoogleFonts.inter(
                             fontSize: 13.5.sp,
                             fontWeight: FontWeight.w600,
                             color: const Color(0xFF000000),
                           ),
                         ),
-
                         SizedBox(height: 12.h),
-
                         // DESCRIPTION
                         Text(
                           "Enter the one-time password sent to your\nregistered mobile number or email to securely\naccess your account.",
-
                           textAlign: TextAlign.center,
-
                           style: GoogleFonts.inter(
                             fontSize: 12.sp,
                             fontWeight: FontWeight.w400,
                             color: const Color(0xFF7B7B7B),
                           ),
                         ),
-
                         SizedBox(height: 22.h),
 
-                        // OTP BOXES
                         // OTP BOXES
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -195,72 +194,51 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 5,
                               ),
-
                               child: SizedBox(
                                 width: 42,
                                 height: 42,
-
                                 child: TextFormField(
                                   controller: otpControllers[index],
-
                                   textAlign: TextAlign.center,
                                   textAlignVertical: TextAlignVertical.center,
-
                                   keyboardType: TextInputType.number,
-
                                   inputFormatters: [
                                     FilteringTextInputFormatter.digitsOnly,
-                                    LengthLimitingTextInputFormatter(
-                                      1,
-                                    ), // ONLY 1 NUMBER
+                                    LengthLimitingTextInputFormatter(1),
                                   ],
-
                                   maxLength: 1,
-
                                   style: GoogleFonts.inter(
                                     fontSize: 14.sp,
                                     fontWeight: FontWeight.w600,
                                     color: const Color(0xFF0A0258),
                                   ),
-
                                   decoration: InputDecoration(
                                     counterText: "",
-
                                     isDense: true,
-
                                     filled: true,
                                     fillColor: const Color(0xFFF7F8FA),
-
                                     contentPadding: const EdgeInsets.only(
                                       top: 10,
                                       bottom: 10,
                                     ),
-
                                     enabledBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(6.r),
-
                                       borderSide: const BorderSide(
                                         color: Color(0xFFD8DCE3),
                                       ),
                                     ),
-
                                     focusedBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(6.r),
-
                                       borderSide: BorderSide(
-                                        color: Color(0xFF0A0258),
+                                        color: const Color(0xFF0A0258),
                                         width: 1.2.w,
                                       ),
                                     ),
                                   ),
-
                                   onChanged: (value) {
-                                    // NEXT BOX
                                     if (value.isNotEmpty && index < 5) {
                                       FocusScope.of(context).nextFocus();
                                     }
-
-                                    // BACK TO PREVIOUS
                                     if (value.isEmpty && index > 0) {
                                       FocusScope.of(context).previousFocus();
                                     }
@@ -270,16 +248,13 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             ),
                           ),
                         ),
-
                         SizedBox(height: 12.h),
 
                         // TIMER
                         Align(
                           alignment: Alignment.centerRight,
-
                           child: Text(
                             "00:60 sec",
-
                             style: GoogleFonts.inter(
                               fontSize: 11.sp,
                               color: const Color(0xFF7B7B7B),
@@ -287,46 +262,92 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             ),
                           ),
                         ),
-
                         SizedBox(height: 12.h),
 
                         // VERIFY BUTTON
                         SizedBox(
                           width: double.infinity,
                           height: 42,
-
                           child: ElevatedButton(
-                            onPressed: () {
-                              // CHECK EMPTY OTP
-                              bool isOtpComplete = otpControllers.every(
-                                (controller) =>
-                                    controller.text.trim().isNotEmpty,
-                              );
+                            // 1. Disable button press if controller is executing a request
+                            onPressed: _loginController.isLoading
+                                ? null
+                                : () async {
+                                    bool isOtpComplete = otpControllers.every(
+                                      (controller) =>
+                                          controller.text.trim().isNotEmpty,
+                                    );
 
-                              if (!isOtpComplete) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text("Please enter complete OTP"),
-                                  ),
-                                );
+                                    if (!isOtpComplete) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            "Please enter complete OTP",
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
 
-                                return;
-                              }
+                                    // 2. Combine the 6 boxes into a single string parameter
+                                    String completeOtp = otpControllers
+                                        .map((c) => c.text.trim())
+                                        .join();
 
-                              // SUCCESS
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => LoginConfirmationScreen(),
-                                ),
-                              );
-                            },
+                                    print(
+                                      "Complete OTP entered: $completeOtp",
+                                    ); // Debug log for OTP value
 
+                                    // 3. Fire request using both OTP and cached phoneNumber
+                                    final userModel = await _loginController
+                                        .handleVerifyOtp(otp: completeOtp);
+
+                                    if (!mounted) return;
+
+                                    if (userModel != null) {
+                                      // Greet user with their extracted name parameter
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            "Welcome back, ${userModel.firstName}!",
+                                          ),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
+
+                                      Navigator.pushReplacement(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              const LoginConfirmationScreen(),
+                                        ),
+                                      );
+                                    } else if (_loginController.errorMessage !=
+                                        null) {
+                                      print(
+                                        "OTP Verification Failed: ${_loginController.errorMessage}",
+                                      ); // Debug log for error message
+                                      // Display error extracted by our new stack-trace parser
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            _loginController.errorMessage!,
+                                          ),
+                                          backgroundColor: Colors.redAccent,
+                                        ),
+                                      );
+                                    }
+                                  },
                             style:
                                 ElevatedButton.styleFrom(
                                   elevation: 0,
                                   padding: EdgeInsets.zero,
-
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8.r),
                                   ),
@@ -335,11 +356,10 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                     Colors.transparent,
                                   ),
                                 ),
-
+                            // 4. Switch to white loader inline if async loading state triggers
                             child: Ink(
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(8.r),
-
                                 gradient: const LinearGradient(
                                   colors: [
                                     Color(0xFF45D6C4),
@@ -348,27 +368,32 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                   ],
                                 ),
                               ),
-
                               child: Container(
                                 alignment: Alignment.center,
-
-                                child: Text(
-                                  "Verify Code",
-
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12.sp,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                ),
+                                child: _loginController.isLoading
+                                    ? SizedBox(
+                                        height: 18.h,
+                                        width: 18.h,
+                                        child: const CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : Text(
+                                        "Verify Code",
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12.sp,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                      ),
                               ),
                             ),
                           ),
                         ),
-
                         SizedBox(height: 10.h),
 
-                        // RESEND
+                        // RESEND LINK
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -380,23 +405,49 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                 fontWeight: FontWeight.w400,
                               ),
                             ),
-
                             TextButton(
-                              onPressed: () {
-                                // Navigator.pushReplacement(
-                                //   context,
-                                //   MaterialPageRoute(
-                                //     builder: (_) => SignUpScreen(),
-                                //   ),
-                                // );
-                              },
+                              // 5. Connect the Resend endpoint implementation
+                              onPressed: _loginController.isLoading
+                                  ? null
+                                  : () async {
+                                      final isResent = await _loginController
+                                          .handleResendOtp();
 
+                                      if (!mounted) return;
+
+                                      if (isResent &&
+                                          _loginController.successMessage !=
+                                              null) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              _loginController.successMessage!,
+                                            ),
+                                            backgroundColor: Colors.green,
+                                          ),
+                                        );
+                                      } else if (_loginController
+                                              .errorMessage !=
+                                          null) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              _loginController.errorMessage!,
+                                            ),
+                                            backgroundColor: Colors.redAccent,
+                                          ),
+                                        );
+                                      }
+                                    },
                               style: TextButton.styleFrom(
                                 padding: EdgeInsets.zero,
                                 minimumSize: Size.zero,
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
-
                               child: Text(
                                 "Resend",
                                 style: GoogleFonts.inter(

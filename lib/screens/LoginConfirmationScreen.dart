@@ -252,8 +252,9 @@ class LoginConfirmationScreenState extends State<LoginConfirmationScreen>
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) =>
-                                        HomeScreen(userId: ''), // your next screen
+                                    builder: (context) => HomeScreen(
+                                      userId: '',
+                                    ), // your next screen
                                   ),
                                 );
                               },

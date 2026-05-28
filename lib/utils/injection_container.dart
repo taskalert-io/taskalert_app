@@ -27,7 +27,7 @@ Future<void> init() async {
     () => DioHttpService(sl<FlutterSecureStorage>()),
   ); // Inject secure storage into DioHttpService
 
-  sl.registerFactory(() => LoginController(sl<AuthRepository>()));
+  sl.registerLazySingleton(() => LoginController(sl<AuthRepository>()));
 
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(sl<HttpService>(), sl<FlutterSecureStorage>()),

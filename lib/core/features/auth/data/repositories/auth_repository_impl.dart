@@ -6,6 +6,7 @@ import '../../../../network/api_result.dart';
 import '../../../../network/base_api_response.dart';
 import '../../../../network/http_service.dart';
 import '../../../../errors/network_exceptions.dart';
+import '../../data/models/user_model.dart';
 // import '../../core/network/otp_response_model.dart';
 // import '../../core/network/user_model.dart';
 
@@ -78,7 +79,7 @@ class AuthRepositoryImpl implements AuthRepository {
         '/auth/verify-signup-otp',
         body: {
           'email': email,
-          'otp': otp,
+          'otpCode': otp,
           'firstName': firstName,
           'lastName': lastName,
           if (referralCode != null) 'referralCode': referralCode,
@@ -92,9 +93,9 @@ class AuthRepositoryImpl implements AuthRepository {
       if (apiResponse.success && apiResponse.data != null) {
         final user = apiResponse.data!;
         if (user.token != null) {
-          await _secureStorage.write(key: 'auth_token', value: user.token);
+          await _secureStorage.write(key: 'auth_token', value: user.token!);
         }
-        return ApiResult.success(user);
+        return ApiResult.success(apiResponse as UserModel);
       }
       _handleErrorEnvelope(apiResponse);
       return ApiResult.failure(
@@ -167,14 +168,14 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<ApiResult<UserModel>> verifySignInOtp({
-    required String email,
-    required String otp,
+  Future<ApiResult<BaseApiResponse<UserModel>>> verifySignInOtp({
+    required String phoneNumber,
+    required String otpCode,
   }) async {
     try {
       final responseData = await _httpService.post(
         '/auth/verify-signin-otp',
-        body: {'email': email, 'otp': otp},
+        body: {'phoneNumber': phoneNumber, 'otpCode': otpCode},
       );
       final apiResponse = BaseApiResponse.fromJson(
         responseData,
@@ -185,9 +186,36 @@ class AuthRepositoryImpl implements AuthRepository {
         final user = apiResponse.data!;
         // NOTE: Securely storing accessToken upon verification sequence success
         if (user.token != null) {
-          await _secureStorage.write(key: 'auth_token', value: user.token);
+          await _secureStorage.write(key: 'auth_token', value: user.token!);
+          await _secureStorage.write(
+            key: 'refresh_token',
+            value: user.refreshToken ?? '',
+          );
+
+          await _secureStorage.write(key: 'user_id', value: user.id);
+          await _secureStorage.write(key: 'user_email', value: user.email);
+          await _secureStorage.write(
+            key: 'user_phone',
+            value: user.phoneNumber,
+          );
+          await _secureStorage.write(
+            key: 'user_first_name',
+            value: user.firstName,
+          );
+          await _secureStorage.write(
+            key: 'user_last_name',
+            value: user.lastName,
+          );
+          await _secureStorage.write(
+            key: 'user_avatar_original',
+            value: user.originalAvatarUrl ?? '',
+          );
+          await _secureStorage.write(
+            key: 'user_avatar_thumbnail',
+            value: user.thumbnailAvatarUrl ?? '',
+          );
         }
-        return ApiResult.success(user);
+        return ApiResult.success(apiResponse);
       }
       _handleErrorEnvelope(apiResponse);
       return ApiResult.failure(
@@ -203,12 +231,12 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<ApiResult<BaseApiResponse<dynamic>>> resendSignInOtp({
-    required String email,
+    required String phoneNumber,
   }) async {
     try {
       final responseData = await _httpService.post(
         '/auth/resend-signin-otp',
-        body: {'email': email},
+        body: {'phoneNumber': phoneNumber},
       );
       final apiResponse = BaseApiResponse.fromJson(
         responseData,
@@ -266,7 +294,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<ApiResult<UserModel>> getProfile() async {
+  Future<ApiResult<BaseApiResponse<dynamic>>> getProfile() async {
     try {
       // Accessing route with implicit headers derived from the AuthInterceptor setup
       final responseData = await _httpService.get('/auth/profile');
@@ -276,7 +304,7 @@ class AuthRepositoryImpl implements AuthRepository {
       );
 
       if (apiResponse.success && apiResponse.data != null) {
-        return ApiResult.success(apiResponse.data!);
+        return ApiResult.success(apiResponse.data! as BaseApiResponse<dynamic>);
       }
       _handleErrorEnvelope(apiResponse);
       return ApiResult.failure(
@@ -291,7 +319,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<ApiResult<UserModel>> updateProfile({
+  Future<ApiResult<BaseApiResponse<dynamic>>> updateProfile({
     required String firstName,
     required String lastName,
     File? avatarFile,
@@ -321,7 +349,7 @@ class AuthRepositoryImpl implements AuthRepository {
       );
 
       if (apiResponse.success && apiResponse.data != null) {
-        return ApiResult.success(apiResponse.data!);
+        return ApiResult.success(apiResponse.data! as BaseApiResponse<dynamic>);
       }
       _handleErrorEnvelope(apiResponse);
       return ApiResult.failure(
