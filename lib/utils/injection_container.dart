@@ -1,7 +1,12 @@
 import 'package:get_it/get_it.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:taskalert_app/core/features/auth/data/repositories/auth_repository.dart';
+import 'package:taskalert_app/core/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:taskalert_app/core/network/dio_http_service.dart';
 import 'package:taskalert_app/core/network/http_service.dart';
+
+//import login controller for injection
+import 'package:taskalert_app/core/features/auth/controllers/login_controller.dart';
 
 final sl = GetIt.instance; // sl stands for Service Locator
 
@@ -21,4 +26,10 @@ Future<void> init() async {
   sl.registerLazySingleton<HttpService>(
     () => DioHttpService(sl<FlutterSecureStorage>()),
   ); // Inject secure storage into DioHttpService
+
+  sl.registerFactory(() => LoginController(sl<AuthRepository>()));
+
+  sl.registerLazySingleton<AuthRepository>(
+    () => AuthRepositoryImpl(sl<HttpService>(), sl<FlutterSecureStorage>()),
+  ); // Inject HttpService into AuthRepositoryImpl
 }

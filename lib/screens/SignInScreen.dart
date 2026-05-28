@@ -1,7 +1,11 @@
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../utils/injection_container.dart'; // 1. Import your service locator
+import 'package:taskalert_app/core/features/auth/controllers/login_controller.dart'; // 2. Import your controller
 import 'OtpVerificationScreen.dart';
 import 'SignUpScreen.dart';
 
@@ -16,6 +20,28 @@ class SignInScreenState extends State<SignInScreen> {
   final _formKey = GlobalKey<FormState>();
   bool isTermsAccepted = false;
   final phoneController = TextEditingController();
+
+  // 3. Locate your controller instance via dependency injection
+  final _loginController = sl<LoginController>();
+
+  @override
+  void initState() {
+    super.initState();
+    // 4. Attach a listener to re-draw the UI when isLoading or errorMessage changes
+    _loginController.addListener(_onControllerChanged);
+  }
+
+  @override
+  void dispose() {
+    _loginController.removeListener(_onControllerChanged);
+    phoneController.dispose();
+    super.dispose();
+  }
+
+  void _onControllerChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -35,9 +61,7 @@ class SignInScreenState extends State<SignInScreen> {
                 Container(
                   width: double.infinity,
                   height: MediaQuery.of(context).size.height * 0.5,
-
                   decoration: const BoxDecoration(color: Color(0xFF12006C)),
-
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
@@ -54,8 +78,6 @@ class SignInScreenState extends State<SignInScreen> {
                                 bottomLeft: Radius.circular(260.r),
                                 bottomRight: Radius.circular(260.r),
                               ),
-
-                              // USE RADIAL GRADIENT
                               gradient: RadialGradient(
                                 center: Alignment.topCenter,
                                 radius: 1.35.r,
@@ -71,27 +93,22 @@ class SignInScreenState extends State<SignInScreen> {
                           ),
                         ),
                       ),
-
                       Padding(
-                        padding: EdgeInsets.only(
+                        padding: const EdgeInsets.only(
                           left: 10,
                           right: 10,
                           top: 150,
                           bottom: 20,
                         ),
-
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            // LOGO
                             Image.asset(
                               "assets/images/antprolgo.png",
                               fit: BoxFit.cover,
                               width: 200.w,
                             ),
-
                             SizedBox(height: 10.h),
-
                             SizedBox(
                               width: double.infinity,
                               child: Text(
@@ -99,14 +116,12 @@ class SignInScreenState extends State<SignInScreen> {
                                 style: GoogleFonts.inter(
                                   fontSize: 25.sp,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFFFFFFFF),
+                                  color: const Color(0xFFFFFFFF),
                                 ),
                                 textAlign: TextAlign.center,
                               ),
                             ),
-
                             SizedBox(height: 10.h),
-
                             SizedBox(
                               width: double.infinity,
                               child: Text(
@@ -114,12 +129,11 @@ class SignInScreenState extends State<SignInScreen> {
                                 style: GoogleFonts.inter(
                                   fontSize: 12.sp,
                                   fontWeight: FontWeight.w400,
-                                  color: Color(0xFFFFFFFF),
+                                  color: const Color(0xFFFFFFFF),
                                 ),
                                 textAlign: TextAlign.center,
                               ),
                             ),
-
                             SizedBox(height: 45.h),
                           ],
                         ),
@@ -137,7 +151,6 @@ class SignInScreenState extends State<SignInScreen> {
                       horizontal: 22,
                       vertical: 24,
                     ),
-
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(18.r),
@@ -149,33 +162,25 @@ class SignInScreenState extends State<SignInScreen> {
                         ),
                       ],
                     ),
-
-                    // IMPORTANT
                     child: Form(
                       key: _formKey,
-
                       child: Column(
                         children: [
                           // GOOGLE BUTTON
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.symmetric(vertical: 10),
-
                             child: SizedBox(
                               height: 42,
-
                               child: ElevatedButton(
                                 onPressed: () {},
-
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFFD9D9D9),
                                   elevation: 0,
-
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8.r),
                                   ),
                                 ),
-
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
@@ -184,9 +189,7 @@ class SignInScreenState extends State<SignInScreen> {
                                       height: 14.h,
                                       width: 14.w,
                                     ),
-
                                     SizedBox(width: 12.w),
-
                                     Text(
                                       "Continue with Email",
                                       style: GoogleFonts.inter(
@@ -200,7 +203,6 @@ class SignInScreenState extends State<SignInScreen> {
                               ),
                             ),
                           ),
-
                           SizedBox(height: 18.h),
 
                           // OR DIVIDER
@@ -212,12 +214,10 @@ class SignInScreenState extends State<SignInScreen> {
                                   thickness: 1,
                                 ),
                               ),
-
                               Padding(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 10,
                                 ),
-
                                 child: Text(
                                   "Or",
                                   style: GoogleFonts.inter(
@@ -227,7 +227,6 @@ class SignInScreenState extends State<SignInScreen> {
                                   ),
                                 ),
                               ),
-
                               const Expanded(
                                 child: Divider(
                                   color: Color(0xFFE4E7EC),
@@ -236,13 +235,11 @@ class SignInScreenState extends State<SignInScreen> {
                               ),
                             ],
                           ),
-
                           SizedBox(height: 24.h),
 
                           // PHONE LABEL
                           Align(
                             alignment: Alignment.centerLeft,
-
                             child: Text(
                               "Phone Number",
                               style: GoogleFonts.inter(
@@ -251,7 +248,6 @@ class SignInScreenState extends State<SignInScreen> {
                               ),
                             ),
                           ),
-
                           SizedBox(height: 8.h),
 
                           // PHONE FIELD
@@ -259,72 +255,122 @@ class SignInScreenState extends State<SignInScreen> {
                             hint: "",
                             controller: phoneController,
                             keyboardType: TextInputType.phone,
-
                             inputFormatters: [
                               FilteringTextInputFormatter.digitsOnly,
                               LengthLimitingTextInputFormatter(10),
                             ],
-
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
                                 return "Enter phone number";
                               }
-
                               if (value.trim().length != 10) {
                                 return "Enter valid 10 digit phone number";
                               }
-
                               return null;
                             },
                           ),
-
                           SizedBox(height: 10.h),
 
                           // LOGIN BUTTON
                           SizedBox(
                             width: double.infinity,
                             height: 42,
-
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
                                 elevation: 0,
                                 backgroundColor: Colors.white,
                                 foregroundColor: const Color(0xFF2C1AA8),
-
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
-
                                   side: const BorderSide(
                                     color: Color(0xFF2C1AA8),
                                   ),
                                 ),
                               ),
+                              // 5. Disable button interaction while loading
+                              onPressed: _loginController.isLoading
+                                  ? null
+                                  : () async {
+                                      FocusScope.of(context).unfocus();
 
-                              onPressed: () {
-                                FocusScope.of(context).unfocus();
+                                      if (!_formKey.currentState!.validate()) {
+                                        return;
+                                      }
 
-                                // VALIDATION
-                                if (!_formKey.currentState!.validate()) {
-                                  return;
-                                }
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => OtpVerificationScreen(),
-                                  ),
-                                );
-                              },
+                                      // 6. Execute network call via controller
+                                      final isSuccess = await _loginController
+                                          .handlePhoneSignIn(
+                                            phoneNumber: phoneController.text
+                                                .trim(),
+                                          );
 
-                              child: Text(
-                                "Log In",
-                                style: GoogleFonts.inter(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12.sp,
-                                ),
-                              ),
+                                      if (!mounted) return;
+
+                                      if (isSuccess) {
+                                        if (_loginController.successMessage !=
+                                            null) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                _loginController
+                                                    .successMessage!,
+                                              ),
+                                              backgroundColor: Colors
+                                                  .green, // Visual indicator for success
+                                              duration: const Duration(
+                                                seconds: 5,
+                                              ), // Keep it brief so it doesn't slow down the flow
+                                            ),
+                                          );
+                                        }
+                                        // 7. Route clean push on backend success
+                                        Navigator.pushReplacement(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                const OtpVerificationScreen(),
+                                          ),
+                                        );
+                                      } else if (_loginController
+                                              .errorMessage !=
+                                          null) {
+                                        // 8. Safely catch and toast validation errors
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              _loginController.errorMessage!,
+                                            ),
+                                            backgroundColor: Colors.redAccent,
+                                            duration: const Duration(
+                                              seconds: 5,
+                                            ), // Keep it brief so it doesn't slow down the flow
+                                          ),
+                                        );
+                                      }
+                                    },
+                              // 9. Show inline native loader during active requests
+                              child: _loginController.isLoading
+                                  ? SizedBox(
+                                      height: 20.h,
+                                      width: 20.h,
+                                      child: const CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Color(0xFF2C1AA8),
+                                      ),
+                                    )
+                                  : Text(
+                                      "Log In",
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12.sp,
+                                      ),
+                                    ),
                             ),
                           ),
-
                           SizedBox(height: 8.h),
 
                           // SIGN UP
@@ -339,24 +385,21 @@ class SignInScreenState extends State<SignInScreen> {
                                   fontWeight: FontWeight.w400,
                                 ),
                               ),
-
                               TextButton(
                                 onPressed: () {
                                   Navigator.pushReplacement(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (_) => SignUpScreen(),
+                                      builder: (_) => const SignUpScreen(),
                                     ),
                                   );
                                 },
-
                                 style: TextButton.styleFrom(
                                   padding: EdgeInsets.zero,
                                   minimumSize: Size.zero,
                                   tapTargetSize:
                                       MaterialTapTargetSize.shrinkWrap,
                                 ),
-
                                 child: Text(
                                   "Sign Up",
                                   style: GoogleFonts.inter(
@@ -399,62 +442,47 @@ class SignInScreenState extends State<SignInScreen> {
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       autovalidateMode: AutovalidateMode.onUserInteraction,
-
       validator: validator,
-
       style: GoogleFonts.inter(
         fontSize: 12.sp,
         fontWeight: FontWeight.w400,
         color: const Color(0xFF6C7278),
       ),
-
       decoration: InputDecoration(
         isDense: true,
-
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 12,
           vertical: 10,
         ),
-
         hintText: hint,
-
         hintStyle: GoogleFonts.inter(
           fontSize: 12.sp,
           fontWeight: FontWeight.w400,
           color: const Color(0xFFB8BEC5),
         ),
-
         helperText: " ",
         helperStyle: const TextStyle(height: 0),
-
         errorStyle: TextStyle(fontSize: 10.sp, height: 1.h),
-
         prefixIcon: prefix,
         suffixIcon: suffix,
-
         filled: true,
         fillColor: const Color(0xFFF9FAFC),
-
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10.r),
           borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
         ),
-
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10.r),
           borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
         ),
-
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10.r),
           borderSide: const BorderSide(color: Color(0xFF0A0258)),
         ),
-
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10.r),
           borderSide: const BorderSide(color: Colors.red),
         ),
-
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10.r),
           borderSide: const BorderSide(color: Colors.red),

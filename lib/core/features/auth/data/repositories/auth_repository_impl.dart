@@ -1,0 +1,370 @@
+import 'dart:io';
+import 'package:dio/dio.dart' as dio;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'auth_repository.dart';
+import '../../../../network/api_result.dart';
+import '../../../../network/base_api_response.dart';
+import '../../../../network/http_service.dart';
+import '../../../../errors/network_exceptions.dart';
+// import '../../core/network/otp_response_model.dart';
+// import '../../core/network/user_model.dart';
+
+class AuthRepositoryImpl implements AuthRepository {
+  final HttpService _httpService;
+  final FlutterSecureStorage _secureStorage;
+
+  AuthRepositoryImpl(this._httpService, this._secureStorage);
+
+  /// Helper utility to dynamically resolve and throw clean validation errors
+  void _handleErrorEnvelope(BaseApiResponse response) {
+    String errorMessage = response.message;
+    if (response.validationErrors != null &&
+        response.validationErrors!.isNotEmpty) {
+      errorMessage = response.validationErrors!.values.first.toString();
+    }
+    throw NetworkException(
+      errorType: NetworkErrorType.unknown,
+      userMessage: errorMessage,
+    );
+  }
+
+  // =========================================================================
+  // SIGN UP FLOW
+  // =========================================================================
+
+  @override
+  Future<ApiResult<BaseApiResponse<dynamic>>> signUp({
+    required String email,
+    required String phoneNumber,
+    required String password,
+  }) async {
+    try {
+      final responseData = await _httpService.post(
+        '/auth/signup',
+        body: {
+          'email': email,
+          'phoneNumber': phoneNumber,
+          'password': password,
+        },
+      );
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData,
+        (json) => json,
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+      _handleErrorEnvelope(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    }
+  }
+
+  @override
+  Future<ApiResult<UserModel>> verifySignUpOtp({
+    required String email,
+    required String otp,
+    required String firstName,
+    required String lastName,
+    String? referralCode,
+  }) async {
+    try {
+      final responseData = await _httpService.post(
+        '/auth/verify-signup-otp',
+        body: {
+          'email': email,
+          'otp': otp,
+          'firstName': firstName,
+          'lastName': lastName,
+          if (referralCode != null) 'referralCode': referralCode,
+        },
+      );
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData,
+        (json) => UserModel.fromJson(json),
+      );
+
+      if (apiResponse.success && apiResponse.data != null) {
+        final user = apiResponse.data!;
+        if (user.token != null) {
+          await _secureStorage.write(key: 'auth_token', value: user.token);
+        }
+        return ApiResult.success(user);
+      }
+      _handleErrorEnvelope(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    }
+  }
+
+  @override
+  Future<ApiResult<BaseApiResponse<dynamic>>> resendSignUpOtp({
+    required String email,
+  }) async {
+    try {
+      final responseData = await _httpService.post(
+        '/auth/resend-signup-otp',
+        body: {'email': email},
+      );
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData,
+        (json) => json,
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+      _handleErrorEnvelope(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    }
+  }
+
+  // =========================================================================
+  // SIGN IN FLOW
+  // =========================================================================
+
+  @override
+  Future<ApiResult<BaseApiResponse<dynamic>>> signIn({
+    required String phoneNumber, // Mapping phone to email for passwordless flow
+  }) async {
+    try {
+      final responseData = await _httpService.post(
+        '/auth/signin',
+        body: {'phoneNumber': phoneNumber},
+      );
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData,
+        (json) => json,
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+      _handleErrorEnvelope(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    }
+  }
+
+  @override
+  Future<ApiResult<UserModel>> verifySignInOtp({
+    required String email,
+    required String otp,
+  }) async {
+    try {
+      final responseData = await _httpService.post(
+        '/auth/verify-signin-otp',
+        body: {'email': email, 'otp': otp},
+      );
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData,
+        (json) => UserModel.fromJson(json),
+      );
+
+      if (apiResponse.success && apiResponse.data != null) {
+        final user = apiResponse.data!;
+        // NOTE: Securely storing accessToken upon verification sequence success
+        if (user.token != null) {
+          await _secureStorage.write(key: 'auth_token', value: user.token);
+        }
+        return ApiResult.success(user);
+      }
+      _handleErrorEnvelope(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    }
+  }
+
+  @override
+  Future<ApiResult<BaseApiResponse<dynamic>>> resendSignInOtp({
+    required String email,
+  }) async {
+    try {
+      final responseData = await _httpService.post(
+        '/auth/resend-signin-otp',
+        body: {'email': email},
+      );
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData,
+        (json) => json,
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+      _handleErrorEnvelope(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    }
+  }
+
+  // =========================================================================
+  // ROOT-LEVEL & PROFILE MANAGEMENT
+  // =========================================================================
+
+  @override
+  Future<ApiResult<String>> refreshToken({
+    required String currentRefreshToken,
+  }) async {
+    try {
+      final responseData = await _httpService.post(
+        '/auth/refresh-token',
+        body: {'refreshToken': currentRefreshToken},
+      );
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData,
+        (json) => json,
+      );
+
+      if (apiResponse.success &&
+          apiResponse.data != null &&
+          apiResponse.data?['accessToken'] != null) {
+        final newAccessToken = apiResponse.data?['accessToken'].toString();
+        await _secureStorage.write(key: 'auth_token', value: newAccessToken);
+        return ApiResult.success(newAccessToken!);
+      }
+      _handleErrorEnvelope(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    }
+  }
+
+  @override
+  Future<ApiResult<UserModel>> getProfile() async {
+    try {
+      // Accessing route with implicit headers derived from the AuthInterceptor setup
+      final responseData = await _httpService.get('/auth/profile');
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData,
+        (json) => UserModel.fromJson(json),
+      );
+
+      if (apiResponse.success && apiResponse.data != null) {
+        return ApiResult.success(apiResponse.data!);
+      }
+      _handleErrorEnvelope(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    }
+  }
+
+  @override
+  Future<ApiResult<UserModel>> updateProfile({
+    required String firstName,
+    required String lastName,
+    File? avatarFile,
+  }) async {
+    try {
+      // Use Multi-part construction for form-data support
+      final Map<String, dynamic> formMap = {
+        'firstName': firstName,
+        'lastName': lastName,
+      };
+
+      if (avatarFile != null) {
+        formMap['avatar'] = await dio.MultipartFile.fromFile(
+          avatarFile.path,
+          filename: avatarFile.path.split('/').last,
+        );
+      }
+
+      final formData = dio.FormData.fromMap(formMap);
+      final responseData = await _httpService.post(
+        '/auth/profile/update',
+        body: formData,
+      );
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData,
+        (json) => UserModel.fromJson(json),
+      );
+
+      if (apiResponse.success && apiResponse.data != null) {
+        return ApiResult.success(apiResponse.data!);
+      }
+      _handleErrorEnvelope(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    }
+  }
+
+  @override
+  Future<ApiResult<BaseApiResponse<dynamic>>> updatePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final responseData = await _httpService.put(
+        '/auth/profile/password',
+        body: {'oldPassword': oldPassword, 'newPassword': newPassword},
+      );
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData,
+        (json) => json,
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+      _handleErrorEnvelope(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    }
+  }
+
+  @override
+  Future<void> logout() async {
+    await _secureStorage.deleteAll();
+  }
+}
