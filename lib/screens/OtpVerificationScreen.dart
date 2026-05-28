@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -16,6 +17,53 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
     6,
     (_) => TextEditingController(),
   );
+  int secondsRemaining = 60;
+  Timer? timer;
+
+  @override
+  void initState() {
+    super.initState();
+
+    startTimer();
+  }
+
+  void startTimer() {
+    /// CANCEL OLD TIMER
+    timer?.cancel();
+
+    /// RESET TIMER
+    setState(() {
+      secondsRemaining = 60;
+    });
+
+    timer = Timer.periodic(
+      const Duration(seconds: 1),
+          (Timer t) {
+        if (!mounted) return;
+
+        if (secondsRemaining <= 1) {
+          t.cancel();
+
+          setState(() {
+            secondsRemaining = 0;
+          });
+        } else {
+          setState(() {
+            secondsRemaining--;
+          });
+        }
+      },
+    );
+  }
+  @override
+  void dispose() {
+    timer?.cancel();
+    /// DISPOSE OTP CONTROLLERS
+    for (final controller in otpControllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -276,7 +324,9 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           alignment: Alignment.centerRight,
 
                           child: Text(
-                            "00:60 sec",
+                            secondsRemaining > 0
+                                ? "00:${secondsRemaining.toString().padLeft(2, '0')} sec"
+                                : "00:00 sec",
 
                             style: GoogleFonts.inter(
                               fontSize: 11.sp,
@@ -380,14 +430,13 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             ),
 
                             TextButton(
-                              onPressed: () {
-                                // Navigator.pushReplacement(
-                                //   context,
-                                //   MaterialPageRoute(
-                                //     builder: (_) => SignUpScreen(),
-                                //   ),
-                                // );
-                              },
+                              onPressed: secondsRemaining == 0
+                                  ? () {
+                                /// API CALL FOR RESEND OTP HERE
+
+                                startTimer();
+                              }
+                                  : null,
 
                               style: TextButton.styleFrom(
                                 padding: EdgeInsets.zero,
@@ -397,12 +446,17 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
                               child: Text(
                                 "Resend",
+
                                 style: GoogleFonts.inter(
                                   fontSize: 12.sp,
-                                  color: const Color(0xFF4D81E7),
+                                  color: secondsRemaining == 0
+                                      ? const Color(0xFF4D81E7)
+                                      : Colors.grey,
                                   fontWeight: FontWeight.w500,
                                   decoration: TextDecoration.underline,
-                                  decorationColor: const Color(0xFF4D81E7),
+                                  decorationColor: secondsRemaining == 0
+                                      ? const Color(0xFF4D81E7)
+                                      : Colors.grey,
                                 ),
                               ),
                             ),

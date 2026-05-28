@@ -17,6 +17,11 @@ class SignInScreenState extends State<SignInScreen> {
   bool isTermsAccepted = false;
   final phoneController = TextEditingController();
   @override
+  void dispose() {
+    phoneController.dispose();
+    super.dispose();
+  }
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: GestureDetector(

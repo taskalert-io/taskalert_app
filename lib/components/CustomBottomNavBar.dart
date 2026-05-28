@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../extras/MoreScreen.dart';
 import '../extras/MyTaskScreen.dart';
@@ -20,176 +20,209 @@ class CustomBottomNavBar extends StatefulWidget {
 }
 
 class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
+  final FlutterSecureStorage secureStorage =
+  const FlutterSecureStorage();
+
   String memberName = '';
   int? hoverIndex;
+
+  late final List<Map<String, dynamic>> items;
 
   @override
   void initState() {
     super.initState();
+
+    items = [
+      {
+        'icon': Icons.home_rounded,
+        'label': 'Home',
+      },
+
+      {
+        'icon': Icons.fact_check_outlined,
+        'label': 'My Task',
+      },
+
+      {
+        'icon': Icons.notifications_none_rounded,
+        'label': 'Notification',
+      },
+
+      {
+        'icon': Icons.more_horiz_rounded,
+        'label': 'More',
+      },
+    ];
+
     _loadMemberName();
   }
 
   Future<void> _loadMemberName() async {
-    final prefs = await SharedPreferences.getInstance();
+    final storedName = await secureStorage.read(
+      key: 'user_name',
+    );
+
+    if (!mounted) return;
 
     setState(() {
-      memberName = prefs.getString('user_name') ?? 'Guest';
+      memberName = storedName ?? 'Guest';
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final double bottomPadding = MediaQuery.of(context).padding.bottom;
-    return FutureBuilder(
-      future: SharedPreferences.getInstance(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const SizedBox(); // Show nothing until SharedPreferences is loaded
-        }
-        List<Map<String, dynamic>> items = [
-          {
-            'icon': Icons.home_rounded,
-            'label': 'Home',
-            'route': HomeScreen(userId: ''),
-          },
+    final double bottomPadding =
+        MediaQuery.of(context).padding.bottom;
 
-          {
-            'icon': Icons.fact_check_outlined,
-            'label': 'My Task',
-            'route': MyTaskScreen(),
-          },
+    return Container(
+      width: double.infinity,
 
-          {
-            'icon': Icons.notifications_none_rounded,
-            'label': 'Notification',
-            'route': NotificationScreen(),
-          },
+      padding: EdgeInsets.fromLTRB(
+        8.w,
+        8.h,
+        8.w,
+        6.h + bottomPadding,
+      ),
 
-          {
-            'icon': Icons.more_horiz_rounded,
-            'label': 'More',
-            'route': MoreScreen(),
-          },
-        ];
+      decoration: BoxDecoration(
+        color: Colors.white,
 
-        return Container(
-          width: double.infinity,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(24.r),
+          topRight: Radius.circular(24.r),
+        ),
 
-          padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 6.h + bottomPadding),
-
-          decoration: BoxDecoration(
-            color: Colors.white,
-
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(24.r),
-              topRight: Radius.circular(24.r),
-            ),
-
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 15.r,
-                offset: const Offset(0, -2),
-              ),
-            ],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 15.r,
+            offset: const Offset(0, -2),
           ),
+        ],
+      ),
 
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
 
-            children: List.generate(items.length, (index) {
-              bool isSelected = widget.selectedIndex == index;
+        children: List.generate(items.length, (index) {
+          bool isSelected =
+              widget.selectedIndex == index;
 
-              return Expanded(
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(14.r),
+          return Expanded(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14.r),
 
-                  onTap: () {
-                    if (!isSelected) {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => items[index]['route'],
-                        ),
-                      );
-                    }
-                  },
+              onTap: () {
+                if (isSelected) return;
 
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 4.h),
+                Widget screen;
 
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
+                switch (index) {
+                  case 0:
+                    screen = HomeScreen(userId: '');
+                    break;
 
-                      children: [
-                        isSelected
-                            ? ShaderMask(
-                                shaderCallback: (bounds) =>
-                                    const LinearGradient(
-                                      colors: [
-                                        Color(0xFF52EBB9),
-                                        Color(0xFF42A8FF),
-                                        Color(0xFFF15EFF),
-                                      ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ).createShader(bounds),
+                  case 1:
+                    screen = MyTaskScreen();
+                    break;
 
-                                child: Icon(
-                                  items[index]['icon'],
-                                  size: 22.r,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Icon(
-                                items[index]['icon'],
-                                size: 22.r,
-                                color: const Color(0xFF667085),
-                              ),
+                  case 2:
+                    screen = NotificationScreen();
+                    break;
 
-                        SizedBox(height: 3.h),
+                  case 3:
+                    screen = MoreScreen();
+                    break;
 
-                        isSelected
-                            ? ShaderMask(
-                                shaderCallback: (bounds) =>
-                                    const LinearGradient(
-                                      colors: [
-                                        Color(0xFF52EBB9),
-                                        Color(0xFF42A8FF),
-                                        Color(0xFFF15EFF),
-                                      ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ).createShader(bounds),
+                  default:
+                    screen = HomeScreen(userId: '');
+                }
 
-                                child: Text(
-                                  items[index]['label'],
-
-                                  style: GoogleFonts.inter(
-                                    fontSize: 10.sp,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              )
-                            : Text(
-                                items[index]['label'],
-
-                                style: GoogleFonts.inter(
-                                  fontSize: 10.sp,
-                                  fontWeight: FontWeight.w500,
-                                  color: const Color(0xFF667085),
-                                ),
-                              ),
-                      ],
-                    ),
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => screen,
                   ),
+                );
+              },
+
+              child: Padding(
+                padding:
+                EdgeInsets.symmetric(vertical: 4.h),
+
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+
+                  children: [
+                    isSelected
+                        ? ShaderMask(
+                      shaderCallback: (bounds) =>
+                          const LinearGradient(
+                            colors: [
+                              Color(0xFF52EBB9),
+                              Color(0xFF42A8FF),
+                              Color(0xFFF15EFF),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ).createShader(bounds),
+
+                      child: Icon(
+                        items[index]['icon'],
+                        size: 22.r,
+                        color: Colors.white,
+                      ),
+                    )
+                        : Icon(
+                      items[index]['icon'],
+                      size: 22.r,
+                      color: const Color(0xFF667085),
+                    ),
+
+                    SizedBox(height: 3.h),
+
+                    isSelected
+                        ? ShaderMask(
+                      shaderCallback: (bounds) =>
+                          const LinearGradient(
+                            colors: [
+                              Color(0xFF52EBB9),
+                              Color(0xFF42A8FF),
+                              Color(0xFFF15EFF),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ).createShader(bounds),
+
+                      child: Text(
+                        items[index]['label'],
+
+                        style: GoogleFonts.inter(
+                          fontSize: 10.sp,
+                          fontWeight:
+                          FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    )
+                        : Text(
+                      items[index]['label'],
+
+                      style: GoogleFonts.inter(
+                        fontSize: 10.sp,
+                        fontWeight:
+                        FontWeight.w500,
+                        color:
+                        const Color(0xFF667085),
+                      ),
+                    ),
+                  ],
                 ),
-              );
-            }),
-          ),
-        );
-      },
+              ),
+            ),
+          );
+        }),
+      ),
     );
   }
 }

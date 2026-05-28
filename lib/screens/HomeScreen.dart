@@ -48,11 +48,21 @@ class HomeScreenState extends State<HomeScreen> {
     },
   ];
 
-  int todoCurrentPage = 0;
+  final ValueNotifier<int> currentPageNotifier = ValueNotifier<int>(1000);
 
-  int currentPage = 1000;
+  final ValueNotifier<int> todoCurrentPageNotifier = ValueNotifier<int>(0);
   String selectedSort = "All";
   String selectedWorkspaceType = "";
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _todoController.dispose();
+
+    currentPageNotifier.dispose();
+    todoCurrentPageNotifier.dispose();
+
+    super.dispose();
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -138,43 +148,45 @@ class HomeScreenState extends State<HomeScreen> {
                       SizedBox(
                         height: 105.h,
 
-                        child: PageView.builder(
-                          controller: _pageController,
+                        child: ValueListenableBuilder<int>(
+                          valueListenable: currentPageNotifier,
 
-                          itemCount: null,
+                          builder: (context, currentPage, child) {
+                            return PageView.builder(
+                              controller: _pageController,
 
-                          onPageChanged: (index) {
-                            setState(() {
-                              currentPage = index;
-                            });
-                          },
+                              itemCount: null,
 
-                          itemBuilder: (context, index) {
-                            final realIndex = index % workList.length;
-
-                            final item = workList[realIndex];
-
-                            return GestureDetector(
-                              onTap: () {
-                                _pageController.animateToPage(
-                                  index,
-                                  duration: const Duration(milliseconds: 300),
-                                  curve: Curves.easeInOut,
-                                );
-
-                                setState(() {
-                                  currentPage = index;
-                                });
+                              onPageChanged: (index) {
+                                currentPageNotifier.value = index;
                               },
 
-                              child: Center(
-                                child: _buildCard(
-                                  number: item["number"]!,
-                                  title: item["title"]!,
-                                  isActive:
-                                  currentPage % workList.length == realIndex,
-                                ),
-                              ),
+                              itemBuilder: (context, index) {
+                                final realIndex = index % workList.length;
+
+                                final item = workList[realIndex];
+
+                                return GestureDetector(
+                                  onTap: () {
+                                    _pageController.animateToPage(
+                                      index,
+                                      duration: const Duration(milliseconds: 300),
+                                      curve: Curves.easeInOut,
+                                    );
+
+                                    currentPageNotifier.value = index;
+                                  },
+
+                                  child: Center(
+                                    child: _buildCard(
+                                      number: item["number"]!,
+                                      title: item["title"]!,
+                                      isActive:
+                                      currentPage % workList.length == realIndex,
+                                    ),
+                                  ),
+                                );
+                              },
                             );
                           },
                         ),
@@ -187,34 +199,42 @@ class HomeScreenState extends State<HomeScreen> {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 12),
 
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        child: ValueListenableBuilder<int>(
+                          valueListenable: currentPageNotifier,
 
-                          children: List.generate(
-                            workList.length,
-                                (index) => GestureDetector(
-                              onTap: () {
-                                final targetPage =
-                                    currentPage -
-                                        (currentPage % workList.length) +
-                                        index;
+                          builder: (context, currentPage, child) {
+                            return Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
 
-                                _pageController.animateToPage(
-                                  targetPage,
-                                  duration: const Duration(milliseconds: 300),
-                                  curve: Curves.easeInOut,
-                                );
-                              },
+                              children: List.generate(
+                                workList.length,
+                                    (index) => GestureDetector(
+                                  onTap: () {
+                                    final targetPage =
+                                        currentPage -
+                                            (currentPage % workList.length) +
+                                            index;
 
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 3),
+                                    _pageController.animateToPage(
+                                      targetPage,
+                                      duration: const Duration(milliseconds: 300),
+                                      curve: Curves.easeInOut,
+                                    );
 
-                                child: _dot(
-                                  currentPage % workList.length == index,
+                                    currentPageNotifier.value = targetPage;
+                                  },
+
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 3),
+
+                                    child: _dot(
+                                      currentPage % workList.length == index,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
+                            );
+                          },
                         ),
                       ),
                     ],
@@ -346,9 +366,7 @@ class HomeScreenState extends State<HomeScreen> {
                           controller: _todoController,
 
                           onPageChanged: (index) {
-                            setState(() {
-                              todoCurrentPage = index;
-                            });
+                            todoCurrentPageNotifier.value = index;
                           },
 
                           children: [
@@ -513,33 +531,35 @@ class HomeScreenState extends State<HomeScreen> {
                       ),
 
                       /// DOTS
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      ValueListenableBuilder<int>(
+                        valueListenable: todoCurrentPageNotifier,
 
-                        children: List.generate(
-                          3,
-                          (index) => GestureDetector(
-                            onTap: () {
-                              _todoController.animateToPage(
-                                index,
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                              );
+                        builder: (context, todoCurrentPage, child) {
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
 
-                              setState(() {
-                                todoCurrentPage = index;
-                              });
-                            },
+                            children: List.generate(
+                              3,
+                                  (index) => GestureDetector(
+                                onTap: () {
+                                  _todoController.animateToPage(
+                                    index,
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut,
+                                  );
 
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 3,
+                                  todoCurrentPageNotifier.value = index;
+                                },
+
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 3),
+
+                                  child: _dot(todoCurrentPage == index),
+                                ),
                               ),
-
-                              child: _dot(todoCurrentPage == index),
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       ),
                     ],
                   ),

@@ -132,6 +132,30 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     dueTimeController.text = "12:00";
   }
 
+  @override
+  void dispose() {
+    assignDateController.dispose();
+    assignTimeController.dispose();
+
+    dueDateController.dispose();
+    dueTimeController.dispose();
+
+    startDateController.dispose();
+    endDateController.dispose();
+
+    titleNameController.dispose();
+
+    dayController.dispose();
+    monthController.dispose();
+    yearController.dispose();
+
+    dayFocus.dispose();
+    monthFocus.dispose();
+    yearFocus.dispose();
+
+    super.dispose();
+  }
+
   /// SYNCFUSION DATE PICKER
   /// COMMON SYNCFUSION DATE PICKER
   void showCustomDatePicker({
