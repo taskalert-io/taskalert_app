@@ -132,6 +132,7 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
+                            SizedBox(height: 30,),
                             // LOGO
                             Image.asset(
                               "assets/images/antprolgo.png",

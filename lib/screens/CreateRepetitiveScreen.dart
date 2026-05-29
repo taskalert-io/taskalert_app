@@ -66,6 +66,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
   bool isDobError = false;
   List<String> selectedFiles = [];
 
+  String? fileError;
   Future<void> pickFiles() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       allowMultiple: true,
@@ -82,14 +83,19 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       ],
     );
 
-    // if (result != null) {
-    //   setState(() {
-    //     selectedFiles = result.paths.map((e) => e ?? "").toList();
-    //   });
-    // }
     if (result != null && result.files.isNotEmpty) {
+      List<String> newFiles = result.files.map((file) => file.name).toList();
+
+      if ((selectedFiles.length + newFiles.length) > 5) {
+        setState(() {
+          fileError = "Maximum 5 files are allowed";
+        });
+        return;
+      }
+
       setState(() {
-        selectedFiles = result.files.map((file) => file.name).toList();
+        selectedFiles.addAll(newFiles);
+        fileError = null;
       });
     }
   }
@@ -1181,31 +1187,26 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
                             GestureDetector(
                               onTap: pickFiles,
-
                               child: Container(
                                 width: double.infinity,
-
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 28,
                                 ),
-
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFF9FAFF),
-
                                   borderRadius: BorderRadius.circular(8.r),
-
                                   border: Border.all(
-                                    color: const Color(0xFFB9C3FF),
+                                    color: fileError != null
+                                        ? Colors.red
+                                        : const Color(0xFFB9C3FF),
                                   ),
                                 ),
-
                                 child: Column(
                                   children: [
                                     Text(
                                       "Drag & drop your file(s) here or",
-
                                       style: GoogleFonts.inter(
-                                        color: Color(0xFF797979),
+                                        color: const Color(0xFF797979),
                                         fontSize: 11.sp,
                                       ),
                                     ),
@@ -1214,12 +1215,9 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
                                     Text(
                                       "Browse",
-
                                       style: GoogleFonts.inter(
                                         color: const Color(0xFF304DDB),
-
                                         fontWeight: FontWeight.w600,
-
                                         decoration: TextDecoration.underline,
                                       ),
                                     ),
@@ -1228,143 +1226,136 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                               ),
                             ),
 
-                            Padding(
-                              padding: EdgeInsets.only(top: 14.h),
+                            // Validation Error
+                            if (fileError != null)
+                              Padding(
+                                padding: EdgeInsets.only(top: 6.h, left: 4.w),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    fileError!,
+                                    style: GoogleFonts.inter(
+                                      color: Colors.red,
+                                      fontSize: 11.sp,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ),
 
-                              child: Column(
-                                children: [
-                                  /// FILE LIST
-                                  if (selectedFiles.isNotEmpty)
-                                    Column(
-                                      children: List.generate(selectedFiles.length, (
-                                        index,
+                            // File list
+                            if (selectedFiles.isNotEmpty)
+                              Padding(
+                                padding: EdgeInsets.only(top: 14.h),
+                                child: Column(
+                                  children: List.generate(selectedFiles.length, (
+                                      index,
                                       ) {
-                                        final fileName = selectedFiles[index];
+                                    final fileName = selectedFiles[index];
+                                    final progress = 1.0;
 
-                                        final progress = index == 0
-                                            ? 0.30
-                                            : 0.82;
-
-                                        return Container(
-                                          margin: EdgeInsets.only(bottom: 10.h),
-
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: 10.w,
-                                            vertical: 10.h,
-                                          ),
-
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-
-                                            borderRadius: BorderRadius.circular(
-                                              8.r,
-                                            ),
-
-                                            border: Border.all(
-                                              color: const Color(0xFFE4E7EC),
-                                            ),
-                                          ),
-
-                                          child: Column(
+                                    return Container(
+                                      margin: EdgeInsets.only(bottom: 10.h),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 10.w,
+                                        vertical: 10.h,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(
+                                          8.r,
+                                        ),
+                                        border: Border.all(
+                                          color: const Color(0xFFE4E7EC),
+                                        ),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Row(
                                             children: [
-                                              /// TOP ROW
-                                              Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons
-                                                        .insert_drive_file_outlined,
-                                                    size: 18.r,
+                                              Icon(
+                                                Icons
+                                                    .insert_drive_file_outlined,
+                                                size: 18.r,
+                                                color: const Color(
+                                                  0xFF667085,
+                                                ),
+                                              ),
+                                              SizedBox(width: 8.w),
+
+                                              Expanded(
+                                                child: Text(
+                                                  fileName,
+                                                  overflow:
+                                                  TextOverflow.ellipsis,
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 11.sp,
+                                                    fontWeight:
+                                                    FontWeight.w500,
                                                     color: const Color(
-                                                      0xFF667085,
+                                                      0xFF475467,
                                                     ),
                                                   ),
-
-                                                  SizedBox(width: 8.w),
-
-                                                  Expanded(
-                                                    child: Text(
-                                                      fileName,
-
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-
-                                                      style: GoogleFonts.inter(
-                                                        fontSize: 11.sp,
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                        color: const Color(
-                                                          0xFF475467,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-
-                                                  SizedBox(width: 10.w),
-
-                                                  Text(
-                                                    "${(progress * 100).toInt()}%",
-
-                                                    style: GoogleFonts.inter(
-                                                      fontSize: 11.sp,
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                      color: const Color(
-                                                        0xFF667085,
-                                                      ),
-                                                    ),
-                                                  ),
-
-                                                  SizedBox(width: 6.w),
-
-                                                  GestureDetector(
-                                                    onTap: () {
-                                                      setState(() {
-                                                        selectedFiles.removeAt(
-                                                          index,
-                                                        );
-                                                      });
-                                                    },
-
-                                                    child: Icon(
-                                                      Icons.close,
-                                                      size: 15.r,
-                                                      color: const Color(
-                                                        0xFF98A2B3,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
+                                                ),
                                               ),
 
-                                              SizedBox(height: 8.h),
+                                              SizedBox(width: 10.w),
 
-                                              /// PROGRESS BAR
-                                              ClipRRect(
-                                                borderRadius:
-                                                    BorderRadius.circular(20.r),
-
-                                                child: LinearProgressIndicator(
-                                                  value: progress,
-                                                  minHeight: 2.5.h,
-
-                                                  backgroundColor: const Color(
-                                                    0xFFE4E7EC,
+                                              Text(
+                                                "${(progress * 100).toInt()}%",
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 11.sp,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: const Color(
+                                                    0xFF667085,
                                                   ),
+                                                ),
+                                              ),
 
-                                                  valueColor:
-                                                      const AlwaysStoppedAnimation(
-                                                        Color(0xFF4F6EF7),
-                                                      ),
+                                              SizedBox(width: 6.w),
+
+                                              InkWell(
+                                                borderRadius: BorderRadius.circular(20.r),
+                                                onTap: () {
+                                                  setState(() {
+                                                    selectedFiles.removeAt(index);
+                                                  });
+                                                },
+                                                child: Padding(
+                                                  padding: EdgeInsets.all(8.r),
+                                                  child: Icon(
+                                                    Icons.close,
+                                                    size: 15.r,
+                                                    color: const Color(0xFF98A2B3),
+                                                  ),
                                                 ),
                                               ),
                                             ],
                                           ),
-                                        );
-                                      }),
-                                    ),
-                                ],
+
+                                          SizedBox(height: 8.h),
+
+                                          ClipRRect(
+                                            borderRadius:
+                                            BorderRadius.circular(20.r),
+                                            child: LinearProgressIndicator(
+                                              value: progress,
+                                              minHeight: 2.5.h,
+                                              backgroundColor: const Color(
+                                                0xFFE4E7EC,
+                                              ),
+                                              valueColor:
+                                              const AlwaysStoppedAnimation(
+                                                Color(0xFF4F6EF7),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }),
+                                ),
                               ),
-                            ),
                           ],
                         ),
                       ),

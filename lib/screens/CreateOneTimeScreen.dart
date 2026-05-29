@@ -261,6 +261,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     );
   }
 
+  String? fileError;
   Future<void> pickFiles() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       allowMultiple: true,
@@ -276,9 +277,20 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
         'mp4',
       ],
     );
+
     if (result != null && result.files.isNotEmpty) {
+      List<String> newFiles = result.files.map((file) => file.name).toList();
+
+      if ((selectedFiles.length + newFiles.length) > 5) {
+        setState(() {
+          fileError = "Maximum 5 files are allowed";
+        });
+        return;
+      }
+
       setState(() {
-        selectedFiles = result.files.map((file) => file.name).toList();
+        selectedFiles.addAll(newFiles);
+        fileError = null;
       });
     }
   }
@@ -407,7 +419,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                          CrossAxisAlignment.start,
 
                                       children: [
                                         _buildLabel("Assign Date"),
@@ -446,7 +458,9 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
 
                                                 hintStyle: GoogleFonts.inter(
                                                   fontSize: 12.sp,
-                                                  color: const Color(0xFFB8BEC5),
+                                                  color: const Color(
+                                                    0xFFB8BEC5,
+                                                  ),
                                                 ),
 
                                                 isDense: true,
@@ -457,10 +471,10 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                                 ),
 
                                                 contentPadding:
-                                                EdgeInsets.symmetric(
-                                                  horizontal: 10.w,
-                                                  vertical: 10.h,
-                                                ),
+                                                    EdgeInsets.symmetric(
+                                                      horizontal: 10.w,
+                                                      vertical: 10.h,
+                                                    ),
 
                                                 suffixIcon: Padding(
                                                   padding: EdgeInsets.only(
@@ -477,36 +491,50 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                                 ),
 
                                                 suffixIconConstraints:
-                                                BoxConstraints(
-                                                  minWidth: 30.w,
-                                                ),
+                                                    BoxConstraints(
+                                                      minWidth: 30.w,
+                                                    ),
 
                                                 border: OutlineInputBorder(
                                                   borderRadius:
-                                                  BorderRadius.circular(10.r),
+                                                      BorderRadius.circular(
+                                                        10.r,
+                                                      ),
 
                                                   borderSide: const BorderSide(
                                                     color: Color(0xFFD9DEE5),
                                                   ),
                                                 ),
 
-                                                enabledBorder: OutlineInputBorder(
-                                                  borderRadius:
-                                                  BorderRadius.circular(10.r),
+                                                enabledBorder:
+                                                    OutlineInputBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            10.r,
+                                                          ),
 
-                                                  borderSide: const BorderSide(
-                                                    color: Color(0xFFD9DEE5),
-                                                  ),
-                                                ),
+                                                      borderSide:
+                                                          const BorderSide(
+                                                            color: Color(
+                                                              0xFFD9DEE5,
+                                                            ),
+                                                          ),
+                                                    ),
 
-                                                focusedBorder: OutlineInputBorder(
-                                                  borderRadius:
-                                                  BorderRadius.circular(10.r),
+                                                focusedBorder:
+                                                    OutlineInputBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            10.r,
+                                                          ),
 
-                                                  borderSide: const BorderSide(
-                                                    color: Color(0xFF0A0258),
-                                                  ),
-                                                ),
+                                                      borderSide:
+                                                          const BorderSide(
+                                                            color: Color(
+                                                              0xFF0A0258,
+                                                            ),
+                                                          ),
+                                                    ),
                                               ),
                                             ),
                                           ),
@@ -521,7 +549,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                          CrossAxisAlignment.start,
 
                                       children: [
                                         _buildLabel("Assign Time"),
@@ -538,19 +566,20 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                                   pickedTime = await showTimePicker(
                                                     context: context,
 
-                                                    initialTime: TimeOfDay.now(),
+                                                    initialTime:
+                                                        TimeOfDay.now(),
 
                                                     builder: (context, child) {
                                                       return Theme(
                                                         data: Theme.of(context)
                                                             .copyWith(
-                                                          colorScheme:
-                                                          const ColorScheme.light(
-                                                            primary: Color(
-                                                              0xFF0A0258,
+                                                              colorScheme:
+                                                                  const ColorScheme.light(
+                                                                    primary: Color(
+                                                                      0xFF0A0258,
+                                                                    ),
+                                                                  ),
                                                             ),
-                                                          ),
-                                                        ),
 
                                                         child: child!,
                                                       );
@@ -570,13 +599,14 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
 
                                                     setState(() {
                                                       /// ONLY THIS FIELD VALUE CHANGE
-                                                      assignTimeController.text =
-                                                      "$hour:$minute";
+                                                      assignTimeController
+                                                              .text =
+                                                          "$hour:$minute";
 
                                                       /// ONLY THIS AM PM CHANGE
                                                       assignSelectedAmPm =
-                                                      pickedTime.period ==
-                                                          DayPeriod.am
+                                                          pickedTime.period ==
+                                                              DayPeriod.am
                                                           ? "AM"
                                                           : "PM";
                                                     });
@@ -586,11 +616,12 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                                 child: AbsorbPointer(
                                                   child: TextFormField(
                                                     controller:
-                                                    assignTimeController,
+                                                        assignTimeController,
 
                                                     style: GoogleFonts.inter(
                                                       fontSize: 12.sp,
-                                                      fontWeight: FontWeight.w400,
+                                                      fontWeight:
+                                                          FontWeight.w400,
                                                       color: const Color(
                                                         0xFF6C7278,
                                                       ),
@@ -600,12 +631,12 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                                       hintText: "00:00",
 
                                                       hintStyle:
-                                                      GoogleFonts.inter(
-                                                        fontSize: 12.sp,
-                                                        color: const Color(
-                                                          0xFFB8BEC5,
-                                                        ),
-                                                      ),
+                                                          GoogleFonts.inter(
+                                                            fontSize: 12.sp,
+                                                            color: const Color(
+                                                              0xFFB8BEC5,
+                                                            ),
+                                                          ),
 
                                                       isDense: true,
 
@@ -615,15 +646,16 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                                       ),
 
                                                       contentPadding:
-                                                      EdgeInsets.symmetric(
-                                                        horizontal: 10.w,
-                                                        vertical: 10.h,
-                                                      ),
+                                                          EdgeInsets.symmetric(
+                                                            horizontal: 10.w,
+                                                            vertical: 10.h,
+                                                          ),
 
                                                       suffixIcon: Padding(
-                                                        padding: EdgeInsets.only(
-                                                          right: 8.w,
-                                                        ),
+                                                        padding:
+                                                            EdgeInsets.only(
+                                                              right: 8.w,
+                                                            ),
 
                                                         child: Icon(
                                                           CupertinoIcons.clock,
@@ -635,53 +667,53 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                                       ),
 
                                                       suffixIconConstraints:
-                                                      BoxConstraints(
-                                                        minWidth: 20.w,
-                                                      ),
+                                                          BoxConstraints(
+                                                            minWidth: 20.w,
+                                                          ),
 
                                                       border: OutlineInputBorder(
                                                         borderRadius:
-                                                        BorderRadius.circular(
-                                                          10.r,
-                                                        ),
+                                                            BorderRadius.circular(
+                                                              10.r,
+                                                            ),
 
                                                         borderSide:
-                                                        const BorderSide(
-                                                          color: Color(
-                                                            0xFFD9DEE5,
-                                                          ),
-                                                        ),
+                                                            const BorderSide(
+                                                              color: Color(
+                                                                0xFFD9DEE5,
+                                                              ),
+                                                            ),
                                                       ),
 
                                                       enabledBorder:
-                                                      OutlineInputBorder(
-                                                        borderRadius:
-                                                        BorderRadius.circular(
-                                                          10.r,
-                                                        ),
+                                                          OutlineInputBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  10.r,
+                                                                ),
 
-                                                        borderSide:
-                                                        const BorderSide(
-                                                          color: Color(
-                                                            0xFFD9DEE5,
+                                                            borderSide:
+                                                                const BorderSide(
+                                                                  color: Color(
+                                                                    0xFFD9DEE5,
+                                                                  ),
+                                                                ),
                                                           ),
-                                                        ),
-                                                      ),
 
                                                       focusedBorder:
-                                                      OutlineInputBorder(
-                                                        borderRadius:
-                                                        BorderRadius.circular(
-                                                          10.r,
-                                                        ),
+                                                          OutlineInputBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  10.r,
+                                                                ),
 
-                                                        borderSide:
-                                                        const BorderSide(
-                                                          color: Color(
-                                                            0xFF0A0258,
+                                                            borderSide:
+                                                                const BorderSide(
+                                                                  color: Color(
+                                                                    0xFF0A0258,
+                                                                  ),
+                                                                ),
                                                           ),
-                                                        ),
-                                                      ),
                                                     ),
                                                   ),
                                                 ),
@@ -691,15 +723,18 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                             SizedBox(width: 6.w),
 
                                             /// AM PM DROPDOWN
-
-
                                             Flexible(
                                               child: ConstrainedBox(
-                                                constraints: BoxConstraints(maxWidth: 65.w, minWidth: 45.w),
+                                                constraints: BoxConstraints(
+                                                  maxWidth: 65.w,
+                                                  minWidth: 45.w,
+                                                ),
                                                 child: Theme(
-                                                  data: Theme.of(context).copyWith(
-                                                    canvasColor: Colors.white,
-                                                  ),
+                                                  data: Theme.of(context)
+                                                      .copyWith(
+                                                        canvasColor:
+                                                            Colors.white,
+                                                      ),
 
                                                   child: DropdownButtonFormField<String>(
                                                     value: assignSelectedAmPm,
@@ -708,14 +743,16 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                                     isExpanded: true,
                                                     style: GoogleFonts.inter(
                                                       fontSize: 12.sp,
-                                                      fontWeight: FontWeight.w400,
+                                                      fontWeight:
+                                                          FontWeight.w400,
                                                       color: const Color(
                                                         0xFF6C7278,
                                                       ),
                                                     ),
 
                                                     icon: Icon(
-                                                      CupertinoIcons.chevron_down,
+                                                      CupertinoIcons
+                                                          .chevron_down,
                                                       size: 10.r,
                                                       color: const Color(
                                                         0xFF6C7278,
@@ -731,92 +768,91 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                                       isDense: true,
 
                                                       contentPadding:
-                                                      EdgeInsets.symmetric(
-                                                        horizontal: 8.w,
-                                                        vertical: 10.h,
-                                                      ),
+                                                          EdgeInsets.symmetric(
+                                                            horizontal: 8.w,
+                                                            vertical: 10.h,
+                                                          ),
 
                                                       border: OutlineInputBorder(
                                                         borderRadius:
-                                                        BorderRadius.circular(
-                                                          10.r,
-                                                        ),
+                                                            BorderRadius.circular(
+                                                              10.r,
+                                                            ),
 
                                                         borderSide:
-                                                        const BorderSide(
-                                                          color: Color(
-                                                            0xFFD9DEE5,
-                                                          ),
-                                                        ),
+                                                            const BorderSide(
+                                                              color: Color(
+                                                                0xFFD9DEE5,
+                                                              ),
+                                                            ),
                                                       ),
 
                                                       enabledBorder:
-                                                      OutlineInputBorder(
-                                                        borderRadius:
-                                                        BorderRadius.circular(
-                                                          10.r,
-                                                        ),
+                                                          OutlineInputBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  10.r,
+                                                                ),
 
-                                                        borderSide:
-                                                        const BorderSide(
-                                                          color: Color(
-                                                            0xFFD9DEE5,
+                                                            borderSide:
+                                                                const BorderSide(
+                                                                  color: Color(
+                                                                    0xFFD9DEE5,
+                                                                  ),
+                                                                ),
                                                           ),
-                                                        ),
-                                                      ),
 
                                                       focusedBorder:
-                                                      OutlineInputBorder(
-                                                        borderRadius:
-                                                        BorderRadius.circular(
-                                                          10.r,
-                                                        ),
+                                                          OutlineInputBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  10.r,
+                                                                ),
 
-                                                        borderSide:
-                                                        const BorderSide(
-                                                          color: Color(
-                                                            0xFF0A0258,
+                                                            borderSide:
+                                                                const BorderSide(
+                                                                  color: Color(
+                                                                    0xFF0A0258,
+                                                                  ),
+                                                                ),
                                                           ),
-                                                        ),
-                                                      ),
                                                     ),
 
                                                     items: ["AM", "PM"]
                                                         .map(
                                                           (
-                                                          e,
+                                                            e,
                                                           ) => DropdownMenuItem<String>(
-                                                        value: e,
+                                                            value: e,
 
-                                                        child: Text(
-                                                          e,
+                                                            child: Text(
+                                                              e,
 
-                                                          style:
-                                                          GoogleFonts.inter(
-                                                            fontSize: 12.sp,
-                                                            fontWeight:
-                                                            FontWeight
-                                                                .w400,
-                                                            color:
-                                                            const Color(
-                                                              0xFF6C7278,
+                                                              style: GoogleFonts.inter(
+                                                                fontSize: 12.sp,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w400,
+                                                                color:
+                                                                    const Color(
+                                                                      0xFF6C7278,
+                                                                    ),
+                                                              ),
                                                             ),
                                                           ),
-                                                        ),
-                                                      ),
-                                                    )
+                                                        )
                                                         .toList(),
 
                                                     onChanged: (value) {
                                                       setState(() {
-                                                        assignSelectedAmPm = value!;
+                                                        assignSelectedAmPm =
+                                                            value!;
                                                       });
                                                     },
                                                   ),
                                                 ),
                                               ),
                                             ),
-
                                           ],
                                         ),
                                       ],
@@ -921,7 +957,9 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                     color: const Color(0xFFF9FAFF),
                                     borderRadius: BorderRadius.circular(8.r),
                                     border: Border.all(
-                                      color: const Color(0xFFB9C3FF),
+                                      color: fileError != null
+                                          ? Colors.red
+                                          : const Color(0xFFB9C3FF),
                                     ),
                                   ),
                                   child: Column(
@@ -933,7 +971,9 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                           fontSize: 11.sp,
                                         ),
                                       ),
+
                                       SizedBox(height: 3.h),
+
                                       Text(
                                         "Browse",
                                         style: GoogleFonts.inter(
@@ -947,6 +987,23 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                 ),
                               ),
 
+                              // Validation Error
+                              if (fileError != null)
+                                Padding(
+                                  padding: EdgeInsets.only(top: 6.h, left: 4.w),
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      fileError!,
+                                      style: GoogleFonts.inter(
+                                        color: Colors.red,
+                                        fontSize: 11.sp,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
                               // File list
                               if (selectedFiles.isNotEmpty)
                                 Padding(
@@ -956,7 +1013,8 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                       index,
                                     ) {
                                       final fileName = selectedFiles[index];
-                                      final progress = index == 0 ? 0.30 : 0.82;
+                                      final progress = 1.0;
+
                                       return Container(
                                         margin: EdgeInsets.only(bottom: 10.h),
                                         padding: EdgeInsets.symmetric(
@@ -985,6 +1043,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                                   ),
                                                 ),
                                                 SizedBox(width: 8.w),
+
                                                 Expanded(
                                                   child: Text(
                                                     fileName,
@@ -1000,7 +1059,9 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                                     ),
                                                   ),
                                                 ),
+
                                                 SizedBox(width: 10.w),
+
                                                 Text(
                                                   "${(progress * 100).toInt()}%",
                                                   style: GoogleFonts.inter(
@@ -1011,23 +1072,30 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                                     ),
                                                   ),
                                                 ),
+
                                                 SizedBox(width: 6.w),
-                                                GestureDetector(
-                                                  onTap: () => setState(
-                                                    () => selectedFiles
-                                                        .removeAt(index),
-                                                  ),
-                                                  child: Icon(
-                                                    Icons.close,
-                                                    size: 15.r,
-                                                    color: const Color(
-                                                      0xFF98A2B3,
+
+                                                InkWell(
+                                                  borderRadius: BorderRadius.circular(20.r),
+                                                  onTap: () {
+                                                    setState(() {
+                                                      selectedFiles.removeAt(index);
+                                                    });
+                                                  },
+                                                  child: Padding(
+                                                    padding: EdgeInsets.all(8.r),
+                                                    child: Icon(
+                                                      Icons.close,
+                                                      size: 15.r,
+                                                      color: const Color(0xFF98A2B3),
                                                     ),
                                                   ),
                                                 ),
                                               ],
                                             ),
+
                                             SizedBox(height: 8.h),
+
                                             ClipRRect(
                                               borderRadius:
                                                   BorderRadius.circular(20.r),
