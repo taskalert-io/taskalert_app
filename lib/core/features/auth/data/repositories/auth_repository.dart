@@ -19,7 +19,7 @@ abstract class AuthRepository {
   });
 
   Future<ApiResult<UserModel>> verifySignUpOtp({
-    required String email,
+    required String phoneNumber,
     required String otp,
     required String firstName,
     required String lastName,
@@ -27,7 +27,7 @@ abstract class AuthRepository {
   });
 
   Future<ApiResult<BaseApiResponse<dynamic>>> resendSignUpOtp({
-    required String email,
+    required String phoneNumber,
   });
 
   // --- Sign In Flow ---

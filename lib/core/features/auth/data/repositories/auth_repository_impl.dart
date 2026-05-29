@@ -68,7 +68,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<ApiResult<UserModel>> verifySignUpOtp({
-    required String email,
+    required String phoneNumber,
     required String otp,
     required String firstName,
     required String lastName,
@@ -78,7 +78,7 @@ class AuthRepositoryImpl implements AuthRepository {
       final responseData = await _httpService.post(
         '/auth/verify-signup-otp',
         body: {
-          'email': email,
+          'phoneNumber': phoneNumber,
           'otpCode': otp,
           'firstName': firstName,
           'lastName': lastName,
@@ -111,12 +111,12 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<ApiResult<BaseApiResponse<dynamic>>> resendSignUpOtp({
-    required String email,
+    required String phoneNumber,
   }) async {
     try {
       final responseData = await _httpService.post(
         '/auth/resend-signup-otp',
-        body: {'email': email},
+        body: {'phoneNumber': phoneNumber},
       );
       final apiResponse = BaseApiResponse.fromJson(
         responseData,

@@ -77,14 +77,14 @@ class LoginController extends ChangeNotifier {
 
     // 2. Unpack the clean functional pattern result safely
     if (result is Success) {
-      print("OTP verification successful, unpacking user data...{$result}");
+      // print("OTP verification successful, unpacking user data...{$result}");
       // result.data gives you what AuthRepositoryImpl returned: a parsed UserModel object!
       final apiResponse =
           (result as Success).data as BaseApiResponse<UserModel>;
 
       // Second, extract the clean nested UserModel payload from inside it
       final user = apiResponse.data;
-      print("$user");
+      // print("$user");
       notifyListeners();
       return user;
     } else if (result is Failure) {
@@ -143,7 +143,14 @@ class LoginController extends ChangeNotifier {
 
     if (result is Success) {
       final apiResponse = (result as Success).data;
-      _successMessage = apiResponse.message;
+      // _successMessage = apiResponse.message;
+      final otp = apiResponse.data['otp'];
+      if (otp != null) {
+        _successMessage = " Your new OTP is: $otp";
+      } else {
+        _successMessage = " OTP resent successfully to ${_currentPhoneNumber!}";
+      }
+
       notifyListeners();
       return true;
     } else if (result is Failure) {
