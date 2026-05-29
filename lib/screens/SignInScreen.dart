@@ -15,12 +15,14 @@ class SignInScreen extends StatefulWidget {
 class SignInScreenState extends State<SignInScreen> {
   final _formKey = GlobalKey<FormState>();
   bool isTermsAccepted = false;
+  bool _autoValidate = false;
   final phoneController = TextEditingController();
   @override
   void dispose() {
     phoneController.dispose();
     super.dispose();
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -88,7 +90,7 @@ class SignInScreenState extends State<SignInScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            SizedBox(height: 30,),
+                            SizedBox(height: 30),
                             // LOGO
                             Image.asset(
                               "assets/images/antprolgo.png",
@@ -159,7 +161,9 @@ class SignInScreenState extends State<SignInScreen> {
                     // IMPORTANT
                     child: Form(
                       key: _formKey,
-
+                      autovalidateMode: _autoValidate
+                          ? AutovalidateMode.onUserInteraction
+                          : AutovalidateMode.disabled,
                       child: Column(
                         children: [
                           // GOOGLE BUTTON
@@ -265,21 +269,17 @@ class SignInScreenState extends State<SignInScreen> {
                             hint: "",
                             controller: phoneController,
                             keyboardType: TextInputType.phone,
-
                             inputFormatters: [
                               FilteringTextInputFormatter.digitsOnly,
                               LengthLimitingTextInputFormatter(10),
                             ],
-
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
                                 return "Enter phone number";
                               }
-
                               if (value.trim().length != 10) {
                                 return "Enter valid 10 digit phone number";
                               }
-
                               return null;
                             },
                           ),
@@ -290,29 +290,30 @@ class SignInScreenState extends State<SignInScreen> {
                           SizedBox(
                             width: double.infinity,
                             height: 42,
-
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
                                 elevation: 0,
                                 backgroundColor: Colors.white,
                                 foregroundColor: const Color(0xFF2C1AA8),
-
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
-
                                   side: const BorderSide(
                                     color: Color(0xFF2C1AA8),
                                   ),
                                 ),
                               ),
-
                               onPressed: () {
                                 FocusScope.of(context).unfocus();
 
-                                // VALIDATION
+                                setState(() {
+                                  _autoValidate =
+                                      true; // ✅ trigger validation on press
+                                });
+
                                 if (!_formKey.currentState!.validate()) {
                                   return;
                                 }
+
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
@@ -320,7 +321,6 @@ class SignInScreenState extends State<SignInScreen> {
                                   ),
                                 );
                               },
-
                               child: Text(
                                 "Log In",
                                 style: GoogleFonts.inter(
@@ -404,8 +404,8 @@ class SignInScreenState extends State<SignInScreen> {
       obscureText: obscure,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
-      autovalidateMode: AutovalidateMode.onUserInteraction,
 
+      // ✅ REMOVED autovalidateMode: AutovalidateMode.onUserInteraction,
       validator: validator,
 
       style: GoogleFonts.inter(
@@ -416,51 +416,39 @@ class SignInScreenState extends State<SignInScreen> {
 
       decoration: InputDecoration(
         isDense: true,
-
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 12,
           vertical: 10,
         ),
-
         hintText: hint,
-
         hintStyle: GoogleFonts.inter(
           fontSize: 12.sp,
           fontWeight: FontWeight.w400,
           color: const Color(0xFFB8BEC5),
         ),
-
         helperText: " ",
         helperStyle: const TextStyle(height: 0),
-
         errorStyle: TextStyle(fontSize: 10.sp, height: 1.h),
-
         prefixIcon: prefix,
         suffixIcon: suffix,
-
         filled: true,
         fillColor: const Color(0xFFF9FAFC),
-
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10.r),
           borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
         ),
-
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10.r),
           borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
         ),
-
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10.r),
           borderSide: const BorderSide(color: Color(0xFF0A0258)),
         ),
-
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10.r),
           borderSide: const BorderSide(color: Colors.red),
         ),
-
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10.r),
           borderSide: const BorderSide(color: Colors.red),

@@ -15,35 +15,34 @@ class OtpVerificationScreen extends StatefulWidget {
 class OtpVerificationScreenState extends State<OtpVerificationScreen> {
   final List<TextEditingController> otpControllers = List.generate(
     6,
-    (_) => TextEditingController(),
+        (_) => TextEditingController(),
   );
+
+  final List<FocusNode> otpFocusNodes = List.generate(
+    6,
+        (_) => FocusNode(),
+  );
+
   int secondsRemaining = 60;
   Timer? timer;
 
   @override
   void initState() {
     super.initState();
-
     startTimer();
   }
 
   void startTimer() {
-    /// CANCEL OLD TIMER
     timer?.cancel();
-
-    /// RESET TIMER
     setState(() {
       secondsRemaining = 60;
     });
-
     timer = Timer.periodic(
       const Duration(seconds: 1),
           (Timer t) {
         if (!mounted) return;
-
         if (secondsRemaining <= 1) {
           t.cancel();
-
           setState(() {
             secondsRemaining = 0;
           });
@@ -55,12 +54,15 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
       },
     );
   }
+
   @override
   void dispose() {
     timer?.cancel();
-    /// DISPOSE OTP CONTROLLERS
     for (final controller in otpControllers) {
       controller.dispose();
+    }
+    for (final node in otpFocusNodes) {
+      node.dispose();
     }
     super.dispose();
   }
@@ -84,13 +86,11 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 Container(
                   width: double.infinity,
                   height: MediaQuery.of(context).size.height * 0.5,
-
                   decoration: const BoxDecoration(color: Color(0xFF12006C)),
-
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      // TOP RIGHT GLOW
+                      // TOP GLOW
                       Positioned(
                         top: -140.h,
                         left: -90.w,
@@ -103,8 +103,6 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                 bottomLeft: Radius.circular(260.r),
                                 bottomRight: Radius.circular(260.r),
                               ),
-
-                              // USE RADIAL GRADIENT
                               gradient: RadialGradient(
                                 center: Alignment.topCenter,
                                 radius: 1.35.r,
@@ -122,17 +120,17 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                       ),
 
                       Padding(
-                        padding: EdgeInsets.only(
+                        padding: const EdgeInsets.only(
                           left: 10,
                           right: 10,
                           top: 150,
                           bottom: 20,
                         ),
-
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            SizedBox(height: 30,),
+                            const SizedBox(height: 30),
+
                             // LOGO
                             Image.asset(
                               "assets/images/antprolgo.png",
@@ -149,7 +147,7 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                 style: GoogleFonts.inter(
                                   fontSize: 25.sp,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFFFFFFFF),
+                                  color: const Color(0xFFFFFFFF),
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -164,7 +162,7 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                 style: GoogleFonts.inter(
                                   fontSize: 12.sp,
                                   fontWeight: FontWeight.w400,
-                                  color: Color(0xFFFFFFFF),
+                                  color: const Color(0xFFFFFFFF),
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -177,22 +175,19 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     ],
                   ),
                 ),
+
                 // OTP CARD
                 Transform.translate(
                   offset: const Offset(0, -130),
-
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 10),
-
                     padding: const EdgeInsets.symmetric(
                       horizontal: 18,
                       vertical: 22,
                     ),
-
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(10),
-
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.08),
@@ -201,13 +196,11 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         ),
                       ],
                     ),
-
                     child: Column(
                       children: [
                         // TITLE
                         Text(
                           "OTP Verification",
-
                           style: GoogleFonts.inter(
                             fontSize: 13.5.sp,
                             fontWeight: FontWeight.w600,
@@ -220,9 +213,7 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         // DESCRIPTION
                         Text(
                           "Enter the one-time password sent to your\nregistered mobile number or email to securely\naccess your account.",
-
                           textAlign: TextAlign.center,
-
                           style: GoogleFonts.inter(
                             fontSize: 12.sp,
                             fontWeight: FontWeight.w400,
@@ -238,80 +229,68 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: List.generate(
                             6,
-                            (index) => Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 5,
-                              ),
-
+                                (index) => Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 5),
                               child: SizedBox(
                                 width: 42,
                                 height: 42,
-
-                                child: TextFormField(
-                                  controller: otpControllers[index],
-
-                                  textAlign: TextAlign.center,
-                                  textAlignVertical: TextAlignVertical.center,
-
-                                  keyboardType: TextInputType.number,
-
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly,
-                                    LengthLimitingTextInputFormatter(
-                                      1,
-                                    ), // ONLY 1 NUMBER
-                                  ],
-
-                                  maxLength: 1,
-
-                                  style: GoogleFonts.inter(
-                                    fontSize: 14.sp,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF0A0258),
-                                  ),
-
-                                  decoration: InputDecoration(
-                                    counterText: "",
-
-                                    isDense: true,
-
-                                    filled: true,
-                                    fillColor: const Color(0xFFF7F8FA),
-
-                                    contentPadding: const EdgeInsets.only(
-                                      top: 10,
-                                      bottom: 10,
-                                    ),
-
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(6.r),
-
-                                      borderSide: const BorderSide(
-                                        color: Color(0xFFD8DCE3),
-                                      ),
-                                    ),
-
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(6.r),
-
-                                      borderSide: BorderSide(
-                                        color: Color(0xFF0A0258),
-                                        width: 1.2.w,
-                                      ),
-                                    ),
-                                  ),
-
-                                  onChanged: (value) {
-                                    // NEXT BOX
-                                    if (value.isNotEmpty && index < 5) {
-                                      FocusScope.of(context).nextFocus();
-                                    }
-
-                                    // BACK TO PREVIOUS
-                                    if (value.isEmpty && index > 0) {
-                                      FocusScope.of(context).previousFocus();
+                                child: KeyboardListener(
+                                  focusNode: FocusNode(),
+                                  onKeyEvent: (KeyEvent event) {
+                                    if (event is KeyDownEvent &&
+                                        event.logicalKey == LogicalKeyboardKey.backspace) {
+                                      if (otpControllers[index].text.isEmpty && index > 0) {
+                                        otpFocusNodes[index - 1].requestFocus();
+                                        otpControllers[index - 1].clear();
+                                      }
                                     }
                                   },
+                                  child: TextFormField(
+                                    controller: otpControllers[index],
+                                    focusNode: otpFocusNodes[index],
+                                    textAlign: TextAlign.center,
+                                    textAlignVertical: TextAlignVertical.center,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                      LengthLimitingTextInputFormatter(1),
+                                    ],
+                                    maxLength: 1,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF0A0258),
+                                    ),
+                                    decoration: InputDecoration(
+                                      counterText: "",
+                                      isDense: true,
+                                      filled: true,
+                                      fillColor: const Color(0xFFF7F8FA),
+                                      contentPadding: const EdgeInsets.only(
+                                        top: 10,
+                                        bottom: 10,
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(6.r),
+                                        borderSide: const BorderSide(
+                                          color: Color(0xFFD8DCE3),
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(6.r),
+                                        borderSide: BorderSide(
+                                          color: const Color(0xFF0A0258),
+                                          width: 1.2.w,
+                                        ),
+                                      ),
+                                    ),
+                                    onChanged: (value) {
+                                      // MOVE TO NEXT BOX
+                                      if (value.isNotEmpty && index < 5) {
+                                        otpFocusNodes[index + 1].requestFocus();
+                                      }
+                                    },
+                                  ),
                                 ),
                               ),
                             ),
@@ -323,12 +302,10 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         // TIMER
                         Align(
                           alignment: Alignment.centerRight,
-
                           child: Text(
                             secondsRemaining > 0
                                 ? "00:${secondsRemaining.toString().padLeft(2, '0')} sec"
                                 : "00:00 sec",
-
                             style: GoogleFonts.inter(
                               fontSize: 11.sp,
                               color: const Color(0xFF7B7B7B),
@@ -343,13 +320,12 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         SizedBox(
                           width: double.infinity,
                           height: 42,
-
                           child: ElevatedButton(
                             onPressed: () {
                               // CHECK EMPTY OTP
                               bool isOtpComplete = otpControllers.every(
-                                (controller) =>
-                                    controller.text.trim().isNotEmpty,
+                                    (controller) =>
+                                controller.text.trim().isNotEmpty,
                               );
 
                               if (!isOtpComplete) {
@@ -358,7 +334,6 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                     content: Text("Please enter complete OTP"),
                                   ),
                                 );
-
                                 return;
                               }
 
@@ -370,25 +345,20 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                 ),
                               );
                             },
-
-                            style:
-                                ElevatedButton.styleFrom(
-                                  elevation: 0,
-                                  padding: EdgeInsets.zero,
-
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8.r),
-                                  ),
-                                ).copyWith(
-                                  backgroundColor: WidgetStateProperty.all(
-                                    Colors.transparent,
-                                  ),
-                                ),
-
+                            style: ElevatedButton.styleFrom(
+                              elevation: 0,
+                              padding: EdgeInsets.zero,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.r),
+                              ),
+                            ).copyWith(
+                              backgroundColor: WidgetStateProperty.all(
+                                Colors.transparent,
+                              ),
+                            ),
                             child: Ink(
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(8.r),
-
                                 gradient: const LinearGradient(
                                   colors: [
                                     Color(0xFF45D6C4),
@@ -397,13 +367,10 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                   ],
                                 ),
                               ),
-
                               child: Container(
                                 alignment: Alignment.center,
-
                                 child: Text(
                                   "Verify Code",
-
                                   style: GoogleFonts.inter(
                                     fontSize: 12.sp,
                                     fontWeight: FontWeight.w600,
@@ -422,32 +389,27 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              "Didn’t receive the code? ",
+                              "Didn't receive the code? ",
                               style: GoogleFonts.inter(
                                 fontSize: 12.sp,
                                 color: const Color(0xFF6C7278),
                                 fontWeight: FontWeight.w400,
                               ),
                             ),
-
                             TextButton(
                               onPressed: secondsRemaining == 0
                                   ? () {
-                                /// API CALL FOR RESEND OTP HERE
-
+                                // API CALL FOR RESEND OTP HERE
                                 startTimer();
                               }
                                   : null,
-
                               style: TextButton.styleFrom(
                                 padding: EdgeInsets.zero,
                                 minimumSize: Size.zero,
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
-
                               child: Text(
                                 "Resend",
-
                                 style: GoogleFonts.inter(
                                   fontSize: 12.sp,
                                   color: secondsRemaining == 0
