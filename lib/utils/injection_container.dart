@@ -1,5 +1,6 @@
 import 'package:get_it/get_it.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:taskalert_app/core/features/auth/controllers/signup_controller.dart';
 import 'package:taskalert_app/core/features/auth/data/repositories/auth_repository.dart';
 import 'package:taskalert_app/core/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:taskalert_app/core/network/dio_http_service.dart';
@@ -28,6 +29,8 @@ Future<void> init() async {
   ); // Inject secure storage into DioHttpService
 
   sl.registerLazySingleton(() => LoginController(sl<AuthRepository>()));
+
+  sl.registerLazySingleton(() => SignUpController(sl<AuthRepository>()));
 
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(sl<HttpService>(), sl<FlutterSecureStorage>()),

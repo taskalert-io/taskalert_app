@@ -11,7 +11,13 @@ import 'dart:async';
 
 class OtpVerificationScreen extends StatefulWidget {
   final String phoneNumber;
-  const OtpVerificationScreen({super.key, required this.phoneNumber});
+  final bool isSignUpFlow;
+
+  const OtpVerificationScreen({
+    super.key,
+    required this.phoneNumber,
+    required this.isSignUpFlow,
+  });
 
   @override
   State<StatefulWidget> createState() => OtpVerificationScreenState();
@@ -148,7 +154,7 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             SizedBox(
                               width: double.infinity,
                               child: Text(
-                                "Sign in to your account",
+                                "Log in to your account",
                                 style: GoogleFonts.inter(
                                   fontSize: 25.sp,
                                   fontWeight: FontWeight.w700,
@@ -161,7 +167,7 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             SizedBox(
                               width: double.infinity,
                               child: Text(
-                                "Enter your phone number and password to sign in",
+                                "Enter your OTP to sign in",
                                 style: GoogleFonts.inter(
                                   fontSize: 12.sp,
                                   fontWeight: FontWeight.w400,

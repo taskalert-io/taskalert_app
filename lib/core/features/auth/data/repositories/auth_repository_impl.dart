@@ -35,18 +35,13 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<ApiResult<BaseApiResponse<dynamic>>> signUp({
-    required String email,
     required String phoneNumber,
-    required String password,
+    String? email,
   }) async {
     try {
       final responseData = await _httpService.post(
         '/auth/signup',
-        body: {
-          'email': email,
-          'phoneNumber': phoneNumber,
-          'password': password,
-        },
+        body: {'phoneNumber': phoneNumber, 'email': email},
       );
       final apiResponse = BaseApiResponse.fromJson(
         responseData,
@@ -68,21 +63,29 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<ApiResult<UserModel>> verifySignUpOtp({
-    required String phoneNumber,
-    required String otp,
     required String firstName,
     required String lastName,
-    String? referralCode,
+    required String phoneNumber,
+    required String password,
+    required bool agreeTerms,
+    required String otpCode,
+    String? email,
+    String? gender,
+    String? dateOfBirth,
   }) async {
     try {
       final responseData = await _httpService.post(
         '/auth/verify-signup-otp',
         body: {
-          'phoneNumber': phoneNumber,
-          'otpCode': otp,
           'firstName': firstName,
           'lastName': lastName,
-          if (referralCode != null) 'referralCode': referralCode,
+          'phoneNumber': phoneNumber,
+          'password': password,
+          'agreeTerms': agreeTerms,
+          'otpCode': otpCode,
+          if (email != null) 'email': email,
+          if (gender != null) 'gender': gender,
+          if (dateOfBirth != null) 'dateOfBirth': dateOfBirth,
         },
       );
       final apiResponse = BaseApiResponse.fromJson(
