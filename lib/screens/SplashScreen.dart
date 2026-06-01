@@ -79,43 +79,116 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: Listenable.merge([_circleController, _contentController]),
-      builder: (context, child) {
-        return Scaffold(
-          backgroundColor: _backgroundAnimation.value,
-          body: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              // TOP PURPLE CURVE
-              Positioned(
-                top: -140.h,
-                left: -90.w,
-                right: -90.w,
-                child: IgnorePointer(
-                  child: Container(
-                    height: 260.h,
+      animation: Listenable.merge([
+        _circleController,
+        _contentController,
+      ]),
+
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // TOP PURPLE CURVE
+          Positioned(
+            top: -140.h,
+            left: -90.w,
+            right: -90.w,
+            child: IgnorePointer(
+              child: Container(
+                height: 260.h,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(260.r),
+                    bottomRight: Radius.circular(260.r),
+                  ),
+
+                  gradient: RadialGradient(
+                    center: Alignment.topCenter,
+                    radius: 1.35.r,
+                    colors: [
+                      const Color(0xFFEACAFF).withOpacity(0.95),
+                      const Color(0xFFEACAFF).withOpacity(0.45),
+                      const Color(0xFFEACAFF).withOpacity(0.12),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.15, 0.45, 0.75, 1],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // BUTTON
+          if (showButton)
+            Positioned(
+              bottom: 80.h,
+              left: 50.w,
+              right: 50.w,
+              child: FadeTransition(
+                opacity: _buttonOpacity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => WelcomePage(),
+                      ),
+                    );
+                  },
+
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    elevation: 0,
+                    backgroundColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                  ),
+
+                  child: Ink(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(260.r),
-                        bottomRight: Radius.circular(260.r),
+                      borderRadius: BorderRadius.circular(8.r),
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xFFDD6BFF),
+                          Color(0xFF4FE0C5),
+                        ],
+                      ),
+                    ),
+
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 10,
                       ),
 
-                      // USE RADIAL GRADIENT
-                      gradient: RadialGradient(
-                        center: Alignment.topCenter,
-                        radius: 1.35.r,
-                        colors: [
-                          const Color(0xFFEACAFF).withOpacity(0.95),
-                          const Color(0xFFEACAFF).withOpacity(0.45),
-                          const Color(0xFFEACAFF).withOpacity(0.12),
-                          Colors.transparent,
-                        ],
-                        stops: const [0.15, 0.45, 0.75, 1],
+                      alignment: Alignment.center,
+
+                      child: Text(
+                        "Continue",
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12.sp,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
+            ),
+        ],
+      ),
+
+      builder: (context, child) {
+        bool darkBackground = _circleController.value > 0.55;
+
+        return Scaffold(
+          backgroundColor: _backgroundAnimation.value,
+
+          body: Stack(
+            children: [
+              child!,
+
               // CENTER AREA
               Center(
                 child: Stack(
@@ -125,6 +198,7 @@ class _SplashScreenState extends State<SplashScreen>
                     Container(
                       width: _circleAnimation.value,
                       height: _circleAnimation.value,
+
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
                         color: Color(0xFF14005E),
@@ -141,149 +215,64 @@ class _SplashScreenState extends State<SplashScreen>
                           height: 54.h,
                         ),
 
-                        SizedBox(width: 10.h),
+                        SizedBox(width: 10.w),
 
-                        TweenAnimationBuilder<double>(
-                          tween: Tween(begin: -1.0, end: 2.0),
-                          duration: const Duration(seconds: 3),
-                          curve: Curves.linear,
-                          builder: (context, value, child) {
-                            bool darkBackground =
-                                _circleController.value > 0.55;
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            /// TASK
+                            Text(
+                              "task",
+                              style: TextStyle(
+                                color: darkBackground
+                                    ? Colors.white
+                                    : const Color(0xFF0B045A),
+                                fontSize: 30.sp,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
 
-                            return Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                // TASK ANIMATION
-                                ShaderMask(
-                                  shaderCallback: (bounds) {
-                                    return LinearGradient(
-                                      begin: Alignment.centerLeft,
-                                      end: Alignment.centerRight,
-                                      colors: darkBackground
-                                          ? [
-                                              Colors.white,
-                                              const Color(0xFF4FE0C5),
-                                              Colors.white,
-                                            ]
-                                          : [
-                                              const Color(0xFF0B045A),
-                                              const Color(0xFF4FE0C5),
-                                              const Color(0xFF0B045A),
-                                            ],
-                                      stops: [
-                                        (value - 0.3).clamp(0.0, 1.0),
-                                        value.clamp(0.0, 1.0),
-                                        (value + 0.3).clamp(0.0, 1.0),
-                                      ],
-                                    ).createShader(bounds);
-                                  },
-                                  child: Text(
-                                    "task",
-                                    style: TextStyle(
-                                      color: darkBackground
-                                          ? Colors.white
-                                          : const Color(0xFF0B045A),
-                                      fontSize: 30.sp,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                            /// ALERT
+                            ShaderMask(
+                              shaderCallback: (bounds) {
+                                return const LinearGradient(
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                  colors: [
+                                    Color(0xFF7B61FF),
+                                    Color(0xFF4FE0C5),
+                                  ],
+                                ).createShader(bounds);
+                              },
+
+                              child: Text(
+                                "alert",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 30.sp,
+                                  fontWeight: FontWeight.bold,
                                 ),
+                              ),
+                            ),
 
-                                // ALERT STATIC LINEAR GRADIENT
-                                ShaderMask(
-                                  shaderCallback: (bounds) {
-                                    return const LinearGradient(
-                                      begin: Alignment.centerLeft,
-                                      end: Alignment.centerRight,
-                                      colors: [
-                                        Color(0xFF7B61FF),
-                                        Color(0xFF4FE0C5),
-                                      ],
-                                    ).createShader(bounds);
-                                  },
-                                  child: Text(
-                                    "alert",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 30.sp,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-
-                                // .IO
-                                Text(
-                                  ".io",
-                                  style: TextStyle(
-                                    color: darkBackground
-                                        ? Colors.white
-                                        : const Color(0xFF0B045A),
-                                    fontSize: 30.sp,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
+                            /// .IO
+                            Text(
+                              ".io",
+                              style: TextStyle(
+                                color: darkBackground
+                                    ? Colors.white
+                                    : const Color(0xFF0B045A),
+                                fontSize: 30.sp,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-
-              // BUTTON
-              if (showButton)
-                Positioned(
-                  bottom: 80.h,
-                  left: 50.w,
-                  right: 50.w,
-                  child: FadeTransition(
-                    opacity: _buttonOpacity,
-                    child: Container(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (_) => WelcomePage()),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          elevation: 0,
-                          backgroundColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.r),
-                          ),
-                        ),
-                        child: Ink(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8.r),
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFDD6BFF), Color(0xFF4FE0C5)],
-                            ),
-                          ),
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 10,
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              "Continue",
-                              style: GoogleFonts.inter(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12.sp,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
             ],
           ),
         );
