@@ -6,7 +6,6 @@ import 'package:taskalert_app/screens/CreateOneTimeScreen.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
-import 'package:dropdown_button2/dropdown_button2.dart';
 
 import 'CreateRepetitiveScreen.dart';
 

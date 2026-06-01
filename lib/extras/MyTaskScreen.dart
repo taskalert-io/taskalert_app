@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class MyTaskScreen extends StatefulWidget {
+  const MyTaskScreen({super.key});
+
   @override
   State<StatefulWidget> createState() => MyTaskScreenState();
 }
