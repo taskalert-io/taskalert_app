@@ -1,15 +1,9 @@
-// ignore_for_file: use_build_context_synchronously
-
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
-// import 'package:gulf_app/screens/congratulations.dart';
-// import 'package:gulf_app/screens/selcet_booking_class.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
-
-// import '../screens/TermsAndConditionsScreen.dart';
-// import '../screens/new_test_cart.dart';
-// import '../screens/parchase_giftcard_one.dart';
+import 'package:taskalert_app/screens/DashboardPage.dart';
+import 'package:taskalert_app/screens/HomeScreen.dart';
 
 class CustomDrawer extends StatefulWidget {
   final String activeTile;
@@ -22,215 +16,111 @@ class CustomDrawer extends StatefulWidget {
   });
 
   @override
-  // ignore: library_private_types_in_public_api
-  _CustomDrawerState createState() => _CustomDrawerState();
+  State<CustomDrawer> createState() => _CustomDrawerState();
 }
 
 class _CustomDrawerState extends State<CustomDrawer> {
+  final FlutterSecureStorage storage = const FlutterSecureStorage();
+
   String activeTile = '';
-  String loggedInUserName = '';
+  String userName = "Michael Smith";
+  String userEmail = "michaelsmith12@gmail.com";
 
   @override
   void initState() {
     super.initState();
     activeTile = widget.activeTile;
-    _loadUserName(); // Load the user name when the widget is initialized
+    loadUserData();
   }
 
-  void _loadUserName() async {
-    String? userName = await getUserName();
+  Future<void> loadUserData() async {
+    String? storedName = await storage.read(key: "user_name");
+    String? storedEmail = await storage.read(key: "user_email");
+
     setState(() {
-      loggedInUserName = userName ?? "Amit Kumar Mandal"; // Provide a fallback value
+      userName = storedName ?? "Michael Smith";
+      userEmail = storedEmail ?? "michaelsmith12@gmail.com";
     });
   }
 
-  Future<String?> getUserName() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('user_name'); // Returns userId if stored, else null
+  Future<void> logout() async {
+    await storage.deleteAll();
+
+    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
   }
 
-  Future<void> _logout(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-
-    // Retrieve the dynamically stored API URL and auth token from SharedPreferences
-    const String apiUrl =
-        'https://wealthclockadvisors.com/api/client/logout'; // Replace with your actual API URL
-    final String? authToken =
-    prefs.getString('auth_token'); // Dynamically get the auth token
-
-    // Check if the auth token is null
-    if (authToken == null) {
-      // print('Auth token not found in SharedPreferences');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content:
-            Text('Unable to retrieve session data. Please log in again.')),
-      );
-      return;
-    }
-
-    try {
-      // print('Attempting to log out...');
-      // print('API URL: $apiUrl');
-      // print('Authorization Token: $authToken');
-
-      // Sending the GET request to the logout API
-      final response = await http.get(
-        Uri.parse('$apiUrl?logout=true'),
-        headers: {
-          'Authorization': 'Bearer $authToken', // Use the dynamic auth token
-          'Content-Type': 'application/json',
-        },
-      );
-
-      // print('Response status: ${response.statusCode}');
-      // print('Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        // Successfully logged out
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Logged out successfully!')),
-        );
-
-        // Clear all session data after logout
-        await prefs.clear();
-
-        // Navigate to the login screen after successful logout
-        Navigator.pushReplacementNamed(context, '/login');
-      } else if (response.statusCode == 401) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Unauthorized')),
-        );
-      } else {
-        // Handle API error response
-        // print('Error during logout. Status code: ${response.statusCode}');
-        // print('Error body: ${response.body}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Unable to logout. Please try again.'),
-          ),
-        );
-      }
-    } catch (e) {
-      // Handle network or other errors
-      // print('Error during logout: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: Unable to log out. $e'),
-        ),
-      );
-    }
-  }
-
-  // Widget _buildDrawerTile({
-  //   required String title,
-  //   required IconData icon,
-  // }) {
-  //   bool isActive = activeTile == title;
-  //   return Container(
-  //     decoration: BoxDecoration(
-  //       border:
-  //           Border(bottom: BorderSide(color: Colors.grey.shade400, width: 1.0)),
-  //     ),
-  //     child: ElevatedButton(
-  //       style: ElevatedButton.styleFrom(
-  //         padding: EdgeInsets.zero,
-  //         backgroundColor: isActive ? Color(0xFFfee0be) : Colors.transparent,
-  //         elevation: isActive ? 5 : 0,
-  //         shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-  //       ),
-  //       onPressed: () {
-  //         setState(() {
-  //           activeTile = title;
-  //         });
-  //         widget.onTileTap(title);
-  //         Navigator.pop(context); // Close drawer
-  //       },
-  //       child: ListTile(
-  //         leading: Icon(
-  //           icon,
-  //           color: isActive ? Color(0xFF0f625c) : Color(0xFF303131),
-  //           size: 20,
-  //         ),
-  //         title: Text(
-  //           title,
-  //           style: TextStyle(
-  //             color: isActive ? Color(0xFF0f625c) : Color(0xFF303131),
-  //             fontSize: 15,
-  //             fontWeight: FontWeight.w600,
-  //           ),
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  // }
-
-  Widget _buildDrawerTile({
+  Widget buildDrawerItem({
     required String title,
     required IconData icon,
     Widget? destinationScreen,
   }) {
-    bool isActive = activeTile == title;
+    bool isSelected = activeTile == title;
 
-    return InkWell(
-      onTap: () {
-        Navigator.pop(context); // Close drawer
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: 24.w,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12.r),
+          onTap: () {
+            setState(() {
+              activeTile = title;
+            });
 
-        if (activeTile == title) {
-          // ✅ Don't navigate if already on this screen
-          return;
-        }
-        setState(() {
-          activeTile = title;
-        });
-        widget.onTileTap(title);
+            widget.onTileTap(title);
 
-        if (destinationScreen != null) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => destinationScreen),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$title screen is under development!')),
-          );
-        }
+            Navigator.pop(context);
 
-        // Navigator.push(
-        //   context,
-        //   MaterialPageRoute(builder: (context) => destinationScreen),
-        // );
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        decoration: BoxDecoration(
-          color: isActive ?  const Color(0xFF7DB778) : Colors.transparent,
-          border: const Border(
-            bottom: BorderSide(color: Color(0xFFBFEBBC), width: 1.0),
-          ),
-        ),
-        child: ListTile(
-          leading: Container(
-            width: 35,
-            height: 35,
+            if (destinationScreen != null) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => destinationScreen,
+                ),
+              );
+            }
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            height: 42.h,
+            padding: EdgeInsets.symmetric(horizontal: 14.w),
             decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(100),
-                border: Border.all(color: isActive ? const Color(0xFF9ECF9A) : const Color(0xFF669933),width: 1)
+              color: isSelected
+                  ? const Color(0xFFF1F4F9)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(12.r),
             ),
-            child: Center(
-              child: Icon(
-                icon,
-                color: isActive ? const Color(0xFFffffff) : const Color(0xFFffffff),
-                size: 22, // Slightly increased for better visibility
-              ),
-            ),
-          ),
-          title: Text(
-            title,
-            style: TextStyle(
-              color: isActive ? const Color(0xFFffffff) : const Color(0xFFffffff),
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 20.sp,
+                  color: isSelected
+                      ? const Color(0xFF0A0258)
+                      : const Color(0xFF7B8AA0),
+                ),
+
+                SizedBox(width: 10.w),
+
+                Expanded(
+                  child: Text(
+                    title,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w500,
+                      color: isSelected
+                          ? const Color(0xFF0A0258)
+                          : const Color(0xFF344054),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -240,170 +130,279 @@ class _CustomDrawerState extends State<CustomDrawer> {
 
   @override
   Widget build(BuildContext context) {
+    // FIX: Get the bottom system padding (navigation bar height) from MediaQuery.
+    // This ensures the user info footer is always above the system navigation bar.
+    final double bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return Drawer(
-      child: Container(
-        color: const Color(0xFF9ECF9A),
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            // Header
-            DrawerHeader(
-              decoration: const BoxDecoration(color: Color(0xFF9ECF9A)),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        spacing: 5,
-                        children: [
-                          const Icon(Icons.arrow_back_ios_sharp,size: 19,color: Color(0xFFffffff),),
-                          Text("Jester Park Golf Course",style: GoogleFonts.poppins(color: const Color(0xFFFFFFFF),fontSize: 16,fontWeight: FontWeight.w600),)
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 40,),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      spacing: 5,
-                      children: [
-                        ClipOval(
-                          child: Image.asset(
-                            'assets/images/menu_ppl.png',
-                            fit: BoxFit.cover,
-                            width: 64,
-                            height: 64,
-                          ),
+      width: 280.w,
+      backgroundColor: Colors.white,
+      // FIX: Remove SafeArea from here. We handle insets manually below
+      // so the footer padding is precise and doesn't double-apply.
+      child: Column(
+        children: [
+          /// TOP SAFE AREA — only top inset needed here
+          SizedBox(height: MediaQuery.of(context).padding.top),
+
+          /// HEADER
+          Container(
+            padding: EdgeInsets.only(
+              left: 24.w,
+              right: 24.w,
+              top: 20.h,
+              bottom: 16.h,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                /// LOGO
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => HomeScreen(userId: ''),
                         ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              width: 200,
-                              child: Text(
-                                loggedInUserName,
-                                style: GoogleFonts.poppins(
-                                  color: const Color(0xFFFFFFFF),
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
+                      );
+                    },
+                    child: Row(
+                      children: [
+                        Image.asset(
+                          "assets/images/prologoadd.png",
+                          width: 45.w,
+                          height: 34.h,
+                          fit: BoxFit.contain,
+                        ),
+
+                        SizedBox(width: 8.w),
+
+                        Expanded(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Row(
+                              children: [
+                                /// TASK
+                                Text(
+                                  "task",
+                                  style: GoogleFonts.inter(
+                                    color: const Color(0xFF0B045A),
+                                    fontSize: 22.sp,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.only(top: 5),
-                              width: 200,
-                              child: Text(
-                                '+ 91 87777 94755',
-                                style: GoogleFonts.poppins(
-                                  color: const Color(0xFFFFFFFF),
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w400,
+
+                                /// ALERT
+                                ShaderMask(
+                                  shaderCallback: (bounds) {
+                                    return const LinearGradient(
+                                      begin: Alignment.centerLeft,
+                                      end: Alignment.centerRight,
+                                      colors: [
+                                        Color(0xFF7B61FF),
+                                        Color(0xFF4FE0C5),
+                                      ],
+                                    ).createShader(bounds);
+                                  },
+                                  child: Text(
+                                    "alert",
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontSize: 22.sp,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
-                              ),
+
+                                /// .IO
+                                Text(
+                                  ".io",
+                                  style: GoogleFonts.inter(
+                                    color: const Color(0xFF0B045A),
+                                    fontSize: 22.sp,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
 
-            // Drawer Items
-            _buildDrawerTile(
-              title: 'Home',
-              icon: Icons.home,
-              // destinationScreen: const SelcetBookingClass(userId: ''),
+                SizedBox(width: 10.w),
+
+                /// CLOSE BUTTON
+                InkWell(
+                  onTap: () {
+                    Navigator.pop(context);
+                  },
+                  borderRadius: BorderRadius.circular(100.r),
+                  child: Container(
+                    width: 26.w,
+                    height: 26.h,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0xFFF4F4F4),
+                    ),
+                    child: Icon(
+                      Icons.close,
+                      size: 15.sp,
+                      color: const Color(0xFF0A0258),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            _buildDrawerTile(
-              title: 'My Profile',
-              icon: Icons.person_outline_sharp,
-            ),
-            _buildDrawerTile(
-              title: 'Tee Times',
-              icon: Icons.golf_course_outlined,
-            ),
-            _buildDrawerTile(
-              title: 'My Transactions',
-              icon: Icons.receipt_long,
-            ),
-            _buildDrawerTile(
-              title: 'My Reservations',
-              icon: Icons.calendar_month_sharp,
-            ),
-            _buildDrawerTile(
-              title: 'My Wallet',
-              icon: Icons.shopping_cart,
-            ),
-            _buildDrawerTile(
-              title: 'Gift Card',
-              icon: Icons.card_giftcard,
-            ),
-            _buildDrawerTile(
-              title: 'Parchase Gift Card',
-              icon: Icons.add_card_outlined,
-              // destinationScreen: const ParchaseGiftCardOnePage(pgCardId: ''),
-            ),
-            _buildDrawerTile(
-              title: 'New Testing Cart',
-              icon: Icons.add_card_outlined,
-              // destinationScreen: const NewTestCartPage(nwTstId: ''),
-            ),
-            _buildDrawerTile(
-              title: 'Congratulations!',
-              icon: Icons.event_available,
-              // destinationScreen: const CongratulationsPage(cngsId: ''),
-            ),
-            _buildDrawerTile(
-              title: 'Terms & Conditions',
-              icon: Icons.event_available,
-              // destinationScreen: const TermsAndConditionsScreen(tncId: ''),
-            ),
-            // Logout Button
-            Container(
-              margin: const EdgeInsets.only(top: 100),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(left: 20),
+          ),
+
+          /// MENU LIST
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                buildDrawerItem(
+                  title: "Home",
+                  icon: Icons.home_outlined,
+                  destinationScreen: HomeScreen(userId: ''),
+                ),
+
+                buildDrawerItem(
+                  title: "Work Space",
+                  icon: Icons.dashboard_outlined,
+                  destinationScreen: DashboardPage(userId: ''),
+                ),
+
+                buildDrawerItem(
+                  title: "Work Flow",
+                  icon: Icons.show_chart,
+                ),
+
+                buildDrawerItem(
+                  title: "User",
+                  icon: Icons.person_outline,
+                ),
+
+                buildDrawerItem(
+                  title: "Attendance",
+                  icon: Icons.calendar_month_outlined,
+                ),
+
+                buildDrawerItem(
+                  title: "Reporting",
+                  icon: Icons.receipt_long_outlined,
+                ),
+
+                buildDrawerItem(
+                  title: "Category",
+                  icon: Icons.layers_outlined,
+                ),
+
+                buildDrawerItem(
+                  title: "Settings",
+                  icon: Icons.settings_outlined,
+                ),
+
+                buildDrawerItem(
+                  title: "Help",
+                  icon: Icons.help_outline,
+                ),
+                SizedBox(height: 10.h),
+
+                /// LOGOUT BUTTON
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 26.w),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8.r),
+                    onTap: logout,
                     child: Container(
-                      child: Stack(
-                          children: [
-                            SizedBox(
-                              width: 260,
-                              child: ElevatedButton(
-                                onPressed: () => _logout(context),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF244065),
-                                  elevation: 5,
-                                ),
-                                child: Text(
-                                  'Logout',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFFFFFFFF),
-                                  ),
-                                ),
-                              ),
+                      padding: EdgeInsets.only(top: 10.h,bottom: 10.h,left: 14.w),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.red),
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          Icon(Icons.logout, color: Color(0xFFB71C1C), size: 15.sp),
+                          SizedBox(width: 10.w),
+                          Text(
+                            "Logout",
+                            style: GoogleFonts.inter(
+                              color: Color(0xFFB71C1C),
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w600,
                             ),
-                            const Positioned(top: 14,right: 12,child: Icon(Icons.arrow_forward,color: Color(0xFFffffff),size: 20,)),
-                          ]
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+
+                SizedBox(height: 10.h),
+              ],
             ),
-          ],
-        ),
+          ),
+
+          /// USER INFO
+          /// FIX: bottomPadding is added to the container's bottom padding
+          /// so the user info section always sits above the system nav bar.
+          Container(
+            padding: EdgeInsets.only(
+              left: 24.w,
+              right: 24.w,
+              top: 16.h,
+              // Add the system navigation bar height here so the content
+              // never gets hidden behind the gesture bar / nav buttons.
+              bottom: 16.h + bottomPadding,
+            ),
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: Color(0xFFF0F2F5))),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 22.r,
+                  backgroundImage: const AssetImage(
+                    "assets/images/profile.png",
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        userName,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF324054),
+                        ),
+                      ),
+                      SizedBox(height: 2.h),
+                      Text(
+                        userEmail,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w400,
+                          color: const Color(0xFF71839B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
