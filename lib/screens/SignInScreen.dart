@@ -19,6 +19,7 @@ class SignInScreen extends StatefulWidget {
 class SignInScreenState extends State<SignInScreen> {
   final _formKey = GlobalKey<FormState>();
   bool isTermsAccepted = false;
+  bool _autoValidate = false;
   final phoneController = TextEditingController();
 
   // 3. Locate your controller instance via dependency injection
@@ -164,6 +165,9 @@ class SignInScreenState extends State<SignInScreen> {
                     ),
                     child: Form(
                       key: _formKey,
+                      autovalidateMode: _autoValidate
+                          ? AutovalidateMode.onUserInteraction
+                          : AutovalidateMode.disabled,
                       child: Column(
                         children: [
                           // GOOGLE BUTTON
@@ -292,6 +296,10 @@ class SignInScreenState extends State<SignInScreen> {
                                   ? null
                                   : () async {
                                       FocusScope.of(context).unfocus();
+                                      setState(() {
+                                        _autoValidate =
+                                            true; // ✅ trigger validation on press
+                                      });
 
                                       if (!_formKey.currentState!.validate()) {
                                         return;
@@ -445,7 +453,8 @@ class SignInScreenState extends State<SignInScreen> {
       obscureText: obscure,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
-      autovalidateMode: AutovalidateMode.onUserInteraction,
+
+      // autovalidateMode: AutovalidateMode.onUserInteraction,
       validator: validator,
       style: GoogleFonts.inter(
         fontSize: 12.sp,

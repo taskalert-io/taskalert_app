@@ -8,7 +8,7 @@ import 'package:taskalert_app/screens/SplashScreen.dart';
 import 'package:taskalert_app/utils/injection_container.dart' as di;
 
 final RouteObserver<ModalRoute<void>> routeObserver =
-RouteObserver<ModalRoute<void>>();
+    RouteObserver<ModalRoute<void>>();
 
 void main() {
   di.init(); // Initialize dependency injection
@@ -35,21 +35,9 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<Widget> _getInitialScreen() async {
-<<<<<<< HEAD
     final storage = di.sl<FlutterSecureStorage>();
     String? isLoggedIn = await storage.read(key: 'isLoggedIn');
     String? token = await storage.read(key: 'accessToken');
-=======
-    const storage = FlutterSecureStorage();
-
-    final String? isLoggedIn = await storage.read(
-      key: 'isLoggedIn',
-    );
-
-    final String? token = await storage.read(
-      key: 'accessToken',
-    );
->>>>>>> origin
 
     if (isLoggedIn == 'true' && token != null) {
       return DashboardPage(userId: '');
@@ -67,26 +55,23 @@ class _MyAppState extends State<MyApp> {
 
       builder: (context, child) {
         return MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            textScaler: const TextScaler.linear(1.0),
-          ),
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(1.0)),
 
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
 
             navigatorObservers: [routeObserver],
 
-            theme: ThemeData(
-              textTheme: GoogleFonts.interTextTheme(),
-            ),
+            theme: ThemeData(textTheme: GoogleFonts.interTextTheme()),
 
             home: FutureBuilder<Widget>(
               future: _initialScreenFuture,
 
               builder: (context, snapshot) {
                 /// LOADING
-                if (snapshot.connectionState ==
-                    ConnectionState.waiting) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
                   return const SplashScreen();
                 }
 
