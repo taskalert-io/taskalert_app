@@ -26,8 +26,9 @@ class _CustomDrawerState extends State<CustomDrawer> {
   final FlutterSecureStorage storage = const FlutterSecureStorage();
 
   String activeTile = '';
-  String userName = "Michael Smith";
-  String userEmail = "michaelsmith12@gmail.com";
+  String userName = "User";
+  String userEmail = "";
+  String userThumbnail = "";
 
   final _loginController = sl<LoginController>();
 
@@ -40,12 +41,19 @@ class _CustomDrawerState extends State<CustomDrawer> {
   }
 
   Future<void> loadUserData() async {
-    String? storedName = await storage.read(key: "user_name");
+    String? storedFirstName = await storage.read(key: "user_first_name");
+    String? storedLastName = await storage.read(key: "user_last_name");
+    String? storedName = (storedFirstName != null && storedLastName != null)
+        ? "$storedFirstName $storedLastName"
+        : null;
     String? storedEmail = await storage.read(key: "user_email");
 
+    String? storedThumbnail = await storage.read(key: "user_avatar_thumbnail");
+
     setState(() {
-      userName = storedName ?? "Michael Smith";
-      userEmail = storedEmail ?? "michaelsmith12@gmail.com";
+      userName = storedName ?? "User";
+      userEmail = storedEmail ?? "";
+      userThumbnail = storedThumbnail ?? "assets/images/profile.png";
     });
   }
 
@@ -433,9 +441,10 @@ class _CustomDrawerState extends State<CustomDrawer> {
               children: [
                 CircleAvatar(
                   radius: 22.r,
-                  backgroundImage: const AssetImage(
-                    "assets/images/profile.png",
-                  ),
+                  backgroundImage: userThumbnail.isNotEmpty
+                      ? NetworkImage(userThumbnail)
+                      : const AssetImage("assets/images/profile.png")
+                            as ImageProvider,
                 ),
                 SizedBox(width: 12.w),
                 Expanded(
