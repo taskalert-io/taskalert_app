@@ -88,6 +88,111 @@ class _EmpJobDetailsSectionState extends State<EmpJobDetailsSection> {
     ),
   );
 
+  Widget get _titlePrefix => Padding(
+    padding: EdgeInsets.only(left: 12.w, right: 8.w),
+    child: Center(
+      widthFactor: 1,
+      child: Text(
+        "Title:",
+        style: GoogleFonts.inter(
+          fontSize: 12.sp,
+          fontWeight: FontWeight.w500,
+          color: const Color(0xFF303030),
+        ),
+      ),
+    ),
+  );
+
+  Widget get _departmentPrefix => Padding(
+    padding: EdgeInsets.only(left: 12.w, right: 8.w),
+    child: Center(
+      widthFactor: 1,
+      child: Text(
+        "Title:",
+        style: GoogleFonts.inter(
+          fontSize: 12.sp,
+          fontWeight: FontWeight.w500,
+          color: const Color(0xFF303030),
+        ),
+      ),
+    ),
+  );
+
+  Widget get _shiftPrefix => Padding(
+    padding: EdgeInsets.only(left: 12.w, right: 8.w),
+    child: Center(
+      widthFactor: 1,
+      child: Text(
+        "Title:",
+        style: GoogleFonts.inter(
+          fontSize: 12.sp,
+          fontWeight: FontWeight.w500,
+          color: const Color(0xFF303030),
+        ),
+      ),
+    ),
+  );
+
+  Widget get _hourPrefix => Padding(
+    padding: EdgeInsets.only(left: 12.w, right: 8.w),
+    child: Center(
+      widthFactor: 1,
+      child: Text(
+        "Title:",
+        style: GoogleFonts.inter(
+          fontSize: 12.sp,
+          fontWeight: FontWeight.w500,
+          color: const Color(0xFF303030),
+        ),
+      ),
+    ),
+  );
+
+  Widget get _reportToPrefix => Padding(
+    padding: EdgeInsets.only(left: 12.w, right: 8.w),
+    child: Center(
+      widthFactor: 1,
+      child: Text(
+        "Title:",
+        style: GoogleFonts.inter(
+          fontSize: 12.sp,
+          fontWeight: FontWeight.w500,
+          color: const Color(0xFF303030),
+        ),
+      ),
+    ),
+  );
+
+  Widget get _reportThemPrefix => Padding(
+    padding: EdgeInsets.only(left: 12.w, right: 8.w),
+    child: Center(
+      widthFactor: 1,
+      child: Text(
+        "Title:",
+        style: GoogleFonts.inter(
+          fontSize: 12.sp,
+          fontWeight: FontWeight.w500,
+          color: const Color(0xFF303030),
+        ),
+      ),
+    ),
+  );
+
+  Widget get _tenurePrefix => Padding(
+    padding: EdgeInsets.only(left: 12.w, right: 8.w),
+    child: Center(
+      widthFactor: 1,
+      child: Text(
+        "Title:",
+        style: GoogleFonts.inter(
+          fontSize: 12.sp,
+          fontWeight: FontWeight.w500,
+          color: const Color(0xFF303030),
+        ),
+      ),
+    ),
+  );
+
   // ── Reusable text field ────────────────────────────────────────────────────
   Widget _buildTextField({
     required String hint,
@@ -95,7 +200,7 @@ class _EmpJobDetailsSectionState extends State<EmpJobDetailsSection> {
     TextInputType keyboardType = TextInputType.text,
     List<TextInputFormatter>? inputFormatters,
     bool readOnly = false,
-    VoidCallback? onTap,
+    VoidCallback? onTap, required Widget prefix,
   }) {
     return TextFormField(
       controller: controller,
@@ -412,12 +517,17 @@ class _EmpJobDetailsSectionState extends State<EmpJobDetailsSection> {
         _fieldLabel('Job Title'),
         _buildTextField(
           hint: 'Senior Backend Engineer',
+          prefix: _titlePrefix,
           controller: _jobTitleController,
         ),
         SizedBox(height: 10.h),
 
         _fieldLabel('Department'),
-        _buildTextField(hint: 'Product', controller: _departmentController),
+        _buildTextField(
+            hint: 'Product',
+            prefix: _departmentPrefix,
+            controller: _departmentController
+        ),
         SizedBox(height: 14.h),
 
         // ── Employment Type ──────────────────────────────────────────────
@@ -473,12 +583,17 @@ class _EmpJobDetailsSectionState extends State<EmpJobDetailsSection> {
         _sectionHeading('Work Schedule'),
 
         _fieldLabel('Shift'),
-        _buildTextField(hint: 'Morning', controller: _shiftController),
+        _buildTextField(
+            hint: 'Morning',
+            prefix: _shiftPrefix,
+            controller: _shiftController
+        ),
         SizedBox(height: 8.h),
 
         _fieldLabel('Hours'),
         _buildTextField(
           hint: 'Product',
+          prefix: _hourPrefix,
           controller: _hoursController,
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -491,6 +606,7 @@ class _EmpJobDetailsSectionState extends State<EmpJobDetailsSection> {
         _fieldLabel('Who They Report To'),
         _buildTextField(
           hint: 'Amit Kumar Mondal',
+          prefix: _reportToPrefix,
           controller: _whoReportsToController,
         ),
         SizedBox(height: 8.h),
@@ -498,6 +614,7 @@ class _EmpJobDetailsSectionState extends State<EmpJobDetailsSection> {
         _fieldLabel('Who Reports To Them'),
         _buildTextField(
           hint: 'Maulik Seith',
+          prefix: _reportThemPrefix,
           controller: _whoReportsThemController,
         ),
         SizedBox(height: 8.h),
@@ -515,7 +632,11 @@ class _EmpJobDetailsSectionState extends State<EmpJobDetailsSection> {
 
         // ── Tenure ───────────────────────────────────────────────────────
         _sectionHeading('Tenure'),
-        _buildTextField(hint: 'Product', controller: _tenureController),
+        _buildTextField(
+            hint: 'Product',
+            prefix: _tenurePrefix,
+            controller: _tenureController
+        ),
         SizedBox(height: 6.h),
 
         Text(
