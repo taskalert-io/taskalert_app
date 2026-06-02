@@ -87,7 +87,7 @@ class LoginController extends ChangeNotifier {
       // Second, extract the clean nested UserModel payload from inside it
       final user = apiResponse.data;
       // print all securestorage keys and values for debugging
-      
+
       // print("$user");
       notifyListeners();
       return user;
@@ -100,7 +100,6 @@ class LoginController extends ChangeNotifier {
   }
 
   Future<bool> handleResendOtp() async {
-    print("Attempting to resend OTP for phone: $_currentPhoneNumber");
     if (_currentPhoneNumber == null) return false;
 
     _isLoading = true;
@@ -113,8 +112,6 @@ class LoginController extends ChangeNotifier {
     );
 
     _isLoading = false;
-
-    print("Resend OTP result: $result");
 
     if (result is Success) {
       final apiResponse = (result as Success).data;

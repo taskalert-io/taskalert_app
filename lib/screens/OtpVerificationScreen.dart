@@ -568,24 +568,36 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                               // The button triggers only if the countdown is finished and the controller isn't busy
                               onPressed:
                                   (secondsRemaining == 0 &&
-                                      !_loginController.isLoading)
+                                      (!_loginController.isLoading ||
+                                          !_signupController.isLoading))
                                   ? () async {
                                       // 1. Fire off the asynchronous resend network request
-                                      final isResent = await _loginController
-                                          .handleResendOtp();
+
+                                      final isResent = widget.isSignUpFlow
+                                          ? await _signupController
+                                                .handleResendSignUpOtp()
+                                          : await _loginController
+                                                .handleResendOtp();
 
                                       if (!mounted) return;
 
                                       // 2. Handle a successful response envelope dispatch
                                       if (isResent &&
-                                          _loginController.successMessage !=
-                                              null) {
+                                          (_loginController.successMessage !=
+                                                  null ||
+                                              _signupController
+                                                      .successMessage !=
+                                                  null)) {
                                         ScaffoldMessenger.of(
                                           context,
                                         ).showSnackBar(
                                           SnackBar(
                                             content: Text(
-                                              _loginController.successMessage!,
+                                              widget.isSignUpFlow
+                                                  ? _signupController
+                                                        .successMessage!
+                                                  : _loginController
+                                                        .successMessage!,
                                             ),
                                             backgroundColor: Colors.green,
                                           ),
@@ -596,13 +608,19 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                       }
                                       // 4. Handle structural or network failure outputs cleanly
                                       else if (_loginController.errorMessage !=
-                                          null) {
+                                              null ||
+                                          _signupController.errorMessage !=
+                                              null) {
                                         ScaffoldMessenger.of(
                                           context,
                                         ).showSnackBar(
                                           SnackBar(
                                             content: Text(
-                                              _loginController.errorMessage!,
+                                              widget.isSignUpFlow
+                                                  ? _signupController
+                                                        .errorMessage!
+                                                  : _loginController
+                                                        .errorMessage!,
                                             ),
                                             backgroundColor: Colors.redAccent,
                                           ),
@@ -624,75 +642,21 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                   // Dynamic color change based on active validation state
                                   color:
                                       (secondsRemaining == 0 &&
-                                          !_loginController.isLoading)
+                                          (!_loginController.isLoading ||
+                                              !_signupController.isLoading))
                                       ? const Color(0xFF4D81E7)
                                       : Colors.grey,
                                   fontWeight: FontWeight.w500,
                                   decoration: TextDecoration.underline,
                                   decorationColor:
                                       (secondsRemaining == 0 &&
-                                          !_loginController.isLoading)
+                                          (!_loginController.isLoading ||
+                                              !_signupController.isLoading))
                                       ? const Color(0xFF4D81E7)
                                       : Colors.grey,
                                 ),
                               ),
                             ),
-
-                            // TextButton(
-                            //   // 5. Connect the Resend endpoint implementation
-                            //   onPressed: _loginController.isLoading
-                            //       ? null
-                            //       : () async {
-                            //           final isResent = await _loginController
-                            //               .handleResendOtp();
-
-                            //           if (!mounted) return;
-
-                            //           if (isResent &&
-                            //               _loginController.successMessage !=
-                            //                   null) {
-                            //             ScaffoldMessenger.of(
-                            //               context,
-                            //             ).showSnackBar(
-                            //               SnackBar(
-                            //                 content: Text(
-                            //                   _loginController.successMessage!,
-                            //                 ),
-                            //                 backgroundColor: Colors.green,
-                            //               ),
-                            //             );
-                            //           } else if (_loginController
-                            //                   .errorMessage !=
-                            //               null) {
-                            //             ScaffoldMessenger.of(
-                            //               context,
-                            //             ).showSnackBar(
-                            //               SnackBar(
-                            //                 content: Text(
-                            //                   _loginController.errorMessage!,
-                            //                 ),
-                            //                 backgroundColor: Colors.redAccent,
-                            //               ),
-                            //             );
-                            //           }
-                            //         },
-
-                            //   style: TextButton.styleFrom(
-                            //     padding: EdgeInsets.zero,
-                            //     minimumSize: Size.zero,
-                            //     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            //   ),
-                            //   child: Text(
-                            //     "Resend",
-                            //     style: GoogleFonts.inter(
-                            //       fontSize: 12.sp,
-                            //       color: const Color(0xFF4D81E7),
-                            //       fontWeight: FontWeight.w500,
-                            //       decoration: TextDecoration.underline,
-                            //       decorationColor: const Color(0xFF4D81E7),
-                            //     ),
-                            //   ),
-                            // ),
                           ],
                         ),
                       ],

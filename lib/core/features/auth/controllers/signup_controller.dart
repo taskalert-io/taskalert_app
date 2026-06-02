@@ -119,6 +119,7 @@ class SignUpController extends ChangeNotifier {
 
   /// 3. Auxiliary Step: Resend Sign-Up OTP Code
   Future<bool> handleResendSignUpOtp() async {
+    print("Attempting to resend Sign-Up OTP for phone: $_currentPhoneNumber");
     if (_currentPhoneNumber == null) {
       _errorMessage = "Session expired. Please restart the sign up process.";
       notifyListeners();
@@ -138,7 +139,12 @@ class SignUpController extends ChangeNotifier {
 
     if (result is Success) {
       final apiResponse = (result as Success).data as BaseApiResponse<dynamic>;
-      _successMessage = apiResponse.message;
+      final otp = apiResponse.data['otp'];
+      if (otp != null) {
+        _successMessage = " Your new OTP is: $otp";
+      } else {
+        _successMessage = " OTP resent successfully to ${_currentPhoneNumber!}";
+      }
       notifyListeners();
       return true;
     } else if (result is Failure) {
