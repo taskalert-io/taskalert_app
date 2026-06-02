@@ -101,12 +101,12 @@ class SignUpController extends ChangeNotifier {
     _isLoading = false;
 
     if (result is Success) {
-      // Safely unpack the nested UserModel layer from BaseApiResponse
       final apiResponse =
           (result as Success).data as BaseApiResponse<UserModel>;
       final user = apiResponse.data;
 
       notifyListeners();
+
       return user;
     } else if (result is Failure) {
       _errorMessage = (result as Failure).exception.userMessage;

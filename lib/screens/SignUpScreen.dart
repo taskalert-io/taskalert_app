@@ -542,7 +542,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                                             ),
                                             items: [
                                               DropdownMenuItem(
-                                                value: "Male",
+                                                value: "male",
                                                 child: Text(
                                                   "Male",
                                                   style: GoogleFonts.inter(
@@ -555,7 +555,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                                                 ),
                                               ),
                                               DropdownMenuItem(
-                                                value: "Female",
+                                                value: "female",
                                                 child: Text(
                                                   "Female",
                                                   style: GoogleFonts.inter(
@@ -568,7 +568,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                                                 ),
                                               ),
                                               DropdownMenuItem(
-                                                value: "Other",
+                                                value: "other",
                                                 child: Text(
                                                   "Other",
                                                   style: GoogleFonts.inter(
@@ -1269,33 +1269,44 @@ class SignUpScreenState extends State<SignUpScreen> {
                                               Navigator.push(
                                                 context,
                                                 MaterialPageRoute(
-                                                  builder: (context) => OtpVerificationScreen(
-                                                    phoneNumber: phoneController
-                                                        .text
-                                                        .trim(),
-                                                    isSignUpFlow:
-                                                        true, // Let the screen know to use the sign-up endpoint routing
-                                                    // firstName:
-                                                    //     firstNameController.text
-                                                    //         .trim(),
-                                                    // lastName: lastNameController
-                                                    //     .text
-                                                    //     .trim(),
-                                                    // password: passwordController
-                                                    //     .text
-                                                    //     .trim(),
-                                                    // agreeTerms: isTermsAccepted,
-                                                    // email:
-                                                    //     emailController.text
-                                                    //         .trim()
-                                                    //         .isEmpty
-                                                    //     ? null
-                                                    //     : emailController.text
-                                                    //           .trim(),
-                                                    // gender: selectedGender,
-                                                    // dateOfBirth: _selectedDate
-                                                    //     ?.toIso8601String(), // Or use your backend's date format preference
-                                                  ),
+                                                  builder: (context) =>
+                                                      OtpVerificationScreen(
+                                                        phoneNumber:
+                                                            phoneController.text
+                                                                .trim(),
+                                                        isSignUpFlow:
+                                                            true, // Let the screen know to use the sign-up endpoint routing
+                                                        firstName:
+                                                            firstNameController
+                                                                .text
+                                                                .trim(),
+                                                        lastName:
+                                                            lastNameController
+                                                                .text
+                                                                .trim(),
+                                                        password:
+                                                            passwordController
+                                                                .text
+                                                                .trim(),
+                                                        agreeTerms:
+                                                            isTermsAccepted,
+                                                        email:
+                                                            emailController.text
+                                                                .trim()
+                                                                .isEmpty
+                                                            ? null
+                                                            : emailController
+                                                                  .text
+                                                                  .trim(),
+                                                        gender: selectedGender,
+                                                        dateOfBirth:
+                                                            _selectedDate
+                                                                ?.toString()
+                                                                .substring(
+                                                                  0,
+                                                                  10,
+                                                                ),
+                                                      ),
                                                 ),
                                               );
                                             } else if (_signUpController

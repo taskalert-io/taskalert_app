@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:taskalert_app/core/features/auth/data/models/user_model.dart';
 import 'package:taskalert_app/core/network/base_api_response.dart';
+import 'package:taskalert_app/utils/injection_container.dart' as di;
 import '../data/repositories/auth_repository.dart';
 import 'package:taskalert_app/core/network/api_result.dart';
 
@@ -84,6 +86,8 @@ class LoginController extends ChangeNotifier {
 
       // Second, extract the clean nested UserModel payload from inside it
       final user = apiResponse.data;
+      // print all securestorage keys and values for debugging
+      
       // print("$user");
       notifyListeners();
       return user;
@@ -95,7 +99,6 @@ class LoginController extends ChangeNotifier {
     return null;
   }
 
-  
   Future<bool> handleResendOtp() async {
     print("Attempting to resend OTP for phone: $_currentPhoneNumber");
     if (_currentPhoneNumber == null) return false;

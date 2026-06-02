@@ -4,19 +4,35 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:taskalert_app/screens/HomeScreen.dart';
 import 'package:taskalert_app/screens/LoginConfirmationScreen.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
 import '../core/features/auth/controllers/login_controller.dart';
+import '../core/features/auth/controllers/signup_controller.dart';
 import 'dart:async';
 
 class OtpVerificationScreen extends StatefulWidget {
   final String phoneNumber;
   final bool isSignUpFlow;
+  final String? firstName;
+  final String? lastName;
+  final String? email;
+  final String? gender;
+  final String? dateOfBirth;
+  final String? password;
+  final bool? agreeTerms;
 
   const OtpVerificationScreen({
     super.key,
     required this.phoneNumber,
     required this.isSignUpFlow,
+    this.firstName,
+    this.lastName,
+    this.email,
+    this.gender,
+    this.dateOfBirth,
+    this.password,
+    this.agreeTerms,
   });
 
   @override
@@ -32,6 +48,7 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
   final List<FocusNode> otpFocusNodes = List.generate(6, (_) => FocusNode());
 
   final _loginController = sl<LoginController>();
+  final _signupController = sl<SignUpController>();
 
   @override
   void initState() {
@@ -56,6 +73,8 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   int secondsRemaining = 60;
   Timer? timer;
+
+  // bool get isSignUpFlow => null;
 
   void startTimer() {
     /// CANCEL OLD TIMER
@@ -408,13 +427,26 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                         .map((c) => c.text.trim())
                                         .join();
 
-                                    print(
-                                      "Complete OTP entered: $completeOtp",
-                                    ); // Debug log for OTP value
-
                                     // 3. Fire request using both OTP and cached phoneNumber
-                                    final userModel = await _loginController
-                                        .handleVerifyOtp(otp: completeOtp);
+                                    final userModel = widget.isSignUpFlow
+                                        ? await _signupController
+                                              .handleVerifySignUpOtp(
+                                                firstName:
+                                                    widget.firstName ?? '',
+                                                lastName: widget.lastName ?? '',
+                                                password: widget.password ?? '',
+                                                agreeTerms:
+                                                    widget.agreeTerms ?? false,
+                                                otpCode: completeOtp,
+                                                email: widget.email ?? '',
+                                                gender: widget.gender ?? '',
+                                                dateOfBirth:
+                                                    widget.dateOfBirth ?? '',
+                                              )
+                                        : await _loginController
+                                              .handleVerifyOtp(
+                                                otp: completeOtp,
+                                              );
 
                                     if (!mounted) return;
 
@@ -425,7 +457,7 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                       ).showSnackBar(
                                         SnackBar(
                                           content: Text(
-                                            "Welcome back, ${userModel.firstName}!",
+                                            "Welcome ${widget.isSignUpFlow ? '' : 'back'} ${userModel.firstName}!",
                                           ),
                                           backgroundColor: Colors.green,
                                         ),
@@ -434,15 +466,14 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                       Navigator.pushReplacement(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (_) =>
-                                              const LoginConfirmationScreen(),
+                                          builder: (context) =>
+                                              widget.isSignUpFlow
+                                              ? LoginConfirmationScreen()
+                                              : HomeScreen(userId: ''),
                                         ),
                                       );
                                     } else if (_loginController.errorMessage !=
                                         null) {
-                                      print(
-                                        "OTP Verification Failed: ${_loginController.errorMessage}",
-                                      ); // Debug log for error message
                                       // Display error extracted by our new stack-trace parser
                                       ScaffoldMessenger.of(
                                         context,
@@ -450,6 +481,19 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                         SnackBar(
                                           content: Text(
                                             _loginController.errorMessage!,
+                                          ),
+                                          backgroundColor: Colors.redAccent,
+                                        ),
+                                      );
+                                    } else if (_signupController.errorMessage !=
+                                        null) {
+                                      // Display error extracted by our new stack-trace parser
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            _signupController.errorMessage!,
                                           ),
                                           backgroundColor: Colors.redAccent,
                                         ),
@@ -482,7 +526,9 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                               ),
                               child: Container(
                                 alignment: Alignment.center,
-                                child: _loginController.isLoading
+                                child:
+                                    _loginController.isLoading ||
+                                        _signupController.isLoading
                                     ? SizedBox(
                                         height: 18.h,
                                         width: 18.h,

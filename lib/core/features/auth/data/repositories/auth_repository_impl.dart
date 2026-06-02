@@ -62,7 +62,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<ApiResult<UserModel>> verifySignUpOtp({
+  Future<ApiResult<BaseApiResponse<UserModel>>> verifySignUpOtp({
     required String firstName,
     required String lastName,
     required String phoneNumber,
@@ -95,10 +95,38 @@ class AuthRepositoryImpl implements AuthRepository {
 
       if (apiResponse.success && apiResponse.data != null) {
         final user = apiResponse.data!;
+
         if (user.token != null) {
           await _secureStorage.write(key: 'auth_token', value: user.token!);
+          await _secureStorage.write(
+            key: 'refresh_token',
+            value: user.refreshToken ?? '',
+          );
+
+          await _secureStorage.write(key: 'user_id', value: user.id);
+          await _secureStorage.write(key: 'user_email', value: user.email);
+          await _secureStorage.write(
+            key: 'user_phone',
+            value: user.phoneNumber,
+          );
+          await _secureStorage.write(
+            key: 'user_first_name',
+            value: user.firstName,
+          );
+          await _secureStorage.write(
+            key: 'user_last_name',
+            value: user.lastName,
+          );
+          await _secureStorage.write(
+            key: 'user_avatar_original',
+            value: user.originalAvatarUrl ?? '',
+          );
+          await _secureStorage.write(
+            key: 'user_avatar_thumbnail',
+            value: user.thumbnailAvatarUrl ?? '',
+          );
         }
-        return ApiResult.success(apiResponse as UserModel);
+        return ApiResult.success(apiResponse);
       }
       _handleErrorEnvelope(apiResponse);
       return ApiResult.failure(

@@ -8,6 +8,7 @@ class UserModel {
   final String? thumbnailAvatarUrl;
   final String? token; // This will cleanly map the root accessToken
   final String? refreshToken; // This will map the root refreshToken
+  final String? videoUrl; // New field for video URL
 
   UserModel({
     required this.id,
@@ -19,6 +20,7 @@ class UserModel {
     this.thumbnailAvatarUrl,
     this.token,
     this.refreshToken,
+    this.videoUrl,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -27,6 +29,10 @@ class UserModel {
 
     // 2. Safe extraction of the image nested map block inside the user context
     final imageMap = userMap['image'] as Map<String, dynamic>?;
+
+    final videoMap =
+        userMap['video']
+            as Map<String, dynamic>?; // New mapping for video object
 
     return UserModel(
       // Parse nested profile fields using target keys matching the response
@@ -40,6 +46,9 @@ class UserModel {
       originalAvatarUrl: imageMap?['originalUrl']?.toString(),
       thumbnailAvatarUrl: imageMap?['thumbnailUrl']?.toString(),
 
+      videoUrl: videoMap?['videoUrl']?.toString(),
+
+      // New mapping for video URL
       // Pull tokens straight from the base data structure root maps
       token: (json['accessToken'] ?? json['token'])?.toString(),
       refreshToken: json['refreshToken']?.toString(),

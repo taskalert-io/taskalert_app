@@ -17,7 +17,7 @@ abstract class AuthRepository {
     String? email,
   });
 
-  Future<ApiResult<UserModel>> verifySignUpOtp({
+  Future<ApiResult<BaseApiResponse<UserModel>>> verifySignUpOtp({
     required String firstName,
     required String lastName,
     required String phoneNumber,
