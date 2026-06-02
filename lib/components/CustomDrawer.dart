@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:taskalert_app/core/features/auth/controllers/login_controller.dart';
 import 'package:taskalert_app/screens/DashboardPage.dart';
 import 'package:taskalert_app/screens/HomeScreen.dart';
+import 'package:taskalert_app/screens/SignInScreen.dart';
+import 'package:taskalert_app/utils/injection_container.dart';
 
 class CustomDrawer extends StatefulWidget {
   final String activeTile;
@@ -26,11 +29,14 @@ class _CustomDrawerState extends State<CustomDrawer> {
   String userName = "Michael Smith";
   String userEmail = "michaelsmith12@gmail.com";
 
+  final _loginController = sl<LoginController>();
+
   @override
   void initState() {
     super.initState();
     activeTile = widget.activeTile;
     loadUserData();
+    // _loginController.addListener(_onControllerChanged);
   }
 
   Future<void> loadUserData() async {
@@ -43,12 +49,6 @@ class _CustomDrawerState extends State<CustomDrawer> {
     });
   }
 
-  Future<void> logout() async {
-    await storage.deleteAll();
-
-    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-  }
-
   Widget buildDrawerItem({
     required String title,
     required IconData icon,
@@ -57,9 +57,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
     bool isSelected = activeTile == title;
 
     return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: 24.w,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: 24.w),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -76,9 +74,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
             if (destinationScreen != null) {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => destinationScreen,
-                ),
+                MaterialPageRoute(builder: (context) => destinationScreen),
               );
             }
           },
@@ -88,9 +84,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
             height: 42.h,
             padding: EdgeInsets.symmetric(horizontal: 14.w),
             decoration: BoxDecoration(
-              color: isSelected
-                  ? const Color(0xFFF1F4F9)
-                  : Colors.transparent,
+              color: isSelected ? const Color(0xFFF1F4F9) : Colors.transparent,
               borderRadius: BorderRadius.circular(12.r),
             ),
             child: Row(
@@ -276,15 +270,9 @@ class _CustomDrawerState extends State<CustomDrawer> {
                   destinationScreen: DashboardPage(userId: ''),
                 ),
 
-                buildDrawerItem(
-                  title: "Work Flow",
-                  icon: Icons.show_chart,
-                ),
+                buildDrawerItem(title: "Work Flow", icon: Icons.show_chart),
 
-                buildDrawerItem(
-                  title: "User",
-                  icon: Icons.person_outline,
-                ),
+                buildDrawerItem(title: "User", icon: Icons.person_outline),
 
                 buildDrawerItem(
                   title: "Attendance",
@@ -296,30 +284,104 @@ class _CustomDrawerState extends State<CustomDrawer> {
                   icon: Icons.receipt_long_outlined,
                 ),
 
-                buildDrawerItem(
-                  title: "Category",
-                  icon: Icons.layers_outlined,
-                ),
+                buildDrawerItem(title: "Category", icon: Icons.layers_outlined),
 
                 buildDrawerItem(
                   title: "Settings",
                   icon: Icons.settings_outlined,
                 ),
 
-                buildDrawerItem(
-                  title: "Help",
-                  icon: Icons.help_outline,
-                ),
+                buildDrawerItem(title: "Help", icon: Icons.help_outline),
                 SizedBox(height: 10.h),
 
-                /// LOGOUT BUTTON
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 26.w),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(8.r),
-                    onTap: logout,
+                    // 🌟 CHANGED: Call the confirmation dialog instead of a direct logout
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        barrierDismissible:
+                            false, // User must explicitly tap a choice button
+                        builder: (BuildContext dialogContext) {
+                          return AlertDialog(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            title: Text(
+                              "Logout Account",
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16.sp,
+                                color: const Color(0xFF1E1E24),
+                              ),
+                            ),
+                            content: Text(
+                              "Are you sure you want to sign out? You will need to verify your phone number again to access your account.",
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w400,
+                                fontSize: 13.sp,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            actions: [
+                              // Cancel option
+                              TextButton(
+                                onPressed: () => Navigator.pop(
+                                  dialogContext,
+                                ), // Close popup safely
+                                child: Text(
+                                  "Cancel",
+                                  style: GoogleFonts.inter(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13.sp,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ),
+                              // Destructive confirm logout action
+                              TextButton(
+                                onPressed: () async {
+                                  // 1. Pop the open dialog context box layer out immediately
+                                  Navigator.pop(dialogContext);
+
+                                  // 2. Clear out local secure storage variables via your controller workflow
+                                  await _loginController.handleLogout();
+
+                                  if (!context.mounted) return;
+
+                                  // 3. Purge historical routes and push clean back to the original sign in interface
+                                  Navigator.pushAndRemoveUntil(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const SignInScreen(), // Adjust to match your exact Sign In widget class name
+                                    ),
+                                    (Route<dynamic> route) =>
+                                        false, // Erases the backward view stack array history completely
+                                  );
+                                },
+                                child: Text(
+                                  "Logout",
+                                  style: GoogleFonts.inter(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13.sp,
+                                    color: Colors.redAccent,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
                     child: Container(
-                      padding: EdgeInsets.only(top: 10.h,bottom: 10.h,left: 14.w),
+                      padding: EdgeInsets.only(
+                        top: 10.h,
+                        bottom: 10.h,
+                        left: 14.w,
+                      ),
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.red),
                         borderRadius: BorderRadius.circular(8.r),
@@ -327,12 +389,16 @@ class _CustomDrawerState extends State<CustomDrawer> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: [
-                          Icon(Icons.logout, color: Color(0xFFB71C1C), size: 15.sp),
+                          Icon(
+                            Icons.logout,
+                            color: const Color(0xFFB71C1C),
+                            size: 15.sp,
+                          ),
                           SizedBox(width: 10.w),
                           Text(
                             "Logout",
                             style: GoogleFonts.inter(
-                              color: Color(0xFFB71C1C),
+                              color: const Color(0xFFB71C1C),
                               fontSize: 14.sp,
                               fontWeight: FontWeight.w600,
                             ),

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:taskalert_app/core/features/auth/data/models/user_model.dart';
 import 'package:taskalert_app/core/network/base_api_response.dart';
-import 'package:taskalert_app/utils/injection_container.dart' as di;
 import '../data/repositories/auth_repository.dart';
 import 'package:taskalert_app/core/network/api_result.dart';
 
@@ -131,5 +129,19 @@ class LoginController extends ChangeNotifier {
       return false;
     }
     return false;
+  }
+
+  Future<void> handleLogout() async {
+    _isLoading = true;
+    notifyListeners();
+
+    await _authRepository.logout();
+
+    _currentPhoneNumber = null;
+    _successMessage = null;
+    _errorMessage = null;
+
+    _isLoading = false;
+    notifyListeners();
   }
 }

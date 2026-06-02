@@ -7,8 +7,6 @@ import '../../../../network/base_api_response.dart';
 import '../../../../network/http_service.dart';
 import '../../../../errors/network_exceptions.dart';
 import '../../data/models/user_model.dart';
-// import '../../core/network/otp_response_model.dart';
-// import '../../core/network/user_model.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final HttpService _httpService;
