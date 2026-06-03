@@ -11,17 +11,22 @@ class DcmntComplianceSection extends StatefulWidget {
 }
 
 class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
-  // Signed Contracts
+  // ── Controllers ────────────────────────────────────────────────────────────
   final TextEditingController _ndasController                 = TextEditingController();
   final TextEditingController _employmentAgreementsController = TextEditingController();
   final TextEditingController _offerLettersController         = TextEditingController();
 
-  // Identification — each holds a list of mock uploaded files
-  List<_UploadedFile> _passportFiles      = [];
-  List<_UploadedFile> _visaFiles          = [];
-  List<_UploadedFile> _driversLicFiles    = [];
+  // ── Editing states ─────────────────────────────────────────────────────────
+  bool _isNdasEditing                 = false;
+  bool _isEmploymentAgreementsEditing = false;
+  bool _isOfferLettersEditing         = false;
 
-  // Background Checks
+  // ── Identification file lists ──────────────────────────────────────────────
+  List<_UploadedFile> _passportFiles   = [];
+  List<_UploadedFile> _visaFiles       = [];
+  List<_UploadedFile> _driversLicFiles = [];
+
+  // ── Background Checks ──────────────────────────────────────────────────────
   String? _verificationStatus;
   final List<String> _statuses = ['Approved', 'Pending', 'Rejected'];
 
@@ -29,6 +34,20 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
   final TextEditingController _verDayController   = TextEditingController();
   final TextEditingController _verMonthController = TextEditingController();
   final TextEditingController _verYearController  = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _ndasController.text                 = "Business Negotiations";
+    _employmentAgreementsController.text = "Yes";
+    _offerLettersController.text         = "Yes";
+
+    final now = DateTime.now();
+    _verificationDate        = now;
+    _verDayController.text   = now.day.toString().padLeft(2, '0');
+    _verMonthController.text = now.month.toString().padLeft(2, '0');
+    _verYearController.text  = now.year.toString();
+  }
 
   @override
   void dispose() {
@@ -41,56 +60,99 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
     super.dispose();
   }
 
-  // ── Edit icon ──────────────────────────────────────────────────────────────
-  Widget get _editIcon => Padding(
-    padding: const EdgeInsets.all(10),
-    child: Icon(Icons.edit_outlined, size: 18.sp, color: const Color(0xFFB8BEC5)),
-  );
-
   // ── Section heading ────────────────────────────────────────────────────────
   Widget _sectionHeading(String title) => Padding(
     padding: EdgeInsets.only(bottom: 8.h),
-    child: Text(title,
-        style: GoogleFonts.inter(
-            fontSize: 13.sp, fontWeight: FontWeight.w600, color: const Color(0xFF0A0258))),
+    child: Text(
+      title,
+      style: GoogleFonts.inter(
+        fontSize: 13.sp,
+        fontWeight: FontWeight.w600,
+        color: const Color(0xFF0A0258),
+      ),
+    ),
   );
 
   // ── Field label ────────────────────────────────────────────────────────────
   Widget _fieldLabel(String label) => Padding(
     padding: EdgeInsets.only(bottom: 6.h),
-    child: Text(label,
-        style: GoogleFonts.inter(
-            fontSize: 12.sp, fontWeight: FontWeight.w400, color: const Color(0xFF303030))),
+    child: Text(
+      label,
+      style: GoogleFonts.inter(
+        fontSize: 12.sp,
+        fontWeight: FontWeight.w400,
+        color: const Color(0xFF303030),
+      ),
+    ),
   );
 
-  // ── Reusable text field ────────────────────────────────────────────────────
+  // ── Reusable text field (EmpJobDetailsSection pattern) ────────────────────
   Widget _buildTextField({
     required String hint,
     required TextEditingController controller,
+    required bool isEditing,
+    required VoidCallback onEdit,
     TextInputType keyboardType = TextInputType.text,
   }) {
     return TextFormField(
       controller: controller,
+      readOnly: !isEditing,
       keyboardType: keyboardType,
-      style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.w400, color: const Color(0xFF6C7278)),
+      style: GoogleFonts.inter(
+        fontSize: 12.sp,
+        fontWeight: FontWeight.w400,
+        color: const Color(0xFF6C7278),
+      ),
       decoration: InputDecoration(
         isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 10,
+        ),
         hintText: hint,
-        hintStyle: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.w400, color: const Color(0xFFB8BEC5)),
-        suffixIcon: _editIcon,
+        hintStyle: GoogleFonts.inter(
+          fontSize: 12.sp,
+          fontWeight: FontWeight.w400,
+          color: const Color(0xFFB8BEC5),
+        ),
+        suffixIcon: GestureDetector(
+          onTap: onEdit,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Icon(
+              Icons.edit_outlined,
+              size: 18.sp,
+              color: const Color(0xFFB8BEC5),
+            ),
+          ),
+        ),
         filled: true,
         fillColor: const Color(0xFFF9FAFC),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r), borderSide: const BorderSide(color: Color(0xFFD9DEE5))),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r), borderSide: const BorderSide(color: Color(0xFFD9DEE5))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r), borderSide: const BorderSide(color: Color(0xFF0A0258))),
-        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r), borderSide: const BorderSide(color: Colors.red)),
-        focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r), borderSide: const BorderSide(color: Colors.red)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.r),
+          borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.r),
+          borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.r),
+          borderSide: const BorderSide(color: Color(0xFF0A0258)),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.r),
+          borderSide: const BorderSide(color: Colors.red),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.r),
+          borderSide: const BorderSide(color: Colors.red),
+        ),
       ),
     );
   }
 
-  // ── File upload row ────────────────────────────────────────────────────────
+  // ── File upload section ────────────────────────────────────────────────────
   Widget _buildFileUploadSection({
     required String label,
     required List<_UploadedFile> files,
@@ -101,13 +163,13 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _fieldLabel(label),
-        // Uploaded file tiles
-        ...files.asMap().entries.map((entry) => _buildFileTile(
-          file: entry.value,
-          onEdit: () {},
-          onDelete: () => onDelete(entry.key),
-        )),
-        // Upload button
+        ...files.asMap().entries.map(
+              (entry) => _buildFileTile(
+            file: entry.value,
+            onEdit: () {},
+            onDelete: () => onDelete(entry.key),
+          ),
+        ),
         GestureDetector(
           onTap: onAdd,
           child: Container(
@@ -120,10 +182,19 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
             ),
             child: Row(
               children: [
-                Icon(Icons.upload_file_outlined, size: 16.sp, color: const Color(0xFFB8BEC5)),
+                Icon(
+                  Icons.upload_file_outlined,
+                  size: 16.sp,
+                  color: const Color(0xFFB8BEC5),
+                ),
                 SizedBox(width: 8.w),
-                Text('Tap to upload file',
-                    style: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFFB8BEC5))),
+                Text(
+                  'Tap to upload file',
+                  style: GoogleFonts.inter(
+                    fontSize: 12.sp,
+                    color: const Color(0xFFB8BEC5),
+                  ),
+                ),
               ],
             ),
           ),
@@ -149,7 +220,6 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
       ),
       child: Row(
         children: [
-          // File thumbnail placeholder
           Container(
             width: 36.w,
             height: 36.w,
@@ -157,34 +227,55 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
               color: const Color(0xFFE8ECF4),
               borderRadius: BorderRadius.circular(6.r),
             ),
-            child: Icon(Icons.insert_drive_file_outlined, size: 20.sp, color: const Color(0xFF0A0258)),
+            child: Icon(
+              Icons.insert_drive_file_outlined,
+              size: 20.sp,
+              color: const Color(0xFF0A0258),
+            ),
           ),
           SizedBox(width: 10.w),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(file.name,
-                    style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.w500, color: const Color(0xFF303030))),
-                Text(file.size,
-                    style: GoogleFonts.inter(fontSize: 10.sp, color: const Color(0xFF9CA3AF))),
+                Text(
+                  file.name,
+                  style: GoogleFonts.inter(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF303030),
+                  ),
+                ),
+                Text(
+                  file.size,
+                  style: GoogleFonts.inter(
+                    fontSize: 10.sp,
+                    color: const Color(0xFF9CA3AF),
+                  ),
+                ),
               ],
             ),
           ),
-          // Edit icon
           GestureDetector(
             onTap: onEdit,
             child: Padding(
               padding: EdgeInsets.all(6.r),
-              child: Icon(Icons.edit_outlined, size: 16.sp, color: const Color(0xFFB8BEC5)),
+              child: Icon(
+                Icons.edit_outlined,
+                size: 16.sp,
+                color: const Color(0xFFB8BEC5),
+              ),
             ),
           ),
-          // Delete icon
           GestureDetector(
             onTap: onDelete,
             child: Padding(
               padding: EdgeInsets.all(6.r),
-              child: Icon(Icons.delete_outline, size: 16.sp, color: Colors.red),
+              child: Icon(
+                Icons.delete_outline,
+                size: 16.sp,
+                color: Colors.red,
+              ),
             ),
           ),
         ],
@@ -194,9 +285,7 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
 
   // ── Mock file add ──────────────────────────────────────────────────────────
   void _addMockFile(List<_UploadedFile> list) {
-    setState(() {
-      list.add(_UploadedFile(name: 'Photo.jpg', size: '254 KB'));
-    });
+    setState(() => list.add(_UploadedFile(name: 'Photo.jpg', size: '254 KB')));
   }
 
   // ── Verification date picker ───────────────────────────────────────────────
@@ -214,8 +303,16 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
             padding: const EdgeInsets.fromLTRB(15, 15, 15, 25),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10.r, spreadRadius: 2.r, offset: const Offset(0, -2))],
+              borderRadius:
+              BorderRadius.vertical(top: Radius.circular(20.r)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 10.r,
+                  spreadRadius: 2.r,
+                  offset: const Offset(0, -2),
+                ),
+              ],
             ),
             child: Column(
               children: [
@@ -231,10 +328,16 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
                     todayHighlightColor: const Color(0xFF0A0258),
                     headerStyle: DateRangePickerHeaderStyle(
                       backgroundColor: Colors.transparent,
-                      textStyle: GoogleFonts.inter(color: const Color(0xFF3F4B4B), fontSize: 16.sp, fontWeight: FontWeight.w600),
+                      textStyle: GoogleFonts.inter(
+                        color: const Color(0xFF3F4B4B),
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     onSelectionChanged: (args) {
-                      if (args.value is DateTime) setModal(() => tempDate = args.value);
+                      if (args.value is DateTime) {
+                        setModal(() => tempDate = args.value);
+                      }
                     },
                   ),
                 ),
@@ -244,7 +347,13 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
                   children: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: Text("Cancel", style: GoogleFonts.inter(color: Colors.red, fontSize: 14.sp)),
+                      child: Text(
+                        "Cancel",
+                        style: GoogleFonts.inter(
+                          color: Colors.red,
+                          fontSize: 14.sp,
+                        ),
+                      ),
                     ),
                     TextButton(
                       onPressed: () {
@@ -256,7 +365,13 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
                         });
                         Navigator.pop(context);
                       },
-                      child: Text("OK", style: GoogleFonts.inter(color: const Color(0xFF0DA99E), fontSize: 14.sp)),
+                      child: Text(
+                        "OK",
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFF0DA99E),
+                          fontSize: 14.sp,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -268,7 +383,7 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
     );
   }
 
-  // ── DD / MM / YYYY row ─────────────────────────────────────────────────────
+  // ── Date row ───────────────────────────────────────────────────────────────
   Widget _buildDateRow() {
     const borderColor = Color(0xFFD9DEE5);
     return Row(
@@ -280,18 +395,32 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
             child: Container(
               decoration: BoxDecoration(
                 color: const Color(0xFFF9FAFC),
-                borderRadius: BorderRadius.only(topLeft: Radius.circular(8.r), bottomLeft: Radius.circular(8.r)),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(8.r),
+                  bottomLeft: Radius.circular(8.r),
+                ),
                 border: Border.all(color: borderColor),
               ),
               child: IgnorePointer(
                 child: TextField(
                   controller: _verDayController,
                   readOnly: true,
-                  style: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFF303030)),
+                  style: GoogleFonts.inter(
+                    fontSize: 12.sp,
+                    color: const Color(0xFF303030),
+                  ),
                   decoration: InputDecoration(
-                    isDense: true, border: InputBorder.none, hintText: "DD",
-                    hintStyle: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFFB8BEC5)),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                    isDense: true,
+                    border: InputBorder.none,
+                    hintText: "DD",
+                    hintStyle: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      color: const Color(0xFFB8BEC5),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12.w,
+                      vertical: 8.h,
+                    ),
                   ),
                 ),
               ),
@@ -315,11 +444,22 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
                 child: TextField(
                   controller: _verMonthController,
                   readOnly: true,
-                  style: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFF303030)),
+                  style: GoogleFonts.inter(
+                    fontSize: 12.sp,
+                    color: const Color(0xFF303030),
+                  ),
                   decoration: InputDecoration(
-                    isDense: true, border: InputBorder.none, hintText: "MM",
-                    hintStyle: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFFB8BEC5)),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                    isDense: true,
+                    border: InputBorder.none,
+                    hintText: "MM",
+                    hintStyle: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      color: const Color(0xFFB8BEC5),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12.w,
+                      vertical: 8.h,
+                    ),
                   ),
                 ),
               ),
@@ -333,7 +473,10 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
             child: Container(
               decoration: BoxDecoration(
                 color: const Color(0xFFF9FAFC),
-                borderRadius: BorderRadius.only(topRight: Radius.circular(8.r), bottomRight: Radius.circular(8.r)),
+                borderRadius: BorderRadius.only(
+                  topRight: Radius.circular(8.r),
+                  bottomRight: Radius.circular(8.r),
+                ),
                 border: const Border(
                   top: BorderSide(color: borderColor),
                   bottom: BorderSide(color: borderColor),
@@ -344,11 +487,22 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
                 child: TextField(
                   controller: _verYearController,
                   readOnly: true,
-                  style: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFF303030)),
+                  style: GoogleFonts.inter(
+                    fontSize: 12.sp,
+                    color: const Color(0xFF303030),
+                  ),
                   decoration: InputDecoration(
-                    isDense: true, border: InputBorder.none, hintText: "YYYY",
-                    hintStyle: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFFB8BEC5)),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                    isDense: true,
+                    border: InputBorder.none,
+                    hintText: "YYYY",
+                    hintStyle: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      color: const Color(0xFFB8BEC5),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12.w,
+                      vertical: 8.h,
+                    ),
                   ),
                 ),
               ),
@@ -366,39 +520,56 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
       children: [
 
         // ── Signed Contracts ─────────────────────────────────────────────
-        _sectionHeading('Signed Contracts :'),
+        _sectionHeading('Signed Contracts'),
 
-        _fieldLabel('NDAs :'),
-        _buildTextField(hint: 'Business Negotiations', controller: _ndasController),
+        _fieldLabel('NDAs'),
+        _buildTextField(
+          hint: 'Business Negotiations',
+          controller: _ndasController,
+          isEditing: _isNdasEditing,
+          onEdit: () => setState(() => _isNdasEditing = !_isNdasEditing),
+        ),
         SizedBox(height: 10.h),
 
-        _fieldLabel('Employment Agreements :'),
-        _buildTextField(hint: 'Yes', controller: _employmentAgreementsController),
+        _fieldLabel('Employment Agreements'),
+        _buildTextField(
+          hint: 'Yes',
+          controller: _employmentAgreementsController,
+          isEditing: _isEmploymentAgreementsEditing,
+          onEdit: () => setState(
+                  () => _isEmploymentAgreementsEditing = !_isEmploymentAgreementsEditing),
+        ),
         SizedBox(height: 10.h),
 
-        _fieldLabel('Offer Letters :'),
-        _buildTextField(hint: 'Yes', controller: _offerLettersController),
+        _fieldLabel('Offer Letters'),
+        _buildTextField(
+          hint: 'Yes',
+          controller: _offerLettersController,
+          isEditing: _isOfferLettersEditing,
+          onEdit: () =>
+              setState(() => _isOfferLettersEditing = !_isOfferLettersEditing),
+        ),
         SizedBox(height: 16.h),
 
         // ── Identification ───────────────────────────────────────────────
-        _sectionHeading('Identification :'),
+        _sectionHeading('Identification'),
 
         _buildFileUploadSection(
-          label: 'Scans of Passports :',
+          label: 'Scans of Passports',
           files: _passportFiles,
           onAdd: () => _addMockFile(_passportFiles),
           onDelete: (i) => setState(() => _passportFiles.removeAt(i)),
         ),
 
         _buildFileUploadSection(
-          label: 'Visas :',
+          label: 'Visas',
           files: _visaFiles,
           onAdd: () => _addMockFile(_visaFiles),
           onDelete: (i) => setState(() => _visaFiles.removeAt(i)),
         ),
 
         _buildFileUploadSection(
-          label: "Driver's licenses :",
+          label: "Driver's Licenses",
           files: _driversLicFiles,
           onAdd: () => _addMockFile(_driversLicFiles),
           onDelete: (i) => setState(() => _driversLicFiles.removeAt(i)),
@@ -409,26 +580,54 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
         // ── Background Checks ────────────────────────────────────────────
         _sectionHeading('Background Checks'),
 
-        _fieldLabel('Verification Status :'),
+        _fieldLabel('Verification Status'),
         DropdownButtonFormField<String>(
           value: _verificationStatus,
-          hint: Text('Approved', style: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFF6C7278))),
-          style: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFF6C7278)),
-          icon: Icon(Icons.keyboard_arrow_down, color: const Color(0xFFB8BEC5), size: 20.sp),
+          hint: Text(
+            'Approved',
+            style: GoogleFonts.inter(
+              fontSize: 12.sp,
+              color: const Color(0xFF6C7278),
+            ),
+          ),
+          style: GoogleFonts.inter(
+            fontSize: 12.sp,
+            color: const Color(0xFF6C7278),
+          ),
+          icon: Icon(
+            Icons.keyboard_arrow_down,
+            color: const Color(0xFFB8BEC5),
+            size: 20.sp,
+          ),
           decoration: InputDecoration(
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            filled: true, fillColor: const Color(0xFFF9FAFC),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r), borderSide: const BorderSide(color: Color(0xFFD9DEE5))),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r), borderSide: const BorderSide(color: Color(0xFFD9DEE5))),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r), borderSide: const BorderSide(color: Color(0xFF0A0258))),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
+            filled: true,
+            fillColor: const Color(0xFFF9FAFC),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: const BorderSide(color: Color(0xFF0A0258)),
+            ),
           ),
-          items: _statuses.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+          items: _statuses
+              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+              .toList(),
           onChanged: (v) => setState(() => _verificationStatus = v),
         ),
         SizedBox(height: 10.h),
 
-        _fieldLabel('Verification Date :'),
+        _fieldLabel('Verification Date'),
         _buildDateRow(),
       ],
     );

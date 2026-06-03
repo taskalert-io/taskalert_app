@@ -28,7 +28,16 @@ class ProfileSettingState extends State<ProfileSetting>
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
   final TextEditingController _dateController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
   bool _autoValidate = false;
+
+  // ── Editing states (mirrors EmpJobDetailsSection pattern) ─────────────────
+  bool _isFirstNameEditing = false;
+  bool _isLastNameEditing = false;
+  bool _isEmailEditing = false;
+  bool _isPhoneEditing = false;
+
+  // ── Section toggles ────────────────────────────────────────────────────────
   bool empJobDetailsEnabled = false;
   bool cmpFinanceEnabled = false;
   bool skillPerformEnabled = false;
@@ -39,33 +48,53 @@ class ProfileSettingState extends State<ProfileSetting>
   int selectedTab = 0;
   DateTime? _selectedDate;
 
+  // ── Profile controllers ────────────────────────────────────────────────────
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
 
-  TextEditingController dayController = TextEditingController();
-  TextEditingController monthController = TextEditingController();
-  TextEditingController yearController = TextEditingController();
-  final FocusNode dayFocus = FocusNode();
-  final FocusNode monthFocus = FocusNode();
-  final FocusNode yearFocus = FocusNode();
-  bool isDayFocused = false;
-  bool isMonthFocused = false;
-  bool isYearFocused = false;
+  // ── DOB controllers ────────────────────────────────────────────────────────
+  final TextEditingController dayController = TextEditingController();
+  final TextEditingController monthController = TextEditingController();
+  final TextEditingController yearController = TextEditingController();
   bool isDobError = false;
+
+  // ── Account Settings controllers & states ──────────────────────────────────
+  final TextEditingController _accountEmailController    = TextEditingController();
+  final TextEditingController _accountPasswordController = TextEditingController();
+  bool _isAccountEmailEditing    = false;
+  bool _isAccountPasswordEditing = false;
+  bool _isTwoStepEnabled         = true;
+  bool _isSupportAccessEnabled   = true;
 
   String selectedProofType = "";
   String selectedProofRadioType = "";
 
+  String? _selectedLanguage;
+  final List<String> _languages = [
+    'English', 'Hindi', 'Bengali', 'Spanish', 'French', 'Arabic', 'Chinese',
+  ];
+
   @override
   void initState() {
     super.initState();
+
+    // Default DOB to today
     final now = DateTime.now();
     _selectedDate = now;
     dayController.text = now.day.toString().padLeft(2, '0');
     monthController.text = now.month.toString().padLeft(2, '0');
     yearController.text = now.year.toString();
+
+    // Default profile values
+    _firstNameController.text = "Michael";
+    _lastNameController.text = "Smith";
+    _emailController.text = "michaelsmith@gmail.com";
+    _phoneController.text = "+14547260592";
+
+    _accountEmailController.text    = "michael Smith@gmail.com";
+    _accountPasswordController.text = "••••••••";
   }
 
   @override
@@ -74,20 +103,20 @@ class ProfileSettingState extends State<ProfileSetting>
     dayController.dispose();
     monthController.dispose();
     yearController.dispose();
-    dayFocus.dispose();
-    monthFocus.dispose();
-    yearFocus.dispose();
     _firstNameController.dispose();
     _lastNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
+
+    _accountEmailController.dispose();
+    _accountPasswordController.dispose();
+
     super.dispose();
   }
 
+  // ── Submit ─────────────────────────────────────────────────────────────────
   void _submitForm() {
-    setState(() {
-      _autoValidate = true;
-    });
+    setState(() => _autoValidate = true);
 
     if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -114,11 +143,14 @@ class ProfileSettingState extends State<ProfileSetting>
         ),
         backgroundColor: Colors.green,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8.r),
+        ),
       ),
     );
   }
 
+  // ── Tab pill ───────────────────────────────────────────────────────────────
   Widget _buildTab(String label, bool isSelected) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -157,6 +189,7 @@ class ProfileSettingState extends State<ProfileSetting>
     );
   }
 
+  // ── Phone / Email launchers ────────────────────────────────────────────────
   Future<void> _callPhone() async {
     final Uri uri = Uri.parse('tel:+14547260592');
     try {
@@ -196,19 +229,19 @@ class ProfileSettingState extends State<ProfileSetting>
     }
   }
 
-  Widget buildTextField({
+  // ── Reusable text field (exact EmpJobDetailsSection pattern) ───────────────
+  Widget _buildTextField({
     required String hint,
-    Widget? prefix,
-    Widget? suffix,
-    bool obscure = false,
+    required TextEditingController controller,
+    required bool isEditing,
+    required VoidCallback onEdit,
     TextInputType keyboardType = TextInputType.text,
     List<TextInputFormatter>? inputFormatters,
-    required TextEditingController controller,
-    required String? Function(String?) validator,
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
-      obscureText: obscure,
+      readOnly: !isEditing,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       validator: validator,
@@ -230,8 +263,18 @@ class ProfileSettingState extends State<ProfileSetting>
           color: const Color(0xFFB8BEC5),
         ),
         errorStyle: TextStyle(fontSize: 10.sp),
-        prefixIcon: prefix,
-        suffixIcon: suffix,
+        // ── Edit / Done icon toggles exactly like EmpJobDetailsSection ──
+        suffixIcon: GestureDetector(
+          onTap: onEdit,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Icon(
+              Icons.edit_outlined,
+              size: 18.sp,
+              color: const Color(0xFFB8BEC5),
+            ),
+          ),
+        ),
         filled: true,
         fillColor: const Color(0xFFF9FAFC),
         border: OutlineInputBorder(
@@ -258,15 +301,7 @@ class ProfileSettingState extends State<ProfileSetting>
     );
   }
 
-  Widget get _editIcon => Padding(
-    padding: const EdgeInsets.all(10),
-    child: Icon(
-      Icons.edit_outlined,
-      size: 18.sp,
-      color: const Color(0xFFB8BEC5),
-    ),
-  );
-
+  // ── Helpers ────────────────────────────────────────────────────────────────
   Widget _sectionHeading(String title) => Text(
     title,
     style: GoogleFonts.inter(
@@ -285,559 +320,93 @@ class ProfileSettingState extends State<ProfileSetting>
     ),
   );
 
-  Widget _buildMyProfileContent() {
-    return SingleChildScrollView(
-      // ✅ FIX: top padding gives room so shadow/border-radius is never cut off
-      padding: EdgeInsets.only(left: 15.w, top: 16.h, bottom: 16.h, right: 15.w),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ✅ FIX: removed clipBehavior — it was clipping the rounded corners during scroll
-            Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFFFF),
-                borderRadius: BorderRadius.circular(8.r),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: EdgeInsets.only(
-                  left: 15.w,
-                  top: 16.h,
-                  right: 15.w,
-                  bottom: 16.h,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _sectionHeading('Profile Details'),
-                    SizedBox(height: 8.h),
-
-                    _fieldLabel('First Name'),
-                    SizedBox(height: 6.h),
-                    buildTextField(
-                      hint: 'Enter first name',
-                      suffix: _editIcon,
-                      controller: _firstNameController,
-                      validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Required' : null,
-                    ),
-
-                    SizedBox(height: 8.h),
-
-                    _fieldLabel('Last Name'),
-                    SizedBox(height: 6.h),
-                    buildTextField(
-                      hint: 'Enter last name',
-                      suffix: _editIcon,
-                      controller: _lastNameController,
-                      validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Required' : null,
-                    ),
-
-                    SizedBox(height: 10.h),
-
-                    _sectionHeading('Contact Details'),
-                    SizedBox(height: 8.h),
-
-                    _fieldLabel('Email ID'),
-                    SizedBox(height: 6.h),
-                    buildTextField(
-                      hint: 'Enter email address',
-                      suffix: _editIcon,
-                      keyboardType: TextInputType.emailAddress,
-                      controller: _emailController,
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) return 'Required';
-                        final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-                        if (!emailRegex.hasMatch(v)) return 'Invalid email';
-                        return null;
-                      },
-                    ),
-
-                    SizedBox(height: 8.h),
-
-                    _fieldLabel('Phone Number'),
-                    SizedBox(height: 6.h),
-                    buildTextField(
-                      hint: 'Enter phone number',
-                      suffix: _editIcon,
-                      keyboardType: TextInputType.phone,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(
-                          RegExp(r'[\d\s\-\+\(\)]'),
-                        ),
-                        LengthLimitingTextInputFormatter(15),
-                      ],
-                      controller: _phoneController,
-                      validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Required' : null,
-                    ),
-
-                    SizedBox(height: 8.h),
-
-                    Text(
-                      "Date of Birth",
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w400,
-                        fontSize: 12.sp,
-                        color: const Color(0xFF6C7278),
-                      ),
-                    ),
-
-                    SizedBox(height: 6.h),
-
-                    Row(
-                      children: [
-                        // DAY
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => _showDatePicker(context),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF9FAFC),
-                                borderRadius: BorderRadius.only(
-                                  topLeft: Radius.circular(8.r),
-                                  bottomLeft: Radius.circular(8.r),
-                                ),
-                                border: Border.all(
-                                  color: isDobError
-                                      ? Colors.red
-                                      : const Color(0xFFD9DEE5),
-                                ),
-                              ),
-                              child: IgnorePointer(
-                                child: TextField(
-                                  controller: dayController,
-                                  readOnly: true,
-                                  style: GoogleFonts.inter(
-                                    color: const Color(0xFF303030),
-                                  ),
-                                  decoration: InputDecoration(
-                                    isDense: true,
-                                    border: InputBorder.none,
-                                    hintText: "Day",
-                                    contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 12.w,
-                                      vertical: 8.h,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        // MONTH
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => _showDatePicker(context),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF9FAFC),
-                                border: Border(
-                                  top: BorderSide(
-                                    color: isDobError
-                                        ? Colors.red
-                                        : const Color(0xFFD9DEE5),
-                                  ),
-                                  bottom: BorderSide(
-                                    color: isDobError
-                                        ? Colors.red
-                                        : const Color(0xFFD9DEE5),
-                                  ),
-                                  right: BorderSide(
-                                    color: isDobError
-                                        ? Colors.red
-                                        : const Color(0xFFD9DEE5),
-                                  ),
-                                ),
-                              ),
-                              child: IgnorePointer(
-                                child: TextField(
-                                  controller: monthController,
-                                  readOnly: true,
-                                  style: GoogleFonts.inter(
-                                    color: const Color(0xFF303030),
-                                  ),
-                                  decoration: InputDecoration(
-                                    isDense: true,
-                                    border: InputBorder.none,
-                                    hintText: "Month",
-                                    contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 12.w,
-                                      vertical: 8.h,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        // YEAR
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => _showDatePicker(context),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF9FAFC),
-                                borderRadius: BorderRadius.only(
-                                  topRight: Radius.circular(8.r),
-                                  bottomRight: Radius.circular(8.r),
-                                ),
-                                border: Border(
-                                  top: BorderSide(
-                                    color: isDobError
-                                        ? Colors.red
-                                        : const Color(0xFFD9DEE5),
-                                  ),
-                                  bottom: BorderSide(
-                                    color: isDobError
-                                        ? Colors.red
-                                        : const Color(0xFFD9DEE5),
-                                  ),
-                                  right: BorderSide(
-                                    color: isDobError
-                                        ? Colors.red
-                                        : const Color(0xFFD9DEE5),
-                                  ),
-                                ),
-                              ),
-                              child: IgnorePointer(
-                                child: TextField(
-                                  controller: yearController,
-                                  readOnly: true,
-                                  style: GoogleFonts.inter(
-                                    color: const Color(0xFF303030),
-                                  ),
-                                  decoration: InputDecoration(
-                                    isDense: true,
-                                    border: InputBorder.none,
-                                    hintText: "Year",
-                                    contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 12.w,
-                                      vertical: 8.h,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    if (isDobError)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 5, left: 4),
-                        child: Text(
-                          "Please select date of birth",
-                          style: GoogleFonts.inter(
-                            fontSize: 10.sp,
-                            color: Colors.red,
-                          ),
-                        ),
-                      ),
-
-                    SizedBox(height: 10.h),
-                  ],
-                ),
-              ),
+  // ── Toggle switch ──────────────────────────────────────────────────────────
+  Widget _buildToggle({
+    required bool value,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        width: 30.w,
+        height: 15.h,
+        padding: EdgeInsets.all(1.w),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(30.r),
+          border: Border.all(
+            color: value ? const Color(0xFF1DC230) : const Color(0xFF676299),
+            width: 1.2,
+          ),
+        ),
+        child: AnimatedAlign(
+          duration: const Duration(milliseconds: 250),
+          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            width: 14.w,
+            height: 14.h,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color:
+              value ? const Color(0xFF1DC230) : const Color(0xFF676299),
             ),
-
-            SizedBox(height: 10.h),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Assignment & Recurrence",
-                  style: GoogleFonts.inter(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF0A0258),
-                  ),
-                ),
-                _buildToggle(
-                  value: empJobDetailsEnabled,
-                  onTap: () => setState(() {
-                    empJobDetailsEnabled = !empJobDetailsEnabled;
-                    if (empJobDetailsEnabled) cmpFinanceEnabled =false; dcmntComplianceEnabled =false; skillPerformEnabled = false; timeAttendEnabled = false; assetSystemEnabled = false;
-                  }),
-                ),
-              ],
-            ),
-
-            SizedBox(height: 8.h),
-
-            if (empJobDetailsEnabled)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10.r),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF101828).withOpacity(0.06),
-                      blurRadius: 24.r,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: const EmpJobDetailsSection(),  // 👈 drop it right here
-              ),
-
-            SizedBox(height: 10.h),
-            const Divider(height: 1, color: Color(0xFFE4E7EC)),
-            SizedBox(height: 10.h),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'The "Proof" & AI Validation',
-                  style: GoogleFonts.inter(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF0A0258),
-                  ),
-                ),
-                _buildToggle(
-                  value: cmpFinanceEnabled,
-                  onTap: () => setState(() {
-                    cmpFinanceEnabled = !cmpFinanceEnabled;
-                    if (cmpFinanceEnabled) empJobDetailsEnabled = false; dcmntComplianceEnabled =false; skillPerformEnabled = false; timeAttendEnabled = false; assetSystemEnabled = false;
-                  }),
-                ),
-              ],
-            ),
-
-            SizedBox(height: 8.h),
-
-            if (cmpFinanceEnabled)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24.r),
-                ),
-                  child: const CmpFinanceSection(),  // 👈 drop it right here
-              ),
-            SizedBox(height: 10.h),
-            const Divider(height: 1, color: Color(0xFFE4E7EC)),
-            SizedBox(height: 10.h),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'The "Proof" & AI Validation',
-                  style: GoogleFonts.inter(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF0A0258),
-                  ),
-                ),
-                _buildToggle(
-                  value: dcmntComplianceEnabled,
-                  onTap: () => setState(() {
-                    dcmntComplianceEnabled = !dcmntComplianceEnabled;
-                    if (dcmntComplianceEnabled) empJobDetailsEnabled = false; cmpFinanceEnabled =false; skillPerformEnabled = false; timeAttendEnabled = false; assetSystemEnabled = false;
-                  }),
-                ),
-              ],
-            ),
-
-            SizedBox(height: 8.h),
-
-            if (dcmntComplianceEnabled)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24.r),
-                ),
-                child: const DcmntComplianceSection(),  // 👈 drop it right here
-              ),
-
-            SizedBox(height: 10.h),
-            const Divider(height: 1, color: Color(0xFFE4E7EC)),
-            SizedBox(height: 10.h),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'The "Proof" & AI Validation',
-                  style: GoogleFonts.inter(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF0A0258),
-                  ),
-                ),
-                _buildToggle(
-                  value: skillPerformEnabled,
-                  onTap: () => setState(() {
-                    skillPerformEnabled = !skillPerformEnabled;
-                    if (skillPerformEnabled) empJobDetailsEnabled = false; cmpFinanceEnabled =false; dcmntComplianceEnabled = false; timeAttendEnabled = false; assetSystemEnabled = false;
-                  }),
-                ),
-              ],
-            ),
-
-            SizedBox(height: 8.h),
-
-            if (skillPerformEnabled)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24.r),
-                ),
-                child: const SkillPerformSection(),  // 👈 drop it right here
-              ),
-            SizedBox(height: 10.h),
-            const Divider(height: 1, color: Color(0xFFE4E7EC)),
-            SizedBox(height: 10.h),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'The "Proof" & AI Validation',
-                  style: GoogleFonts.inter(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF0A0258),
-                  ),
-                ),
-                _buildToggle(
-                  value: timeAttendEnabled,
-                  onTap: () => setState(() {
-                    timeAttendEnabled = !timeAttendEnabled;
-                    if (timeAttendEnabled) empJobDetailsEnabled = false; cmpFinanceEnabled =false; dcmntComplianceEnabled = false; skillPerformEnabled = false; assetSystemEnabled = false;
-                  }),
-                ),
-              ],
-            ),
-
-            SizedBox(height: 8.h),
-
-            if (timeAttendEnabled)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24.r),
-                ),
-                child: const TimeAttendSection(),  // 👈 drop it right here
-              ),
-            SizedBox(height: 10.h),
-            const Divider(height: 1, color: Color(0xFFE4E7EC)),
-            SizedBox(height: 10.h),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'The "Proof" & AI Validation',
-                  style: GoogleFonts.inter(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF0A0258),
-                  ),
-                ),
-                _buildToggle(
-                  value: assetSystemEnabled,
-                  onTap: () => setState(() {
-                    assetSystemEnabled = !assetSystemEnabled;
-                    if (assetSystemEnabled) empJobDetailsEnabled = false; cmpFinanceEnabled =false; dcmntComplianceEnabled = false; skillPerformEnabled = false; timeAttendEnabled = false;
-                  }),
-                ),
-              ],
-            ),
-
-            SizedBox(height: 8.h),
-
-            if (assetSystemEnabled)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24.r),
-                ),
-                child: const AssetSystemSection(),  // 👈 drop it right here
-              ),
-
-            SizedBox(height: 16.h),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8.r),
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFD96CFF), Color(0xFF5CE1E6)],
-                    ),
-                  ),
-                  child: ElevatedButton(
-                    onPressed: _submitForm,
-                    style: ElevatedButton.styleFrom(
-                      elevation: 0,
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 18.w,
-                        vertical: 8.h,
-                      ),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                    ),
-                    child: Text(
-                      "Save Changes",
-                      style: GoogleFonts.inter(
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildAccountSettingsContent() {
-    return Center(
-      child: Text(
-        "Account Settings Content",
-        style: GoogleFonts.inter(fontSize: 18.sp),
-      ),
+  // ── Section row (label + toggle + optional content) ───────────────────────
+  Widget _buildSectionRow({
+    required String label,
+    required bool value,
+    required VoidCallback onTap,
+    required Widget child,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: 10.h),
+        const Divider(height: 1, color: Color(0xFFE4E7EC)),
+        SizedBox(height: 10.h),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF0A0258),
+              ),
+            ),
+            _buildToggle(value: value, onTap: onTap),
+          ],
+        ),
+        SizedBox(height: 8.h),
+        if (value)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10.r),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF101828).withOpacity(0.06),
+                  blurRadius: 24.r,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: child,
+          ),
+      ],
     );
   }
 
+  // ── Date picker bottom sheet ───────────────────────────────────────────────
   void _showDatePicker(BuildContext context) {
     DateTime tempSelectedDate = _selectedDate ?? DateTime.now();
 
@@ -894,9 +463,8 @@ class ProfileSettingState extends State<ProfileSetting>
                         onSelectionChanged:
                             (DateRangePickerSelectionChangedArgs args) {
                           if (args.value is DateTime) {
-                            dialogSetState(() {
-                              tempSelectedDate = args.value;
-                            });
+                            dialogSetState(
+                                    () => tempSelectedDate = args.value);
                           }
                         },
                       ),
@@ -909,7 +477,7 @@ class ProfileSettingState extends State<ProfileSetting>
                           onPressed: () => Navigator.pop(context),
                           child: Text(
                             "Cancel",
-                            style: GoogleFonts.poppins(
+                            style: GoogleFonts.inter(
                               color: Colors.red,
                               fontSize: 14.sp,
                             ),
@@ -923,10 +491,12 @@ class ProfileSettingState extends State<ProfileSetting>
                               "${tempSelectedDate.day.toString().padLeft(2, '0')}-"
                                   "${tempSelectedDate.month.toString().padLeft(2, '0')}-"
                                   "${tempSelectedDate.year}";
-                              dayController.text =
-                                  tempSelectedDate.day.toString().padLeft(2, '0');
-                              monthController.text =
-                                  tempSelectedDate.month.toString().padLeft(2, '0');
+                              dayController.text = tempSelectedDate.day
+                                  .toString()
+                                  .padLeft(2, '0');
+                              monthController.text = tempSelectedDate.month
+                                  .toString()
+                                  .padLeft(2, '0');
                               yearController.text =
                                   tempSelectedDate.year.toString();
                               isDobError = false;
@@ -953,132 +523,428 @@ class ProfileSettingState extends State<ProfileSetting>
     );
   }
 
-  Widget _buildToggle({
-    required bool value,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        width: 30.w,
-        height: 15.h,
-        padding: EdgeInsets.all(1.w),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(30.r),
-          border: Border.all(
-            color: value ? const Color(0xFF1DC230) : const Color(0xFF676299),
-            width: 1.2,
-          ),
-        ),
-        child: AnimatedAlign(
-          duration: const Duration(milliseconds: 250),
-          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            width: 14.w,
-            height: 14.h,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: value ? const Color(0xFF1DC230) : const Color(0xFF676299),
-            ),
-          ),
-        ),
+  // ── My Profile tab content ─────────────────────────────────────────────────
+  Widget _buildMyProfileContent() {
+    return SingleChildScrollView(
+      padding: EdgeInsets.only(
+        left: 15.w,
+        top: 16.h,
+        bottom: 16.h,
+        right: 15.w,
       ),
-    );
-  }
-
-  Widget _buildLabel(String text) {
-    return RichText(
-      text: TextSpan(
-        text: text,
-        style: GoogleFonts.inter(
-          color: const Color(0xFF3F3F3F),
-          fontSize: 13.sp,
-          fontWeight: FontWeight.w600,
-        ),
-        children: const [
-          TextSpan(text: " *", style: TextStyle(color: Colors.red)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProofOption(String title, String value) {
-    return GestureDetector(
-      onTap: () => setState(() {
-        selectedProofType = selectedProofType == value ? "" : value;
-      }),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 16.w,
-            height: 16.w,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4.r),
-              border: Border.all(color: const Color(0xFF4338CA), width: 1.4),
-              color: selectedProofType == value
-                  ? const Color(0xFF24116A)
-                  : Colors.transparent,
-            ),
-            child: selectedProofType == value
-                ? Icon(Icons.check, size: 12.r, color: Colors.white)
-                : null,
-          ),
-          SizedBox(width: 6.w),
-          Text(
-            title,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.inter(
-              fontSize: 11.5.sp,
-              fontWeight: FontWeight.w400,
-              color: const Color(0xFF344054),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProoftypeOption(String title, String value) {
-    return GestureDetector(
-      onTap: () => setState(() {
-        selectedProofRadioType = selectedProofRadioType == value ? "" : value;
-      }),
-      child: IntrinsicWidth(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Profile Details card ───────────────────────────────────
             Container(
-              width: 16.w,
-              height: 16.w,
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFF4338CA), width: 1.3),
-              ),
-              child: Center(
-                child: Container(
-                  width: 8.w,
-                  height: 8.w,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: selectedProofRadioType == value
-                        ? const Color(0xFF24116A)
-                        : Colors.transparent,
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8.r),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
                   ),
+                ],
+              ),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: 15.w,
+                  vertical: 16.h,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Profile Details ──────────────────────────────
+                    _sectionHeading('Profile Details'),
+                    SizedBox(height: 8.h),
+
+                    _fieldLabel('First Name'),
+                    SizedBox(height: 6.h),
+                    _buildTextField(
+                      hint: 'Enter first name',
+                      controller: _firstNameController,
+                      isEditing: _isFirstNameEditing,
+                      onEdit: () => setState(
+                              () => _isFirstNameEditing = !_isFirstNameEditing),
+                      validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    ),
+                    SizedBox(height: 8.h),
+
+                    _fieldLabel('Last Name'),
+                    SizedBox(height: 6.h),
+                    _buildTextField(
+                      hint: 'Enter last name',
+                      controller: _lastNameController,
+                      isEditing: _isLastNameEditing,
+                      onEdit: () => setState(
+                              () => _isLastNameEditing = !_isLastNameEditing),
+                      validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    ),
+                    SizedBox(height: 10.h),
+
+                    // ── Contact Details ──────────────────────────────
+                    _sectionHeading('Contact Details'),
+                    SizedBox(height: 8.h),
+
+                    _fieldLabel('Email ID'),
+                    SizedBox(height: 6.h),
+                    _buildTextField(
+                      hint: 'Enter email address',
+                      controller: _emailController,
+                      isEditing: _isEmailEditing,
+                      onEdit: () =>
+                          setState(() => _isEmailEditing = !_isEmailEditing),
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Required';
+                        final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+                        if (!emailRegex.hasMatch(v)) return 'Invalid email';
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 8.h),
+
+                    _fieldLabel('Phone Number'),
+                    SizedBox(height: 6.h),
+                    _buildTextField(
+                      hint: 'Enter phone number',
+                      controller: _phoneController,
+                      isEditing: _isPhoneEditing,
+                      onEdit: () =>
+                          setState(() => _isPhoneEditing = !_isPhoneEditing),
+                      keyboardType: TextInputType.phone,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'[\d\s\-\+\(\)]'),
+                        ),
+                        LengthLimitingTextInputFormatter(15),
+                      ],
+                      validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    ),
+                    SizedBox(height: 8.h),
+
+                    // ── Date of Birth ────────────────────────────────
+                    _fieldLabel('Date of Birth'),
+                    SizedBox(height: 6.h),
+
+                    Row(
+                      children: [
+                        // DAY
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _showDatePicker(context),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF9FAFC),
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(8.r),
+                                  bottomLeft: Radius.circular(8.r),
+                                ),
+                                border: Border.all(
+                                  color: isDobError
+                                      ? Colors.red
+                                      : const Color(0xFFD9DEE5),
+                                ),
+                              ),
+                              child: IgnorePointer(
+                                child: TextField(
+                                  controller: dayController,
+                                  readOnly: true,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.sp,
+                                    color: const Color(0xFF303030),
+                                  ),
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    border: InputBorder.none,
+                                    hintText: "Day",
+                                    hintStyle: GoogleFonts.inter(
+                                      fontSize: 12.sp,
+                                      color: const Color(0xFFB8BEC5),
+                                    ),
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 12.w,
+                                      vertical: 8.h,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // MONTH
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _showDatePicker(context),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF9FAFC),
+                                border: Border(
+                                  top: BorderSide(
+                                    color: isDobError
+                                        ? Colors.red
+                                        : const Color(0xFFD9DEE5),
+                                  ),
+                                  bottom: BorderSide(
+                                    color: isDobError
+                                        ? Colors.red
+                                        : const Color(0xFFD9DEE5),
+                                  ),
+                                  right: BorderSide(
+                                    color: isDobError
+                                        ? Colors.red
+                                        : const Color(0xFFD9DEE5),
+                                  ),
+                                ),
+                              ),
+                              child: IgnorePointer(
+                                child: TextField(
+                                  controller: monthController,
+                                  readOnly: true,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.sp,
+                                    color: const Color(0xFF303030),
+                                  ),
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    border: InputBorder.none,
+                                    hintText: "Month",
+                                    hintStyle: GoogleFonts.inter(
+                                      fontSize: 12.sp,
+                                      color: const Color(0xFFB8BEC5),
+                                    ),
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 12.w,
+                                      vertical: 8.h,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // YEAR
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _showDatePicker(context),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF9FAFC),
+                                borderRadius: BorderRadius.only(
+                                  topRight: Radius.circular(8.r),
+                                  bottomRight: Radius.circular(8.r),
+                                ),
+                                border: Border(
+                                  top: BorderSide(
+                                    color: isDobError
+                                        ? Colors.red
+                                        : const Color(0xFFD9DEE5),
+                                  ),
+                                  bottom: BorderSide(
+                                    color: isDobError
+                                        ? Colors.red
+                                        : const Color(0xFFD9DEE5),
+                                  ),
+                                  right: BorderSide(
+                                    color: isDobError
+                                        ? Colors.red
+                                        : const Color(0xFFD9DEE5),
+                                  ),
+                                ),
+                              ),
+                              child: IgnorePointer(
+                                child: TextField(
+                                  controller: yearController,
+                                  readOnly: true,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.sp,
+                                    color: const Color(0xFF303030),
+                                  ),
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    border: InputBorder.none,
+                                    hintText: "Year",
+                                    hintStyle: GoogleFonts.inter(
+                                      fontSize: 12.sp,
+                                      color: const Color(0xFFB8BEC5),
+                                    ),
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 12.w,
+                                      vertical: 8.h,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    if (isDobError)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 5, left: 4),
+                        child: Text(
+                          "Please select date of birth",
+                          style: GoogleFonts.inter(
+                            fontSize: 10.sp,
+                            color: Colors.red,
+                          ),
+                        ),
+                      ),
+
+                    SizedBox(height: 10.h),
+                  ],
                 ),
               ),
             ),
-            SizedBox(width: 6.w),
-            Text(
-              title,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.inter(
-                fontSize: 11.5.sp,
-                fontWeight: FontWeight.w400,
-                color: const Color(0xFF344054),
-              ),
+
+            // ── Expandable sections ────────────────────────────────────
+            _buildSectionRow(
+              label: "Employment & Job Details",
+              value: empJobDetailsEnabled,
+              onTap: () => setState(() {
+                empJobDetailsEnabled = !empJobDetailsEnabled;
+                if (empJobDetailsEnabled) {
+                  cmpFinanceEnabled = false;
+                  dcmntComplianceEnabled = false;
+                  skillPerformEnabled = false;
+                  timeAttendEnabled = false;
+                  assetSystemEnabled = false;
+                }
+              }),
+              child: const EmpJobDetailsSection(),
+            ),
+
+            _buildSectionRow(
+              label: 'Compensation & Finance',
+              value: cmpFinanceEnabled,
+              onTap: () => setState(() {
+                cmpFinanceEnabled = !cmpFinanceEnabled;
+                if (cmpFinanceEnabled) {
+                  empJobDetailsEnabled = false;
+                  dcmntComplianceEnabled = false;
+                  skillPerformEnabled = false;
+                  timeAttendEnabled = false;
+                  assetSystemEnabled = false;
+                }
+              }),
+              child: const CmpFinanceSection(),
+            ),
+
+            _buildSectionRow(
+              label: 'Skills & Performance',
+              value: skillPerformEnabled,
+              onTap: () => setState(() {
+                skillPerformEnabled = !skillPerformEnabled;
+                if (skillPerformEnabled) {
+                  empJobDetailsEnabled = false;
+                  cmpFinanceEnabled = false;
+                  dcmntComplianceEnabled = false;
+                  timeAttendEnabled = false;
+                  assetSystemEnabled = false;
+                }
+              }),
+              child: const SkillPerformSection(),
+            ),
+
+            _buildSectionRow(
+              label: 'Time & Attendance',
+              value: timeAttendEnabled,
+              onTap: () => setState(() {
+                timeAttendEnabled = !timeAttendEnabled;
+                if (timeAttendEnabled) {
+                  empJobDetailsEnabled = false;
+                  cmpFinanceEnabled = false;
+                  dcmntComplianceEnabled = false;
+                  skillPerformEnabled = false;
+                  assetSystemEnabled = false;
+                }
+              }),
+              child: const TimeAttendSection(),
+            ),
+
+            _buildSectionRow(
+              label: 'Assets & Systems',
+              value: assetSystemEnabled,
+              onTap: () => setState(() {
+                assetSystemEnabled = !assetSystemEnabled;
+                if (assetSystemEnabled) {
+                  empJobDetailsEnabled = false;
+                  cmpFinanceEnabled = false;
+                  dcmntComplianceEnabled = false;
+                  skillPerformEnabled = false;
+                  timeAttendEnabled = false;
+                }
+              }),
+              child: const AssetSystemSection(),
+            ),
+
+            _buildSectionRow(
+              label: 'Document & Compliance',
+              value: dcmntComplianceEnabled,
+              onTap: () => setState(() {
+                dcmntComplianceEnabled = !dcmntComplianceEnabled;
+                if (dcmntComplianceEnabled) {
+                  empJobDetailsEnabled = false;
+                  cmpFinanceEnabled = false;
+                  skillPerformEnabled = false;
+                  timeAttendEnabled = false;
+                  assetSystemEnabled = false;
+                }
+              }),
+              child: const DcmntComplianceSection(),
+            ),
+
+            SizedBox(height: 16.h),
+
+            // ── Save button ────────────────────────────────────────────
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8.r),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFD96CFF), Color(0xFF5CE1E6)],
+                    ),
+                  ),
+                  child: ElevatedButton(
+                    onPressed: _submitForm,
+                    style: ElevatedButton.styleFrom(
+                      elevation: 0,
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 18.w,
+                        vertical: 8.h,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                    ),
+                    child: Text(
+                      "Save Changes",
+                      style: GoogleFonts.inter(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -1086,6 +952,363 @@ class ProfileSettingState extends State<ProfileSetting>
     );
   }
 
+  // ── Account Settings tab ───────────────────────────────────────────────────
+  Widget _buildAccountSettingsContent() {
+    return SingleChildScrollView(
+      padding: EdgeInsets.only(
+        left: 15.w,
+        top: 16.h,
+        bottom: 16.h,
+        right: 15.w,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Account Information card ───────────────────────────────────
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8.r),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: 15.w,
+                vertical: 16.h,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Account Information ──────────────────────────────
+                  Text(
+                    'Account Information',
+                    style: GoogleFonts.inter(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF0A0258),
+                    ),
+                  ),
+                  SizedBox(height: 12.h),
+
+                  // ── Email ID ─────────────────────────────────────────
+                  Text(
+                    'Email ID',
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w400,
+                      color: const Color(0xFF303030),
+                    ),
+                  ),
+                  SizedBox(height: 6.h),
+                  _buildTextField(
+                    hint: 'Enter email address',
+                    controller: _accountEmailController,
+                    isEditing: _isAccountEmailEditing,
+                    onEdit: () => setState(
+                          () => _isAccountEmailEditing = !_isAccountEmailEditing,
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  SizedBox(height: 10.h),
+
+                  // ── Password ─────────────────────────────────────────
+                  Text(
+                    'Password',
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w400,
+                      color: const Color(0xFF303030),
+                    ),
+                  ),
+                  SizedBox(height: 6.h),
+                  _buildTextField(
+                    hint: '••••••••',
+                    controller: _accountPasswordController,
+                    isEditing: _isAccountPasswordEditing,
+                    onEdit: () => setState(
+                          () => _isAccountPasswordEditing = !_isAccountPasswordEditing,
+                    ),
+                  ),
+                  SizedBox(height: 16.h),
+
+                  // ── Divider ──────────────────────────────────────────
+                  const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                  SizedBox(height: 16.h),
+
+                  // ── 2-Step Verifications ──────────────────────────────
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '2 - Step Verifications',
+                              style: GoogleFonts.inter(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF0A0258),
+                              ),
+                            ),
+                            SizedBox(height: 4.h),
+                            Text(
+                              'Add an additional layer of security to your account during login.',
+                              style: GoogleFonts.inter(
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w400,
+                                color: const Color(0xFF6C7278),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: 12.w),
+                      _buildToggle(
+                        value: _isTwoStepEnabled,
+                        onTap: () => setState(
+                              () => _isTwoStepEnabled = !_isTwoStepEnabled,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: 16.h),
+                  const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                  SizedBox(height: 16.h),
+
+                  // ── Support Access ────────────────────────────────────
+                  Text(
+                    'Support Access',
+                    style: GoogleFonts.inter(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF0A0258),
+                    ),
+                  ),
+                  SizedBox(height: 12.h),
+
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Support Access',
+                              style: GoogleFonts.inter(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFF303030),
+                              ),
+                            ),
+                            SizedBox(height: 4.h),
+                            Text(
+                              'You have granted us to access to your account for support purposes until Aug 31, 2026, 9:40 PM.',
+                              style: GoogleFonts.inter(
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w400,
+                                color: const Color(0xFF6C7278),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: 12.w),
+                      _buildToggle(
+                        value: _isSupportAccessEnabled,
+                        onTap: () => setState(
+                              () => _isSupportAccessEnabled = !_isSupportAccessEnabled,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: 16.h),
+                  const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                  SizedBox(height: 16.h),
+
+                  // ── Delete My Account ─────────────────────────────────────────
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Delete my account',
+                              style: GoogleFonts.inter(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF303030),
+                              ),
+                            ),
+                            SizedBox(height: 4.h),
+                            Text(
+                              'Permanently delete the account and remove access from all workspaces.',
+                              style: GoogleFonts.inter(
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w400,
+                                color: const Color(0xFF6C7278),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: 12.w),
+                      GestureDetector(
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
+                              title: Text(
+                                'Delete Account',
+                                style: GoogleFonts.inter(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF303030),
+                                ),
+                              ),
+                              content: Text(
+                                'Are you sure you want to permanently delete your account? This action cannot be undone.',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.sp,
+                                  color: const Color(0xFF6C7278),
+                                ),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx),
+                                  child: Text(
+                                    'Cancel',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12.sp,
+                                      color: const Color(0xFF6C7278),
+                                    ),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx),
+                                  child: Text(
+                                    'Delete',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.red,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 14.w,
+                            vertical: 8.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE5E5E5),
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                          child: Text(
+                            'Delete Account',
+                            style: GoogleFonts.inter(
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF555555),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: 16.h),
+                  const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                  SizedBox(height: 16.h),
+
+// ── Language Settings ─────────────────────────────────────────
+                  Text(
+                    'Language Settings',
+                    style: GoogleFonts.inter(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF3F3F3F),
+                    ),
+                  ),
+                  SizedBox(height: 10.h),
+
+                  DropdownButtonFormField<String>(
+                    value: _selectedLanguage ?? 'English',
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      color: const Color(0xFF3F3F3F),
+                    ),
+                    icon: Icon(
+                      Icons.keyboard_arrow_down,
+                      color: const Color(0xFF6C7278),
+                      size: 20.sp,
+                    ),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFFF9FAFC),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                        borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                        borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                        borderSide: const BorderSide(color: Color(0xFF0A0258)),
+                      ),
+                    ),
+                    items: _languages
+                        .map(
+                          (e) => DropdownMenuItem(
+                        value: e,
+                        child: Text(
+                          e,
+                          style: GoogleFonts.inter(
+                            fontSize: 12.sp,
+                            color: const Color(0xFF3F3F3F),
+                          ),
+                        ),
+                      ),
+                    )
+                        .toList(),
+                    onChanged: (v) => setState(() => _selectedLanguage = v),
+                  ),
+
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Build ──────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1102,6 +1325,7 @@ class ProfileSettingState extends State<ProfileSetting>
         onTap: () => FocusScope.of(context).unfocus(),
         child: Column(
           children: [
+            // ── Header ────────────────────────────────────────────────
             SingleChildScrollView(
               child: Container(
                 color: const Color(0xFFF5F7FB),
@@ -1130,9 +1354,8 @@ class ProfileSettingState extends State<ProfileSetting>
                         width: 100.w,
                         height: 100.h,
                         child: const CircleAvatar(
-                          backgroundImage: AssetImage(
-                            'assets/images/profile.png',
-                          ),
+                          backgroundImage:
+                          AssetImage('assets/images/profile.png'),
                         ),
                       ),
                     ),
@@ -1151,7 +1374,7 @@ class ProfileSettingState extends State<ProfileSetting>
 
                     Center(
                       child: TextButton(
-                        onPressed: () async => await _callPhone(),
+                        onPressed: _callPhone,
                         style: TextButton.styleFrom(
                           padding: EdgeInsets.zero,
                           minimumSize: Size.zero,
@@ -1171,7 +1394,7 @@ class ProfileSettingState extends State<ProfileSetting>
 
                     Center(
                       child: TextButton(
-                        onPressed: () async => await _sendEmail(),
+                        onPressed: _sendEmail,
                         style: TextButton.styleFrom(
                           padding: EdgeInsets.zero,
                           minimumSize: Size.zero,
@@ -1198,7 +1421,8 @@ class ProfileSettingState extends State<ProfileSetting>
                           onTap: () => setState(() => selectedTab = 0),
                           child: SizedBox(
                             width: 140.w,
-                            child: _buildTab("My Profile", selectedTab == 0),
+                            child:
+                            _buildTab("My Profile", selectedTab == 0),
                           ),
                         ),
                         SizedBox(width: 20.w),
@@ -1207,20 +1431,17 @@ class ProfileSettingState extends State<ProfileSetting>
                           child: SizedBox(
                             width: 140.w,
                             child: _buildTab(
-                              "Account Settings",
-                              selectedTab == 1,
-                            ),
+                                "Account Settings", selectedTab == 1),
                           ),
                         ),
                       ],
                     ),
-
-                    SizedBox(height: 10.h),
                   ],
                 ),
               ),
             ),
 
+            // ── Tab body ──────────────────────────────────────────────
             Expanded(
               child: Container(
                 color: const Color(0xFFF5F7FB),

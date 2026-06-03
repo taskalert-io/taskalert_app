@@ -10,25 +10,50 @@ class CmpFinanceSection extends StatefulWidget {
 }
 
 class _CmpFinanceSectionState extends State<CmpFinanceSection> {
-  // Salary / Rate
-  final TextEditingController _basePayController           = TextEditingController();
-  final TextEditingController _hourlyRateController        = TextEditingController();
-  final TextEditingController _commissionController        = TextEditingController();
+  // ── Controllers ────────────────────────────────────────────────────────────
+  final TextEditingController _basePayController        = TextEditingController();
+  final TextEditingController _hourlyRateController     = TextEditingController();
+  final TextEditingController _commissionController     = TextEditingController();
+  final TextEditingController _accountHolderController  = TextEditingController();
+  final TextEditingController _accountNumberController  = TextEditingController();
+  final TextEditingController _branchNameController     = TextEditingController();
+  final TextEditingController _ifscCodeController       = TextEditingController();
+  final TextEditingController _taxIdController          = TextEditingController();
+  final TextEditingController _ssnNumberController      = TextEditingController();
+  final TextEditingController _panNumberController      = TextEditingController();
+  final TextEditingController _healthInsuranceController = TextEditingController();
+  final TextEditingController _pensionDetailsController = TextEditingController();
 
-  // Bank Details
-  final TextEditingController _accountHolderController    = TextEditingController();
-  final TextEditingController _accountNumberController     = TextEditingController();
-  final TextEditingController _branchNameController        = TextEditingController();
-  final TextEditingController _ifscCodeController          = TextEditingController();
+  // ── Editing states ─────────────────────────────────────────────────────────
+  bool _isBasePayEditing          = false;
+  bool _isHourlyRateEditing       = false;
+  bool _isCommissionEditing       = false;
+  bool _isAccountHolderEditing    = false;
+  bool _isAccountNumberEditing    = false;
+  bool _isBranchNameEditing       = false;
+  bool _isIfscCodeEditing         = false;
+  bool _isTaxIdEditing            = false;
+  bool _isSsnNumberEditing        = false;
+  bool _isPanNumberEditing        = false;
+  bool _isHealthInsuranceEditing  = false;
+  bool _isPensionDetailsEditing   = false;
 
-  // Tax Information
-  final TextEditingController _taxIdController             = TextEditingController();
-  final TextEditingController _ssnNumberController         = TextEditingController();
-  final TextEditingController _panNumberController         = TextEditingController();
-
-  // Benefits Enrollment
-  final TextEditingController _healthInsuranceController   = TextEditingController();
-  final TextEditingController _pensionDetailsController    = TextEditingController();
+  @override
+  void initState() {
+    super.initState();
+    _basePayController.text         = "85000";
+    _hourlyRateController.text      = "42";
+    _commissionController.text      = "10% on net sales";
+    _accountHolderController.text   = "Amit Kumar Mondal";
+    _accountNumberController.text   = "123456456822";
+    _branchNameController.text      = "New Alipore";
+    _ifscCodeController.text        = "ABCN012345";
+    _taxIdController.text           = "TX-998877";
+    _ssnNumberController.text       = "123456456822";
+    _panNumberController.text       = "FBGN7502";
+    _healthInsuranceController.text = "Health Insurance Plans";
+    _pensionDetailsController.text  = "401k/Pension Details";
+  }
 
   @override
   void dispose() {
@@ -46,16 +71,6 @@ class _CmpFinanceSectionState extends State<CmpFinanceSection> {
     _pensionDetailsController.dispose();
     super.dispose();
   }
-
-  // ── Edit icon ──────────────────────────────────────────────────────────────
-  Widget get _editIcon => Padding(
-    padding: const EdgeInsets.all(10),
-    child: Icon(
-      Icons.edit_outlined,
-      size: 18.sp,
-      color: const Color(0xFFB8BEC5),
-    ),
-  );
 
   // ── Section heading ────────────────────────────────────────────────────────
   Widget _sectionHeading(String title) => Padding(
@@ -83,15 +98,18 @@ class _CmpFinanceSectionState extends State<CmpFinanceSection> {
     ),
   );
 
-  // ── Reusable text field ────────────────────────────────────────────────────
+  // ── Reusable text field (EmpJobDetailsSection pattern) ────────────────────
   Widget _buildTextField({
     required String hint,
     required TextEditingController controller,
+    required bool isEditing,
+    required VoidCallback onEdit,
     TextInputType keyboardType = TextInputType.text,
     List<TextInputFormatter>? inputFormatters,
   }) {
     return TextFormField(
       controller: controller,
+      readOnly: !isEditing,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       style: GoogleFonts.inter(
@@ -101,14 +119,27 @@ class _CmpFinanceSectionState extends State<CmpFinanceSection> {
       ),
       decoration: InputDecoration(
         isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 10,
+        ),
         hintText: hint,
         hintStyle: GoogleFonts.inter(
           fontSize: 12.sp,
           fontWeight: FontWeight.w400,
           color: const Color(0xFFB8BEC5),
         ),
-        suffixIcon: _editIcon,
+        suffixIcon: GestureDetector(
+          onTap: onEdit,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Icon(
+              Icons.edit_outlined,
+              size: 18.sp,
+              color: const Color(0xFFB8BEC5),
+            ),
+          ),
+        ),
         filled: true,
         fillColor: const Color(0xFFF9FAFC),
         border: OutlineInputBorder(
@@ -142,47 +173,57 @@ class _CmpFinanceSectionState extends State<CmpFinanceSection> {
       children: [
 
         // ── Salary / Rate ────────────────────────────────────────────────
-        _sectionHeading('Salary / Rate:'),
+        _sectionHeading('Salary / Rate'),
 
-        _fieldLabel('Base Pay :'),
+        _fieldLabel('Base Pay'),
         _buildTextField(
-          hint: 'Senior Backend Engineer',
+          hint: '85000',
           controller: _basePayController,
+          isEditing: _isBasePayEditing,
+          onEdit: () => setState(() => _isBasePayEditing = !_isBasePayEditing),
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         ),
         SizedBox(height: 10.h),
 
-        _fieldLabel('Hourly Rate :'),
+        _fieldLabel('Hourly Rate'),
         _buildTextField(
-          hint: 'Product',
+          hint: '42',
           controller: _hourlyRateController,
+          isEditing: _isHourlyRateEditing,
+          onEdit: () => setState(() => _isHourlyRateEditing = !_isHourlyRateEditing),
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         ),
         SizedBox(height: 10.h),
 
-        _fieldLabel('Commission Structure :'),
+        _fieldLabel('Commission Structure'),
         _buildTextField(
-          hint: 'Product',
+          hint: '10% on net sales',
           controller: _commissionController,
+          isEditing: _isCommissionEditing,
+          onEdit: () => setState(() => _isCommissionEditing = !_isCommissionEditing),
         ),
         SizedBox(height: 16.h),
 
         // ── Bank Details ─────────────────────────────────────────────────
-        _sectionHeading('Bank Details :'),
+        _sectionHeading('Bank Details'),
 
-        _fieldLabel('Account Holder Name :'),
+        _fieldLabel('Account Holder Name'),
         _buildTextField(
           hint: 'Amit Kumar Mondal',
           controller: _accountHolderController,
+          isEditing: _isAccountHolderEditing,
+          onEdit: () => setState(() => _isAccountHolderEditing = !_isAccountHolderEditing),
         ),
         SizedBox(height: 10.h),
 
-        _fieldLabel('Account Number :'),
+        _fieldLabel('Account Number'),
         _buildTextField(
           hint: '123456456822',
           controller: _accountNumberController,
+          isEditing: _isAccountNumberEditing,
+          onEdit: () => setState(() => _isAccountNumberEditing = !_isAccountNumberEditing),
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         ),
@@ -192,6 +233,8 @@ class _CmpFinanceSectionState extends State<CmpFinanceSection> {
         _buildTextField(
           hint: 'New Alipore',
           controller: _branchNameController,
+          isEditing: _isBranchNameEditing,
+          onEdit: () => setState(() => _isBranchNameEditing = !_isBranchNameEditing),
         ),
         SizedBox(height: 10.h),
 
@@ -199,6 +242,8 @@ class _CmpFinanceSectionState extends State<CmpFinanceSection> {
         _buildTextField(
           hint: 'ABCN012345',
           controller: _ifscCodeController,
+          isEditing: _isIfscCodeEditing,
+          onEdit: () => setState(() => _isIfscCodeEditing = !_isIfscCodeEditing),
           inputFormatters: [
             FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9a-z]')),
             LengthLimitingTextInputFormatter(11),
@@ -207,19 +252,23 @@ class _CmpFinanceSectionState extends State<CmpFinanceSection> {
         SizedBox(height: 16.h),
 
         // ── Tax Information ──────────────────────────────────────────────
-        _sectionHeading('Tax Information :'),
+        _sectionHeading('Tax Information'),
 
-        _fieldLabel('Tax ID :'),
+        _fieldLabel('Tax ID'),
         _buildTextField(
-          hint: 'Amit Kumar Mondal',
+          hint: 'TX-998877',
           controller: _taxIdController,
+          isEditing: _isTaxIdEditing,
+          onEdit: () => setState(() => _isTaxIdEditing = !_isTaxIdEditing),
         ),
         SizedBox(height: 10.h),
 
-        _fieldLabel('SSN Number :'),
+        _fieldLabel('SSN Number'),
         _buildTextField(
           hint: '123456456822',
           controller: _ssnNumberController,
+          isEditing: _isSsnNumberEditing,
+          onEdit: () => setState(() => _isSsnNumberEditing = !_isSsnNumberEditing),
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         ),
@@ -229,6 +278,8 @@ class _CmpFinanceSectionState extends State<CmpFinanceSection> {
         _buildTextField(
           hint: 'FBGN7502',
           controller: _panNumberController,
+          isEditing: _isPanNumberEditing,
+          onEdit: () => setState(() => _isPanNumberEditing = !_isPanNumberEditing),
           inputFormatters: [
             FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9a-z]')),
             LengthLimitingTextInputFormatter(10),
@@ -237,19 +288,23 @@ class _CmpFinanceSectionState extends State<CmpFinanceSection> {
         SizedBox(height: 16.h),
 
         // ── Benefits Enrollment ──────────────────────────────────────────
-        _sectionHeading('Benefits Enrollment :'),
+        _sectionHeading('Benefits Enrollment'),
 
-        _fieldLabel('Health Insurance :'),
+        _fieldLabel('Health Insurance'),
         _buildTextField(
           hint: 'Health Insurance Plans',
           controller: _healthInsuranceController,
+          isEditing: _isHealthInsuranceEditing,
+          onEdit: () => setState(() => _isHealthInsuranceEditing = !_isHealthInsuranceEditing),
         ),
         SizedBox(height: 10.h),
 
-        _fieldLabel('Pension Details :'),
+        _fieldLabel('Pension Details'),
         _buildTextField(
           hint: '401k/Pension Details',
           controller: _pensionDetailsController,
+          isEditing: _isPensionDetailsEditing,
+          onEdit: () => setState(() => _isPensionDetailsEditing = !_isPensionDetailsEditing),
         ),
       ],
     );

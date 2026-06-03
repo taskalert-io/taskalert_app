@@ -21,6 +21,14 @@ class _EmpJobDetailsSectionState extends State<EmpJobDetailsSection> {
       TextEditingController();
   final TextEditingController _tenureController = TextEditingController();
 
+  bool _isJobTitleEditing = false;
+  bool _isDepartmentEditing = false;
+  bool _isShiftEditing = false;
+  bool _isHoursEditing = false;
+  bool _isReportToEditing = false;
+  bool _isReportThemEditing = false;
+  bool _isTenureEditing = false;
+
   // Employment Type dropdown
   String? _selectedEmploymentType;
   final List<String> _employmentTypes = [
@@ -90,124 +98,101 @@ class _EmpJobDetailsSectionState extends State<EmpJobDetailsSection> {
 
   Widget get _titlePrefix => Padding(
     padding: EdgeInsets.only(left: 12.w, right: 8.w),
-    child: Center(
-      widthFactor: 1,
-      child: Text(
-        "Title:",
-        style: GoogleFonts.inter(
-          fontSize: 12.sp,
-          fontWeight: FontWeight.w500,
-          color: const Color(0xFF303030),
-        ),
+    child: Text(
+      "Title:",
+      style: GoogleFonts.inter(
+        fontSize: 12.sp,
+        fontWeight: FontWeight.w600,
+        color: const Color(0xFF303030),
       ),
     ),
   );
 
   Widget get _departmentPrefix => Padding(
     padding: EdgeInsets.only(left: 12.w, right: 8.w),
-    child: Center(
-      widthFactor: 1,
-      child: Text(
-        "Title:",
-        style: GoogleFonts.inter(
-          fontSize: 12.sp,
-          fontWeight: FontWeight.w500,
-          color: const Color(0xFF303030),
-        ),
+    child: Text(
+      "Dept:",
+      style: GoogleFonts.inter(
+        fontSize: 12.sp,
+        fontWeight: FontWeight.w600,
+        color: const Color(0xFF303030),
       ),
     ),
   );
 
   Widget get _shiftPrefix => Padding(
     padding: EdgeInsets.only(left: 12.w, right: 8.w),
-    child: Center(
-      widthFactor: 1,
-      child: Text(
-        "Title:",
-        style: GoogleFonts.inter(
-          fontSize: 12.sp,
-          fontWeight: FontWeight.w500,
-          color: const Color(0xFF303030),
-        ),
+    child: Text(
+      "Shift:",
+      style: GoogleFonts.inter(
+        fontSize: 12.sp,
+        fontWeight: FontWeight.w600,
+        color: const Color(0xFF303030),
       ),
     ),
   );
 
   Widget get _hourPrefix => Padding(
     padding: EdgeInsets.only(left: 12.w, right: 8.w),
-    child: Center(
-      widthFactor: 1,
-      child: Text(
-        "Title:",
-        style: GoogleFonts.inter(
-          fontSize: 12.sp,
-          fontWeight: FontWeight.w500,
-          color: const Color(0xFF303030),
-        ),
+    child: Text(
+      "Hours:",
+      style: GoogleFonts.inter(
+        fontSize: 12.sp,
+        fontWeight: FontWeight.w600,
+        color: const Color(0xFF303030),
       ),
     ),
   );
 
   Widget get _reportToPrefix => Padding(
     padding: EdgeInsets.only(left: 12.w, right: 8.w),
-    child: Center(
-      widthFactor: 1,
-      child: Text(
-        "Title:",
-        style: GoogleFonts.inter(
-          fontSize: 12.sp,
-          fontWeight: FontWeight.w500,
-          color: const Color(0xFF303030),
-        ),
+    child: Text(
+      "Manager:",
+      style: GoogleFonts.inter(
+        fontSize: 12.sp,
+        fontWeight: FontWeight.w600,
+        color: const Color(0xFF303030),
       ),
     ),
   );
 
   Widget get _reportThemPrefix => Padding(
     padding: EdgeInsets.only(left: 12.w, right: 8.w),
-    child: Center(
-      widthFactor: 1,
-      child: Text(
-        "Title:",
-        style: GoogleFonts.inter(
-          fontSize: 12.sp,
-          fontWeight: FontWeight.w500,
-          color: const Color(0xFF303030),
-        ),
+    child: Text(
+      "Team:",
+      style: GoogleFonts.inter(
+        fontSize: 12.sp,
+        fontWeight: FontWeight.w600,
+        color: const Color(0xFF303030),
       ),
     ),
   );
 
   Widget get _tenurePrefix => Padding(
     padding: EdgeInsets.only(left: 12.w, right: 8.w),
-    child: Center(
-      widthFactor: 1,
-      child: Text(
-        "Title:",
-        style: GoogleFonts.inter(
-          fontSize: 12.sp,
-          fontWeight: FontWeight.w500,
-          color: const Color(0xFF303030),
-        ),
+    child: Text(
+      "Years:",
+      style: GoogleFonts.inter(
+        fontSize: 12.sp,
+        fontWeight: FontWeight.w600,
+        color: const Color(0xFF303030),
       ),
     ),
   );
 
   // ── Reusable text field ────────────────────────────────────────────────────
   Widget _buildTextField({
-    required String hint,
     required TextEditingController controller,
+    required bool isEditing,
+    required VoidCallback onEdit,
     TextInputType keyboardType = TextInputType.text,
     List<TextInputFormatter>? inputFormatters,
-    bool readOnly = false,
-    VoidCallback? onTap, required Widget prefix,
   }) {
     return TextFormField(
       controller: controller,
+      readOnly: !isEditing,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
-      readOnly: readOnly,
-      onTap: onTap,
       style: GoogleFonts.inter(
         fontSize: 12.sp,
         fontWeight: FontWeight.w400,
@@ -215,38 +200,37 @@ class _EmpJobDetailsSectionState extends State<EmpJobDetailsSection> {
       ),
       decoration: InputDecoration(
         isDense: true,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 10,
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: 12.w,
+          vertical: 10.h,
         ),
-        hintText: hint,
-        hintStyle: GoogleFonts.inter(
-          fontSize: 12.sp,
-          fontWeight: FontWeight.w400,
-          color: const Color(0xFFB8BEC5),
+        suffixIcon: GestureDetector(
+          onTap: onEdit,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Icon(
+              Icons.edit_outlined,
+              size: 18.sp,
+              color: const Color(0xFFB8BEC5),
+            ),
+          ),
         ),
-        suffixIcon: _editIcon,
         filled: true,
         fillColor: const Color(0xFFF9FAFC),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.r),
-          borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.r),
-          borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+          borderSide: const BorderSide(
+            color: Color(0xFFD9DEE5),
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.r),
-          borderSide: const BorderSide(color: Color(0xFF0A0258)),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8.r),
-          borderSide: const BorderSide(color: Colors.red),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8.r),
-          borderSide: const BorderSide(color: Colors.red),
+          borderSide: const BorderSide(
+            color: Color(0xFF0A0258),
+          ),
         ),
       ),
     );
@@ -497,13 +481,24 @@ class _EmpJobDetailsSectionState extends State<EmpJobDetailsSection> {
   void initState() {
     super.initState();
 
+    _jobTitleController.text = "Senior Backend Engineer";
+    _departmentController.text = "Product";
+    _shiftController.text = "Morning";
+    _hoursController.text = "8";
+    _whoReportsToController.text = "Amit Kumar Mondal";
+    _whoReportsThemController.text = "Maulik Seith";
+    _tenureController.text = "5";
+
     _hireDate = DateTime.now();
 
-    _hireDayController.text = _hireDate!.day.toString().padLeft(2, '0');
+    _hireDayController.text =
+        _hireDate!.day.toString().padLeft(2, '0');
 
-    _hireMonthController.text = _hireDate!.month.toString().padLeft(2, '0');
+    _hireMonthController.text =
+        _hireDate!.month.toString().padLeft(2, '0');
 
-    _hireYearController.text = _hireDate!.year.toString();
+    _hireYearController.text =
+        _hireDate!.year.toString();
   }
 
   @override
@@ -516,17 +511,25 @@ class _EmpJobDetailsSectionState extends State<EmpJobDetailsSection> {
 
         _fieldLabel('Job Title'),
         _buildTextField(
-          hint: 'Senior Backend Engineer',
-          prefix: _titlePrefix,
           controller: _jobTitleController,
+          isEditing: _isJobTitleEditing,
+          onEdit: () {
+            setState(() {
+              _isJobTitleEditing = true;
+            });
+          },
         ),
         SizedBox(height: 10.h),
 
         _fieldLabel('Department'),
         _buildTextField(
-            hint: 'Product',
-            prefix: _departmentPrefix,
-            controller: _departmentController
+          controller: _departmentController,
+          isEditing: _isDepartmentEditing,
+          onEdit: () {
+            setState(() {
+              _isDepartmentEditing = true;
+            });
+          },
         ),
         SizedBox(height: 14.h),
 
@@ -584,19 +587,29 @@ class _EmpJobDetailsSectionState extends State<EmpJobDetailsSection> {
 
         _fieldLabel('Shift'),
         _buildTextField(
-            hint: 'Morning',
-            prefix: _shiftPrefix,
-            controller: _shiftController
+          controller: _shiftController,
+          isEditing: _isShiftEditing,
+          onEdit: () {
+            setState(() {
+              _isShiftEditing = true;
+            });
+          },
         ),
         SizedBox(height: 8.h),
 
         _fieldLabel('Hours'),
         _buildTextField(
-          hint: 'Product',
-          prefix: _hourPrefix,
           controller: _hoursController,
+          isEditing: _isHoursEditing,
+          onEdit: () {
+            setState(() {
+              _isHoursEditing = true;
+            });
+          },
           keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+          ],
         ),
         SizedBox(height: 8.h),
 
@@ -605,17 +618,25 @@ class _EmpJobDetailsSectionState extends State<EmpJobDetailsSection> {
 
         _fieldLabel('Who They Report To'),
         _buildTextField(
-          hint: 'Amit Kumar Mondal',
-          prefix: _reportToPrefix,
           controller: _whoReportsToController,
+          isEditing: _isReportToEditing,
+          onEdit: () {
+            setState(() {
+              _isReportToEditing = true;
+            });
+          },
         ),
         SizedBox(height: 8.h),
 
         _fieldLabel('Who Reports To Them'),
         _buildTextField(
-          hint: 'Maulik Seith',
-          prefix: _reportThemPrefix,
           controller: _whoReportsThemController,
+          isEditing: _isReportThemEditing,
+          onEdit: () {
+            setState(() {
+              _isReportThemEditing = true;
+            });
+          },
         ),
         SizedBox(height: 8.h),
 
@@ -633,9 +654,13 @@ class _EmpJobDetailsSectionState extends State<EmpJobDetailsSection> {
         // ── Tenure ───────────────────────────────────────────────────────
         _sectionHeading('Tenure'),
         _buildTextField(
-            hint: 'Product',
-            prefix: _tenurePrefix,
-            controller: _tenureController
+          controller: _tenureController,
+          isEditing: _isTenureEditing,
+          onEdit: () {
+            setState(() {
+              _isTenureEditing = true;
+            });
+          },
         ),
         SizedBox(height: 6.h),
 
