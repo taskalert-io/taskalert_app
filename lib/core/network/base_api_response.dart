@@ -14,7 +14,7 @@ class BaseApiResponse<T> {
 
   factory BaseApiResponse.fromJson(
     Map<String, dynamic> json,
-    T Function(Map<String, dynamic>) fromJsonT,
+    T Function(dynamic) fromJsonT,
   ) {
     return BaseApiResponse<T>(
       success: json['success'] ?? false,

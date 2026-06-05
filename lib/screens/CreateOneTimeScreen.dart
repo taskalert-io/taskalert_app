@@ -7,7 +7,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
+import 'package:taskalert_app/core/features/departments/controllers/department_controller.dart';
+import 'package:taskalert_app/core/features/departments/data/models/department_model.dart';
+import 'package:taskalert_app/utils/injection_container.dart';
 
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
@@ -406,18 +410,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     );
   }
 
-  // ── Department (searchable single-select) ──────────────────────────────────
-  String selectedDepartment = "Retail";
-  final List<String> _departmentItems = [
-    "Retail",
-    "Marketing",
-    "Sales",
-    "Finance",
-    "HR",
-    "Operations",
-    "IT",
-    "Legal",
-  ];
+  DepartmentModel? selectedDepartment;
 
   // ── Assign To (multi-select) ───────────────────────────────────────────────
   final List<Map<String, String>> _allUsers = [
@@ -478,6 +471,13 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
         "${now.month.toString().padLeft(2, '0')}-"
         "${now.year}";
     dueTimeController.text = "";
+
+    // get departments for dropdown
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // ✅ Use GetIt directly if your project isn't using the Provider package
+      sl<DepartmentController>().handleGetDepartments();
+    });
   }
 
   // ── DISPOSE ────────────────────────────────────────────────────────────────
@@ -802,16 +802,23 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                               // Department — searchable single-select
                               _buildLabel("Department"),
                               SizedBox(height: 3.h),
+
                               _buildSearchableDropdownField(
-                                value: selectedDepartment,
+                                // If a department is selected, display its real name, otherwise display your placeholder hint
+                                value:
+                                    selectedDepartment?.name ??
+                                    "Select Department",
                                 hint: "Select Department",
                                 onTap: () => _showSearchableBottomSheet(
                                   context: context,
                                   title: "Select Department",
-                                  items: _departmentItems,
                                   selectedValue: selectedDepartment,
-                                  onSelected: (v) =>
-                                      setState(() => selectedDepartment = v),
+                                  onSelected:
+                                      (DepartmentModel departmentModel) {
+                                        setState(() {
+                                          selectedDepartment = departmentModel;
+                                        });
+                                      },
                                 ),
                               ),
 
@@ -1940,186 +1947,104 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
   void _showSearchableBottomSheet({
     required BuildContext context,
     required String title,
-    required List<String> items,
-    required String selectedValue,
-    required ValueChanged<String> onSelected,
+    required DepartmentModel? selectedValue,
+    required Function(DepartmentModel) onSelected,
   }) {
-    String query = "";
-    List<String> filtered = List.from(items);
+    // Grab the factory instance straight out of your service locator container
+    final departmentController = sl<DepartmentController>();
+    departmentController.handleGetDepartments(search: "");
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      useRootNavigator: true,
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, ss) => Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          ),
-          child: Container(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(ctx).size.height * 0.6,
-            ),
-            padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 24.h),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.12),
-                  blurRadius: 10.r,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.inter(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF0A0258),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () => Navigator.pop(ctx),
-                      child: Icon(
-                        Icons.close,
-                        size: 20.r,
-                        color: const Color(0xFF6C7278),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 12.h),
-                TextField(
-                  autofocus: true,
-                  onChanged: (val) => ss(() {
-                    query = val;
-                    filtered = items
-                        .where(
-                          (e) => e.toLowerCase().contains(
-                            val.toLowerCase().trim(),
-                          ),
-                        )
-                        .toList();
-                  }),
-                  style: GoogleFonts.inter(
-                    fontSize: 12.sp,
-                    color: const Color(0xFF344054),
-                  ),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    hintText: "Search...",
-                    hintStyle: GoogleFonts.inter(
-                      fontSize: 12.sp,
-                      color: const Color(0xFFB8BEC5),
-                    ),
-                    prefixIcon: Icon(
-                      CupertinoIcons.search,
-                      size: 16.r,
-                      color: const Color(0xFF4338CA),
-                    ),
-                    filled: true,
-                    fillColor: const Color(0xFFF9FAFC),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 10.w,
-                      vertical: 10.h,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.r),
-                      borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.r),
-                      borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.r),
-                      borderSide: const BorderSide(color: Color(0xFF0A0258)),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 8.h),
-                Flexible(
-                  child: filtered.isEmpty
-                      ? Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24.h),
-                          child: Center(
-                            child: Text(
-                              "No results found",
-                              style: GoogleFonts.inter(
-                                fontSize: 12.sp,
-                                color: const Color(0xFF9AA0AB),
-                              ),
-                            ),
-                          ),
-                        )
-                      : ListView.separated(
-                          shrinkWrap: true,
-                          itemCount: filtered.length,
-                          separatorBuilder: (_, __) => const Divider(
-                            height: 1,
-                            color: Color(0xFFE4E7EC),
-                          ),
-                          itemBuilder: (_, i) {
-                            final item = filtered[i];
-                            final isSel = item == selectedValue;
-                            return InkWell(
-                              borderRadius: BorderRadius.circular(8.r),
-                              onTap: () {
-                                onSelected(item);
-                                Navigator.pop(ctx);
-                              },
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 4.w,
-                                  vertical: 12.h,
-                                ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        item,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 13.sp,
-                                          fontWeight: isSel
-                                              ? FontWeight.w600
-                                              : FontWeight.w400,
-                                          color: isSel
-                                              ? const Color(0xFF0A0258)
-                                              : const Color(0xFF344054),
-                                        ),
-                                      ),
-                                    ),
-                                    if (isSel)
-                                      Icon(
-                                        Icons.check,
-                                        size: 16.r,
-                                        color: const Color(0xFF0A0258),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+      builder: (context) {
+        // Use ListenableBuilder (built straight into Flutter) to re-render when the controller notifies
+        return ListenableBuilder(
+          listenable: departmentController,
+          builder: (context, child) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.inter(
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.w700,
                         ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 10.h),
+                  TextField(
+                    onChanged: (value) {
+                      departmentController.handleGetDepartments(
+                        search: value.trim(),
+                      );
+                    },
+                    decoration: InputDecoration(
+                      hintText: "Search...",
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 16.h),
+                  Expanded(
+                    child: departmentController.isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : departmentController.departments.isEmpty
+                        ? const Center(child: Text("No departments found"))
+                        : ListView.builder(
+                            itemCount: departmentController.departments.length,
+                            itemBuilder: (context, index) {
+                              final department =
+                                  departmentController.departments[index];
+                              final isSelected =
+                                  department.id == selectedValue?.id;
+
+                              return ListTile(
+                                title: Text(
+                                  department.name ?? "",
+                                  style: GoogleFonts.inter(
+                                    fontWeight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
+                                  ),
+                                ),
+                                trailing: isSelected
+                                    ? const Icon(
+                                        Icons.check,
+                                        color: Colors.blue,
+                                      )
+                                    : null,
+                                onTap: () {
+                                  onSelected(department);
+                                  Navigator.pop(context);
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
-
   // ── Assign To multi-select bottom sheet ────────────────────────────────────
 
   void _showAssignToBottomSheet(BuildContext context) {
@@ -2510,10 +2435,4 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
       ],
     ),
   );
-
-
-
-
-
-
 }
