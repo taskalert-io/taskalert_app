@@ -137,7 +137,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
                     screen = HomeScreen(userId: '');
                 }
 
-                Navigator.pushReplacement(
+                Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => screen,

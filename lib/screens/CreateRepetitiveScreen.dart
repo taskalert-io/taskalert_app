@@ -72,12 +72,361 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
   // ── Reporting To (single-select) ──────────────────────────────────────────
   String selectedReporting = "Select User";
-  final List<String> _reportingItems = [
-    "Manager",
-    "Team Lead",
-    "Director",
-    "HR",
-  ];
+  List<String> selectedReportingList = [];
+  // final List<String> _reportingItems = [
+  //   "Manager",
+  //   "Team Lead",
+  //   "Director",
+  //   "HR",
+  // ];
+
+  void _showReportingToBottomSheet(BuildContext context) {
+    // ── multi-select just like Assign To ──
+    List<String> tempSelected = selectedReporting == "Select User"
+        ? []
+        : [selectedReporting];
+
+    final List<Map<String, String>> _reportingUsers = [
+      {"name": "Manager", "role": "Senior Management"},
+      {"name": "Team Lead", "role": "Team Leadership"},
+      {"name": "Director", "role": "Executive"},
+      {"name": "HR", "role": "Human Resources"},
+    ];
+
+    List<Map<String, String>> filtered = List.from(_reportingUsers);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, ss) => Padding(
+          padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.75),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius:
+              BorderRadius.vertical(top: Radius.circular(20.r)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.12),
+                  blurRadius: 10.r,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  margin: EdgeInsets.only(top: 10.h),
+                  width: 36.w,
+                  height: 4.h,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD9DEE5),
+                    borderRadius: BorderRadius.circular(4.r),
+                  ),
+                ),
+
+                Padding(
+                  padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Reporting To",
+                            style: GoogleFonts.inter(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF0A0258),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => Navigator.pop(ctx),
+                            child: Icon(Icons.close,
+                                size: 20.r,
+                                color: const Color(0xFF6C7278)),
+                          ),
+                        ],
+                      ),
+                      if (tempSelected.isNotEmpty) ...[
+                        SizedBox(height: 4.h),
+                        Text(
+                          "${tempSelected.length} selected",
+                          style: GoogleFonts.inter(
+                            fontSize: 11.sp,
+                            color: const Color(0xFF4338CA),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      SizedBox(height: 10.h),
+
+                      // Search
+                      TextField(
+                        autofocus: false,
+                        onChanged: (val) => ss(() {
+                          filtered = _reportingUsers
+                              .where((u) =>
+                          u["name"]!.toLowerCase().contains(
+                              val.toLowerCase().trim()) ||
+                              u["role"]!.toLowerCase().contains(
+                                  val.toLowerCase().trim()))
+                              .toList();
+                        }),
+                        style: GoogleFonts.inter(
+                            fontSize: 12.sp,
+                            color: const Color(0xFF344054)),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          hintText: "Search by name or role...",
+                          hintStyle: GoogleFonts.inter(
+                              fontSize: 12.sp,
+                              color: const Color(0xFFB8BEC5)),
+                          prefixIcon: Icon(CupertinoIcons.search,
+                              size: 16.r,
+                              color: const Color(0xFF4338CA)),
+                          filled: true,
+                          fillColor: const Color(0xFFF9FAFC),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 10.w, vertical: 10.h),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                            borderSide:
+                            const BorderSide(color: Color(0xFFD9DEE5)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                            borderSide:
+                            const BorderSide(color: Color(0xFFD9DEE5)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                            borderSide:
+                            const BorderSide(color: Color(0xFF0A0258)),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 8.h),
+                    ],
+                  ),
+                ),
+
+                // User list
+                Flexible(
+                  child: filtered.isEmpty
+                      ? Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24.h),
+                    child: Center(
+                      child: Text(
+                        "No users found",
+                        style: GoogleFonts.inter(
+                            fontSize: 12.sp,
+                            color: const Color(0xFF9AA0AB)),
+                      ),
+                    ),
+                  )
+                      : ListView.separated(
+                    shrinkWrap: true,
+                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, __) => const Divider(
+                        height: 1, color: Color(0xFFE4E7EC)),
+                    itemBuilder: (_, i) {
+                      final user = filtered[i];
+                      final name = user["name"]!;
+                      final role = user["role"]!;
+                      final isChecked = tempSelected.contains(name);
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(8.r),
+                        onTap: () => ss(() => isChecked
+                            ? tempSelected.remove(name)
+                            : tempSelected.add(name)),
+                        child: Padding(
+                          padding:
+                          EdgeInsets.symmetric(vertical: 10.h),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 18.r,
+                                backgroundColor: isChecked
+                                    ? const Color(0xFF0A0258)
+                                    : const Color(0xFFEEF0FF),
+                                child: Text(
+                                  name[0].toUpperCase(),
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w700,
+                                    color: isChecked
+                                        ? Colors.white
+                                        : const Color(0xFF4338CA),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 10.w),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      name,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13.sp,
+                                        fontWeight: isChecked
+                                            ? FontWeight.w600
+                                            : FontWeight.w400,
+                                        color:
+                                        const Color(0xFF1D2939),
+                                      ),
+                                    ),
+                                    SizedBox(height: 2.h),
+                                    Text(
+                                      role,
+                                      style: GoogleFonts.inter(
+                                          fontSize: 11.sp,
+                                          color: const Color(
+                                              0xFF9AA0AB)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              AnimatedContainer(
+                                duration: const Duration(
+                                    milliseconds: 200),
+                                width: 20.w,
+                                height: 20.h,
+                                decoration: BoxDecoration(
+                                  color: isChecked
+                                      ? const Color(0xFF0A0258)
+                                      : Colors.transparent,
+                                  borderRadius:
+                                  BorderRadius.circular(5.r),
+                                  border: Border.all(
+                                    color: isChecked
+                                        ? const Color(0xFF0A0258)
+                                        : const Color(0xFFD9DEE5),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: isChecked
+                                    ? Icon(Icons.check,
+                                    size: 13.r,
+                                    color: Colors.white)
+                                    : null,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                // Action buttons
+                SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding:
+                    EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 16.h),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () =>
+                                ss(() => tempSelected.clear()),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(
+                                  color: Color(0xFFD9DEE5)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                  BorderRadius.circular(8.r)),
+                              padding:
+                              EdgeInsets.symmetric(vertical: 10.h),
+                            ),
+                            child: Text(
+                              "Clear All",
+                              style: GoogleFonts.inter(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFF667085),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 10.w),
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8.r),
+                              gradient: const LinearGradient(
+                                colors: [
+                                  Color(0xFF0A0258),
+                                  Color(0xFF4338CA)
+                                ],
+                              ),
+                            ),
+                            child: ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  // store all selected as comma-separated
+                                  // but keep chips working via selectedReportingList
+                                  selectedReportingList =
+                                      List.from(tempSelected);
+                                  selectedReporting =
+                                  tempSelected.isEmpty
+                                      ? "Select User"
+                                      : tempSelected.join(", ");
+                                  if (tempSelected.isNotEmpty) {
+                                    _reportingToError = null;
+                                  }
+                                });
+                                Navigator.pop(ctx);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                elevation: 0,
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                padding:
+                                EdgeInsets.symmetric(vertical: 10.h),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius:
+                                    BorderRadius.circular(8.r)),
+                              ),
+                              child: Text(
+                                tempSelected.isEmpty
+                                    ? "Confirm"
+                                    : "Confirm (${tempSelected.length})",
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   bool isAssignmentEnabled = false;
   bool isProofEnabled = false;
@@ -155,6 +504,14 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
   bool _validateSections() {
     bool valid = true;
+
+    // Reporting To
+    if (selectedReportingList.isEmpty) {
+      setState(() => _reportingToError = "Please select a user");
+      valid = false;
+    } else {
+      setState(() => _reportingToError = null);
+    }
 
     // Assign To (main card)
     if (selectedAssignees.isEmpty) {
@@ -703,35 +1060,59 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                               SizedBox(height: 8.h),
 
                               // Reporting To
+// Reporting To
+                              // Reporting To
                               _buildLabel("Reporting To"),
                               SizedBox(height: 3.h),
-                              _buildSearchableDropdownField(
-                                value: selectedReporting,
-                                hint: "Select User",
-                                errorText: _reportingToError,
-                                onTap: () => _showSearchableBottomSheet(
-                                  context: context,
-                                  title: "Reporting To",
-                                  items: _reportingItems,
-                                  selectedValue: selectedReporting,
-                                  onSelected: (v) => setState(() {
-                                    selectedReporting = v;
-                                    _reportingToError = null;
-                                  }),
+                              GestureDetector(
+                                onTap: () => _showReportingToBottomSheet(context),
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF9FAFC),
+                                    borderRadius: BorderRadius.circular(8.r),
+                                    border: Border.all(
+                                      color: _reportingToError != null
+                                          ? Colors.red
+                                          : const Color(0xFFD9DEE5),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: selectedReportingList.isEmpty
+                                            ? Text(
+                                          "Select reporting user...",
+                                          style: GoogleFonts.inter(
+                                            fontSize: 12.sp,
+                                            color: const Color(0xFFB8BEC5),
+                                          ),
+                                        )
+                                            : Wrap(
+                                          spacing: 6.w,
+                                          runSpacing: 6.h,
+                                          children: selectedReportingList
+                                              .map(_reportingChip)
+                                              .toList(),
+                                        ),
+                                      ),
+                                      SizedBox(width: 6.w),
+                                      Icon(
+                                        CupertinoIcons.person_add,
+                                        size: 16.r,
+                                        color: const Color(0xFF4338CA),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                               if (_reportingToError != null)
                                 Padding(
-                                  padding: EdgeInsets.only(
-                                    top: 4.h,
-                                    left: 4.w,
-                                  ),
+                                  padding: EdgeInsets.only(top: 4.h, left: 4.w),
                                   child: Text(
                                     _reportingToError!,
-                                    style: GoogleFonts.inter(
-                                      color: Colors.red,
-                                      fontSize: 10.sp,
-                                    ),
+                                    style: GoogleFonts.inter(color: Colors.red, fontSize: 10.sp),
                                   ),
                                 ),
 
@@ -2981,4 +3362,55 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       ),
     );
   }
+  Widget _reportingChip(String name) => Container(
+    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+    decoration: BoxDecoration(
+      color: const Color(0xFFEEF0FF),
+      borderRadius: BorderRadius.circular(20.r),
+      border: Border.all(color: const Color(0xFF4338CA)),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CircleAvatar(
+          radius: 8.r,
+          backgroundColor: const Color(0xFF0A0258),
+          child: Text(
+            name[0].toUpperCase(),
+            style: GoogleFonts.inter(
+              fontSize: 8.sp,
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        SizedBox(width: 4.w),
+        Text(
+          name.split(" ").first,
+          style: GoogleFonts.inter(
+            fontSize: 11.sp,
+            color: const Color(0xFF0A0258),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        SizedBox(width: 4.w),
+        GestureDetector(
+          onTap: () => setState(() {
+            selectedReportingList.remove(name);
+            selectedReporting = selectedReportingList.isEmpty
+                ? "Select User"
+                : selectedReportingList.join(", ");
+            if (selectedReportingList.isEmpty) {
+              _reportingToError = "Please select a user";
+            }
+          }),
+          child: Icon(
+            Icons.close,
+            size: 11.r,
+            color: const Color(0xFF4338CA),
+          ),
+        ),
+      ],
+    ),
+  );
 }
