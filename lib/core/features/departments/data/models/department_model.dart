@@ -8,6 +8,7 @@ class DepartmentModel {
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
+  // Constructor with named parameters and optional fields
   DepartmentModel({
     this.id,
     this.name,
