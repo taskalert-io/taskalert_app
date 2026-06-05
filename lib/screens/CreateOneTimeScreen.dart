@@ -392,7 +392,8 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
   }
 
   // ── Department (searchable single-select) ──────────────────────────────────
-  String selectedDepartment = "Retail";
+  String selectedDepartment = "Select Department";
+  String? _departmentError;
   final List<String> _departmentItems = [
     "Retail",
     "Marketing",
@@ -486,6 +487,13 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
   // ── VALIDATION ─────────────────────────────────────────────────────────────
   bool _validateSections() {
     bool valid = true;
+
+    if (selectedDepartment == "Select Department") {
+      setState(() => _departmentError = "Please select department");
+      valid = false;
+    } else {
+      setState(() => _departmentError = null);
+    }
 
     // Reporting To
     if (selectedReportingList.isEmpty) {
@@ -790,15 +798,26 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                               _buildSearchableDropdownField(
                                 value: selectedDepartment,
                                 hint: "Select Department",
+                                errorText: _departmentError,
                                 onTap: () => _showSearchableBottomSheet(
                                   context: context,
                                   title: "Select Department",
                                   items: _departmentItems,
                                   selectedValue: selectedDepartment,
-                                  onSelected: (v) =>
-                                      setState(() => selectedDepartment = v),
+                                  onSelected: (v) => setState(() {
+                                    selectedDepartment = v;
+                                    _departmentError = null; // clear error on selection
+                                  }),
                                 ),
                               ),
+                              if (_departmentError != null)
+                                Padding(
+                                  padding: EdgeInsets.only(top: 4.h, left: 4.w),
+                                  child: Text(
+                                    _departmentError!,
+                                    style: GoogleFonts.inter(color: Colors.red, fontSize: 10.sp),
+                                  ),
+                                ),
 
                               SizedBox(height: 8.h),
 

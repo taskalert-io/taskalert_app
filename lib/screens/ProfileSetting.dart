@@ -29,7 +29,22 @@ class ProfileSettingState extends State<ProfileSetting>
   final TextEditingController _dateController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
+  // ── Section GlobalKeys ─────────────────────────────────────────────────────
+  final GlobalKey<EmpJobDetailsSectionState> _empKey = GlobalKey();
+  final GlobalKey<CmpFinanceSectionState> _cmpKey = GlobalKey();
+  final GlobalKey<SkillPerformSectionState> _skillKey = GlobalKey();
+  final GlobalKey<TimeAttendSectionState> _timeKey = GlobalKey();
+  final GlobalKey<AssetSystemSectionState> _assetKey = GlobalKey();
+  final GlobalKey<DcmntComplianceSectionState> _dcmntKey = GlobalKey();
+
   bool _autoValidate = false;
+
+  final FocusNode _firstNameFocus = FocusNode();
+  final FocusNode _lastNameFocus = FocusNode();
+  final FocusNode _emailFocus = FocusNode();
+  final FocusNode _phoneFocus = FocusNode();
+  final FocusNode _accountEmailFocus = FocusNode();
+  final FocusNode _accountPasswordFocus = FocusNode();
 
   // ── Editing states (mirrors EmpJobDetailsSection pattern) ─────────────────
   bool _isFirstNameEditing = false;
@@ -61,19 +76,26 @@ class ProfileSettingState extends State<ProfileSetting>
   bool isDobError = false;
 
   // ── Account Settings controllers & states ──────────────────────────────────
-  final TextEditingController _accountEmailController    = TextEditingController();
-  final TextEditingController _accountPasswordController = TextEditingController();
-  bool _isAccountEmailEditing    = false;
+  final TextEditingController _accountEmailController = TextEditingController();
+  final TextEditingController _accountPasswordController =
+      TextEditingController();
+  bool _isAccountEmailEditing = false;
   bool _isAccountPasswordEditing = false;
-  bool _isTwoStepEnabled         = true;
-  bool _isSupportAccessEnabled   = true;
+  bool _isTwoStepEnabled = true;
+  bool _isSupportAccessEnabled = true;
 
   String selectedProofType = "";
   String selectedProofRadioType = "";
 
   String? _selectedLanguage;
   final List<String> _languages = [
-    'English', 'Hindi', 'Bengali', 'Spanish', 'French', 'Arabic', 'Chinese',
+    'English',
+    'Hindi',
+    'Bengali',
+    'Spanish',
+    'French',
+    'Arabic',
+    'Chinese',
   ];
 
   @override
@@ -93,7 +115,7 @@ class ProfileSettingState extends State<ProfileSetting>
     _emailController.text = "michaelsmith@gmail.com";
     _phoneController.text = "+14547260592";
 
-    _accountEmailController.text    = "michael Smith@gmail.com";
+    _accountEmailController.text = "michael Smith@gmail.com";
     _accountPasswordController.text = "••••••••";
   }
 
@@ -111,6 +133,13 @@ class ProfileSettingState extends State<ProfileSetting>
     _accountEmailController.dispose();
     _accountPasswordController.dispose();
 
+    _firstNameFocus.dispose();
+    _lastNameFocus.dispose();
+    _emailFocus.dispose();
+    _phoneFocus.dispose();
+    _accountEmailFocus.dispose();
+    _accountPasswordFocus.dispose();
+
     super.dispose();
   }
 
@@ -118,36 +147,52 @@ class ProfileSettingState extends State<ProfileSetting>
   void _submitForm() {
     setState(() => _autoValidate = true);
 
-    if (!_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "Please fill all required fields.",
-            style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
-          ),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8.r),
-          ),
-        ),
-      );
+    // validate main form
+    bool mainValid = _formKey.currentState!.validate();
+
+    // validate DOB
+    if (_selectedDate == null) {
+      setState(() => isDobError = true);
+      mainValid = false;
+    }
+
+    // validate only open sections
+    bool sectionsValid = true;
+    if (empJobDetailsEnabled) {
+      if (!(_empKey.currentState?.validate() ?? true)) sectionsValid = false;
+    }
+    if (cmpFinanceEnabled) {
+      if (!(_cmpKey.currentState?.validate() ?? true)) sectionsValid = false;
+    }
+    if (skillPerformEnabled) {
+      if (!(_skillKey.currentState?.validate() ?? true)) sectionsValid = false;
+    }
+    if (timeAttendEnabled) {
+      if (!(_timeKey.currentState?.validate() ?? true)) sectionsValid = false;
+    }
+    if (assetSystemEnabled) {
+      if (!(_assetKey.currentState?.validate() ?? true)) sectionsValid = false;
+    }
+    if (dcmntComplianceEnabled) {
+      if (!(_dcmntKey.currentState?.validate() ?? true)) sectionsValid = false;
+    }
+
+    if (!mainValid || !sectionsValid) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text("Please fill all required fields.",
+            style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white)),
+        backgroundColor: Colors.red, behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+      ));
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          "Form submitted successfully!",
-          style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
-        ),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.r),
-        ),
-      ),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text("Form submitted successfully!",
+          style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white)),
+      backgroundColor: Colors.green, behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+    ));
   }
 
   // ── Tab pill ───────────────────────────────────────────────────────────────
@@ -175,12 +220,12 @@ class ProfileSettingState extends State<ProfileSetting>
           decoration: BoxDecoration(
             gradient: isSelected
                 ? const LinearGradient(
-              colors: [
-                Color(0xFFE040FB),
-                Color(0xFF40C4FF),
-                Color(0xFF64FFDA),
-              ],
-            )
+                    colors: [
+                      Color(0xFFE040FB),
+                      Color(0xFF40C4FF),
+                      Color(0xFF64FFDA),
+                    ],
+                  )
                 : null,
             color: isSelected ? null : const Color(0xFFE5E5E5),
           ),
@@ -235,16 +280,21 @@ class ProfileSettingState extends State<ProfileSetting>
     required TextEditingController controller,
     required bool isEditing,
     required VoidCallback onEdit,
+    required FocusNode focusNode,
     TextInputType keyboardType = TextInputType.text,
     List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
+      focusNode: focusNode,
       readOnly: !isEditing,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       validator: validator,
+      autovalidateMode: _autoValidate
+          ? AutovalidateMode.onUserInteraction  // live re-validate as user types
+          : AutovalidateMode.disabled,          // silent before first submit
       style: GoogleFonts.inter(
         fontSize: 12.sp,
         fontWeight: FontWeight.w400,
@@ -252,10 +302,7 @@ class ProfileSettingState extends State<ProfileSetting>
       ),
       decoration: InputDecoration(
         isDense: true,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 10,
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         hintText: hint,
         hintStyle: GoogleFonts.inter(
           fontSize: 12.sp,
@@ -263,9 +310,11 @@ class ProfileSettingState extends State<ProfileSetting>
           color: const Color(0xFFB8BEC5),
         ),
         errorStyle: TextStyle(fontSize: 10.sp),
-        // ── Edit / Done icon toggles exactly like EmpJobDetailsSection ──
         suffixIcon: GestureDetector(
-          onTap: onEdit,
+          onTap: () {
+            onEdit();
+            Future.microtask(() => focusNode.requestFocus());
+          },
           child: Padding(
             padding: const EdgeInsets.all(10),
             child: Icon(
@@ -321,10 +370,7 @@ class ProfileSettingState extends State<ProfileSetting>
   );
 
   // ── Toggle switch ──────────────────────────────────────────────────────────
-  Widget _buildToggle({
-    required bool value,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildToggle({required bool value, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -348,8 +394,7 @@ class ProfileSettingState extends State<ProfileSetting>
             height: 14.h,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color:
-              value ? const Color(0xFF1DC230) : const Color(0xFF676299),
+              color: value ? const Color(0xFF1DC230) : const Color(0xFF676299),
             ),
           ),
         ),
@@ -462,11 +507,12 @@ class ProfileSettingState extends State<ProfileSetting>
                         ),
                         onSelectionChanged:
                             (DateRangePickerSelectionChangedArgs args) {
-                          if (args.value is DateTime) {
-                            dialogSetState(
-                                    () => tempSelectedDate = args.value);
-                          }
-                        },
+                              if (args.value is DateTime) {
+                                dialogSetState(
+                                  () => tempSelectedDate = args.value,
+                                );
+                              }
+                            },
                       ),
                     ),
                     SizedBox(height: 10.h),
@@ -488,7 +534,7 @@ class ProfileSettingState extends State<ProfileSetting>
                             setState(() {
                               _selectedDate = tempSelectedDate;
                               _dateController.text =
-                              "${tempSelectedDate.day.toString().padLeft(2, '0')}-"
+                                  "${tempSelectedDate.day.toString().padLeft(2, '0')}-"
                                   "${tempSelectedDate.month.toString().padLeft(2, '0')}-"
                                   "${tempSelectedDate.year}";
                               dayController.text = tempSelectedDate.day
@@ -497,8 +543,8 @@ class ProfileSettingState extends State<ProfileSetting>
                               monthController.text = tempSelectedDate.month
                                   .toString()
                                   .padLeft(2, '0');
-                              yearController.text =
-                                  tempSelectedDate.year.toString();
+                              yearController.text = tempSelectedDate.year
+                                  .toString();
                               isDobError = false;
                             });
                             Navigator.pop(context);
@@ -551,10 +597,7 @@ class ProfileSettingState extends State<ProfileSetting>
                 ],
               ),
               child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: 15.w,
-                  vertical: 16.h,
-                ),
+                padding: EdgeInsets.symmetric(horizontal: 15.w, vertical: 16.h),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -568,10 +611,9 @@ class ProfileSettingState extends State<ProfileSetting>
                       hint: 'Enter first name',
                       controller: _firstNameController,
                       isEditing: _isFirstNameEditing,
-                      onEdit: () => setState(
-                              () => _isFirstNameEditing = !_isFirstNameEditing),
-                      validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Required' : null,
+                      focusNode: _firstNameFocus,
+                      onEdit: () { if (!_isFirstNameEditing) setState(() => _isFirstNameEditing = true); },
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
                     ),
                     SizedBox(height: 8.h),
 
@@ -581,10 +623,9 @@ class ProfileSettingState extends State<ProfileSetting>
                       hint: 'Enter last name',
                       controller: _lastNameController,
                       isEditing: _isLastNameEditing,
-                      onEdit: () => setState(
-                              () => _isLastNameEditing = !_isLastNameEditing),
-                      validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Required' : null,
+                      focusNode: _lastNameFocus,
+                      onEdit: () { if (!_isLastNameEditing) setState(() => _isLastNameEditing = true); },
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
                     ),
                     SizedBox(height: 10.h),
 
@@ -598,13 +639,12 @@ class ProfileSettingState extends State<ProfileSetting>
                       hint: 'Enter email address',
                       controller: _emailController,
                       isEditing: _isEmailEditing,
-                      onEdit: () =>
-                          setState(() => _isEmailEditing = !_isEmailEditing),
+                      focusNode: _emailFocus,
+                      onEdit: () { if (!_isEmailEditing) setState(() => _isEmailEditing = true); },
                       keyboardType: TextInputType.emailAddress,
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return 'Required';
-                        final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-                        if (!emailRegex.hasMatch(v)) return 'Invalid email';
+                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v)) return 'Invalid email';
                         return null;
                       },
                     ),
@@ -616,17 +656,18 @@ class ProfileSettingState extends State<ProfileSetting>
                       hint: 'Enter phone number',
                       controller: _phoneController,
                       isEditing: _isPhoneEditing,
-                      onEdit: () =>
-                          setState(() => _isPhoneEditing = !_isPhoneEditing),
+                      focusNode: _phoneFocus,
+                      onEdit: () { if (!_isPhoneEditing) setState(() => _isPhoneEditing = true); },
                       keyboardType: TextInputType.phone,
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(
-                          RegExp(r'[\d\s\-\+\(\)]'),
-                        ),
-                        LengthLimitingTextInputFormatter(15),
+                        FilteringTextInputFormatter.digitsOnly,      // only digits, no symbols
+                        LengthLimitingTextInputFormatter(10),         // hard cap at 10 digits
                       ],
-                      validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Required' : null,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Please enter phone number';
+                        if (v.trim().length < 10) return 'Phone number must be 10 digits';
+                        return null;
+                      },
                     ),
                     SizedBox(height: 8.h),
 
@@ -822,7 +863,7 @@ class ProfileSettingState extends State<ProfileSetting>
                   assetSystemEnabled = false;
                 }
               }),
-              child: const EmpJobDetailsSection(),
+              child: EmpJobDetailsSection(key: _empKey),
             ),
 
             _buildSectionRow(
@@ -838,7 +879,7 @@ class ProfileSettingState extends State<ProfileSetting>
                   assetSystemEnabled = false;
                 }
               }),
-              child: const CmpFinanceSection(),
+              child: CmpFinanceSection(key: _cmpKey),
             ),
 
             _buildSectionRow(
@@ -854,7 +895,7 @@ class ProfileSettingState extends State<ProfileSetting>
                   assetSystemEnabled = false;
                 }
               }),
-              child: const SkillPerformSection(),
+              child: SkillPerformSection(key: _skillKey),
             ),
 
             _buildSectionRow(
@@ -870,7 +911,7 @@ class ProfileSettingState extends State<ProfileSetting>
                   assetSystemEnabled = false;
                 }
               }),
-              child: const TimeAttendSection(),
+              child: TimeAttendSection(key: _timeKey),
             ),
 
             _buildSectionRow(
@@ -886,7 +927,7 @@ class ProfileSettingState extends State<ProfileSetting>
                   timeAttendEnabled = false;
                 }
               }),
-              child: const AssetSystemSection(),
+              child: AssetSystemSection(key: _assetKey),
             ),
 
             _buildSectionRow(
@@ -902,7 +943,7 @@ class ProfileSettingState extends State<ProfileSetting>
                   assetSystemEnabled = false;
                 }
               }),
-              child: const DcmntComplianceSection(),
+              child: DcmntComplianceSection(key: _dcmntKey),
             ),
 
             SizedBox(height: 16.h),
@@ -978,10 +1019,7 @@ class ProfileSettingState extends State<ProfileSetting>
               ],
             ),
             child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: 15.w,
-                vertical: 16.h,
-              ),
+              padding: EdgeInsets.symmetric(horizontal: 15.w, vertical: 16.h),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1010,9 +1048,8 @@ class ProfileSettingState extends State<ProfileSetting>
                     hint: 'Enter email address',
                     controller: _accountEmailController,
                     isEditing: _isAccountEmailEditing,
-                    onEdit: () => setState(
-                          () => _isAccountEmailEditing = !_isAccountEmailEditing,
-                    ),
+                    focusNode: _accountEmailFocus,
+                    onEdit: () { if (!_isAccountEmailEditing) setState(() => _isAccountEmailEditing = true); },
                     keyboardType: TextInputType.emailAddress,
                   ),
                   SizedBox(height: 10.h),
@@ -1031,9 +1068,8 @@ class ProfileSettingState extends State<ProfileSetting>
                     hint: '••••••••',
                     controller: _accountPasswordController,
                     isEditing: _isAccountPasswordEditing,
-                    onEdit: () => setState(
-                          () => _isAccountPasswordEditing = !_isAccountPasswordEditing,
-                    ),
+                    focusNode: _accountPasswordFocus,
+                    onEdit: () { if (!_isAccountPasswordEditing) setState(() => _isAccountPasswordEditing = true); },
                   ),
                   SizedBox(height: 16.h),
 
@@ -1073,7 +1109,7 @@ class ProfileSettingState extends State<ProfileSetting>
                       _buildToggle(
                         value: _isTwoStepEnabled,
                         onTap: () => setState(
-                              () => _isTwoStepEnabled = !_isTwoStepEnabled,
+                          () => _isTwoStepEnabled = !_isTwoStepEnabled,
                         ),
                       ),
                     ],
@@ -1125,7 +1161,8 @@ class ProfileSettingState extends State<ProfileSetting>
                       _buildToggle(
                         value: _isSupportAccessEnabled,
                         onTap: () => setState(
-                              () => _isSupportAccessEnabled = !_isSupportAccessEnabled,
+                          () => _isSupportAccessEnabled =
+                              !_isSupportAccessEnabled,
                         ),
                       ),
                     ],
@@ -1239,7 +1276,7 @@ class ProfileSettingState extends State<ProfileSetting>
                   const Divider(height: 1, color: Color(0xFFE4E7EC)),
                   SizedBox(height: 16.h),
 
-// ── Language Settings ─────────────────────────────────────────
+                  // ── Language Settings ─────────────────────────────────────────
                   Text(
                     'Language Settings',
                     style: GoogleFonts.inter(
@@ -1285,20 +1322,19 @@ class ProfileSettingState extends State<ProfileSetting>
                     items: _languages
                         .map(
                           (e) => DropdownMenuItem(
-                        value: e,
-                        child: Text(
-                          e,
-                          style: GoogleFonts.inter(
-                            fontSize: 12.sp,
-                            color: const Color(0xFF3F3F3F),
+                            value: e,
+                            child: Text(
+                              e,
+                              style: GoogleFonts.inter(
+                                fontSize: 12.sp,
+                                color: const Color(0xFF3F3F3F),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    )
+                        )
                         .toList(),
                     onChanged: (v) => setState(() => _selectedLanguage = v),
                   ),
-
                 ],
               ),
             ),
@@ -1354,8 +1390,9 @@ class ProfileSettingState extends State<ProfileSetting>
                         width: 100.w,
                         height: 100.h,
                         child: const CircleAvatar(
-                          backgroundImage:
-                          AssetImage('assets/images/profile.png'),
+                          backgroundImage: AssetImage(
+                            'assets/images/profile.png',
+                          ),
                         ),
                       ),
                     ),
@@ -1421,8 +1458,7 @@ class ProfileSettingState extends State<ProfileSetting>
                           onTap: () => setState(() => selectedTab = 0),
                           child: SizedBox(
                             width: 140.w,
-                            child:
-                            _buildTab("My Profile", selectedTab == 0),
+                            child: _buildTab("My Profile", selectedTab == 0),
                           ),
                         ),
                         SizedBox(width: 20.w),
@@ -1431,7 +1467,9 @@ class ProfileSettingState extends State<ProfileSetting>
                           child: SizedBox(
                             width: 140.w,
                             child: _buildTab(
-                                "Account Settings", selectedTab == 1),
+                              "Account Settings",
+                              selectedTab == 1,
+                            ),
                           ),
                         ),
                       ],

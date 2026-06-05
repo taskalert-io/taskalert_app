@@ -3,23 +3,31 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
+import 'SectionValidatable.dart';
 
 class EmpJobDetailsSection extends StatefulWidget {
   const EmpJobDetailsSection({super.key});
   @override
-  State<EmpJobDetailsSection> createState() => _EmpJobDetailsSectionState();
+  State<EmpJobDetailsSection> createState() => EmpJobDetailsSectionState();
 }
 
-class _EmpJobDetailsSectionState extends State<EmpJobDetailsSection> {
-  // Controllers
+class EmpJobDetailsSectionState extends State<EmpJobDetailsSection>
+    implements SectionValidatable {
   final TextEditingController _jobTitleController = TextEditingController();
   final TextEditingController _departmentController = TextEditingController();
   final TextEditingController _shiftController = TextEditingController();
   final TextEditingController _hoursController = TextEditingController();
   final TextEditingController _whoReportsToController = TextEditingController();
-  final TextEditingController _whoReportsThemController =
-      TextEditingController();
+  final TextEditingController _whoReportsThemController = TextEditingController();
   final TextEditingController _tenureController = TextEditingController();
+
+  final FocusNode _jobTitleFocus = FocusNode();
+  final FocusNode _departmentFocus = FocusNode();
+  final FocusNode _shiftFocus = FocusNode();
+  final FocusNode _hoursFocus = FocusNode();
+  final FocusNode _reportToFocus = FocusNode();
+  final FocusNode _reportThemFocus = FocusNode();
+  final FocusNode _tenureFocus = FocusNode();
 
   bool _isJobTitleEditing = false;
   bool _isDepartmentEditing = false;
@@ -29,21 +37,41 @@ class _EmpJobDetailsSectionState extends State<EmpJobDetailsSection> {
   bool _isReportThemEditing = false;
   bool _isTenureEditing = false;
 
-  // Employment Type dropdown
+  String? _jobTitleError;
+  String? _departmentError;
+  String? _shiftError;
+  String? _hoursError;
+  String? _reportToError;
+  String? _reportThemError;
+  String? _tenureError;
+  String? _employmentTypeError;
+  String? _hireDateError;
+
   String? _selectedEmploymentType;
   final List<String> _employmentTypes = [
-    'Full-time',
-    'Part-time',
-    'Contract',
-    'Intern',
-    'Freelance',
+    'Full-time', 'Part-time', 'Contract', 'Intern', 'Freelance',
   ];
 
-  // Hire Date controllers
   final TextEditingController _hireDayController = TextEditingController();
   final TextEditingController _hireMonthController = TextEditingController();
   final TextEditingController _hireYearController = TextEditingController();
   DateTime? _hireDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _jobTitleController.text = "Senior Backend Engineer";
+    _departmentController.text = "Product";
+    _shiftController.text = "Morning";
+    _hoursController.text = "8";
+    _whoReportsToController.text = "Amit Kumar Mondal";
+    _whoReportsThemController.text = "Maulik Seith";
+    _tenureController.text = "5";
+    _hireDate = DateTime.now();
+    _hireDayController.text = _hireDate!.day.toString().padLeft(2, '0');
+    _hireMonthController.text = _hireDate!.month.toString().padLeft(2, '0');
+    _hireYearController.text = _hireDate!.year.toString();
+  }
 
   @override
   void dispose() {
@@ -57,202 +85,122 @@ class _EmpJobDetailsSectionState extends State<EmpJobDetailsSection> {
     _hireDayController.dispose();
     _hireMonthController.dispose();
     _hireYearController.dispose();
+    _jobTitleFocus.dispose();
+    _departmentFocus.dispose();
+    _shiftFocus.dispose();
+    _hoursFocus.dispose();
+    _reportToFocus.dispose();
+    _reportThemFocus.dispose();
+    _tenureFocus.dispose();
     super.dispose();
   }
 
-  // ── Field label ────────────────────────────────────────────────────────────
-  Widget _fieldLabel(String label) => Padding(
-    padding: EdgeInsets.only(bottom: 6.h),
-    child: Text(
-      label,
-      style: GoogleFonts.inter(
-        fontSize: 12.sp,
-        fontWeight: FontWeight.w400,
-        color: const Color(0xFF303030),
-      ),
-    ),
-  );
+  // ── Public validate called from ProfileSetting ─────────────────────────────
+  @override
+  bool validate() {
+    bool valid = true;
+    setState(() {
+      _jobTitleError = _jobTitleController.text.trim().isEmpty ? "Please enter job title" : null;
+      _departmentError = _departmentController.text.trim().isEmpty ? "Please enter department" : null;
+      _employmentTypeError = _selectedEmploymentType == null ? "Please select employment type" : null;
+      _shiftError = _shiftController.text.trim().isEmpty ? "Please enter shift" : null;
+      _hoursError = _hoursController.text.trim().isEmpty ? "Please enter hours" : null;
+      _reportToError = _whoReportsToController.text.trim().isEmpty ? "Please enter reporting manager" : null;
+      _reportThemError = _whoReportsThemController.text.trim().isEmpty ? "Please enter team member" : null;
+      _hireDateError = _hireDate == null ? "Please select hire date" : null;
+      _tenureError = _tenureController.text.trim().isEmpty ? "Please enter tenure" : null;
 
-  // ── Section heading ────────────────────────────────────────────────────────
+      if (_jobTitleError != null || _departmentError != null ||
+          _employmentTypeError != null || _shiftError != null ||
+          _hoursError != null || _reportToError != null ||
+          _reportThemError != null || _hireDateError != null ||
+          _tenureError != null) {
+        valid = false;
+      }
+    });
+    return valid;
+  }
+
   Widget _sectionHeading(String title) => Padding(
     padding: EdgeInsets.only(bottom: 8.h),
-    child: Text(
-      title,
-      style: GoogleFonts.inter(
-        fontSize: 13.sp,
-        fontWeight: FontWeight.w600,
-        color: const Color(0xFF0A0258),
+    child: Text(title,
+        style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w600, color: const Color(0xFF0A0258))),
+  );
+
+  Widget _fieldLabel(String label, {bool required = false}) => Padding(
+    padding: EdgeInsets.only(bottom: 6.h),
+    child: RichText(
+      text: TextSpan(
+        text: label,
+        style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.w400, color: const Color(0xFF303030)),
+        children: required ? const [TextSpan(text: " *", style: TextStyle(color: Colors.red))] : [],
       ),
     ),
   );
 
-  // ── Edit icon ──────────────────────────────────────────────────────────────
-  Widget get _editIcon => Padding(
-    padding: const EdgeInsets.all(10),
-    child: Icon(
-      Icons.edit_outlined,
-      size: 18.sp,
-      color: const Color(0xFFB8BEC5),
-    ),
-  );
-
-  Widget get _titlePrefix => Padding(
-    padding: EdgeInsets.only(left: 12.w, right: 8.w),
-    child: Text(
-      "Title:",
-      style: GoogleFonts.inter(
-        fontSize: 12.sp,
-        fontWeight: FontWeight.w600,
-        color: const Color(0xFF303030),
-      ),
-    ),
-  );
-
-  Widget get _departmentPrefix => Padding(
-    padding: EdgeInsets.only(left: 12.w, right: 8.w),
-    child: Text(
-      "Dept:",
-      style: GoogleFonts.inter(
-        fontSize: 12.sp,
-        fontWeight: FontWeight.w600,
-        color: const Color(0xFF303030),
-      ),
-    ),
-  );
-
-  Widget get _shiftPrefix => Padding(
-    padding: EdgeInsets.only(left: 12.w, right: 8.w),
-    child: Text(
-      "Shift:",
-      style: GoogleFonts.inter(
-        fontSize: 12.sp,
-        fontWeight: FontWeight.w600,
-        color: const Color(0xFF303030),
-      ),
-    ),
-  );
-
-  Widget get _hourPrefix => Padding(
-    padding: EdgeInsets.only(left: 12.w, right: 8.w),
-    child: Text(
-      "Hours:",
-      style: GoogleFonts.inter(
-        fontSize: 12.sp,
-        fontWeight: FontWeight.w600,
-        color: const Color(0xFF303030),
-      ),
-    ),
-  );
-
-  Widget get _reportToPrefix => Padding(
-    padding: EdgeInsets.only(left: 12.w, right: 8.w),
-    child: Text(
-      "Manager:",
-      style: GoogleFonts.inter(
-        fontSize: 12.sp,
-        fontWeight: FontWeight.w600,
-        color: const Color(0xFF303030),
-      ),
-    ),
-  );
-
-  Widget get _reportThemPrefix => Padding(
-    padding: EdgeInsets.only(left: 12.w, right: 8.w),
-    child: Text(
-      "Team:",
-      style: GoogleFonts.inter(
-        fontSize: 12.sp,
-        fontWeight: FontWeight.w600,
-        color: const Color(0xFF303030),
-      ),
-    ),
-  );
-
-  Widget get _tenurePrefix => Padding(
-    padding: EdgeInsets.only(left: 12.w, right: 8.w),
-    child: Text(
-      "Years:",
-      style: GoogleFonts.inter(
-        fontSize: 12.sp,
-        fontWeight: FontWeight.w600,
-        color: const Color(0xFF303030),
-      ),
-    ),
-  );
-
-  // ── Reusable text field ────────────────────────────────────────────────────
   Widget _buildTextField({
     required TextEditingController controller,
     required bool isEditing,
     required VoidCallback onEdit,
+    required FocusNode focusNode,
+    String? errorText,
+    VoidCallback? onClearError,
     TextInputType keyboardType = TextInputType.text,
     List<TextInputFormatter>? inputFormatters,
   }) {
-    return TextFormField(
-      controller: controller,
-      readOnly: !isEditing,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-      style: GoogleFonts.inter(
-        fontSize: 12.sp,
-        fontWeight: FontWeight.w400,
-        color: const Color(0xFF6C7278),
-      ),
-      decoration: InputDecoration(
-        isDense: true,
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: 12.w,
-          vertical: 10.h,
-        ),
-        suffixIcon: GestureDetector(
-          onTap: onEdit,
-          child: Padding(
-            padding: const EdgeInsets.all(10),
-            child: Icon(
-              Icons.edit_outlined,
-              size: 18.sp,
-              color: const Color(0xFFB8BEC5),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextFormField(
+          controller: controller,
+          focusNode: focusNode,
+          readOnly: !isEditing,
+          keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
+          onChanged: (_) { if (onClearError != null) onClearError(); },
+          style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.w400, color: const Color(0xFF6C7278)),
+          decoration: InputDecoration(
+            isDense: true,
+            contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+            errorStyle: const TextStyle(fontSize: 0, height: 0),
+            suffixIcon: GestureDetector(
+              onTap: () {
+                if (!isEditing) onEdit();
+                Future.microtask(() => focusNode.requestFocus());
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Icon(Icons.edit_outlined, size: 18.sp, color: const Color(0xFFB8BEC5)),
+              ),
             ),
+            filled: true,
+            fillColor: const Color(0xFFF9FAFC),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r), borderSide: const BorderSide(color: Color(0xFFD9DEE5))),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r),
+                borderSide: BorderSide(color: errorText != null ? Colors.red : const Color(0xFFD9DEE5))),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r),
+                borderSide: BorderSide(color: errorText != null ? Colors.red : const Color(0xFF0A0258))),
+            errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r), borderSide: const BorderSide(color: Colors.red)),
+            focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r), borderSide: const BorderSide(color: Colors.red)),
           ),
         ),
-        filled: true,
-        fillColor: const Color(0xFFF9FAFC),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8.r),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8.r),
-          borderSide: const BorderSide(
-            color: Color(0xFFD9DEE5),
+        if (errorText != null)
+          Padding(
+            padding: EdgeInsets.only(top: 4.h, left: 4.w),
+            child: Text(errorText, style: GoogleFonts.inter(color: Colors.red, fontSize: 10.sp)),
           ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8.r),
-          borderSide: const BorderSide(
-            color: Color(0xFF0A0258),
-          ),
-        ),
-      ),
+      ],
     );
   }
 
-  // ── Self-contained DD/MM/YYYY row with built-in date picker ───────────────
-  Widget _buildDateRow({
-    required TextEditingController dayController,
-    required TextEditingController monthController,
-    required TextEditingController yearController,
-    required DateTime? selectedDate,
-    required Function(DateTime) onDateSelected,
-  }) {
+  Widget _buildDateRow() {
     const borderColor = Color(0xFFD9DEE5);
-
     void showPicker() {
-      DateTime tempDate = selectedDate ?? DateTime.now();
+      DateTime tempDate = _hireDate ?? DateTime.now();
       showModalBottomSheet(
-        context: context,
-        backgroundColor: Colors.transparent,
-        isScrollControlled: true,
-        useRootNavigator: true,
+        context: context, backgroundColor: Colors.transparent,
+        isScrollControlled: true, useRootNavigator: true,
         builder: (_) => StatefulBuilder(
           builder: (ctx, setModal) => SafeArea(
             child: Container(
@@ -261,14 +209,7 @@ class _EmpJobDetailsSectionState extends State<EmpJobDetailsSection> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 10.r,
-                    spreadRadius: 2.r,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10.r, spreadRadius: 2.r, offset: const Offset(0, -2))],
               ),
               child: Column(
                 children: [
@@ -277,8 +218,7 @@ class _EmpJobDetailsSectionState extends State<EmpJobDetailsSection> {
                       initialSelectedDate: tempDate,
                       selectionMode: DateRangePickerSelectionMode.single,
                       view: DateRangePickerView.month,
-                      allowViewNavigation: true,
-                      showNavigationArrow: true,
+                      allowViewNavigation: true, showNavigationArrow: true,
                       backgroundColor: Colors.white,
                       selectionColor: const Color(0xFF0A0258),
                       todayHighlightColor: const Color(0xFF0A0258),
@@ -287,58 +227,31 @@ class _EmpJobDetailsSectionState extends State<EmpJobDetailsSection> {
                       rangeSelectionColor: Colors.white,
                       headerStyle: DateRangePickerHeaderStyle(
                         backgroundColor: Colors.transparent,
-                        textStyle: GoogleFonts.inter(
-                          color: const Color(0xFF3F4B4B),
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        textStyle: GoogleFonts.inter(color: const Color(0xFF3F4B4B), fontSize: 16.sp, fontWeight: FontWeight.w600),
                       ),
-                      onSelectionChanged:
-                          (DateRangePickerSelectionChangedArgs args) {
-                            if (args.value is DateTime) {
-                              setModal(() => tempDate = args.value);
-                            }
-                          },
+                      onSelectionChanged: (args) {
+                        if (args.value is DateTime) setModal(() => tempDate = args.value);
+                      },
                     ),
                   ),
                   SizedBox(height: 10.h),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: Text(
-                          "Cancel",
-                          style: GoogleFonts.inter(
-                            color: Colors.red,
-                            fontSize: 14.sp,
-                          ),
-                        ),
-                      ),
+                      TextButton(onPressed: () => Navigator.pop(ctx),
+                          child: Text("Cancel", style: GoogleFonts.inter(color: Colors.red, fontSize: 14.sp))),
                       TextButton(
                         onPressed: () {
-                          onDateSelected(tempDate);
-
-                          dayController.text = tempDate.day.toString().padLeft(
-                            2,
-                            '0',
-                          );
-
-                          monthController.text = tempDate.month
-                              .toString()
-                              .padLeft(2, '0');
-
-                          yearController.text = tempDate.year.toString();
-
+                          setState(() {
+                            _hireDate = tempDate;
+                            _hireDayController.text = tempDate.day.toString().padLeft(2, '0');
+                            _hireMonthController.text = tempDate.month.toString().padLeft(2, '0');
+                            _hireYearController.text = tempDate.year.toString();
+                            _hireDateError = null;
+                          });
                           Navigator.pop(ctx);
                         },
-                        child: Text(
-                          "OK",
-                          style: GoogleFonts.inter(
-                            color: const Color(0xFF0DA99E),
-                            fontSize: 14.sp,
-                          ),
-                        ),
+                        child: Text("OK", style: GoogleFonts.inter(color: const Color(0xFF0DA99E), fontSize: 14.sp)),
                       ),
                     ],
                   ),
@@ -350,155 +263,90 @@ class _EmpJobDetailsSectionState extends State<EmpJobDetailsSection> {
       );
     }
 
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // DAY
-        Expanded(
-          child: GestureDetector(
-            onTap: showPicker,
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF9FAFC),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(8.r),
-                  bottomLeft: Radius.circular(8.r),
-                ),
-                border: Border.all(color: borderColor),
-              ),
-              child: IgnorePointer(
-                child: TextField(
-                  controller: dayController,
-                  readOnly: true,
-                  style: GoogleFonts.inter(
-                    fontSize: 12.sp,
-                    color: const Color(0xFF303030),
+        Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: showPicker,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FAFC),
+                    borderRadius: BorderRadius.only(topLeft: Radius.circular(8.r), bottomLeft: Radius.circular(8.r)),
+                    border: Border.all(color: _hireDateError != null ? Colors.red : borderColor),
                   ),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    border: InputBorder.none,
-                    hintText: "DD",
-                    hintStyle: GoogleFonts.inter(
-                      fontSize: 12.sp,
-                      color: const Color(0xFFB8BEC5),
-                    ),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 8.h,
+                  child: IgnorePointer(
+                    child: TextField(
+                      controller: _hireDayController, readOnly: true,
+                      style: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFF303030)),
+                      decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: "DD",
+                          hintStyle: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFFB8BEC5)),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h)),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-        ),
-        // MONTH
-        Expanded(
-          child: GestureDetector(
-            onTap: showPicker,
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFFF9FAFC),
-                border: Border(
-                  top: BorderSide(color: borderColor),
-                  bottom: BorderSide(color: borderColor),
-                  right: BorderSide(color: borderColor),
-                ),
-              ),
-              child: IgnorePointer(
-                child: TextField(
-                  controller: monthController,
-                  readOnly: true,
-                  style: GoogleFonts.inter(
-                    fontSize: 12.sp,
-                    color: const Color(0xFF303030),
-                  ),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    border: InputBorder.none,
-                    hintText: "MM",
-                    hintStyle: GoogleFonts.inter(
-                      fontSize: 12.sp,
-                      color: const Color(0xFFB8BEC5),
+            Expanded(
+              child: GestureDetector(
+                onTap: showPicker,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FAFC),
+                    border: Border(
+                      top: BorderSide(color: _hireDateError != null ? Colors.red : borderColor),
+                      bottom: BorderSide(color: _hireDateError != null ? Colors.red : borderColor),
+                      right: BorderSide(color: _hireDateError != null ? Colors.red : borderColor),
                     ),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 8.h,
+                  ),
+                  child: IgnorePointer(
+                    child: TextField(
+                      controller: _hireMonthController, readOnly: true,
+                      style: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFF303030)),
+                      decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: "MM",
+                          hintStyle: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFFB8BEC5)),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h)),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-        ),
-        // YEAR
-        Expanded(
-          child: GestureDetector(
-            onTap: showPicker,
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF9FAFC),
-                borderRadius: BorderRadius.only(
-                  topRight: Radius.circular(8.r),
-                  bottomRight: Radius.circular(8.r),
-                ),
-                border: const Border(
-                  top: BorderSide(color: borderColor),
-                  bottom: BorderSide(color: borderColor),
-                  right: BorderSide(color: borderColor),
-                ),
-              ),
-              child: IgnorePointer(
-                child: TextField(
-                  controller: yearController,
-                  readOnly: true,
-                  style: GoogleFonts.inter(
-                    fontSize: 12.sp,
-                    color: const Color(0xFF303030),
-                  ),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    border: InputBorder.none,
-                    hintText: "YYYY",
-                    hintStyle: GoogleFonts.inter(
-                      fontSize: 12.sp,
-                      color: const Color(0xFFB8BEC5),
+            Expanded(
+              child: GestureDetector(
+                onTap: showPicker,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FAFC),
+                    borderRadius: BorderRadius.only(topRight: Radius.circular(8.r), bottomRight: Radius.circular(8.r)),
+                    border: Border(
+                      top: BorderSide(color: _hireDateError != null ? Colors.red : borderColor),
+                      bottom: BorderSide(color: _hireDateError != null ? Colors.red : borderColor),
+                      right: BorderSide(color: _hireDateError != null ? Colors.red : borderColor),
                     ),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 8.h,
+                  ),
+                  child: IgnorePointer(
+                    child: TextField(
+                      controller: _hireYearController, readOnly: true,
+                      style: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFF303030)),
+                      decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: "YYYY",
+                          hintStyle: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFFB8BEC5)),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h)),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
+          ],
         ),
+        if (_hireDateError != null)
+          Padding(
+            padding: EdgeInsets.only(top: 4.h, left: 4.w),
+            child: Text(_hireDateError!, style: GoogleFonts.inter(color: Colors.red, fontSize: 10.sp)),
+          ),
       ],
     );
-  }
-
-  @override
-  void initState() {
-    super.initState();
-
-    _jobTitleController.text = "Senior Backend Engineer";
-    _departmentController.text = "Product";
-    _shiftController.text = "Morning";
-    _hoursController.text = "8";
-    _whoReportsToController.text = "Amit Kumar Mondal";
-    _whoReportsThemController.text = "Maulik Seith";
-    _tenureController.text = "5";
-
-    _hireDate = DateTime.now();
-
-    _hireDayController.text =
-        _hireDate!.day.toString().padLeft(2, '0');
-
-    _hireMonthController.text =
-        _hireDate!.month.toString().padLeft(2, '0');
-
-    _hireYearController.text =
-        _hireDate!.year.toString();
   }
 
   @override
@@ -506,172 +354,95 @@ class _EmpJobDetailsSectionState extends State<EmpJobDetailsSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Employment & Job Details ─────────────────────────────────────
         _sectionHeading('Employment & Job Details'),
-
-        _fieldLabel('Job Title'),
+        _fieldLabel('Job Title', required: true),
         _buildTextField(
-          controller: _jobTitleController,
-          isEditing: _isJobTitleEditing,
-          onEdit: () {
-            setState(() {
-              _isJobTitleEditing = true;
-            });
-          },
+          controller: _jobTitleController, isEditing: _isJobTitleEditing, focusNode: _jobTitleFocus,
+          onEdit: () { if (!_isJobTitleEditing) setState(() => _isJobTitleEditing = true); },
+          errorText: _jobTitleError,
+          onClearError: () => setState(() => _jobTitleError = _jobTitleController.text.trim().isEmpty ? "Please enter job title" : null),
         ),
         SizedBox(height: 10.h),
-
-        _fieldLabel('Department'),
+        _fieldLabel('Department', required: true),
         _buildTextField(
-          controller: _departmentController,
-          isEditing: _isDepartmentEditing,
-          onEdit: () {
-            setState(() {
-              _isDepartmentEditing = true;
-            });
-          },
+          controller: _departmentController, isEditing: _isDepartmentEditing, focusNode: _departmentFocus,
+          onEdit: () { if (!_isDepartmentEditing) setState(() => _isDepartmentEditing = true); },
+          errorText: _departmentError,
+          onClearError: () => setState(() => _departmentError = _departmentController.text.trim().isEmpty ? "Please enter department" : null),
         ),
         SizedBox(height: 14.h),
-
-        // ── Employment Type ──────────────────────────────────────────────
         _sectionHeading('Employment Type'),
-
         DropdownButtonFormField<String>(
           value: _selectedEmploymentType,
-          hint: Text(
-            'Full-time',
-            style: GoogleFonts.inter(
-              fontSize: 12.sp,
-              color: const Color(0xFF6C7278),
-            ),
-          ),
-          style: GoogleFonts.inter(
-            fontSize: 12.sp,
-            color: const Color(0xFF6C7278),
-          ),
-          icon: Icon(
-            Icons.keyboard_arrow_down,
-            color: const Color(0xFFB8BEC5),
-            size: 18.sp,
-          ),
+          hint: Text('Select type', style: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFF6C7278))),
+          style: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFF6C7278)),
+          icon: Icon(Icons.keyboard_arrow_down, color: const Color(0xFFB8BEC5), size: 18.sp),
           decoration: InputDecoration(
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 10,
-            ),
-            filled: true,
-            fillColor: const Color(0xFFF9FAFC),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.r),
-              borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.r),
-              borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.r),
-              borderSide: const BorderSide(color: Color(0xFF0A0258)),
-            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            filled: true, fillColor: const Color(0xFFF9FAFC),
+            errorStyle: const TextStyle(fontSize: 0, height: 0),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r), borderSide: const BorderSide(color: Color(0xFFD9DEE5))),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r),
+                borderSide: BorderSide(color: _employmentTypeError != null ? Colors.red : const Color(0xFFD9DEE5))),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r), borderSide: const BorderSide(color: Color(0xFF0A0258))),
           ),
-          items: _employmentTypes
-              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-              .toList(),
-          onChanged: (v) => setState(() => _selectedEmploymentType = v),
+          items: _employmentTypes.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+          onChanged: (v) => setState(() { _selectedEmploymentType = v; _employmentTypeError = null; }),
         ),
+        if (_employmentTypeError != null)
+          Padding(padding: EdgeInsets.only(top: 4.h, left: 4.w),
+              child: Text(_employmentTypeError!, style: GoogleFonts.inter(color: Colors.red, fontSize: 10.sp))),
         SizedBox(height: 8.h),
-
-        // ── Work Schedule ────────────────────────────────────────────────
         _sectionHeading('Work Schedule'),
-
-        _fieldLabel('Shift'),
+        _fieldLabel('Shift', required: true),
         _buildTextField(
-          controller: _shiftController,
-          isEditing: _isShiftEditing,
-          onEdit: () {
-            setState(() {
-              _isShiftEditing = true;
-            });
-          },
+          controller: _shiftController, isEditing: _isShiftEditing, focusNode: _shiftFocus,
+          onEdit: () { if (!_isShiftEditing) setState(() => _isShiftEditing = true); },
+          errorText: _shiftError,
+          onClearError: () => setState(() => _shiftError = _shiftController.text.trim().isEmpty ? "Please enter shift" : null),
         ),
         SizedBox(height: 8.h),
-
-        _fieldLabel('Hours'),
+        _fieldLabel('Hours', required: true),
         _buildTextField(
-          controller: _hoursController,
-          isEditing: _isHoursEditing,
-          onEdit: () {
-            setState(() {
-              _isHoursEditing = true;
-            });
-          },
+          controller: _hoursController, isEditing: _isHoursEditing, focusNode: _hoursFocus,
+          onEdit: () { if (!_isHoursEditing) setState(() => _isHoursEditing = true); },
+          errorText: _hoursError,
+          onClearError: () => setState(() => _hoursError = _hoursController.text.trim().isEmpty ? "Please enter hours" : null),
           keyboardType: TextInputType.number,
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-          ],
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         ),
         SizedBox(height: 8.h),
-
-        // ── Reporting Line ───────────────────────────────────────────────
         _sectionHeading('Reporting Line'),
-
-        _fieldLabel('Who They Report To'),
+        _fieldLabel('Who They Report To', required: true),
         _buildTextField(
-          controller: _whoReportsToController,
-          isEditing: _isReportToEditing,
-          onEdit: () {
-            setState(() {
-              _isReportToEditing = true;
-            });
-          },
+          controller: _whoReportsToController, isEditing: _isReportToEditing, focusNode: _reportToFocus,
+          onEdit: () { if (!_isReportToEditing) setState(() => _isReportToEditing = true); },
+          errorText: _reportToError,
+          onClearError: () => setState(() => _reportToError = _whoReportsToController.text.trim().isEmpty ? "Please enter reporting manager" : null),
         ),
         SizedBox(height: 8.h),
-
-        _fieldLabel('Who Reports To Them'),
+        _fieldLabel('Who Reports To Them', required: true),
         _buildTextField(
-          controller: _whoReportsThemController,
-          isEditing: _isReportThemEditing,
-          onEdit: () {
-            setState(() {
-              _isReportThemEditing = true;
-            });
-          },
+          controller: _whoReportsThemController, isEditing: _isReportThemEditing, focusNode: _reportThemFocus,
+          onEdit: () { if (!_isReportThemEditing) setState(() => _isReportThemEditing = true); },
+          errorText: _reportThemError,
+          onClearError: () => setState(() => _reportThemError = _whoReportsThemController.text.trim().isEmpty ? "Please enter team member" : null),
         ),
         SizedBox(height: 8.h),
-
-        // ── Hire Date ────────────────────────────────────────────────────
         _sectionHeading('Hire Date'),
-        _buildDateRow(
-          dayController: _hireDayController,
-          monthController: _hireMonthController,
-          yearController: _hireYearController,
-          selectedDate: _hireDate,
-          onDateSelected: (date) => setState(() => _hireDate = date),
-        ),
+        _buildDateRow(),
         SizedBox(height: 8.h),
-
-        // ── Tenure ───────────────────────────────────────────────────────
         _sectionHeading('Tenure'),
         _buildTextField(
-          controller: _tenureController,
-          isEditing: _isTenureEditing,
-          onEdit: () {
-            setState(() {
-              _isTenureEditing = true;
-            });
-          },
+          controller: _tenureController, isEditing: _isTenureEditing, focusNode: _tenureFocus,
+          onEdit: () { if (!_isTenureEditing) setState(() => _isTenureEditing = true); },
+          errorText: _tenureError,
+          onClearError: () => setState(() => _tenureError = _tenureController.text.trim().isEmpty ? "Please enter tenure" : null),
         ),
         SizedBox(height: 6.h),
-
-        Text(
-          'Used for calculating benefits and work anniversaries.',
-          style: GoogleFonts.inter(
-            fontSize: 10.sp,
-            fontWeight: FontWeight.w400,
-            color: const Color(0xFF9CA3AF),
-          ),
-        ),
+        Text('Used for calculating benefits and work anniversaries.',
+            style: GoogleFonts.inter(fontSize: 10.sp, fontWeight: FontWeight.w400, color: const Color(0xFF9CA3AF))),
       ],
     );
   }
