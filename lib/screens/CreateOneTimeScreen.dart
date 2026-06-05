@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: unrelated_type_equality_checks, use_build_context_synchronously
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -410,6 +410,9 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     );
   }
 
+  // ── Department (searchable single-select) ─────────────────────────────────
+  String? _departmentError;
+
   DepartmentModel? selectedDepartment;
 
   // ── Assign To (multi-select) ───────────────────────────────────────────────
@@ -501,6 +504,13 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
   // ── VALIDATION ─────────────────────────────────────────────────────────────
   bool _validateSections() {
     bool valid = true;
+
+    if (selectedDepartment == null) {
+      setState(() => _departmentError = "Please select department");
+      valid = false;
+    } else {
+      setState(() => _departmentError = null);
+    }
 
     // Reporting To
     if (selectedReportingList.isEmpty) {
@@ -809,6 +819,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                     selectedDepartment?.name ??
                                     "Select Department",
                                 hint: "Select Department",
+
                                 onTap: () => _showSearchableBottomSheet(
                                   context: context,
                                   title: "Select Department",
@@ -817,11 +828,26 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                       (DepartmentModel departmentModel) {
                                         setState(() {
                                           selectedDepartment = departmentModel;
+                                          _departmentError = null;
                                         });
                                       },
                                 ),
+                                errorText: _departmentError,
                               ),
 
+                              if (_departmentError != null)
+                                Padding(
+                                  padding: EdgeInsets.only(top: 4.h, left: 4.w),
+                                  child: Text(
+                                    _departmentError!,
+                                    style: GoogleFonts.inter(
+                                      color: Colors.red,
+                                      fontSize: 10.sp,
+                                    ),
+                                  ),
+                                ),
+
+                              // Remove the code block that displays the error message on screen load
                               SizedBox(height: 8.h),
 
                               // Priority
@@ -2045,6 +2071,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
       },
     );
   }
+
   // ── Assign To multi-select bottom sheet ────────────────────────────────────
 
   void _showAssignToBottomSheet(BuildContext context) {
