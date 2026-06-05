@@ -50,7 +50,9 @@ class DepartmentRepositoryImpl implements DepartmentRepository {
       final Map<String, dynamic> queryParameters = {};
       if (search != null && search.isNotEmpty) {
         queryParameters['search'] = search;
+        // Optional: Limit results for search queries
       }
+      queryParameters['limit'] = 100;
 
       // Note: Make sure your HttpService uses 'queryParams' or 'queryParameters' matching its parameter name
       final responseData = await _httpService.get(
