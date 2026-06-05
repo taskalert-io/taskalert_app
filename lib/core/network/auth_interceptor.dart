@@ -28,8 +28,6 @@ class AuthInterceptor extends Interceptor {
     if (err.response?.statusCode == 401) {
       // Permanently wipe data on unauthorized response
       await _secureStorage.deleteAll();
-
-      // TODO: Stream a logout event to your global auth state/BLoC to route the user back to the login screen.
     }
     return handler.next(err);
   }

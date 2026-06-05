@@ -13,17 +13,20 @@ import '../../../../network/base_api_response.dart';
 abstract class AuthRepository {
   // --- Sign Up Flow ---
   Future<ApiResult<BaseApiResponse<dynamic>>> signUp({
-    required String email,
     required String phoneNumber,
-    required String password,
+    String? email,
   });
 
-  Future<ApiResult<UserModel>> verifySignUpOtp({
-    required String phoneNumber,
-    required String otp,
+  Future<ApiResult<BaseApiResponse<UserModel>>> verifySignUpOtp({
     required String firstName,
     required String lastName,
-    String? referralCode,
+    required String phoneNumber,
+    required String password,
+    required bool agreeTerms,
+    required String otpCode,
+    String? email,
+    String? gender,
+    String? dateOfBirth,
   });
 
   Future<ApiResult<BaseApiResponse<dynamic>>> resendSignUpOtp({

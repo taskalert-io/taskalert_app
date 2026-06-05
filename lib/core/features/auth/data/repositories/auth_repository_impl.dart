@@ -7,8 +7,6 @@ import '../../../../network/base_api_response.dart';
 import '../../../../network/http_service.dart';
 import '../../../../errors/network_exceptions.dart';
 import '../../data/models/user_model.dart';
-// import '../../core/network/otp_response_model.dart';
-// import '../../core/network/user_model.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final HttpService _httpService;
@@ -35,18 +33,13 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<ApiResult<BaseApiResponse<dynamic>>> signUp({
-    required String email,
     required String phoneNumber,
-    required String password,
+    String? email,
   }) async {
     try {
       final responseData = await _httpService.post(
         '/auth/signup',
-        body: {
-          'email': email,
-          'phoneNumber': phoneNumber,
-          'password': password,
-        },
+        body: {'phoneNumber': phoneNumber, 'email': email},
       );
       final apiResponse = BaseApiResponse.fromJson(
         responseData,
@@ -67,22 +60,30 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<ApiResult<UserModel>> verifySignUpOtp({
-    required String phoneNumber,
-    required String otp,
+  Future<ApiResult<BaseApiResponse<UserModel>>> verifySignUpOtp({
     required String firstName,
     required String lastName,
-    String? referralCode,
+    required String phoneNumber,
+    required String password,
+    required bool agreeTerms,
+    required String otpCode,
+    String? email,
+    String? gender,
+    String? dateOfBirth,
   }) async {
     try {
       final responseData = await _httpService.post(
         '/auth/verify-signup-otp',
         body: {
-          'phoneNumber': phoneNumber,
-          'otpCode': otp,
           'firstName': firstName,
           'lastName': lastName,
-          if (referralCode != null) 'referralCode': referralCode,
+          'phoneNumber': phoneNumber,
+          'password': password,
+          'agreeTerms': agreeTerms,
+          'otpCode': otpCode,
+          if (email != null) 'email': email,
+          if (gender != null) 'gender': gender,
+          if (dateOfBirth != null) 'dateOfBirth': dateOfBirth,
         },
       );
       final apiResponse = BaseApiResponse.fromJson(
@@ -92,10 +93,38 @@ class AuthRepositoryImpl implements AuthRepository {
 
       if (apiResponse.success && apiResponse.data != null) {
         final user = apiResponse.data!;
+
         if (user.token != null) {
           await _secureStorage.write(key: 'auth_token', value: user.token!);
+          await _secureStorage.write(
+            key: 'refresh_token',
+            value: user.refreshToken ?? '',
+          );
+
+          await _secureStorage.write(key: 'user_id', value: user.id);
+          await _secureStorage.write(key: 'user_email', value: user.email);
+          await _secureStorage.write(
+            key: 'user_phone',
+            value: user.phoneNumber,
+          );
+          await _secureStorage.write(
+            key: 'user_first_name',
+            value: user.firstName,
+          );
+          await _secureStorage.write(
+            key: 'user_last_name',
+            value: user.lastName,
+          );
+          await _secureStorage.write(
+            key: 'user_avatar_original',
+            value: user.originalAvatarUrl ?? '',
+          );
+          await _secureStorage.write(
+            key: 'user_avatar_thumbnail',
+            value: user.thumbnailAvatarUrl ?? '',
+          );
         }
-        return ApiResult.success(apiResponse as UserModel);
+        return ApiResult.success(apiResponse);
       }
       _handleErrorEnvelope(apiResponse);
       return ApiResult.failure(
@@ -296,8 +325,8 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<ApiResult<BaseApiResponse<dynamic>>> getProfile() async {
     try {
-      // Accessing route with implicit headers derived from the AuthInterceptor setup
       final responseData = await _httpService.get('/auth/profile');
+
       final apiResponse = BaseApiResponse.fromJson(
         responseData,
         (json) => UserModel.fromJson(json),

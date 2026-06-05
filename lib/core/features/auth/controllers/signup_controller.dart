@@ -4,11 +4,12 @@ import 'package:taskalert_app/core/network/base_api_response.dart';
 import '../data/repositories/auth_repository.dart';
 import 'package:taskalert_app/core/network/api_result.dart';
 
-class LoginController extends ChangeNotifier {
+class SignUpController extends ChangeNotifier {
   final AuthRepository _authRepository;
 
-  LoginController(this._authRepository);
+  SignUpController(this._authRepository);
 
+  // States
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
@@ -18,35 +19,43 @@ class LoginController extends ChangeNotifier {
   String? _successMessage;
   String? get successMessage => _successMessage;
 
+  // Cache phone number for OTP and Resend actions
   String? _currentPhoneNumber;
   String? get currentPhoneNumber => _currentPhoneNumber;
 
-  /// Calls the repository and returns true if the OTP was successfully dispatched
-  Future<bool> handlePhoneSignIn({required String phoneNumber}) async {
+  /// Utility to seed or transfer phone number across fields
+  void setPhoneNumber(String phoneNumber) {
+    _currentPhoneNumber = phoneNumber;
+    notifyListeners();
+  }
+
+  /// 1. Initial Step: Request Sign-Up OTP
+  Future<bool> handleSignUp({
+    required String phoneNumber,
+    String? email,
+  }) async {
     _isLoading = true;
     _errorMessage = null;
     _successMessage = null;
     notifyListeners();
 
-    // 1. Fire the request through our decoupled repository contract
-    // Note: We use a placeholder string for password since your UI screenshot is currently passwordless
-    final result = await _authRepository.signIn(
-      phoneNumber: phoneNumber, // Mapping phone to the unique credential field
+    final result = await _authRepository.signUp(
+      phoneNumber: phoneNumber,
+      email: email,
     );
 
     _isLoading = false;
 
-    // 2. Unpack the clean functional pattern result
     if (result is Success) {
-      _currentPhoneNumber = phoneNumber; // Cache the identifier locally
+      _currentPhoneNumber = phoneNumber;
       final apiResponse = (result as Success).data;
-      _successMessage =
-          apiResponse.message + apiResponse.data['otp'] ??
-          'OTP sent successfully to $phoneNumber';
+      // _successMessage = apiResponse.message;
+      _successMessage = apiResponse.message + apiResponse.data['otp'];
+      // Cache phone number for subsequent steps
+
       notifyListeners();
-      return true; // Tells the UI it's safe to push the OTP verification screen
+      return true;
     } else if (result is Failure) {
-      // Automatically captures our clean, obfuscated or backend validation message
       _errorMessage = (result as Failure).exception.userMessage;
       notifyListeners();
       return false;
@@ -55,7 +64,17 @@ class LoginController extends ChangeNotifier {
     return false;
   }
 
-  Future<UserModel?> handleVerifyOtp({required String otp}) async {
+  /// 2. Verification Step: Validate User Profile Details + OTP Code
+  Future<UserModel?> handleVerifySignUpOtp({
+    required String firstName,
+    required String lastName,
+    required String password,
+    required bool agreeTerms,
+    required String otpCode,
+    String? email,
+    String? gender,
+    String? dateOfBirth,
+  }) async {
     if (_currentPhoneNumber == null) {
       _errorMessage = "Session expired. Please enter your phone number again.";
       notifyListeners();
@@ -67,60 +86,65 @@ class LoginController extends ChangeNotifier {
     _successMessage = null;
     notifyListeners();
 
-    // 1. Fire the repository method
-    final result = await _authRepository.verifySignInOtp(
+    final result = await _authRepository.verifySignUpOtp(
+      firstName: firstName,
+      lastName: lastName,
       phoneNumber: _currentPhoneNumber!,
-      otpCode: otp,
+      password: password,
+      agreeTerms: agreeTerms,
+      otpCode: otpCode,
+      email: email,
+      gender: gender,
+      dateOfBirth: dateOfBirth,
     );
 
     _isLoading = false;
 
-    // 2. Unpack the clean functional pattern result safely
     if (result is Success) {
-      // print("OTP verification successful, unpacking user data...{$result}");
-      // result.data gives you what AuthRepositoryImpl returned: a parsed UserModel object!
       final apiResponse =
           (result as Success).data as BaseApiResponse<UserModel>;
-
-      // Second, extract the clean nested UserModel payload from inside it
       final user = apiResponse.data;
-      // print all securestorage keys and values for debugging
 
-      // print("$user");
       notifyListeners();
+
       return user;
     } else if (result is Failure) {
       _errorMessage = (result as Failure).exception.userMessage;
       notifyListeners();
       return null;
     }
+
     return null;
   }
 
-  Future<bool> handleResendOtp() async {
-    if (_currentPhoneNumber == null) return false;
+  /// 3. Auxiliary Step: Resend Sign-Up OTP Code
+  Future<bool> handleResendSignUpOtp() async {
+    print("Attempting to resend Sign-Up OTP for phone: $_currentPhoneNumber");
+    if (_currentPhoneNumber == null) {
+      _errorMessage = "Session expired. Please restart the sign up process.";
+      notifyListeners();
+      return false;
+    }
 
     _isLoading = true;
     _errorMessage = null;
     _successMessage = null;
     notifyListeners();
 
-    final result = await _authRepository.resendSignInOtp(
+    final result = await _authRepository.resendSignUpOtp(
       phoneNumber: _currentPhoneNumber!,
     );
 
     _isLoading = false;
 
     if (result is Success) {
-      final apiResponse = (result as Success).data;
-      // _successMessage = apiResponse.message;
+      final apiResponse = (result as Success).data as BaseApiResponse<dynamic>;
       final otp = apiResponse.data['otp'];
       if (otp != null) {
         _successMessage = " Your new OTP is: $otp";
       } else {
         _successMessage = " OTP resent successfully to ${_currentPhoneNumber!}";
       }
-
       notifyListeners();
       return true;
     } else if (result is Failure) {
@@ -128,20 +152,7 @@ class LoginController extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+
     return false;
-  }
-
-  Future<void> handleLogout() async {
-    _isLoading = true;
-    notifyListeners();
-
-    await _authRepository.logout();
-
-    _currentPhoneNumber = null;
-    _successMessage = null;
-    _errorMessage = null;
-
-    _isLoading = false;
-    notifyListeners();
   }
 }

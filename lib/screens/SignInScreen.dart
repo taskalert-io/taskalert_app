@@ -342,6 +342,7 @@ class SignInScreenState extends State<SignInScreen> {
                                                   phoneNumber: phoneController
                                                       .text
                                                       .trim(),
+                                                  isSignUpFlow: false,
                                                 ),
                                           ),
                                         );

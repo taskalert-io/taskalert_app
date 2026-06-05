@@ -4,6 +4,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:taskalert_app/core/features/auth/controllers/signup_controller.dart';
+import 'package:taskalert_app/screens/OtpVerificationScreen.dart';
+import 'package:taskalert_app/utils/injection_container.dart';
 import 'SignInScreen.dart';
 import 'package:flutter/services.dart';
 
@@ -15,7 +18,7 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class SignUpScreenState extends State<SignUpScreen> {
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  // final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final FlutterSecureStorage secureStorage = FlutterSecureStorage();
   final TextEditingController _dateController = TextEditingController();
 
@@ -49,6 +52,8 @@ class SignUpScreenState extends State<SignUpScreen> {
   final rePasswordController = TextEditingController();
   bool isGenderError = false;
 
+  final _signUpController = sl<SignUpController>();
+
   @override
   void initState() {
     super.initState();
@@ -58,10 +63,14 @@ class SignUpScreenState extends State<SignUpScreen> {
     dayController.text = now.day.toString().padLeft(2, '0');
     monthController.text = now.month.toString().padLeft(2, '0');
     yearController.text = now.year.toString();
+
+    _signUpController.addListener(_onControllerChanged);
   }
 
   @override
   void dispose() {
+    _signUpController.removeListener(_onControllerChanged);
+
     _dateController.dispose();
     dayController.dispose();
     monthController.dispose();
@@ -76,6 +85,10 @@ class SignUpScreenState extends State<SignUpScreen> {
     passwordController.dispose();
     rePasswordController.dispose();
     super.dispose();
+  }
+
+  void _onControllerChanged() {
+    if (mounted) setState(() {});
   }
 
   void _showDatePicker(BuildContext context) {
@@ -529,7 +542,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                                             ),
                                             items: [
                                               DropdownMenuItem(
-                                                value: "Male",
+                                                value: "male",
                                                 child: Text(
                                                   "Male",
                                                   style: GoogleFonts.inter(
@@ -542,7 +555,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                                                 ),
                                               ),
                                               DropdownMenuItem(
-                                                value: "Female",
+                                                value: "female",
                                                 child: Text(
                                                   "Female",
                                                   style: GoogleFonts.inter(
@@ -555,7 +568,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                                                 ),
                                               ),
                                               DropdownMenuItem(
-                                                value: "Other",
+                                                value: "other",
                                                 child: Text(
                                                   "Other",
                                                   style: GoogleFonts.inter(
@@ -1176,49 +1189,144 @@ class SignUpScreenState extends State<SignUpScreen> {
                                   ],
                                 ),
 
-                                /// CREATE ACCOUNT BUTTON
                                 Container(
                                   width: double.infinity,
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 10,
                                   ),
                                   child: ElevatedButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        _autoValidate = true;
-                                        isDobError = _selectedDate == null;
-                                        isGenderError = selectedGender == null;
-                                      });
+                                    // 1. Disable the button completely if the controller is waiting for the backend response
+                                    onPressed: _signUpController.isLoading
+                                        ? null
+                                        : () async {
+                                            setState(() {
+                                              _autoValidate = true;
+                                              isDobError =
+                                                  _selectedDate == null;
+                                              isGenderError =
+                                                  selectedGender == null;
+                                            });
 
-                                      if (!_formKey.currentState!.validate()) {
-                                        return;
-                                      }
+                                            // 2. Perform local client validations first
+                                            if (!_formKey.currentState!
+                                                .validate()) {
+                                              return;
+                                            }
 
-                                      if (_selectedDate == null ||
-                                          selectedGender == null) {
-                                        return;
-                                      }
+                                            if (_selectedDate == null ||
+                                                selectedGender == null) {
+                                              return;
+                                            }
 
-                                      if (!isTermsAccepted) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              "Accept Terms & Conditions",
-                                            ),
-                                          ),
-                                        );
-                                        return;
-                                      }
+                                            if (!isTermsAccepted) {
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    "Accept Terms & Conditions",
+                                                  ),
+                                                  backgroundColor:
+                                                      Colors.redAccent,
+                                                ),
+                                              );
+                                              return;
+                                            }
 
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => SignInScreen(),
-                                        ),
-                                      );
-                                    },
+                                            // 3. Fire off the backend request to register the phone and send the OTP code
+                                            final isOtpSent =
+                                                await _signUpController
+                                                    .handleSignUp(
+                                                      phoneNumber:
+                                                          phoneController.text
+                                                              .trim(),
+                                                      email: emailController
+                                                          .text
+                                                          .trim(),
+                                                    );
+
+                                            if (!mounted) return;
+
+                                            // 4. If the backend sends a successful response, route to the verification step
+                                            if (isOtpSent) {
+                                              if (_signUpController
+                                                      .successMessage !=
+                                                  null) {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                      _signUpController
+                                                          .successMessage!,
+                                                    ),
+                                                    backgroundColor:
+                                                        Colors.green,
+                                                  ),
+                                                );
+                                              }
+
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      OtpVerificationScreen(
+                                                        phoneNumber:
+                                                            phoneController.text
+                                                                .trim(),
+                                                        isSignUpFlow:
+                                                            true, // Let the screen know to use the sign-up endpoint routing
+                                                        firstName:
+                                                            firstNameController
+                                                                .text
+                                                                .trim(),
+                                                        lastName:
+                                                            lastNameController
+                                                                .text
+                                                                .trim(),
+                                                        password:
+                                                            passwordController
+                                                                .text
+                                                                .trim(),
+                                                        agreeTerms:
+                                                            isTermsAccepted,
+                                                        email:
+                                                            emailController.text
+                                                                .trim()
+                                                                .isEmpty
+                                                            ? null
+                                                            : emailController
+                                                                  .text
+                                                                  .trim(),
+                                                        gender: selectedGender,
+                                                        dateOfBirth:
+                                                            _selectedDate
+                                                                ?.toString()
+                                                                .substring(
+                                                                  0,
+                                                                  10,
+                                                                ),
+                                                      ),
+                                                ),
+                                              );
+                                            } else if (_signUpController
+                                                    .errorMessage !=
+                                                null) {
+                                              // 5. Handle server validation errors gracefully
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    _signUpController
+                                                        .errorMessage!,
+                                                  ),
+                                                  backgroundColor:
+                                                      Colors.redAccent,
+                                                ),
+                                              );
+                                            }
+                                          },
                                     style: ElevatedButton.styleFrom(
                                       padding: EdgeInsets.zero,
                                       elevation: 0,
@@ -1237,11 +1345,21 @@ class SignUpScreenState extends State<SignUpScreen> {
                                         borderRadius: BorderRadius.circular(
                                           8.r,
                                         ),
-                                        gradient: const LinearGradient(
-                                          colors: [
-                                            Color(0xFF98E0D5),
-                                            Color(0xFFE49AEF),
-                                          ],
+                                        // Reduce opacity of gradient visually to indicate a loading/disabled state
+                                        gradient: LinearGradient(
+                                          colors: _signUpController.isLoading
+                                              ? [
+                                                  const Color(
+                                                    0xFF98E0D5,
+                                                  ).withOpacity(0.5),
+                                                  const Color(
+                                                    0xFFE49AEF,
+                                                  ).withOpacity(0.5),
+                                                ]
+                                              : [
+                                                  const Color(0xFF98E0D5),
+                                                  const Color(0xFFE49AEF),
+                                                ],
                                         ),
                                       ),
                                       child: Container(
@@ -1251,19 +1369,122 @@ class SignUpScreenState extends State<SignUpScreen> {
                                           horizontal: 10,
                                           vertical: 12,
                                         ),
-                                        child: Text(
-                                          "Create An Account",
-                                          style: GoogleFonts.inter(
-                                            fontSize: 12.sp,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.white,
-                                          ),
-                                        ),
+                                        child: _signUpController.isLoading
+                                            ? SizedBox(
+                                                height: 16.w,
+                                                width: 16.w,
+                                                child:
+                                                    const CircularProgressIndicator(
+                                                      color: Colors.white,
+                                                      strokeWidth: 2,
+                                                    ),
+                                              )
+                                            : Text(
+                                                "Create An Account",
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 12.sp,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
                                       ),
                                     ),
                                   ),
                                 ),
 
+                                /// CREATE ACCOUNT BUTTON
+                                // Container(
+                                //   width: double.infinity,
+                                //   padding: const EdgeInsets.symmetric(
+                                //     vertical: 10,
+                                //   ),
+                                //   child: ElevatedButton(
+                                //     onPressed: () {
+                                //       setState(() {
+                                //         _autoValidate = true;
+                                //         isDobError = _selectedDate == null;
+                                //         isGenderError = selectedGender == null;
+                                //       });
+
+                                //       if (!_formKey.currentState!.validate()) {
+                                //         return;
+                                //       }
+
+                                //       if (_selectedDate == null ||
+                                //           selectedGender == null) {
+                                //         return;
+                                //       }
+
+                                //       if (!isTermsAccepted) {
+                                //         ScaffoldMessenger.of(
+                                //           context,
+                                //         ).showSnackBar(
+                                //           const SnackBar(
+                                //             content: Text(
+                                //               "Accept Terms & Conditions",
+                                //             ),
+                                //           ),
+                                //         );
+                                //         return;
+                                //       }
+
+                                //       Navigator.push(
+                                //         context,
+                                //         MaterialPageRoute(
+                                //           builder: (context) =>
+                                //               OtpVerificationScreen(
+                                //                 phoneNumber: phoneController
+                                //                     .text
+                                //                     .trim(),
+                                //                 isSignUpFlow: true,
+                                //               ),
+                                //         ),
+                                //       );
+                                //     },
+                                //     style: ElevatedButton.styleFrom(
+                                //       padding: EdgeInsets.zero,
+                                //       elevation: 0,
+                                //       backgroundColor: Colors.transparent,
+                                //       shadowColor: Colors.transparent,
+                                //       disabledBackgroundColor:
+                                //           Colors.transparent,
+                                //       shape: RoundedRectangleBorder(
+                                //         borderRadius: BorderRadius.circular(
+                                //           8.r,
+                                //         ),
+                                //       ),
+                                //     ),
+                                //     child: Ink(
+                                //       decoration: BoxDecoration(
+                                //         borderRadius: BorderRadius.circular(
+                                //           8.r,
+                                //         ),
+                                //         gradient: const LinearGradient(
+                                //           colors: [
+                                //             Color(0xFF98E0D5),
+                                //             Color(0xFFE49AEF),
+                                //           ],
+                                //         ),
+                                //       ),
+                                //       child: Container(
+                                //         width: double.infinity,
+                                //         alignment: Alignment.center,
+                                //         padding: const EdgeInsets.symmetric(
+                                //           horizontal: 10,
+                                //           vertical: 12,
+                                //         ),
+                                //         child: Text(
+                                //           "Create An Account",
+                                //           style: GoogleFonts.inter(
+                                //             fontSize: 12.sp,
+                                //             fontWeight: FontWeight.w600,
+                                //             color: Colors.white,
+                                //           ),
+                                //         ),
+                                //       ),
+                                //     ),
+                                //   ),
+                                // ),
                                 SizedBox(height: 8.h),
 
                                 /// OR DIVIDER
