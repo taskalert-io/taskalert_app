@@ -325,8 +325,8 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<ApiResult<BaseApiResponse<dynamic>>> getProfile() async {
     try {
-      // Accessing route with implicit headers derived from the AuthInterceptor setup
       final responseData = await _httpService.get('/auth/profile');
+
       final apiResponse = BaseApiResponse.fromJson(
         responseData,
         (json) => UserModel.fromJson(json),
