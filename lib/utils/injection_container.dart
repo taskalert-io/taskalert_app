@@ -6,6 +6,9 @@ import 'package:taskalert_app/core/features/auth/data/repositories/auth_reposito
 import 'package:taskalert_app/core/features/departments/controllers/department_controller.dart';
 import 'package:taskalert_app/core/features/departments/data/repositories/department_repository.dart';
 import 'package:taskalert_app/core/features/departments/data/repositories/department_repository_impl.dart';
+import 'package:taskalert_app/core/features/employees/controllers/employee_controller.dart';
+import 'package:taskalert_app/core/features/employees/data/repositories/employee_repository.dart';
+import 'package:taskalert_app/core/features/employees/data/repositories/employee_respository_impl.dart';
 import 'package:taskalert_app/core/network/dio_http_service.dart';
 import 'package:taskalert_app/core/network/http_service.dart';
 
@@ -40,6 +43,11 @@ Future<void> init() async {
     () => DepartmentRepositoryImpl(sl<HttpService>()),
   );
   sl.registerFactory(() => DepartmentController(sl<DepartmentRepository>()));
+
+  sl.registerLazySingleton<EmployeeRepository>(
+    () => EmployeeRepositoryImpl(sl<HttpService>()),
+  );
+  sl.registerFactory(() => EmployeeController(sl<EmployeeRepository>()));
 
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(sl<HttpService>(), sl<FlutterSecureStorage>()),

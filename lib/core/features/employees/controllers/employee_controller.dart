@@ -39,7 +39,7 @@ class EmployeeController extends ChangeNotifier {
 
   /// 1. Fetch All Employees
   Future<void> handleGetEmployees({
-    required String organizationId,
+    String? organizationId,
     String? jobRole,
     String? search,
     int? page,
@@ -50,7 +50,7 @@ class EmployeeController extends ChangeNotifier {
     notifyListeners();
 
     final result = await _employeeRepository.getEmployees(
-      organizationId: organizationId,
+      organizationId: organizationId ?? '',
       jobRole: jobRole,
       search: search,
       page: page,
@@ -63,6 +63,11 @@ class EmployeeController extends ChangeNotifier {
       final apiResponse =
           (result as Success).data as BaseApiResponse<List<EmployeeModel>>;
       _employees = apiResponse.data ?? [];
+
+      // print all employee names for debugging
+      // print(
+      //   "Fetched employees: ${_employees.map((e) => e.fullName).join(", ")}",
+      // );
       _pagination = apiResponse
           .pagination; // Capture automatic pagination tracking fields safely
     } else if (result is Failure) {
@@ -92,6 +97,8 @@ class EmployeeController extends ChangeNotifier {
       phoneNumber: phoneNumber,
       jobRole: jobRole,
       imageFilePath: imageFilePath,
+      gender: '',
+      department: '',
     );
 
     _isLoading = false;
@@ -139,6 +146,8 @@ class EmployeeController extends ChangeNotifier {
       phoneNumber: phoneNumber,
       jobRole: jobRole,
       imageFilePath: imageFilePath,
+      gender: '',
+      department: '',
     );
 
     _isLoading = false;

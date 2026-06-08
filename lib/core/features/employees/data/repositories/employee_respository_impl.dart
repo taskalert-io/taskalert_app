@@ -70,7 +70,7 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
   /// 2. GET: Fetch all employees based on organization with optional filtering queries
   @override
   Future<ApiResult<BaseApiResponse<List<EmployeeModel>>>> getEmployees({
-    required String organizationId,
+    String? organizationId,
     String? jobRole,
     String? search,
     int? page,
@@ -78,7 +78,7 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
   }) async {
     try {
       final Map<String, dynamic> queryParameters = {
-        'organization': organizationId,
+        'organization': organizationId ?? '',
       };
       if (jobRole != null) queryParameters['jobRole'] = jobRole;
       if (search != null) queryParameters['search'] = search;

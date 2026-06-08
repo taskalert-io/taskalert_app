@@ -15,7 +15,7 @@ abstract class EmployeeRepository {
   });
 
   Future<ApiResult<BaseApiResponse<List<EmployeeModel>>>> getEmployees({
-    required String organizationId,
+    String? organizationId,
     String? jobRole,
     String? search,
     int? page,
