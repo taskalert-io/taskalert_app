@@ -1089,6 +1089,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                                             ),
                                                       );
                                                   return _assigneeChip(
+                                                    id,
                                                     emp.fullName,
                                                   );
                                                 }).toList(),
@@ -1605,7 +1606,53 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     child: child,
   );
 
-  Widget _assigneeChip(String name) => Container(
+  // Widget _assigneeChip(String name) => Container(
+  //   padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+  //   decoration: BoxDecoration(
+  //     color: const Color(0xFFEEF0FF),
+  //     borderRadius: BorderRadius.circular(20.r),
+  //     border: Border.all(color: const Color(0xFF4338CA)),
+  //   ),
+  //   child: Row(
+  //     mainAxisSize: MainAxisSize.min,
+  //     children: [
+  //       CircleAvatar(
+  //         radius: 8.r,
+  //         backgroundColor: const Color(0xFF0A0258),
+  //         child: Text(
+  //           name[0].toUpperCase(),
+  //           style: GoogleFonts.inter(
+  //             fontSize: 8.sp,
+  //             color: Colors.white,
+  //             fontWeight: FontWeight.w700,
+  //           ),
+  //         ),
+  //       ),
+  //       SizedBox(width: 4.w),
+  //       Text(
+  //         name.split(" ").first,
+  //         style: GoogleFonts.inter(
+  //           fontSize: 11.sp,
+  //           color: const Color(0xFF0A0258),
+  //           fontWeight: FontWeight.w500,
+  //         ),
+  //       ),
+  //       SizedBox(width: 4.w),
+  //       GestureDetector(
+  //         onTap: () => setState(() {
+  //           selectedAssignees.remove(name);
+  //           if (selectedAssignees.isEmpty) {
+  //             _assignToError = "Please select at least one assignee";
+  //           }
+  //         }),
+  //         child: Icon(Icons.close, size: 11.r, color: const Color(0xFF4338CA)),
+  //       ),
+  //     ],
+  //   ),
+  // );
+
+  // 🌟 1. Pass both the employee ID and name into the helper function
+  Widget _assigneeChip(String id, String name) => Container(
     padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
     decoration: BoxDecoration(
       color: const Color(0xFFEEF0FF),
@@ -1619,7 +1666,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
           radius: 8.r,
           backgroundColor: const Color(0xFF0A0258),
           child: Text(
-            name[0].toUpperCase(),
+            name.isNotEmpty ? name[0].toUpperCase() : "?",
             style: GoogleFonts.inter(
               fontSize: 8.sp,
               color: Colors.white,
@@ -1639,7 +1686,10 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
         SizedBox(width: 4.w),
         GestureDetector(
           onTap: () => setState(() {
-            selectedAssignees.remove(name);
+            // 🌟 2. Remove by ID, not by Name!
+            selectedAssignees.remove(id);
+
+            // 🌟 3. The error check will now correctly trigger when the list hits 0
             if (selectedAssignees.isEmpty) {
               _assignToError = "Please select at least one assignee";
             }
