@@ -1140,46 +1140,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                               // Reporting Date & Time
                               Row(
                                 children: [
-                                  // Expanded(
-                                  //   child: Column(
-                                  //     crossAxisAlignment:
-                                  //     CrossAxisAlignment.start,
-                                  //     children: [
-                                  //       _buildLabel("Due Date"),
-                                  //       SizedBox(height: 4.h),
-                                  //       _buildDateField(
-                                  //         controller: dueDateController,
-                                  //         errorText: _dueDateError,
-                                  //         onTap: () => showCustomDatePicker(
-                                  //           context: context,
-                                  //           controller: dueDateController,
-                                  //           initialDate: dueSelectedDate,
-                                  //           minDate: DateTime.now(),
-                                  //           onDateSelected: (d) {
-                                  //             final dueDay = DateTime(d.year, d.month, d.day);
-                                  //             if (startSelectedDate != null) {
-                                  //               final startDay = DateTime(startSelectedDate!.year, startSelectedDate!.month, startSelectedDate!.day);
-                                  //               if (dueDay.isBefore(startDay)) {
-                                  //                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                  //                   content: Text("Due date cannot be before start date",
-                                  //                       style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.white)),
-                                  //                   backgroundColor: Colors.red,
-                                  //                   behavior: SnackBarBehavior.floating,
-                                  //                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
-                                  //                 ));
-                                  //                 return;
-                                  //               }
-                                  //             }
-                                  //             setState(() {
-                                  //               dueSelectedDate = d;
-                                  //               _dueDateError = null;
-                                  //             });
-                                  //           },
-                                  //         ),
-                                  //       ),
-                                  //     ],
-                                  //   ),
-                                  // ),
                                   SizedBox(width: 6.w),
                                   Expanded(
                                     child: Column(

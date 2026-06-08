@@ -16,9 +16,12 @@ class TimeAttendSectionState extends State<TimeAttendSection>
   final TextEditingController _otherLeaveController = TextEditingController();
   final TextEditingController _checkInController = TextEditingController();
   final TextEditingController _checkOutController = TextEditingController();
-  final TextEditingController _automatedActivityController = TextEditingController();
-  final TextEditingController _regionalHolidaysController = TextEditingController();
-  final TextEditingController _officeLocationController = TextEditingController();
+  final TextEditingController _automatedActivityController =
+      TextEditingController();
+  final TextEditingController _regionalHolidaysController =
+      TextEditingController();
+  final TextEditingController _officeLocationController =
+      TextEditingController();
 
   final FocusNode _partTimeOffFocus = FocusNode();
   final FocusNode _sickLeaveFocus = FocusNode();
@@ -58,13 +61,20 @@ class TimeAttendSectionState extends State<TimeAttendSection>
 
   @override
   void dispose() {
-    _partTimeOffController.dispose(); _sickLeaveController.dispose();
-    _otherLeaveController.dispose(); _checkInController.dispose();
-    _checkOutController.dispose(); _automatedActivityController.dispose();
-    _regionalHolidaysController.dispose(); _officeLocationController.dispose();
-    _partTimeOffFocus.dispose(); _sickLeaveFocus.dispose();
-    _otherLeaveFocus.dispose(); _automatedActivityFocus.dispose();
-    _regionalHolidaysFocus.dispose(); _officeLocationFocus.dispose();
+    _partTimeOffController.dispose();
+    _sickLeaveController.dispose();
+    _otherLeaveController.dispose();
+    _checkInController.dispose();
+    _checkOutController.dispose();
+    _automatedActivityController.dispose();
+    _regionalHolidaysController.dispose();
+    _officeLocationController.dispose();
+    _partTimeOffFocus.dispose();
+    _sickLeaveFocus.dispose();
+    _otherLeaveFocus.dispose();
+    _automatedActivityFocus.dispose();
+    _regionalHolidaysFocus.dispose();
+    _officeLocationFocus.dispose();
     super.dispose();
   }
 
@@ -72,18 +82,39 @@ class TimeAttendSectionState extends State<TimeAttendSection>
   bool validate() {
     bool valid = true;
     setState(() {
-      _partTimeOffError = _partTimeOffController.text.trim().isEmpty ? "Please enter part time off" : null;
-      _sickLeaveError = _sickLeaveController.text.trim().isEmpty ? "Please enter sick leave" : null;
-      _otherLeaveError = _otherLeaveController.text.trim().isEmpty ? "Please enter other leave" : null;
-      _checkInError = _checkInController.text.trim().isEmpty ? "Please select check in time" : null;
-      _checkOutError = _checkOutController.text.trim().isEmpty ? "Please select check out time" : null;
-      _automatedActivityError = _automatedActivityController.text.trim().isEmpty ? "Please enter automated activity logs" : null;
-      _regionalHolidaysError = _regionalHolidaysController.text.trim().isEmpty ? "Please enter regional holidays" : null;
-      _officeLocationError = _officeLocationController.text.trim().isEmpty ? "Please enter office location" : null;
+      _partTimeOffError = _partTimeOffController.text.trim().isEmpty
+          ? "Please enter part time off"
+          : null;
+      _sickLeaveError = _sickLeaveController.text.trim().isEmpty
+          ? "Please enter sick leave"
+          : null;
+      _otherLeaveError = _otherLeaveController.text.trim().isEmpty
+          ? "Please enter other leave"
+          : null;
+      _checkInError = _checkInController.text.trim().isEmpty
+          ? "Please select check in time"
+          : null;
+      _checkOutError = _checkOutController.text.trim().isEmpty
+          ? "Please select check out time"
+          : null;
+      _automatedActivityError = _automatedActivityController.text.trim().isEmpty
+          ? "Please enter automated activity logs"
+          : null;
+      _regionalHolidaysError = _regionalHolidaysController.text.trim().isEmpty
+          ? "Please enter regional holidays"
+          : null;
+      _officeLocationError = _officeLocationController.text.trim().isEmpty
+          ? "Please enter office location"
+          : null;
 
-      if (_partTimeOffError != null || _sickLeaveError != null || _otherLeaveError != null ||
-          _checkInError != null || _checkOutError != null || _automatedActivityError != null ||
-          _regionalHolidaysError != null || _officeLocationError != null) {
+      if (_partTimeOffError != null ||
+          _sickLeaveError != null ||
+          _otherLeaveError != null ||
+          _checkInError != null ||
+          _checkOutError != null ||
+          _automatedActivityError != null ||
+          _regionalHolidaysError != null ||
+          _officeLocationError != null) {
         valid = false;
       }
     });
@@ -92,10 +123,19 @@ class TimeAttendSectionState extends State<TimeAttendSection>
 
   Widget _sectionHeading(String title, {Widget? leading}) => Padding(
     padding: EdgeInsets.only(bottom: 8.h),
-    child: Row(children: [
-      if (leading != null) ...[leading, SizedBox(width: 6.w)],
-      Text(title, style: GoogleFonts.inter(fontSize: 13.sp, fontWeight: FontWeight.w600, color: const Color(0xFF0A0258))),
-    ]),
+    child: Row(
+      children: [
+        if (leading != null) ...[leading, SizedBox(width: 6.w)],
+        Text(
+          title,
+          style: GoogleFonts.inter(
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF0A0258),
+          ),
+        ),
+      ],
+    ),
   );
 
   Widget _fieldLabel(String label, {bool required = false}) => Padding(
@@ -103,8 +143,19 @@ class TimeAttendSectionState extends State<TimeAttendSection>
     child: RichText(
       text: TextSpan(
         text: label,
-        style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.w400, color: const Color(0xFF303030)),
-        children: required ? const [TextSpan(text: " *", style: TextStyle(color: Colors.red))] : [],
+        style: GoogleFonts.inter(
+          fontSize: 12.sp,
+          fontWeight: FontWeight.w400,
+          color: const Color(0xFF303030),
+        ),
+        children: required
+            ? const [
+                TextSpan(
+                  text: " *",
+                  style: TextStyle(color: Colors.red),
+                ),
+              ]
+            : [],
       ),
     ),
   );
@@ -123,35 +174,80 @@ class TimeAttendSectionState extends State<TimeAttendSection>
       mainAxisSize: MainAxisSize.min,
       children: [
         TextFormField(
-          controller: controller, focusNode: focusNode,
-          readOnly: !isEditing, keyboardType: keyboardType,
-          onChanged: (_) { if (onClearError != null) onClearError(); },
-          style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.w400, color: const Color(0xFF6C7278)),
+          controller: controller,
+          focusNode: focusNode,
+          readOnly: !isEditing,
+
+          // FIX
+          enableInteractiveSelection: isEditing,
+          showCursor: isEditing,
+
+          keyboardType: keyboardType,
+          onChanged: (_) {
+            if (onClearError != null) onClearError();
+          },
+          style: GoogleFonts.inter(
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w400,
+            color: const Color(0xFF6C7278),
+          ),
           decoration: InputDecoration(
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
             errorStyle: const TextStyle(fontSize: 0, height: 0),
             suffixIcon: GestureDetector(
               onTap: () {
                 if (!isEditing) onEdit();
                 Future.microtask(() => focusNode.requestFocus());
               },
-              child: Padding(padding: const EdgeInsets.all(10),
-                  child: Icon(Icons.edit_outlined, size: 18.sp, color: const Color(0xFFB8BEC5))),
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Icon(
+                  Icons.edit_outlined,
+                  size: 18.sp,
+                  color: const Color(0xFFB8BEC5),
+                ),
+              ),
             ),
-            filled: true, fillColor: const Color(0xFFF9FAFC),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r), borderSide: const BorderSide(color: Color(0xFFD9DEE5))),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r),
-                borderSide: BorderSide(color: errorText != null ? Colors.red : const Color(0xFFD9DEE5))),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r),
-                borderSide: BorderSide(color: errorText != null ? Colors.red : const Color(0xFF0A0258))),
-            errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r), borderSide: const BorderSide(color: Colors.red)),
-            focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r), borderSide: const BorderSide(color: Colors.red)),
+            filled: true,
+            fillColor: const Color(0xFFF9FAFC),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: BorderSide(
+                color: errorText != null ? Colors.red : const Color(0xFFD9DEE5),
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: BorderSide(
+                color: errorText != null ? Colors.red : const Color(0xFF0A0258),
+              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: const BorderSide(color: Colors.red),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: const BorderSide(color: Colors.red),
+            ),
           ),
         ),
         if (errorText != null)
-          Padding(padding: EdgeInsets.only(top: 4.h, left: 4.w),
-              child: Text(errorText, style: GoogleFonts.inter(color: Colors.red, fontSize: 10.sp))),
+          Padding(
+            padding: EdgeInsets.only(top: 4.h, left: 4.w),
+            child: Text(
+              errorText,
+              style: GoogleFonts.inter(color: Colors.red, fontSize: 10.sp),
+            ),
+          ),
       ],
     );
   }
@@ -166,41 +262,94 @@ class TimeAttendSectionState extends State<TimeAttendSection>
       mainAxisSize: MainAxisSize.min,
       children: [
         TextFormField(
-          controller: controller, readOnly: true,
-          style: GoogleFonts.inter(fontSize: 12.sp, fontWeight: FontWeight.w400, color: const Color(0xFF6C7278)),
+          controller: controller,
+          readOnly: true,
+
+          // FIX
+          enableInteractiveSelection: false,
+          showCursor: false,
+
+          style: GoogleFonts.inter(
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w400,
+            color: const Color(0xFF6C7278),
+          ),
           decoration: InputDecoration(
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
             errorStyle: const TextStyle(fontSize: 0, height: 0),
             suffixIcon: GestureDetector(
               onTap: () => _pickTime(context, controller, onClearError),
-              child: Padding(padding: const EdgeInsets.all(10),
-                  child: Icon(Icons.edit_outlined, size: 18.sp, color: const Color(0xFFB8BEC5))),
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Icon(
+                  Icons.edit_outlined,
+                  size: 18.sp,
+                  color: const Color(0xFFB8BEC5),
+                ),
+              ),
             ),
-            filled: true, fillColor: const Color(0xFFF9FAFC),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r), borderSide: const BorderSide(color: Color(0xFFD9DEE5))),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r),
-                borderSide: BorderSide(color: errorText != null ? Colors.red : const Color(0xFFD9DEE5))),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r),
-                borderSide: BorderSide(color: errorText != null ? Colors.red : const Color(0xFF0A0258))),
-            errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r), borderSide: const BorderSide(color: Colors.red)),
-            focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r), borderSide: const BorderSide(color: Colors.red)),
+            filled: true,
+            fillColor: const Color(0xFFF9FAFC),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: BorderSide(
+                color: errorText != null ? Colors.red : const Color(0xFFD9DEE5),
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: BorderSide(
+                color: errorText != null ? Colors.red : const Color(0xFF0A0258),
+              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: const BorderSide(color: Colors.red),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: const BorderSide(color: Colors.red),
+            ),
           ),
         ),
         if (errorText != null)
-          Padding(padding: EdgeInsets.only(top: 4.h, left: 4.w),
-              child: Text(errorText, style: GoogleFonts.inter(color: Colors.red, fontSize: 10.sp))),
+          Padding(
+            padding: EdgeInsets.only(top: 4.h, left: 4.w),
+            child: Text(
+              errorText,
+              style: GoogleFonts.inter(color: Colors.red, fontSize: 10.sp),
+            ),
+          ),
       ],
     );
   }
 
-  Future<void> _pickTime(BuildContext context, TextEditingController controller, VoidCallback? onClearError) async {
+  Future<void> _pickTime(
+    BuildContext context,
+    TextEditingController controller,
+    VoidCallback? onClearError,
+  ) async {
     final TimeOfDay? picked = await showTimePicker(
-      context: context, initialTime: TimeOfDay.now(),
+      context: context,
+      initialTime: TimeOfDay.now(),
       builder: (context, child) => Theme(
-          data: Theme.of(context).copyWith(
-              colorScheme: const ColorScheme.light(primary: Color(0xFF0A0258), onPrimary: Colors.white, onSurface: Color(0xFF303030))),
-          child: child!),
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: Color(0xFF0A0258),
+            onPrimary: Colors.white,
+            onSurface: Color(0xFF303030),
+          ),
+        ),
+        child: child!,
+      ),
     );
     if (picked != null) {
       final hour = picked.hourOfPeriod == 0 ? 12 : picked.hourOfPeriod;
@@ -220,51 +369,140 @@ class TimeAttendSectionState extends State<TimeAttendSection>
       children: [
         _sectionHeading('Leave Balance'),
         _fieldLabel('Part Time Off', required: true),
-        _buildTextField(controller: _partTimeOffController, isEditing: _isPartTimeOffEditing, focusNode: _partTimeOffFocus,
-            onEdit: () { if (!_isPartTimeOffEditing) setState(() => _isPartTimeOffEditing = true); },
-            errorText: _partTimeOffError,
-            onClearError: () => setState(() => _partTimeOffError = _partTimeOffController.text.trim().isEmpty ? "Please enter part time off" : null)),
+        _buildTextField(
+          controller: _partTimeOffController,
+          isEditing: _isPartTimeOffEditing,
+          focusNode: _partTimeOffFocus,
+          onEdit: () {
+            if (!_isPartTimeOffEditing)
+              setState(() => _isPartTimeOffEditing = true);
+          },
+          errorText: _partTimeOffError,
+          onClearError: () => setState(
+            () => _partTimeOffError = _partTimeOffController.text.trim().isEmpty
+                ? "Please enter part time off"
+                : null,
+          ),
+        ),
         SizedBox(height: 10.h),
         _fieldLabel('Sick Leave', required: true),
-        _buildTextField(controller: _sickLeaveController, isEditing: _isSickLeaveEditing, focusNode: _sickLeaveFocus,
-            onEdit: () { if (!_isSickLeaveEditing) setState(() => _isSickLeaveEditing = true); },
-            errorText: _sickLeaveError,
-            onClearError: () => setState(() => _sickLeaveError = _sickLeaveController.text.trim().isEmpty ? "Please enter sick leave" : null)),
+        _buildTextField(
+          controller: _sickLeaveController,
+          isEditing: _isSickLeaveEditing,
+          focusNode: _sickLeaveFocus,
+          onEdit: () {
+            if (!_isSickLeaveEditing)
+              setState(() => _isSickLeaveEditing = true);
+          },
+          errorText: _sickLeaveError,
+          onClearError: () => setState(
+            () => _sickLeaveError = _sickLeaveController.text.trim().isEmpty
+                ? "Please enter sick leave"
+                : null,
+          ),
+        ),
         SizedBox(height: 10.h),
         _fieldLabel('Other', required: true),
-        _buildTextField(controller: _otherLeaveController, isEditing: _isOtherLeaveEditing, focusNode: _otherLeaveFocus,
-            onEdit: () { if (!_isOtherLeaveEditing) setState(() => _isOtherLeaveEditing = true); },
-            errorText: _otherLeaveError,
-            onClearError: () => setState(() => _otherLeaveError = _otherLeaveController.text.trim().isEmpty ? "Please enter other leave" : null)),
+        _buildTextField(
+          controller: _otherLeaveController,
+          isEditing: _isOtherLeaveEditing,
+          focusNode: _otherLeaveFocus,
+          onEdit: () {
+            if (!_isOtherLeaveEditing)
+              setState(() => _isOtherLeaveEditing = true);
+          },
+          errorText: _otherLeaveError,
+          onClearError: () => setState(
+            () => _otherLeaveError = _otherLeaveController.text.trim().isEmpty
+                ? "Please enter other leave"
+                : null,
+          ),
+        ),
         SizedBox(height: 16.h),
         _sectionHeading('Attendance Logs'),
         _fieldLabel('Check In Stamps', required: true),
-        _buildTimeField(controller: _checkInController, errorText: _checkInError,
-            onClearError: () => setState(() => _checkInError = _checkInController.text.trim().isEmpty ? "Please select check in time" : null)),
+        _buildTimeField(
+          controller: _checkInController,
+          errorText: _checkInError,
+          onClearError: () => setState(
+            () => _checkInError = _checkInController.text.trim().isEmpty
+                ? "Please select check in time"
+                : null,
+          ),
+        ),
         SizedBox(height: 10.h),
         _fieldLabel('Check Out Stamps', required: true),
-        _buildTimeField(controller: _checkOutController, errorText: _checkOutError,
-            onClearError: () => setState(() => _checkOutError = _checkOutController.text.trim().isEmpty ? "Please select check out time" : null)),
+        _buildTimeField(
+          controller: _checkOutController,
+          errorText: _checkOutError,
+          onClearError: () => setState(
+            () => _checkOutError = _checkOutController.text.trim().isEmpty
+                ? "Please select check out time"
+                : null,
+          ),
+        ),
         SizedBox(height: 10.h),
         _fieldLabel('Automated Activity Logs', required: true),
-        _buildTextField(controller: _automatedActivityController, isEditing: _isAutomatedActivityEditing, focusNode: _automatedActivityFocus,
-            onEdit: () { if (!_isAutomatedActivityEditing) setState(() => _isAutomatedActivityEditing = true); },
-            errorText: _automatedActivityError,
-            onClearError: () => setState(() => _automatedActivityError = _automatedActivityController.text.trim().isEmpty ? "Please enter automated activity logs" : null)),
+        _buildTextField(
+          controller: _automatedActivityController,
+          isEditing: _isAutomatedActivityEditing,
+          focusNode: _automatedActivityFocus,
+          onEdit: () {
+            if (!_isAutomatedActivityEditing)
+              setState(() => _isAutomatedActivityEditing = true);
+          },
+          errorText: _automatedActivityError,
+          onClearError: () => setState(
+            () => _automatedActivityError =
+                _automatedActivityController.text.trim().isEmpty
+                ? "Please enter automated activity logs"
+                : null,
+          ),
+        ),
         SizedBox(height: 16.h),
-        _sectionHeading('Holiday Calendar',
-            leading: Icon(Icons.calendar_month_outlined, size: 16.sp, color: const Color(0xFF0A0258))),
+        _sectionHeading(
+          'Holiday Calendar',
+          leading: Icon(
+            Icons.calendar_month_outlined,
+            size: 16.sp,
+            color: const Color(0xFF0A0258),
+          ),
+        ),
         _fieldLabel('Regional Holidays', required: true),
-        _buildTextField(controller: _regionalHolidaysController, isEditing: _isRegionalHolidaysEditing, focusNode: _regionalHolidaysFocus,
-            onEdit: () { if (!_isRegionalHolidaysEditing) setState(() => _isRegionalHolidaysEditing = true); },
-            errorText: _regionalHolidaysError,
-            onClearError: () => setState(() => _regionalHolidaysError = _regionalHolidaysController.text.trim().isEmpty ? "Please enter regional holidays" : null)),
+        _buildTextField(
+          controller: _regionalHolidaysController,
+          isEditing: _isRegionalHolidaysEditing,
+          focusNode: _regionalHolidaysFocus,
+          onEdit: () {
+            if (!_isRegionalHolidaysEditing)
+              setState(() => _isRegionalHolidaysEditing = true);
+          },
+          errorText: _regionalHolidaysError,
+          onClearError: () => setState(
+            () => _regionalHolidaysError =
+                _regionalHolidaysController.text.trim().isEmpty
+                ? "Please enter regional holidays"
+                : null,
+          ),
+        ),
         SizedBox(height: 10.h),
         _fieldLabel('Office Location', required: true),
-        _buildTextField(controller: _officeLocationController, isEditing: _isOfficeLocationEditing, focusNode: _officeLocationFocus,
-            onEdit: () { if (!_isOfficeLocationEditing) setState(() => _isOfficeLocationEditing = true); },
-            errorText: _officeLocationError,
-            onClearError: () => setState(() => _officeLocationError = _officeLocationController.text.trim().isEmpty ? "Please enter office location" : null)),
+        _buildTextField(
+          controller: _officeLocationController,
+          isEditing: _isOfficeLocationEditing,
+          focusNode: _officeLocationFocus,
+          onEdit: () {
+            if (!_isOfficeLocationEditing)
+              setState(() => _isOfficeLocationEditing = true);
+          },
+          errorText: _officeLocationError,
+          onClearError: () => setState(
+            () => _officeLocationError =
+                _officeLocationController.text.trim().isEmpty
+                ? "Please enter office location"
+                : null,
+          ),
+        ),
       ],
     );
   }
