@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:taskalert_app/extras/NotificationScreen.dart';
 import 'package:taskalert_app/screens/ProfileSetting.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../components/CustomAppBar.dart';
@@ -229,6 +230,13 @@ class MoreScreenState extends State<MoreScreen> {
                       _buildSettingItem(
                         icon: CupertinoIcons.bell,
                         title: "Notification settings",
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                NotificationSetting(userId: widget.userId),
+                          ),
+                        ),
                       ),
                       const Divider(height: 1, color: _dividerColor),
                       _buildSettingItem(
@@ -343,7 +351,7 @@ class MoreScreenState extends State<MoreScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 0),
+      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 3),
     );
   }
 
