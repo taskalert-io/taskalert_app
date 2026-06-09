@@ -112,7 +112,7 @@ class WelcomePageState extends State<WelcomePage> {
                     padding: EdgeInsets.symmetric(horizontal: 40),
                     child: ElevatedButton(
                       onPressed: () {
-                        Navigator.pushReplacement(
+                        Navigator.push(
                           context,
                           MaterialPageRoute(builder: (_) => SignUpScreen()),
                         );

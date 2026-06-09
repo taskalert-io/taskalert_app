@@ -323,53 +323,6 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                   ),
                                 ),
 
-                                // child: TextFormField(
-                                //   controller: otpControllers[index],
-                                //   textAlign: TextAlign.center,
-                                //   textAlignVertical: TextAlignVertical.center,
-                                //   keyboardType: TextInputType.number,
-                                //   inputFormatters: [
-                                //     FilteringTextInputFormatter.digitsOnly,
-                                //     LengthLimitingTextInputFormatter(1),
-                                //   ],
-                                //   maxLength: 1,
-                                //   style: GoogleFonts.inter(
-                                //     fontSize: 14.sp,
-                                //     fontWeight: FontWeight.w600,
-                                //     color: const Color(0xFF0A0258),
-                                //   ),
-                                //   decoration: InputDecoration(
-                                //     counterText: "",
-                                //     isDense: true,
-                                //     filled: true,
-                                //     fillColor: const Color(0xFFF7F8FA),
-                                //     contentPadding: const EdgeInsets.only(
-                                //       top: 10,
-                                //       bottom: 10,
-                                //     ),
-                                //     enabledBorder: OutlineInputBorder(
-                                //       borderRadius: BorderRadius.circular(6.r),
-                                //       borderSide: const BorderSide(
-                                //         color: Color(0xFFD8DCE3),
-                                //       ),
-                                //     ),
-                                //     focusedBorder: OutlineInputBorder(
-                                //       borderRadius: BorderRadius.circular(6.r),
-                                //       borderSide: BorderSide(
-                                //         color: const Color(0xFF0A0258),
-                                //         width: 1.2.w,
-                                //       ),
-                                //     ),
-                                //   ),
-                                //   onChanged: (value) {
-                                //     if (value.isNotEmpty && index < 5) {
-                                //       FocusScope.of(context).nextFocus();
-                                //     }
-                                //     if (value.isEmpty && index > 0) {
-                                //       FocusScope.of(context).previousFocus();
-                                //     }
-                                //   },
-                                // ),
                               ),
                             ),
                           ),
@@ -463,7 +416,7 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                         ),
                                       );
 
-                                      Navigator.pushReplacement(
+                                      Navigator.push(
                                         context,
                                         MaterialPageRoute(
                                           builder: (context) =>
