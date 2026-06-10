@@ -105,6 +105,11 @@ class TaskController extends ChangeNotifier {
       final apiResponse =
           (result as Success).data as BaseApiResponse<TaskModel>;
       _successMessage = apiResponse.message;
+
+      // print(
+      //   "Created Task ID: ${apiResponse.data?.id}",
+      // ); // Debug log for created task ID
+
       if (apiResponse.data != null) {
         _tasks.insert(0, apiResponse.data!);
       }
@@ -113,6 +118,9 @@ class TaskController extends ChangeNotifier {
     } else if (result is Failure) {
       _errorMessage = (result as Failure).exception.userMessage;
       notifyListeners();
+      // print(
+      //   "Task Creation Failed: $_errorMessage",
+      // ); // Debug log for error message
       return false;
     }
     return false;

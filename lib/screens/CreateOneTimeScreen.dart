@@ -1,4 +1,5 @@
 // ignore_for_file: file_names, unrelated_type_equality_checks, use_build_context_synchronously
+import 'dart:convert';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -12,6 +13,7 @@ import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 import 'package:taskalert_app/core/features/departments/controllers/department_controller.dart';
 import 'package:taskalert_app/core/features/departments/data/models/department_model.dart';
 import 'package:taskalert_app/core/features/employees/data/models/employee_model.dart';
+import 'package:taskalert_app/core/features/tasks/controllers/task_controller.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
 
 import '../core/features/employees/controllers/employee_controller.dart';
@@ -439,6 +441,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
   final FocusNode yearFocus = FocusNode();
 
   late final EmployeeController employeeController;
+  late final TaskController taskController;
 
   // ── INIT ───────────────────────────────────────────────────────────────────
   @override
@@ -460,6 +463,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     // get departments for dropdown
 
     employeeController = sl<EmployeeController>();
+    taskController = sl<TaskController>();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // ✅ Use GetIt directly if your project isn't using the Provider package
@@ -539,7 +543,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     return valid;
   }
 
-  void _submitForm() {
+  void _submitForm() async {
     setState(() => _autoValidate = true);
     final formValid = _formKey.currentState!.validate();
     final sectionsValid = _validateSections();
@@ -561,6 +565,8 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
       return;
     }
 
+    final String taskType = 'one_time';
+
     print("Title: ${titleNameController.text}");
     print("Description: ${descriptionController.text}");
     print("Department: ${selectedDepartment?.name}");
@@ -572,20 +578,89 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     print("Due Date: ${dueDateController.text} $dueSelectedAmPm");
     print("Files: $selectedFiles");
 
+    // print(selectedAssignees.join(","));
 
-    
+    if (_validateSections() && _formKey.currentState!.validate()) {
+      taskController.clearMessages();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          "Form submitted successfully!",
-          style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
+      final String taskType = 'one_time';
+
+      final bool success = await taskController.handleCreateTask(
+        bodyFields: {
+          "taskType": taskType,
+          "title": titleNameController.text.trim(),
+          "description": descriptionController.text.trim(),
+          "department": selectedDepartment?.id,
+          "priority": selectedPriority.toLowerCase(),
+          "reportingDate": assignSelectedDate != null
+              ? "${assignSelectedDate!.year}-"
+                    "${assignSelectedDate!.month.toString().padLeft(2, '0')}-"
+                    "${assignSelectedDate!.day.toString().padLeft(2, '0')} "
+              : null,
+          "reportingTime": {
+            "time": assignTimeController.text.trim(),
+            "period": assignSelectedAmPm,
+          },
+
+          "assignees": jsonEncode(
+            selectedAssignees,
+          ), // Convert list to string for API; repository should handle conversion back to list
+
+          "reportingTo": jsonEncode(selectedReportingList),
+          // "attachments":
+          //     selectedFiles, // This would typically be handled as multipart form data in the repository layer
+        },
+
+        // files: selectedFiles, // Pass the list of file paths to the repository for upload handling
+      );
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Task created successfully!",
+              style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFF0DA99E),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8.r),
+            ),
+          ),
+        );
+        // Navigator.pop(
+        //   context,
+        // ); // Go back to previous screen after successful creation
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              taskController.errorMessage ?? "Failed to create task",
+              style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8.r),
+            ),
+          ),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Please fill all required fields and enable all sections.",
+            style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8.r),
+          ),
         ),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
-      ),
-    );
+      );
+    }
   }
 
   // ── FILE PICKER ────────────────────────────────────────────────────────────
@@ -870,7 +945,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        _buildLabel("Assign Date"),
+                                        _buildLabel("Reporting Date"),
                                         SizedBox(height: 4.h),
                                         _buildDateField(
                                           controller: assignDateController,
@@ -910,7 +985,9 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                       ],
                                     ),
                                   ),
+
                                   SizedBox(width: 6.w),
+
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
