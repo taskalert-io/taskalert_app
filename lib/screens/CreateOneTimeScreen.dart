@@ -565,20 +565,18 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
       return;
     }
 
-    final String taskType = 'one_time';
+    // final String taskType = 'one_time';
 
-    print("Title: ${titleNameController.text}");
-    print("Description: ${descriptionController.text}");
-    print("Department: ${selectedDepartment?.name}");
-    print("Priority: $selectedPriority");
-    print("Assign Date: ${assignDateController.text} $assignSelectedAmPm");
-    print("Assign Time: ${assignTimeController.text}");
-    print("Assign To IDs: $selectedAssignees");
-    print("Reporting To IDs: $selectedReportingList");
-    print("Due Date: ${dueDateController.text} $dueSelectedAmPm");
-    print("Files: $selectedFiles");
-
-    // print(selectedAssignees.join(","));
+    // print("Title: ${titleNameController.text}");
+    // print("Description: ${descriptionController.text}");
+    // print("Department: ${selectedDepartment?.name}");
+    // print("Priority: $selectedPriority");
+    // print("Assign Date: ${assignDateController.text} $assignSelectedAmPm");
+    // print("Assign Time: ${assignTimeController.text}");
+    // print("Assign To IDs: $selectedAssignees");
+    // print("Reporting To IDs: $selectedReportingList");
+    // print("Due Date: ${dueDateController.text} $dueSelectedAmPm");
+    // print("Files: $selectedFiles");
 
     if (_validateSections() && _formKey.currentState!.validate()) {
       taskController.clearMessages();
@@ -628,9 +626,9 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
             ),
           ),
         );
-        // Navigator.pop(
-        //   context,
-        // ); // Go back to previous screen after successful creation
+        Navigator.pop(
+          context,
+        ); // Go back to previous screen after successful creation
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -937,7 +935,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
 
                               SizedBox(height: 8.h),
 
-                              // Assign Date & Time
+                              // Reporting Date & Time
                               Row(
                                 children: [
                                   Expanded(
@@ -979,7 +977,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                           ),
                                           validator: (v) =>
                                               (v == null || v.trim().isEmpty)
-                                              ? "Select assign date"
+                                              ? "Select Reporting date"
                                               : null,
                                         ),
                                       ],
@@ -993,7 +991,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        _buildLabel("Assign Time"),
+                                        _buildLabel("Reporting Time"),
                                         SizedBox(height: 4.h),
                                         Row(
                                           children: [
@@ -1220,67 +1218,66 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                               // Reporting To — searchable single-select
                               SizedBox(height: 8.h),
 
-                              // Reporting Date & Time
-                              Row(
-                                children: [
-                                  SizedBox(width: 6.w),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        _buildLabel("Reporting Time"),
-                                        SizedBox(height: 4.h),
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              flex: 1,
-                                              child: _buildTimeField(
-                                                controller: dueTimeController,
-                                                validator: (v) =>
-                                                    (v == null ||
-                                                        v.trim().isEmpty)
-                                                    ? "Select time"
-                                                    : null,
-                                                onTap: () async {
-                                                  final t = await _pickTime(
-                                                    context,
-                                                  );
-                                                  if (t != null) {
-                                                    setState(() {
-                                                      dueTimeController.text =
-                                                          "${t.hourOfPeriod.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
-                                                      dueSelectedAmPm =
-                                                          t.period ==
-                                                              DayPeriod.am
-                                                          ? "AM"
-                                                          : "PM";
-                                                    });
-                                                  }
-                                                },
-                                              ),
-                                            ),
-                                            SizedBox(width: 6.w),
-                                            ConstrainedBox(
-                                              constraints: BoxConstraints(
-                                                minWidth: 70.w,
-                                                maxWidth: 90.w,
-                                              ),
-                                              child: _buildAmPmDropdown(
-                                                value: dueSelectedAmPm,
-                                                onChanged: (v) => setState(
-                                                  () => dueSelectedAmPm = v!,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-
+                              // // Reporting Date & Time
+                              // Row(
+                              //   children: [
+                              //     SizedBox(width: 6.w),
+                              //     Expanded(
+                              //       child: Column(
+                              //         crossAxisAlignment:
+                              //             CrossAxisAlignment.start,
+                              //         children: [
+                              //           _buildLabel("Reporting Time"),
+                              //           SizedBox(height: 4.h),
+                              //           Row(
+                              //             children: [
+                              //               Expanded(
+                              //                 flex: 1,
+                              //                 child: _buildTimeField(
+                              //                   controller: dueTimeController,
+                              //                   validator: (v) =>
+                              //                       (v == null ||
+                              //                           v.trim().isEmpty)
+                              //                       ? "Select time"
+                              //                       : null,
+                              //                   onTap: () async {
+                              //                     final t = await _pickTime(
+                              //                       context,
+                              //                     );
+                              //                     if (t != null) {
+                              //                       setState(() {
+                              //                         dueTimeController.text =
+                              //                             "${t.hourOfPeriod.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
+                              //                         dueSelectedAmPm =
+                              //                             t.period ==
+                              //                                 DayPeriod.am
+                              //                             ? "AM"
+                              //                             : "PM";
+                              //                       });
+                              //                     }
+                              //                   },
+                              //                 ),
+                              //               ),
+                              //               SizedBox(width: 6.w),
+                              //               ConstrainedBox(
+                              //                 constraints: BoxConstraints(
+                              //                   minWidth: 70.w,
+                              //                   maxWidth: 90.w,
+                              //                 ),
+                              //                 child: _buildAmPmDropdown(
+                              //                   value: dueSelectedAmPm,
+                              //                   onChanged: (v) => setState(
+                              //                     () => dueSelectedAmPm = v!,
+                              //                   ),
+                              //                 ),
+                              //               ),
+                              //             ],
+                              //           ),
+                              //         ],
+                              //       ),
+                              //     ),
+                              //   ],
+                              // ),
                               SizedBox(height: 8.h),
 
                               // Description
@@ -1558,14 +1555,25 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                     borderRadius: BorderRadius.circular(8.r),
                                   ),
                                 ),
-                                child: Text(
-                                  "Save Changes",
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12.sp,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                ),
+                                child: taskController.isLoading
+                                    ? SizedBox(
+                                        width: 16.w,
+                                        height: 16.w,
+                                        child: const CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation(
+                                            Colors.white,
+                                          ),
+                                        ),
+                                      )
+                                    : Text(
+                                        "Save Changes",
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12.sp,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                      ),
                               ),
                             ),
                           ],
