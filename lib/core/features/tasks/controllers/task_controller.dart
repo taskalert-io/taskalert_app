@@ -1,5 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:taskalert_app/core/network/api_result.dart';
+import 'package:taskalert_app/core/network/base_api_response.dart';
+import 'package:taskalert_app/core/features/pagination/models/pagination_model.dart';
 import '../data/repositories/task_repository.dart';
 import '../data/models/task_model.dart';
 
@@ -11,94 +14,28 @@ class TaskController extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
-  List<TaskModel> _tasksList = [];
-  List<TaskModel> get tasksList => _tasksList;
+  String? _errorMessage;
+  String? get errorMessage => _errorMessage;
+
+  String? _successMessage;
+  String? get successMessage => _successMessage;
+
+  List<TaskModel> _tasks = [];
+  List<TaskModel> get tasks => _tasks;
 
   TaskModel? _selectedTask;
   TaskModel? get selectedTask => _selectedTask;
 
-  String? _errorMessage;
-  String? get errorMessage => _errorMessage;
+  PaginationModel? _pagination;
+  PaginationModel? get pagination => _pagination;
 
-  /// 1. Get Single Task
-  Future<void> handleGetSingleTask(String taskId) async {
-    _isLoading = true;
+  void clearMessages() {
     _errorMessage = null;
-    notifyListeners();
-
-    final result = await _taskRepository.getSingleTask(taskId: taskId);
-
-    result.when(
-      success: (response) {
-        _selectedTask = response.data;
-      },
-      failure: (exception) {
-        _errorMessage = exception.userMessage;
-      },
-    );
-
-    _isLoading = false;
+    _successMessage = null;
     notifyListeners();
   }
 
-  /// 2. Update Status Only
-  Future<bool> handleUpdateTaskStatus(String taskId, String status) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    final result = await _taskRepository.updateTaskStatus(
-      taskId: taskId,
-      status: status,
-    );
-    bool isSuccess = false;
-
-    result.when(
-      success: (response) {
-        isSuccess = response.success;
-      },
-      failure: (exception) {
-        _errorMessage = exception.userMessage;
-      },
-    );
-
-    _isLoading = false;
-    notifyListeners();
-    return isSuccess;
-  }
-
-  /// 3. Full Task Update
-  Future<bool> handleUpdateTask(
-    String taskId,
-    Map<String, dynamic> bodyFields,
-    List<File>? files,
-  ) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    final result = await _taskRepository.updateTask(
-      taskId: taskId,
-      bodyFields: bodyFields,
-      files: files,
-    );
-    bool isSuccess = false;
-
-    result.when(
-      success: (response) {
-        isSuccess = response.success;
-      },
-      failure: (exception) {
-        _errorMessage = exception.userMessage;
-      },
-    );
-
-    _isLoading = false;
-    notifyListeners();
-    return isSuccess;
-  }
-
-  /// 4. Get All Tasks
+  /// 1. Fetch All Tasks (with optional query filters)
   Future<void> handleGetAllTasks({
     String? taskType,
     String? status,
@@ -114,45 +51,193 @@ class TaskController extends ChangeNotifier {
       department: department,
     );
 
-    result.when(
-      success: (response) {
-        _tasksList = response.data;
-      },
-      failure: (exception) {
-        _errorMessage = exception.userMessage;
-      },
-    );
-
     _isLoading = false;
+
+    if (result is Success) {
+      final apiResponse =
+          (result as Success).data as BaseApiResponse<List<TaskModel>>;
+      _tasks = apiResponse.data ?? [];
+      _pagination = apiResponse.pagination;
+    } else if (result is Failure) {
+      _errorMessage = (result as Failure).exception.userMessage;
+    }
     notifyListeners();
   }
 
-  /// 5. Create New Task
-  Future<bool> handleCreateTask(
-    Map<String, dynamic> bodyFields,
-    List<File>? files,
-  ) async {
+  /// 2. Fetch Single Task Details exclusively via Object ID Link
+  Future<void> handleGetSingleTask({required String taskId}) async {
     _isLoading = true;
     _errorMessage = null;
+    notifyListeners();
+
+    final result = await _taskRepository.getSingleTask(taskId: taskId);
+
+    _isLoading = false;
+
+    if (result is Success) {
+      final apiResponse =
+          (result as Success).data as BaseApiResponse<TaskModel>;
+      _selectedTask = apiResponse.data;
+    } else if (result is Failure) {
+      _errorMessage = (result as Failure).exception.userMessage;
+    }
+    notifyListeners();
+  }
+
+  /// 3. Create Task (Optimistically prepends new task item to array)
+  Future<bool> handleCreateTask({
+    required Map<String, dynamic> bodyFields,
+    List<File>? files,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _successMessage = null;
     notifyListeners();
 
     final result = await _taskRepository.createTask(
       bodyFields: bodyFields,
       files: files,
     );
-    bool isSuccess = false;
 
-    result.when(
-      success: (response) {
-        isSuccess = response.success;
-      },
-      failure: (exception) {
-        _errorMessage = exception.userMessage;
-      },
+    _isLoading = false;
+
+    if (result is Success) {
+      final apiResponse =
+          (result as Success).data as BaseApiResponse<TaskModel>;
+      _successMessage = apiResponse.message;
+      if (apiResponse.data != null) {
+        _tasks.insert(0, apiResponse.data!);
+      }
+      notifyListeners();
+      return true;
+    } else if (result is Failure) {
+      _errorMessage = (result as Failure).exception.userMessage;
+      notifyListeners();
+      return false;
+    }
+    return false;
+  }
+
+  /// 4. Full Task Update (Replaces changed element within current UI view layout)
+  Future<bool> handleUpdateTask({
+    required String taskId,
+    required Map<String, dynamic> bodyFields,
+    List<File>? files,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _successMessage = null;
+    notifyListeners();
+
+    final result = await _taskRepository.updateTask(
+      taskId: taskId,
+      bodyFields: bodyFields,
+      files: files,
     );
 
     _isLoading = false;
+
+    if (result is Success) {
+      final apiResponse =
+          (result as Success).data as BaseApiResponse<TaskModel>;
+      _successMessage = apiResponse.message;
+
+      final index = _tasks.indexWhere((element) => element.id == taskId);
+      if (index != -1 && apiResponse.data != null) {
+        _tasks[index] = apiResponse.data!;
+      }
+
+      if (_selectedTask?.id == taskId && apiResponse.data != null) {
+        _selectedTask = apiResponse.data;
+      }
+
+      notifyListeners();
+      return true;
+    } else if (result is Failure) {
+      _errorMessage = (result as Failure).exception.userMessage;
+      notifyListeners();
+      return false;
+    }
+    return false;
+  }
+
+  /// 5. Update Task Status (Modifies target task status dynamically)
+  Future<bool> handleUpdateTaskStatus({
+    required String taskId,
+    required String status,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _successMessage = null;
     notifyListeners();
-    return isSuccess;
+
+    final result = await _taskRepository.updateTaskStatus(
+      taskId: taskId,
+      status: status,
+    );
+
+    _isLoading = false;
+
+    if (result is Success) {
+      final apiResponse = (result as Success).data as BaseApiResponse<dynamic>;
+      _successMessage = apiResponse.message;
+
+      // Update the status locally in the list representation without re-fetching
+      final index = _tasks.indexWhere((element) => element.id == taskId);
+      if (index != -1) {
+        // Creates a cloned version updating just the status parameter
+        _tasks[index] = _updateLocalStatus(_tasks[index], status);
+      }
+
+      if (_selectedTask?.id == taskId && _selectedTask != null) {
+        _selectedTask = _updateLocalStatus(_selectedTask!, status);
+      }
+
+      notifyListeners();
+      return true;
+    } else if (result is Failure) {
+      _errorMessage = (result as Failure).exception.userMessage;
+      notifyListeners();
+      return false;
+    }
+    return false;
+  }
+
+  /// Helper utility logic to safely assign status modifications locally
+  TaskModel _updateLocalStatus(TaskModel model, String newStatus) {
+    return TaskModel(
+      id: model.id,
+      taskType: model.taskType,
+      taskId: model.taskId,
+      isSubTask: model.isSubTask,
+      parentTask: model.parentTask,
+      title: model.title,
+      department: model.department,
+      priority: model.priority,
+      assignees: model.assignees,
+      reportingDate: model.reportingDate,
+      reportingTime: model.reportingTime,
+      description: model.description,
+      attachments: model.attachments,
+      organization: model.organization,
+      createdBy: model.createdBy,
+      completionStatus: newStatus, // Target updated field 🌟
+      createdAt: model.createdAt,
+      updatedAt: model.updatedAt,
+      reportingTo: model.reportingTo,
+      timePeriod: model.timePeriod,
+      everyN: model.everyN,
+      daysOfWeek: model.daysOfWeek,
+      monthlyType: model.monthlyType,
+      dayOfMonth: model.dayOfMonth,
+      weekOfMonth: model.weekOfMonth,
+      dayOfWeekMonthly: model.dayOfWeekMonthly,
+      rangeStart: model.rangeStart,
+      endType: model.endType,
+      endByDate: model.endByDate,
+      endAfterCount: model.endAfterCount,
+      proofTypes: model.proofTypes,
+      aiValidationEnabled: model.aiValidationEnabled,
+    );
   }
 }
