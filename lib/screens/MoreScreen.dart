@@ -2,12 +2,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:taskalert_app/extras/NotificationScreen.dart';
 import 'package:taskalert_app/screens/ProfileSetting.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
+import 'NotificationScreen.dart';
 
 class MoreScreen extends StatefulWidget {
   final String userId;

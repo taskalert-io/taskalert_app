@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../extras/MyTaskScreen.dart';
-import '../extras/NotificationScreen.dart';
+import '../extras/MyTaskDetails.dart';
 import '../screens/HomeScreen.dart';
 import '../screens/MoreScreen.dart';
+import '../screens/NotificationScreen.dart';
 
 class CustomBottomNavBar extends StatefulWidget {
   final int selectedIndex;
@@ -100,7 +100,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
                     break;
 
                   case 1:
-                    screen = MyTaskScreen();
+                    screen = TaskDetailScreen(userId: '');
                     break;
 
                   case 2:
