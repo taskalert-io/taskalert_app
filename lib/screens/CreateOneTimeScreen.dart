@@ -1,5 +1,6 @@
 // ignore_for_file: file_names, unrelated_type_equality_checks, use_build_context_synchronously
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -426,7 +427,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
   DateTime? dueSelectedDate;
   String dueSelectedAmPm = "AM";
 
-  List<String> selectedFiles = [];
+  List<File> selectedFiles = [];
   String? fileError;
 
   final titleNameController = TextEditingController();
@@ -575,8 +576,8 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     // print("Assign Time: ${assignTimeController.text}");
     // print("Assign To IDs: $selectedAssignees");
     // print("Reporting To IDs: $selectedReportingList");
-    // print("Due Date: ${dueDateController.text} $dueSelectedAmPm");
-    // print("Files: $selectedFiles");
+    print("Due Date: ${dueDateController.text} $dueSelectedAmPm");
+    print("Files: $selectedFiles");
 
     if (_validateSections() && _formKey.currentState!.validate()) {
       taskController.clearMessages();
@@ -609,7 +610,8 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
           //     selectedFiles, // This would typically be handled as multipart form data in the repository layer
         },
 
-        // files: selectedFiles, // Pass the list of file paths to the repository for upload handling
+        files:
+            selectedFiles, // Pass the list of file paths to the repository for upload handling
       );
 
       if (success) {
@@ -678,7 +680,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
       ],
     );
     if (result != null && result.files.isNotEmpty) {
-      final newFiles = result.files.map((f) => f.name).toList();
+      final newFiles = result.files.map((f) => File(f.path!)).toList();
       if ((selectedFiles.length + newFiles.length) > 5) {
         setState(() => fileError = "Maximum 5 files are allowed");
         return;
@@ -935,115 +937,6 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
 
                               SizedBox(height: 8.h),
 
-                              // Reporting Date & Time
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        _buildLabel("Reporting Date"),
-                                        SizedBox(height: 4.h),
-                                        _buildDateField(
-                                          controller: assignDateController,
-                                          onTap: () => showCustomDatePicker(
-                                            context: context,
-                                            controller: assignDateController,
-                                            initialDate: assignSelectedDate,
-                                            minDate: DateTime.now(),
-                                            onDateSelected: (d) => setState(() {
-                                              assignSelectedDate = d;
-                                              // If due date is now before assign, clear due
-                                              if (dueSelectedDate != null) {
-                                                final aDay = DateTime(
-                                                  d.year,
-                                                  d.month,
-                                                  d.day,
-                                                );
-                                                final dDay = DateTime(
-                                                  dueSelectedDate!.year,
-                                                  dueSelectedDate!.month,
-                                                  dueSelectedDate!.day,
-                                                );
-                                                if (dDay.isBefore(aDay)) {
-                                                  dueSelectedDate = null;
-                                                  dueDateController.clear();
-                                                  _dueDateError =
-                                                      "Due date cannot be before assign date";
-                                                }
-                                              }
-                                            }),
-                                          ),
-                                          validator: (v) =>
-                                              (v == null || v.trim().isEmpty)
-                                              ? "Select Reporting date"
-                                              : null,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  SizedBox(width: 6.w),
-
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        _buildLabel("Reporting Time"),
-                                        SizedBox(height: 4.h),
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              flex: 3,
-                                              child: _buildTimeField(
-                                                controller:
-                                                    assignTimeController,
-                                                validator: (v) =>
-                                                    (v == null ||
-                                                        v.trim().isEmpty)
-                                                    ? "Select time"
-                                                    : null,
-                                                onTap: () async {
-                                                  final t = await _pickTime(
-                                                    context,
-                                                  );
-                                                  if (t != null) {
-                                                    setState(() {
-                                                      assignTimeController
-                                                              .text =
-                                                          "${t.hourOfPeriod.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
-                                                      assignSelectedAmPm =
-                                                          t.period ==
-                                                              DayPeriod.am
-                                                          ? "AM"
-                                                          : "PM";
-                                                    });
-                                                  }
-                                                },
-                                              ),
-                                            ),
-                                            SizedBox(width: 6.w),
-                                            Expanded(
-                                              flex: 2,
-                                              child: _buildAmPmDropdown(
-                                                value: assignSelectedAmPm,
-                                                onChanged: (v) => setState(
-                                                  () => assignSelectedAmPm = v!,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              SizedBox(height: 8.h),
-
                               // Assign To — multi-select
                               _buildLabel("Assign To"),
                               SizedBox(height: 3.h),
@@ -1218,66 +1111,113 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                               // Reporting To — searchable single-select
                               SizedBox(height: 8.h),
 
-                              // // Reporting Date & Time
-                              // Row(
-                              //   children: [
-                              //     SizedBox(width: 6.w),
-                              //     Expanded(
-                              //       child: Column(
-                              //         crossAxisAlignment:
-                              //             CrossAxisAlignment.start,
-                              //         children: [
-                              //           _buildLabel("Reporting Time"),
-                              //           SizedBox(height: 4.h),
-                              //           Row(
-                              //             children: [
-                              //               Expanded(
-                              //                 flex: 1,
-                              //                 child: _buildTimeField(
-                              //                   controller: dueTimeController,
-                              //                   validator: (v) =>
-                              //                       (v == null ||
-                              //                           v.trim().isEmpty)
-                              //                       ? "Select time"
-                              //                       : null,
-                              //                   onTap: () async {
-                              //                     final t = await _pickTime(
-                              //                       context,
-                              //                     );
-                              //                     if (t != null) {
-                              //                       setState(() {
-                              //                         dueTimeController.text =
-                              //                             "${t.hourOfPeriod.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
-                              //                         dueSelectedAmPm =
-                              //                             t.period ==
-                              //                                 DayPeriod.am
-                              //                             ? "AM"
-                              //                             : "PM";
-                              //                       });
-                              //                     }
-                              //                   },
-                              //                 ),
-                              //               ),
-                              //               SizedBox(width: 6.w),
-                              //               ConstrainedBox(
-                              //                 constraints: BoxConstraints(
-                              //                   minWidth: 70.w,
-                              //                   maxWidth: 90.w,
-                              //                 ),
-                              //                 child: _buildAmPmDropdown(
-                              //                   value: dueSelectedAmPm,
-                              //                   onChanged: (v) => setState(
-                              //                     () => dueSelectedAmPm = v!,
-                              //                   ),
-                              //                 ),
-                              //               ),
-                              //             ],
-                              //           ),
-                              //         ],
-                              //       ),
-                              //     ),
-                              //   ],
-                              // ),
+                              // Reporting Date & Time
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _buildLabel("Reporting Date"),
+                                        SizedBox(height: 4.h),
+                                        _buildDateField(
+                                          controller: assignDateController,
+                                          onTap: () => showCustomDatePicker(
+                                            context: context,
+                                            controller: assignDateController,
+                                            initialDate: assignSelectedDate,
+                                            minDate: DateTime.now(),
+                                            onDateSelected: (d) => setState(() {
+                                              assignSelectedDate = d;
+                                              // If due date is now before assign, clear due
+                                              if (dueSelectedDate != null) {
+                                                final aDay = DateTime(
+                                                  d.year,
+                                                  d.month,
+                                                  d.day,
+                                                );
+                                                final dDay = DateTime(
+                                                  dueSelectedDate!.year,
+                                                  dueSelectedDate!.month,
+                                                  dueSelectedDate!.day,
+                                                );
+                                                if (dDay.isBefore(aDay)) {
+                                                  dueSelectedDate = null;
+                                                  dueDateController.clear();
+                                                  _dueDateError =
+                                                      "Due date cannot be before assign date";
+                                                }
+                                              }
+                                            }),
+                                          ),
+                                          validator: (v) =>
+                                              (v == null || v.trim().isEmpty)
+                                              ? "Select Reporting date"
+                                              : null,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  SizedBox(width: 6.w),
+
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _buildLabel("Reporting Time"),
+                                        SizedBox(height: 4.h),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              flex: 3,
+                                              child: _buildTimeField(
+                                                controller:
+                                                    assignTimeController,
+                                                validator: (v) =>
+                                                    (v == null ||
+                                                        v.trim().isEmpty)
+                                                    ? "Select time"
+                                                    : null,
+                                                onTap: () async {
+                                                  final t = await _pickTime(
+                                                    context,
+                                                  );
+                                                  if (t != null) {
+                                                    setState(() {
+                                                      assignTimeController
+                                                              .text =
+                                                          "${t.hourOfPeriod.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
+                                                      assignSelectedAmPm =
+                                                          t.period ==
+                                                              DayPeriod.am
+                                                          ? "AM"
+                                                          : "PM";
+                                                    });
+                                                  }
+                                                },
+                                              ),
+                                            ),
+                                            SizedBox(width: 6.w),
+                                            Expanded(
+                                              flex: 2,
+                                              child: _buildAmPmDropdown(
+                                                value: assignSelectedAmPm,
+                                                onChanged: (v) => setState(
+                                                  () => assignSelectedAmPm = v!,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+
                               SizedBox(height: 8.h),
 
                               // Description
@@ -1447,7 +1387,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                                 SizedBox(width: 8.w),
                                                 Expanded(
                                                   child: Text(
-                                                    selectedFiles[i],
+                                                    selectedFiles[i].path,
                                                     overflow:
                                                         TextOverflow.ellipsis,
                                                     style: GoogleFonts.inter(
