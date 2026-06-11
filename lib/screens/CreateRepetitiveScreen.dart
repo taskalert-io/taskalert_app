@@ -32,6 +32,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
   String? _proofRadioError;
   String? _reportingToError;
   String? _assignToError;
+  String? _weekdayError;
 
   // ── Cross-field date error ───────────────────────────────────────────────
   String? _dueDateError;
@@ -43,7 +44,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
   // ── Department (searchable single-select) ─────────────────────────────────
   String selectedDepartment = "Select Department";
   String? _departmentError;
-
   final List<String> _departmentItems = [
     "Retail",
     "Marketing",
@@ -76,8 +76,10 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
   String selectedReporting = "Select User";
   List<String> selectedReportingList = [];
 
+  // ── Weekly days selection ─────────────────────────────────────────────────
+  List<String> selectedWeekdays = [];
+
   void _showReportingToBottomSheet(BuildContext context) {
-    // ── multi-select just like Assign To ──
     List<String> tempSelected = selectedReporting == "Select User"
         ? []
         : [selectedReporting];
@@ -391,8 +393,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                             child: ElevatedButton(
                               onPressed: () {
                                 setState(() {
-                                  // store all selected as comma-separated
-                                  // but keep chips working via selectedReportingList
                                   selectedReportingList = List.from(
                                     tempSelected,
                                   );
@@ -439,13 +439,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     );
   }
 
-  // final List<String> _reportingItems = [
-  //   "Manager",
-  //   "Team Lead",
-  //   "Director",
-  //   "HR",
-  // ];
-
   bool isAssignmentEnabled = false;
   bool isProofEnabled = false;
 
@@ -488,10 +481,8 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
   void initState() {
     super.initState();
     final now = DateTime.now();
-    // Assign date/time — blank on start, user must pick
     assignSelectedDate = null;
     assignTimeController.text = "";
-    // Due date pre-filled today; time blank
     dueSelectedDate = now;
     dueDateController.text =
         "${now.day.toString().padLeft(2, '0')}-"
@@ -523,6 +514,13 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
   bool _validateSections() {
     bool valid = true;
 
+    if (selectedRepeatType == "Weekly" && selectedWeekdays.isEmpty) {
+      setState(() => _weekdayError = "Please select at least one day");
+      valid = false;
+    } else {
+      setState(() => _weekdayError = null);
+    }
+
     if (selectedDepartment == "Select Department") {
       setState(() => _departmentError = "Please select department");
       valid = false;
@@ -530,7 +528,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       setState(() => _departmentError = null);
     }
 
-    // Reporting To
     if (selectedReportingList.isEmpty) {
       setState(() => _reportingToError = "Please select a user");
       valid = false;
@@ -538,7 +535,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       setState(() => _reportingToError = null);
     }
 
-    // Assign To (main card)
     if (selectedAssignees.isEmpty) {
       setState(() => _assignToError = "Please select at least one assignee");
       valid = false;
@@ -546,7 +542,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       setState(() => _assignToError = null);
     }
 
-    // Both toggles must be ON
     if (!isAssignmentEnabled) {
       setState(
         () => _assignmentToggleError =
@@ -567,7 +562,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       setState(() => _proofToggleError = null);
     }
 
-    // Assignment section
     if (isAssignmentEnabled) {
       if (selectedReporting == "Select User") {
         setState(() => _reportingToError = "Please select a user");
@@ -583,7 +577,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       }
     }
 
-    // Cross-field: due date must not be before start date
     if (isAssignmentEnabled &&
         dueSelectedDate != null &&
         startSelectedDate != null) {
@@ -607,7 +600,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       setState(() => _dueDateError = null);
     }
 
-    // Proof section
     if (isProofEnabled) {
       if (selectedProofType.isEmpty) {
         setState(() => _proofTypeError = "Please select a proof type");
@@ -817,8 +809,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     }
   }
 
-  // String? get _departmentError => null;
-
   // ── BUILD ──────────────────────────────────────────────────────────────────
 
   @override
@@ -901,23 +891,23 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
                               SizedBox(height: 8.h),
 
-                              // Department — searchable single-select
+                              // Department
                               _buildLabel("Department"),
                               SizedBox(height: 3.h),
                               _buildSearchableDropdownField(
                                 value: selectedDepartment,
                                 hint: "Select Department",
+                                errorText: _departmentError,
                                 onTap: () => _showSearchableBottomSheet(
                                   context: context,
                                   title: "Select Department",
                                   items: _departmentItems,
                                   selectedValue: selectedDepartment,
-                                  onSelected: (v) {
-                                    setState(() => selectedDepartment = v);
+                                  onSelected: (v) => setState(() {
+                                    selectedDepartment = v;
                                     _departmentError = null;
-                                  },
+                                  }),
                                 ),
-                                errorText: _departmentError,
                               ),
                               if (_departmentError != null)
                                 Padding(
@@ -946,96 +936,96 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                               SizedBox(height: 8.h),
 
                               // Assign Date & Time
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        _buildLabel("Assign Date"),
-                                        SizedBox(height: 4.h),
-                                        _buildDateField(
-                                          controller: assignDateController,
-                                          onTap: () => showCustomDatePicker(
-                                            context: context,
-                                            controller: assignDateController,
-                                            initialDate: assignSelectedDate,
-                                            minDate: DateTime.now(),
-                                            onDateSelected: (d) => setState(
-                                              () => assignSelectedDate = d,
-                                            ),
-                                          ),
-                                          validator: (v) {
-                                            if (v == null || v.trim().isEmpty)
-                                              return "Select assign date";
-                                            return null;
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  SizedBox(width: 6.w),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        _buildLabel("Assign Time"),
-                                        SizedBox(height: 4.h),
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              flex: 3,
-                                              child: _buildTimeField(
-                                                controller:
-                                                    assignTimeController,
-                                                validator: (v) {
-                                                  if (v == null ||
-                                                      v.trim().isEmpty)
-                                                    return "Select time";
-                                                  return null;
-                                                },
-                                                onTap: () async {
-                                                  final t = await _pickTime(
-                                                    context,
-                                                  );
-                                                  if (t != null) {
-                                                    setState(() {
-                                                      assignTimeController
-                                                              .text =
-                                                          "${t.hourOfPeriod.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
-                                                      assignSelectedAmPm =
-                                                          t.period ==
-                                                              DayPeriod.am
-                                                          ? "AM"
-                                                          : "PM";
-                                                    });
-                                                  }
-                                                },
-                                              ),
-                                            ),
-                                            SizedBox(width: 6.w),
-                                            Expanded(
-                                              flex: 2,
-                                              child: _buildAmPmDropdown(
-                                                value: assignSelectedAmPm,
-                                                onChanged: (v) => setState(
-                                                  () => assignSelectedAmPm = v!,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
+                              // Row(
+                              //   children: [
+                              //     Expanded(
+                              //       child: Column(
+                              //         crossAxisAlignment:
+                              //             CrossAxisAlignment.start,
+                              //         children: [
+                              //           _buildLabel("Assign Date"),
+                              //           SizedBox(height: 4.h),
+                              //           _buildDateField(
+                              //             controller: assignDateController,
+                              //             onTap: () => showCustomDatePicker(
+                              //               context: context,
+                              //               controller: assignDateController,
+                              //               initialDate: assignSelectedDate,
+                              //               minDate: DateTime.now(),
+                              //               onDateSelected: (d) => setState(
+                              //                 () => assignSelectedDate = d,
+                              //               ),
+                              //             ),
+                              //             validator: (v) {
+                              //               if (v == null || v.trim().isEmpty)
+                              //                 return "Select assign date";
+                              //               return null;
+                              //             },
+                              //           ),
+                              //         ],
+                              //       ),
+                              //     ),
+                              //     SizedBox(width: 6.w),
+                              //     Expanded(
+                              //       child: Column(
+                              //         crossAxisAlignment:
+                              //             CrossAxisAlignment.start,
+                              //         children: [
+                              //           _buildLabel("Assign Time"),
+                              //           SizedBox(height: 4.h),
+                              //           Row(
+                              //             children: [
+                              //               Expanded(
+                              //                 flex: 3,
+                              //                 child: _buildTimeField(
+                              //                   controller:
+                              //                       assignTimeController,
+                              //                   validator: (v) {
+                              //                     if (v == null ||
+                              //                         v.trim().isEmpty)
+                              //                       return "Select time";
+                              //                     return null;
+                              //                   },
+                              //                   onTap: () async {
+                              //                     final t = await _pickTime(
+                              //                       context,
+                              //                     );
+                              //                     if (t != null) {
+                              //                       setState(() {
+                              //                         assignTimeController
+                              //                                 .text =
+                              //                             "${t.hourOfPeriod.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
+                              //                         assignSelectedAmPm =
+                              //                             t.period ==
+                              //                                 DayPeriod.am
+                              //                             ? "AM"
+                              //                             : "PM";
+                              //                       });
+                              //                     }
+                              //                   },
+                              //                 ),
+                              //               ),
+                              //               SizedBox(width: 6.w),
+                              //               Expanded(
+                              //                 flex: 2,
+                              //                 child: _buildAmPmDropdown(
+                              //                   value: assignSelectedAmPm,
+                              //                   onChanged: (v) => setState(
+                              //                     () => assignSelectedAmPm = v!,
+                              //                   ),
+                              //                 ),
+                              //               ),
+                              //             ],
+                              //           ),
+                              //         ],
+                              //       ),
+                              //     ),
+                              //   ],
+                              // ),
+                              //
+                              // SizedBox(height: 8.h),
 
-                              SizedBox(height: 8.h),
-
-                              // ── Assign To (multi-select) ─────────────────────
+                              // Assign To (multi-select)
                               _buildLabel("Assign To"),
                               SizedBox(height: 3.h),
                               GestureDetector(
@@ -1100,6 +1090,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
                               SizedBox(height: 8.h),
 
+                              // Reporting To
                               _buildLabel("Reporting To"),
                               SizedBox(height: 3.h),
                               GestureDetector(
@@ -1165,49 +1156,9 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
                               SizedBox(height: 8.h),
 
-                              // Reporting Date & Time
+                              // Reporting Time
                               Row(
                                 children: [
-                                  // Expanded(
-                                  //   child: Column(
-                                  //     crossAxisAlignment:
-                                  //     CrossAxisAlignment.start,
-                                  //     children: [
-                                  //       _buildLabel("Due Date"),
-                                  //       SizedBox(height: 4.h),
-                                  //       _buildDateField(
-                                  //         controller: dueDateController,
-                                  //         errorText: _dueDateError,
-                                  //         onTap: () => showCustomDatePicker(
-                                  //           context: context,
-                                  //           controller: dueDateController,
-                                  //           initialDate: dueSelectedDate,
-                                  //           minDate: DateTime.now(),
-                                  //           onDateSelected: (d) {
-                                  //             final dueDay = DateTime(d.year, d.month, d.day);
-                                  //             if (startSelectedDate != null) {
-                                  //               final startDay = DateTime(startSelectedDate!.year, startSelectedDate!.month, startSelectedDate!.day);
-                                  //               if (dueDay.isBefore(startDay)) {
-                                  //                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                  //                   content: Text("Due date cannot be before start date",
-                                  //                       style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.white)),
-                                  //                   backgroundColor: Colors.red,
-                                  //                   behavior: SnackBarBehavior.floating,
-                                  //                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
-                                  //                 ));
-                                  //                 return;
-                                  //               }
-                                  //             }
-                                  //             setState(() {
-                                  //               dueSelectedDate = d;
-                                  //               _dueDateError = null;
-                                  //             });
-                                  //           },
-                                  //         ),
-                                  //       ),
-                                  //     ],
-                                  //   ),
-                                  // ),
                                   SizedBox(width: 6.w),
                                   Expanded(
                                     child: Column(
@@ -1519,7 +1470,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 5),
                           child: Column(
                             children: [
-                              // ── Assignment & Recurrence ───────────────────────
+                              // ── Assignment & Recurrence ─────────────────────
                               Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
@@ -1579,14 +1530,14 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                             "Weekly",
                                             "Weekly",
                                           ),
-                                          _buildRepeatOption(
-                                            "Monthly",
-                                            "Monthly",
-                                          ),
-                                          _buildRepeatOption(
-                                            "Yearly",
-                                            "Yearly",
-                                          ),
+                                          // _buildRepeatOption(
+                                          //   "Monthly",
+                                          //   "Monthly",
+                                          // ),
+                                          // _buildRepeatOption(
+                                          //   "Yearly",
+                                          //   "Yearly",
+                                          // ),
                                         ],
                                       ),
                                       if (_repeatTypeError != null)
@@ -1606,8 +1557,8 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
                                       SizedBox(height: 8.h),
 
-                                      // Select Every
-                                      _buildLabel("Select Every"),
+                                      // ── Repeat Every ──────────────────────
+                                      _buildLabel("Repeat Every"),
                                       SizedBox(height: 8.h),
                                       Row(
                                         children: [
@@ -1690,6 +1641,29 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                         ],
                                       ),
 
+                                      // ── Weekly Days Checkboxes ─────────────
+                                      // Shown only when "Weekly" is selected
+                                      if (selectedRepeatType == "Weekly") ...[
+                                        SizedBox(height: 12.h),
+                                        _buildLabel("Select Days"),
+                                        SizedBox(height: 8.h),
+                                        _buildWeekdayCheckboxes(),
+                                        if (_weekdayError != null)
+                                          Padding(
+                                            padding: EdgeInsets.only(
+                                              top: 4.h,
+                                              left: 2.w,
+                                            ),
+                                            child: Text(
+                                              _weekdayError!,
+                                              style: GoogleFonts.inter(
+                                                color: Colors.red,
+                                                fontSize: 10.sp,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+
                                       SizedBox(height: 8.h),
 
                                       // Range of Time
@@ -1732,59 +1706,65 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                                     initialDate:
                                                         startSelectedDate,
                                                     minDate: DateTime.now(),
-                                                    onDateSelected: (d) => setState(() {
-                                                      startSelectedDate = d;
-                                                      // Clear end date if it's now before new start
-                                                      if (endSelectedDate !=
-                                                          null) {
-                                                        final startDay =
-                                                            DateTime(
-                                                              d.year,
-                                                              d.month,
-                                                              d.day,
-                                                            );
-                                                        final endDay = DateTime(
-                                                          endSelectedDate!.year,
-                                                          endSelectedDate!
-                                                              .month,
-                                                          endSelectedDate!.day,
-                                                        );
-                                                        if (endDay.isBefore(
-                                                          startDay,
-                                                        )) {
-                                                          endSelectedDate =
-                                                              null;
-                                                          endDateController
-                                                              .clear();
+                                                    onDateSelected: (d) => setState(
+                                                      () {
+                                                        startSelectedDate = d;
+                                                        if (endSelectedDate !=
+                                                            null) {
+                                                          final startDay =
+                                                              DateTime(
+                                                                d.year,
+                                                                d.month,
+                                                                d.day,
+                                                              );
+                                                          final endDay =
+                                                              DateTime(
+                                                                endSelectedDate!
+                                                                    .year,
+                                                                endSelectedDate!
+                                                                    .month,
+                                                                endSelectedDate!
+                                                                    .day,
+                                                              );
+                                                          if (endDay.isBefore(
+                                                            startDay,
+                                                          )) {
+                                                            endSelectedDate =
+                                                                null;
+                                                            endDateController
+                                                                .clear();
+                                                          }
                                                         }
-                                                      }
-                                                      // Clear due date if it's now before new start
-                                                      if (dueSelectedDate !=
-                                                          null) {
-                                                        final startDay =
-                                                            DateTime(
-                                                              d.year,
-                                                              d.month,
-                                                              d.day,
-                                                            );
-                                                        final dueDay = DateTime(
-                                                          dueSelectedDate!.year,
-                                                          dueSelectedDate!
-                                                              .month,
-                                                          dueSelectedDate!.day,
-                                                        );
-                                                        if (dueDay.isBefore(
-                                                          startDay,
-                                                        )) {
-                                                          dueSelectedDate =
-                                                              null;
-                                                          dueDateController
-                                                              .clear();
-                                                          _dueDateError =
-                                                              "Due date cannot be before start date";
+                                                        if (dueSelectedDate !=
+                                                            null) {
+                                                          final startDay =
+                                                              DateTime(
+                                                                d.year,
+                                                                d.month,
+                                                                d.day,
+                                                              );
+                                                          final dueDay =
+                                                              DateTime(
+                                                                dueSelectedDate!
+                                                                    .year,
+                                                                dueSelectedDate!
+                                                                    .month,
+                                                                dueSelectedDate!
+                                                                    .day,
+                                                              );
+                                                          if (dueDay.isBefore(
+                                                            startDay,
+                                                          )) {
+                                                            dueSelectedDate =
+                                                                null;
+                                                            dueDateController
+                                                                .clear();
+                                                            _dueDateError =
+                                                                "Due date cannot be before start date";
+                                                          }
                                                         }
-                                                      }
-                                                    }),
+                                                      },
+                                                    ),
                                                   ),
                                                   validator: (v) {
                                                     if (!isAssignmentEnabled)
@@ -2010,7 +1990,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                               ),
                               SizedBox(height: 10.h),
 
-                              // ── Proof & AI Validation ────────────────────────
+                              // ── Proof & AI Validation ─────────────────────
                               Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
@@ -2152,7 +2132,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
                         SizedBox(height: 20.h),
 
-                        // ── Save Button ──────────────────────────────────────
+                        // ── Save Button ────────────────────────────────────
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
@@ -2655,8 +2635,13 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
   );
 
   Widget _buildRepeatOption(String title, String value) => GestureDetector(
+    // When repeat type changes, clear selected weekdays if switching away from Weekly
     onTap: () => setState(() {
       selectedRepeatType = selectedRepeatType == value ? "" : value;
+      if (selectedRepeatType != "Weekly") {
+        selectedWeekdays.clear();
+        _weekdayError = null; // ← add this
+      }
       if (selectedRepeatType.isNotEmpty) _repeatTypeError = null;
     }),
     child: IntrinsicWidth(
@@ -2820,6 +2805,73 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       ),
     ),
   );
+
+  // ── NEW: Weekday checkboxes (shown when Weekly is selected) ───────────────
+
+  Widget _buildWeekdayCheckboxes() {
+    const List<String> days = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+
+    return Wrap(
+      spacing: 14.w,
+      runSpacing: 10.h,
+      children: days.map((day) {
+        final isChecked = selectedWeekdays.contains(day);
+        return GestureDetector(
+          onTap: () => setState(() {
+            if (isChecked) {
+              selectedWeekdays.remove(day);
+              if (selectedWeekdays.isEmpty) {
+                _weekdayError = "Please select at least one day";
+              }
+            } else {
+              selectedWeekdays.add(day);
+              _weekdayError = null;
+            }
+          }),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 16.w,
+                height: 16.w,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4.r),
+                  border: Border.all(
+                    color: const Color(0xFF4338CA),
+                    width: 1.4,
+                  ),
+                  color: isChecked
+                      ? const Color(0xFF24116A)
+                      : Colors.transparent,
+                ),
+                child: isChecked
+                    ? Icon(Icons.check, size: 11.r, color: Colors.white)
+                    : null,
+              ),
+              SizedBox(width: 6.w),
+              Text(
+                day,
+                style: GoogleFonts.inter(
+                  fontSize: 11.5.sp,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFF344054),
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
 
   // ── Searchable single-select field ─────────────────────────────────────────
 
@@ -3104,7 +3156,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -3138,8 +3189,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                         ),
                       ],
                       SizedBox(height: 10.h),
-
-                      // Search
                       TextField(
                         autofocus: false,
                         onChanged: (val) => ss(() {
@@ -3202,7 +3251,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                   ),
                 ),
 
-                // User list
                 Flexible(
                   child: filtered.isEmpty
                       ? Padding(
@@ -3320,7 +3368,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                         ),
                 ),
 
-                // Action buttons — SafeArea prevents system nav bar overlap
                 SafeArea(
                   top: false,
                   child: Padding(
@@ -3361,9 +3408,8 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                               onPressed: () {
                                 setState(() {
                                   selectedAssignees = List.from(tempSelected);
-                                  if (selectedAssignees.isNotEmpty) {
+                                  if (selectedAssignees.isNotEmpty)
                                     _assignToError = null;
-                                  }
                                 });
                                 Navigator.pop(ctx);
                               },
@@ -3391,8 +3437,8 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                         ),
                       ],
                     ),
-                  ), // Padding
-                ), // SafeArea
+                  ),
+                ),
               ],
             ),
           ),
