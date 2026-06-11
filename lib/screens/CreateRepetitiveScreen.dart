@@ -1162,8 +1162,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                   SizedBox(width: 6.w),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         _buildLabel("Reporting Time"),
                                         SizedBox(height: 4.h),
@@ -1174,26 +1173,19 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                               child: _buildTimeField(
                                                 controller: dueTimeController,
                                                 validator: (v) {
-                                                  if (!isAssignmentEnabled)
-                                                    return null;
-                                                  if (v == null ||
-                                                      v.trim().isEmpty)
+                                                  // Always required — not gated by isAssignmentEnabled
+                                                  if (v == null || v.trim().isEmpty)
                                                     return "Select time";
                                                   return null;
                                                 },
                                                 onTap: () async {
-                                                  final t = await _pickTime(
-                                                    context,
-                                                  );
+                                                  final t = await _pickTime(context);
                                                   if (t != null) {
                                                     setState(() {
                                                       dueTimeController.text =
-                                                          "${t.hourOfPeriod.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
+                                                      "${t.hourOfPeriod.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
                                                       dueSelectedAmPm =
-                                                          t.period ==
-                                                              DayPeriod.am
-                                                          ? "AM"
-                                                          : "PM";
+                                                      t.period == DayPeriod.am ? "AM" : "PM";
                                                     });
                                                   }
                                                 },
@@ -1208,7 +1200,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                               child: _buildAmPmDropdown(
                                                 value: dueSelectedAmPm,
                                                 onChanged: (v) => setState(
-                                                  () => dueSelectedAmPm = v!,
+                                                      () => dueSelectedAmPm = v!,
                                                 ),
                                               ),
                                             ),
