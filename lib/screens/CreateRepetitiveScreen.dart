@@ -555,7 +555,9 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
     if (isProofEnabled) {
       if (selectedProofTypes.isEmpty) {
-        setState(() => _proofTypeError = "Please select at least one proof type");
+        setState(
+          () => _proofTypeError = "Please select at least one proof type",
+        );
         valid = false;
       } else {
         setState(() => _proofTypeError = null);
@@ -1166,7 +1168,8 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                   SizedBox(width: 6.w),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         _buildLabel("Reporting Time"),
                                         SizedBox(height: 4.h),
@@ -1178,18 +1181,24 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                                 controller: dueTimeController,
                                                 validator: (v) {
                                                   // Always required — not gated by isAssignmentEnabled
-                                                  if (v == null || v.trim().isEmpty)
+                                                  if (v == null ||
+                                                      v.trim().isEmpty)
                                                     return "Select time";
                                                   return null;
                                                 },
                                                 onTap: () async {
-                                                  final t = await _pickTime(context);
+                                                  final t = await _pickTime(
+                                                    context,
+                                                  );
                                                   if (t != null) {
                                                     setState(() {
                                                       dueTimeController.text =
-                                                      "${t.hourOfPeriod.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
+                                                          "${t.hourOfPeriod.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
                                                       dueSelectedAmPm =
-                                                      t.period == DayPeriod.am ? "AM" : "PM";
+                                                          t.period ==
+                                                              DayPeriod.am
+                                                          ? "AM"
+                                                          : "PM";
                                                     });
                                                   }
                                                 },
@@ -1204,7 +1213,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                               child: _buildAmPmDropdown(
                                                 value: dueSelectedAmPm,
                                                 onChanged: (v) => setState(
-                                                      () => dueSelectedAmPm = v!,
+                                                  () => dueSelectedAmPm = v!,
                                                 ),
                                               ),
                                             ),
@@ -1646,10 +1655,16 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                         _buildWeekdayCheckboxes(),
                                         if (_weekdayError != null)
                                           Padding(
-                                            padding: EdgeInsets.only(top: 4.h, left: 2.w),
+                                            padding: EdgeInsets.only(
+                                              top: 4.h,
+                                              left: 2.w,
+                                            ),
                                             child: Text(
                                               _weekdayError!,
-                                              style: GoogleFonts.inter(color: Colors.red, fontSize: 10.sp),
+                                              style: GoogleFonts.inter(
+                                                color: Colors.red,
+                                                fontSize: 10.sp,
+                                              ),
                                             ),
                                           ),
                                       ],
@@ -2048,9 +2063,11 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
                                       SizedBox(height: 10.h),
 
-                                      if (selectedProofTypes.isNotEmpty)   // was: selectedProofType.isNotEmpty
+                                      if (selectedProofTypes
+                                          .isNotEmpty) // was: selectedProofType.isNotEmpty
                                         Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
                                               "AI Validation (Optional)",
@@ -2065,8 +2082,14 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                               spacing: 14.w,
                                               runSpacing: 10.h,
                                               children: [
-                                                _buildProoftypeOption("Yes", "Yes"),
-                                                _buildProoftypeOption("No", "No"),
+                                                _buildProoftypeOption(
+                                                  "Yes",
+                                                  "Yes",
+                                                ),
+                                                _buildProoftypeOption(
+                                                  "No",
+                                                  "No",
+                                                ),
                                               ],
                                             ),
                                             // DELETED: the _proofRadioError Padding widget
