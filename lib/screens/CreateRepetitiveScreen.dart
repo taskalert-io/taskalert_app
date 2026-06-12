@@ -850,7 +850,9 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
   final titleNameController = TextEditingController();
   String selectedRepeatType = "Daily";
   String selectedEndType = "End by :";
-  String selectedProofType = "";
+  // String selectedProofTypes = "";
+
+  List<String> selectedProofTypes = [];
   String selectedProofRadioType = "";
 
   int occurrencesCount = 1;
@@ -948,14 +950,27 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       setState(() => _assignmentToggleError = null);
     }
 
-    if (!isProofEnabled) {
-      setState(
-        () => _proofToggleError =
-            "Please enable Proof & AI Validation and fill all fields",
-      );
-      valid = false;
+    // if (!isProofEnabled) {
+    //   setState(
+    //     () => _proofToggleError =
+    //         "Please enable Proof & AI Validation and fill all fields",
+    //   );
+    //   valid = false;
+    // } else {
+    //   setState(() => _proofToggleError = null);
+    // }
+
+    if (isProofEnabled) {
+      if (selectedProofTypes.isEmpty) {
+        setState(
+          () => _proofTypeError = "Please select at least one proof type",
+        );
+        valid = false;
+      } else {
+        setState(() => _proofTypeError = null);
+      }
     } else {
-      setState(() => _proofToggleError = null);
+      setState(() => _proofTypeError = null);
     }
 
     if (isAssignmentEnabled) {
@@ -997,21 +1012,40 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     }
 
     if (isProofEnabled) {
-      if (selectedProofType.isEmpty) {
-        setState(() => _proofTypeError = "Please select a proof type");
+      print("Before Validation -> $selectedProofTypes");
+      if (selectedProofTypes.isEmpty) {
+        setState(() {
+          _proofTypeError = "Please select at least one proof type";
+        });
         valid = false;
       } else {
-        setState(() => _proofTypeError = null);
+        setState(() {
+          _proofTypeError = null;
+        });
+        print("Proof Types Count: ${selectedProofTypes.length}");
+        print("Proof Types Values: $selectedProofTypes");
       }
-      if (selectedProofType.isNotEmpty && selectedProofRadioType.isEmpty) {
-        setState(
-          () => _proofRadioError = "Please select Yes or No for AI Validation",
-        );
-        valid = false;
-      } else {
-        setState(() => _proofRadioError = null);
-      }
+
+      // AI Validation is optional
+      // No validation required for selectedProofRadioType
     }
+
+    // if (isProofEnabled) {
+    //   if (selectedProofTypes.isEmpty) {
+    //     setState(() => _proofTypeError = "Please select a proof type");
+    //     valid = false;
+    //   } else {
+    //     setState(() => _proofTypeError = null);
+    //   }
+    //   if (selectedProofTypes.isNotEmpty && selectedProofRadioType.isEmpty) {
+    //     setState(
+    //       () => _proofRadioError = "Please select Yes or No for AI Validation",
+    //     );
+    //     valid = false;
+    //   } else {
+    //     setState(() => _proofRadioError = null);
+    //   }
+    // }
 
     return valid;
   }
@@ -1058,8 +1092,8 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     }
 
     print("Ai enabled: $isProofEnabled");
-    print("Proof Type: $selectedProofType");
-    if (selectedProofType.isNotEmpty) {
+    print("Proof Type: $selectedProofTypes");
+    if (selectedProofTypes.isNotEmpty) {
       print("AI Validation: $selectedProofRadioType");
     }
     // print("Selected Files: $selectedFiles");
@@ -1091,7 +1125,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
           "endByDate": endDateController.text,
           "endAfterCount": occurrencesCount,
 
-          "proofTypes": selectedProofType,
+          "proofTypes": selectedProofTypes,
           "aiValidationEnabled": selectedProofRadioType == "Yes" ? true : false,
         },
 
@@ -2787,14 +2821,25 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                     value: isProofEnabled,
                                     onTap: () => setState(() {
                                       isProofEnabled = !isProofEnabled;
-                                      if (isProofEnabled) {
-                                        _proofToggleError = null;
-                                      } else {
+                                      if (!isProofEnabled) {
                                         _proofTypeError = null;
-                                        _proofRadioError = null;
+                                        selectedProofTypes.clear();
+                                        selectedProofRadioType = "";
                                       }
                                     }),
                                   ),
+                                  // _buildToggle(
+                                  //   value: isProofEnabled,
+                                  //   onTap: () => setState(() {
+                                  //     isProofEnabled = !isProofEnabled;
+                                  //     if (isProofEnabled) {
+                                  //       _proofToggleError = null;
+                                  //     } else {
+                                  //       _proofTypeError = null;
+                                  //       _proofRadioError = null;
+                                  //     }
+                                  //   }),
+                                  // ),
                                 ],
                               ),
                               if (_proofToggleError != null)
@@ -2850,7 +2895,8 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
                                       SizedBox(height: 10.h),
 
-                                      if (selectedProofType.isNotEmpty)
+                                      if (selectedProofTypes
+                                          .isNotEmpty) // was: selectedProofTypes.isNotEmpty
                                         Column(
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
@@ -2878,20 +2924,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                                 ),
                                               ],
                                             ),
-                                            if (_proofRadioError != null)
-                                              Padding(
-                                                padding: EdgeInsets.only(
-                                                  top: 4.h,
-                                                  left: 2.w,
-                                                ),
-                                                child: Text(
-                                                  _proofRadioError!,
-                                                  style: GoogleFonts.inter(
-                                                    color: Colors.red,
-                                                    fontSize: 10.sp,
-                                                  ),
-                                                ),
-                                              ),
+                                            // DELETED: the _proofRadioError Padding widget
                                             SizedBox(height: 8.h),
                                             Text(
                                               'If enabled, the system uses Vision AI to scan the uploaded image to ensure it matches the task.',
@@ -2903,6 +2936,60 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                             ),
                                           ],
                                         ),
+
+                                      // if (selectedProofTypes.isNotEmpty)
+                                      //   Column(
+                                      //     crossAxisAlignment:
+                                      //         CrossAxisAlignment.start,
+                                      //     children: [
+                                      //       Text(
+                                      //         "AI Validation (Optional)",
+                                      //         style: GoogleFonts.inter(
+                                      //           color: const Color(0xFF3F3F3F),
+                                      //           fontSize: 13.sp,
+                                      //           fontWeight: FontWeight.w600,
+                                      //         ),
+                                      //       ),
+                                      //       SizedBox(height: 8.h),
+                                      //       Wrap(
+                                      //         spacing: 14.w,
+                                      //         runSpacing: 10.h,
+                                      //         children: [
+                                      //           _buildProoftypeOption(
+                                      //             "Yes",
+                                      //             "Yes",
+                                      //           ),
+                                      //           _buildProoftypeOption(
+                                      //             "No",
+                                      //             "No",
+                                      //           ),
+                                      //         ],
+                                      //       ),
+                                      //       if (_proofRadioError != null)
+                                      //         Padding(
+                                      //           padding: EdgeInsets.only(
+                                      //             top: 4.h,
+                                      //             left: 2.w,
+                                      //           ),
+                                      //           child: Text(
+                                      //             _proofRadioError!,
+                                      //             style: GoogleFonts.inter(
+                                      //               color: Colors.red,
+                                      //               fontSize: 10.sp,
+                                      //             ),
+                                      //           ),
+                                      //         ),
+                                      //       SizedBox(height: 8.h),
+                                      //       Text(
+                                      //         'If enabled, the system uses Vision AI to scan the uploaded image to ensure it matches the task.',
+                                      //         style: GoogleFonts.inter(
+                                      //           fontSize: 11.sp,
+                                      //           fontWeight: FontWeight.w400,
+                                      //           color: const Color(0xFF797979),
+                                      //         ),
+                                      //       ),
+                                      //     ],
+                                      //   ),
                                     ],
                                   ),
                                 ),
@@ -3552,49 +3639,95 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     ),
   );
 
-  Widget _buildProofOption(String title, String value) => GestureDetector(
-    onTap: () => setState(() {
-      selectedProofType = selectedProofType == value ? "" : value;
-      if (selectedProofType.isNotEmpty) _proofTypeError = null;
-      selectedProofRadioType = "";
-      _proofRadioError = null;
-    }),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 16.w,
-          height: 16.w,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(4.r),
-            border: Border.all(color: const Color(0xFF4338CA), width: 1.4),
-            color: selectedProofType == value
-                ? const Color(0xFF24116A)
-                : Colors.transparent,
+  Widget _buildProofOption(String title, String value) {
+    final isChecked = selectedProofTypes.contains(value);
+    return GestureDetector(
+      onTap: () => setState(() {
+        if (isChecked) {
+          selectedProofTypes.remove(value);
+        } else {
+          selectedProofTypes.add(value);
+        }
+        if (selectedProofTypes.isNotEmpty) _proofTypeError = null;
+        // NOTE: no longer resetting selectedProofRadioType here —
+        // AI Validation is global/optional, not tied to one proof type
+      }),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 16.w,
+            height: 16.w,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4.r),
+              border: Border.all(color: const Color(0xFF4338CA), width: 1.4),
+              color: isChecked ? const Color(0xFF24116A) : Colors.transparent,
+            ),
+            child: isChecked
+                ? Icon(Icons.check, size: 12.r, color: Colors.white)
+                : null,
           ),
-          child: selectedProofType == value
-              ? Icon(Icons.check, size: 12.r, color: Colors.white)
-              : null,
-        ),
-        SizedBox(width: 6.w),
-        Text(
-          title,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.inter(
-            fontSize: 11.5.sp,
-            fontWeight: FontWeight.w400,
-            color: const Color(0xFF344054),
+          SizedBox(width: 6.w),
+          Text(
+            title,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.inter(
+              fontSize: 11.5.sp,
+              fontWeight: FontWeight.w400,
+              color: const Color(0xFF344054),
+            ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
+
+  // Widget _buildProofOption(String title, String value) => GestureDetector(
+  //   onTap: () => setState(() {
+  //     selectedProofTypes = selectedProofTypes == value ? "" : value;
+  //     if (selectedProofTypes.isNotEmpty) _proofTypeError = null;
+  //     selectedProofRadioType = "";
+  //     _proofRadioError = null;
+  //   }),
+  //   child: Row(
+  //     mainAxisSize: MainAxisSize.min,
+  //     children: [
+  //       Container(
+  //         width: 16.w,
+  //         height: 16.w,
+  //         decoration: BoxDecoration(
+  //           borderRadius: BorderRadius.circular(4.r),
+  //           border: Border.all(color: const Color(0xFF4338CA), width: 1.4),
+  //           color: selectedProofTypes == value
+  //               ? const Color(0xFF24116A)
+  //               : Colors.transparent,
+  //         ),
+  //         child: selectedProofTypes == value
+  //             ? Icon(Icons.check, size: 12.r, color: Colors.white)
+  //             : null,
+  //       ),
+  //       SizedBox(width: 6.w),
+  //       Text(
+  //         title,
+  //         overflow: TextOverflow.ellipsis,
+  //         style: GoogleFonts.inter(
+  //           fontSize: 11.5.sp,
+  //           fontWeight: FontWeight.w400,
+  //           color: const Color(0xFF344054),
+  //         ),
+  //       ),
+  //     ],
+  //   ),
+  // );
 
   Widget _buildProoftypeOption(String title, String value) => GestureDetector(
     onTap: () => setState(() {
       selectedProofRadioType = selectedProofRadioType == value ? "" : value;
-      if (selectedProofRadioType.isNotEmpty) _proofRadioError = null;
     }),
+    // onTap: () => setState(() {
+    //   selectedProofRadioType = selectedProofRadioType == value ? "" : value;
+    //   if (selectedProofRadioType.isNotEmpty) _proofRadioError = null;
+    // }),
     child: IntrinsicWidth(
       child: Row(
         mainAxisSize: MainAxisSize.min,
