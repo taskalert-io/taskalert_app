@@ -849,7 +849,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
   final titleNameController = TextEditingController();
   String selectedRepeatType = "Daily";
-  String selectedEndType = "End by :";
+  String selectedEndType = "end_by";
   // String selectedProofTypes = "";
 
   List<String> selectedProofTypes = [];
@@ -1085,7 +1085,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     print("Selected Weekdays: $selectedWeekdays");
     print("start date: ${startDateController.text}");
     print("End Type: $selectedEndType");
-    if (selectedEndType == "End by :") {
+    if (selectedEndType == "end_by") {
       print("End Date: ${endDateController.text}");
     } else {
       print("Occurrences: $occurrencesCount");
@@ -1103,31 +1103,63 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
       final String taskType = 'repetitive';
 
-      final bool success = await taskController.handleCreateTask(
-        bodyFields: {
-          "taskType": taskType,
-          "title": titleNameController.text.trim(),
-          "department": selectedDepartment?.id,
-          "priority": selectedPriority.toLowerCase(),
-          "assignees": jsonEncode(selectedAssignees),
-          "reportingTo": jsonEncode(selectedReportingList),
-          "reportingTime": {
-            "time": dueTimeController.text.trim(),
-            "period": dueSelectedAmPm,
-          },
-          "description": descriptionController.text.trim(),
-
-          "timePeriod": selectedRepeatType.toLowerCase(),
-          "everyN": timePeriodCount,
-          "daysOfWeek": selectedWeekdays,
-          "rangeStart": startDateController.text,
-          "endType": selectedEndType,
-          "endByDate": endDateController.text,
-          "endAfterCount": occurrencesCount,
-
-          "proofTypes": selectedProofTypes,
-          "aiValidationEnabled": selectedProofRadioType == "Yes" ? true : false,
+      final Map<String, dynamic> formData = {
+        "taskType": taskType,
+        "title": titleNameController.text.trim(),
+        "department": selectedDepartment?.id,
+        "priority": selectedPriority.toLowerCase(),
+        "assignees": jsonEncode(selectedAssignees),
+        "reportingTo": jsonEncode(selectedReportingList),
+        "reportingTime": {
+          "time": dueTimeController.text.trim(),
+          "period": dueSelectedAmPm,
         },
+        "description": descriptionController.text.trim(),
+
+        "timePeriod": selectedRepeatType.toLowerCase(),
+        "everyN": timePeriodCount,
+        "rangeStart": DateTime(
+          int.parse(startDateController.text.split('-')[2]),
+          int.parse(startDateController.text.split('-')[1]),
+          int.parse(startDateController.text.split('-')[0]),
+        ).toString().split(' ')[0],
+
+        "endType": selectedEndType,
+      };
+
+      if (selectedRepeatType.toLowerCase() == 'weekly') {
+        // formData['daysOfWeek'] = jsonEncode(selectedWeekdays);
+
+        // insert into formdata
+        formData['daysOfWeek'] = jsonEncode(
+          selectedWeekdays.map((day) => day.toLowerCase()).toList(),
+        );
+      }
+
+      if (selectedEndType == 'end_by') {
+        print('end by active');
+        // formData['endByDate'] = endDateController.text;
+        formData['endByDate'] = DateTime(
+          int.parse(endDateController.text.split('-')[2]),
+          int.parse(endDateController.text.split('-')[1]),
+          int.parse(endDateController.text.split('-')[0]),
+        ).toString().split(' ')[0];
+      } else if (selectedEndType == 'end_after') {
+        formData['endAfterCount'] = occurrencesCount;
+      }
+
+      print('Form Data');
+      print(formData);
+
+      if (isProofEnabled) {
+        formData['proofTypes'] = selectedProofTypes;
+        formData["aiValidationEnabled"] = selectedProofRadioType == "Yes"
+            ? true
+            : false;
+      }
+
+      final bool success = await taskController.handleCreateTask(
+        bodyFields: formData,
 
         // files:
         //     selectedFiles, // Pass the list of file paths to the repository for upload handling
@@ -2593,11 +2625,10 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                           SizedBox(width: 10.w),
 
                                           // End Date / Occurrences
-                                          if (selectedEndType != "No end date")
+                                          if (selectedEndType != "no_end")
                                             Expanded(
                                               child:
-                                                  selectedEndType ==
-                                                      "End after:"
+                                                  selectedEndType == "end_after"
                                                   ? Column(
                                                       crossAxisAlignment:
                                                           CrossAxisAlignment
@@ -2756,7 +2787,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                                               return null;
                                                             }
                                                             if (selectedEndType ==
-                                                                    "End by :" &&
+                                                                    "end_by" &&
                                                                 (v == null ||
                                                                     v
                                                                         .trim()
@@ -2781,15 +2812,15 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                         children: [
                                           _buildEndRepeatOption(
                                             "End by :",
-                                            "End by :",
+                                            "end_by",
                                           ),
                                           _buildEndRepeatOption(
                                             "End after:",
-                                            "End after:",
+                                            "end_after",
                                           ),
                                           _buildEndRepeatOption(
                                             "No end date",
-                                            "No end date",
+                                            "no_end",
                                           ),
                                         ],
                                       ),
@@ -2868,14 +2899,14 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                         spacing: 14.w,
                                         runSpacing: 10.h,
                                         children: [
-                                          _buildProofOption("Image", "Image"),
-                                          _buildProofOption("Video", "Video"),
+                                          _buildProofOption("Image", "image"),
+                                          _buildProofOption("Video", "video"),
                                           _buildProofOption(
                                             "Recording",
-                                            "Recording",
+                                            "recording",
                                           ),
-                                          _buildProofOption("Pdf", "Pdf"),
-                                          _buildProofOption("Doc", "Doc"),
+                                          _buildProofOption("Pdf", "pdf"),
+                                          _buildProofOption("Doc", "doc"),
                                         ],
                                       ),
                                       if (_proofTypeError != null)
@@ -3030,14 +3061,25 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                     borderRadius: BorderRadius.circular(8.r),
                                   ),
                                 ),
-                                child: Text(
-                                  "Save Changes",
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12.sp,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                ),
+                                child: taskController.isLoading
+                                    ? SizedBox(
+                                        width: 16.w,
+                                        height: 16.w,
+                                        child: const CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation(
+                                            Colors.white,
+                                          ),
+                                        ),
+                                      )
+                                    : Text(
+                                        "Save Changes",
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12.sp,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                      ),
                               ),
                             ),
                           ],
