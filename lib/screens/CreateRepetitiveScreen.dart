@@ -1,3 +1,7 @@
+// ignore_for_file: curly_braces_in_flow_control_structures
+
+import 'dart:convert';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -6,6 +10,12 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
+import 'package:taskalert_app/core/features/departments/controllers/department_controller.dart';
+import 'package:taskalert_app/core/features/departments/data/models/department_model.dart';
+import 'package:taskalert_app/core/features/employees/controllers/employee_controller.dart';
+import 'package:taskalert_app/core/features/employees/data/models/employee_model.dart';
+import 'package:taskalert_app/core/features/tasks/controllers/task_controller.dart';
+import 'package:taskalert_app/utils/injection_container.dart';
 
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
@@ -42,18 +52,19 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
   String? _proofToggleError;
 
   // ── Department (searchable single-select) ─────────────────────────────────
-  String selectedDepartment = "Select Department";
+  DepartmentModel? selectedDepartment;
   String? _departmentError;
-  final List<String> _departmentItems = [
-    "Retail",
-    "Marketing",
-    "Sales",
-    "Finance",
-    "HR",
-    "Operations",
-    "IT",
-    "Legal",
-  ];
+  // String selectedDepartment = "Select Department";
+  // final List<String> _departmentItems = [
+  //   "Retail",
+  //   "Marketing",
+  //   "Sales",
+  //   "Finance",
+  //   "HR",
+  //   "Operations",
+  //   "IT",
+  //   "Legal",
+  // ];
 
   // ── Assign To (multi-select) ──────────────────────────────────────────────
   final List<Map<String, String>> _allUsers = [
@@ -80,18 +91,16 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
   List<String> selectedWeekdays = [];
 
   void _showReportingToBottomSheet(BuildContext context) {
-    List<String> tempSelected = selectedReporting == "Select User"
-        ? []
-        : [selectedReporting];
+    // ── Grab real data from your controller ──
+    final realEmployees = employeeController.employees
+        .where((e) => e.id != widget.userId)
+        .toList(); // Exclude self from reporting list
 
-    final List<Map<String, String>> _reportingUsers = [
-      {"name": "Manager", "role": "Senior Management"},
-      {"name": "Team Lead", "role": "Team Leadership"},
-      {"name": "Director", "role": "Executive"},
-      {"name": "HR", "role": "Human Resources"},
-    ];
+    // Use list of IDs for selection tracking instead of static names
+    List<String> tempSelected = List.from(selectedReportingList);
 
-    List<Map<String, String>> filtered = List.from(_reportingUsers);
+    // Initialize your filter list with the real employees list
+    List<dynamic> filtered = List.from(realEmployees);
 
     showModalBottomSheet(
       context: context,
@@ -172,17 +181,17 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                       ],
                       SizedBox(height: 10.h),
 
-                      // Search
+                      // Search Input field
                       TextField(
                         autofocus: false,
                         onChanged: (val) => ss(() {
-                          filtered = _reportingUsers
+                          filtered = realEmployees
                               .where(
                                 (u) =>
-                                    u["name"]!.toLowerCase().contains(
+                                    u.fullName.toLowerCase().contains(
                                       val.toLowerCase().trim(),
                                     ) ||
-                                    u["role"]!.toLowerCase().contains(
+                                    (u.fullName).toLowerCase().contains(
                                       val.toLowerCase().trim(),
                                     ),
                               )
@@ -235,7 +244,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                   ),
                 ),
 
-                // User list
+                // Dynamic User List
                 Flexible(
                   child: filtered.isEmpty
                       ? Padding(
@@ -260,15 +269,17 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                           ),
                           itemBuilder: (_, i) {
                             final user = filtered[i];
-                            final name = user["name"]!;
-                            final role = user["role"]!;
-                            final isChecked = tempSelected.contains(name);
+                            final id = user.id;
+                            final name = user.fullName;
+                            final role = user.jobRole ?? "Employee";
+                            final isChecked = tempSelected.contains(id);
+
                             return InkWell(
                               borderRadius: BorderRadius.circular(8.r),
                               onTap: () => ss(
                                 () => isChecked
-                                    ? tempSelected.remove(name)
-                                    : tempSelected.add(name),
+                                    ? tempSelected.remove(id)
+                                    : tempSelected.add(id),
                               ),
                               child: Padding(
                                 padding: EdgeInsets.symmetric(vertical: 10.h),
@@ -280,7 +291,9 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                           ? const Color(0xFF0A0258)
                                           : const Color(0xFFEEF0FF),
                                       child: Text(
-                                        name[0].toUpperCase(),
+                                        name.isNotEmpty
+                                            ? name[0].toUpperCase()
+                                            : "?",
                                         style: GoogleFonts.inter(
                                           fontSize: 13.sp,
                                           fontWeight: FontWeight.w700,
@@ -396,9 +409,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                   selectedReportingList = List.from(
                                     tempSelected,
                                   );
-                                  selectedReporting = tempSelected.isEmpty
-                                      ? "Select User"
-                                      : tempSelected.join(", ");
                                   if (tempSelected.isNotEmpty) {
                                     _reportingToError = null;
                                   }
@@ -439,6 +449,376 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     );
   }
 
+  // void _showReportingToBottomSheet(BuildContext context) {
+  //   final realEmployees = employeeController.employees
+  //       .where((e) => e.id != widget.userId)
+  //       .toList();
+
+  //   // Use list of IDs for selection tracking instead of static names
+  //   List<String> tempSelected = List.from(selectedReportingList);
+
+  //   // Initialize your filter list with the real employees list
+  //   List<dynamic> filtered = List.from(realEmployees);
+
+  //   // List<String> tempSelected = selectedReporting == "Select User"
+  //   //     ? []
+  //   //     : [selectedReporting];
+
+  //   // // final List<Map<String, String>> _reportingUsers = [
+  //   // //   {"name": "Manager", "role": "Senior Management"},
+  //   // //   {"name": "Team Lead", "role": "Team Leadership"},
+  //   // //   {"name": "Director", "role": "Executive"},
+  //   // //   {"name": "HR", "role": "Human Resources"},
+  //   // // ];
+
+  //   // List<Map<String, String>> filtered = List.from(rea);
+
+  //   showModalBottomSheet(
+  //     context: context,
+  //     backgroundColor: Colors.transparent,
+  //     isScrollControlled: true,
+  //     useRootNavigator: true,
+  //     builder: (_) => StatefulBuilder(
+  //       builder: (ctx, ss) => Padding(
+  //         padding: EdgeInsets.only(
+  //           bottom: MediaQuery.of(ctx).viewInsets.bottom,
+  //         ),
+  //         child: Container(
+  //           constraints: BoxConstraints(
+  //             maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+  //           ),
+  //           decoration: BoxDecoration(
+  //             color: Colors.white,
+  //             borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+  //             boxShadow: [
+  //               BoxShadow(
+  //                 color: Colors.black.withOpacity(0.12),
+  //                 blurRadius: 10.r,
+  //                 offset: const Offset(0, -2),
+  //               ),
+  //             ],
+  //           ),
+  //           child: Column(
+  //             mainAxisSize: MainAxisSize.min,
+  //             children: [
+  //               // Handle bar
+  //               Container(
+  //                 margin: EdgeInsets.only(top: 10.h),
+  //                 width: 36.w,
+  //                 height: 4.h,
+  //                 decoration: BoxDecoration(
+  //                   color: const Color(0xFFD9DEE5),
+  //                   borderRadius: BorderRadius.circular(4.r),
+  //                 ),
+  //               ),
+
+  //               Padding(
+  //                 padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 0),
+  //                 child: Column(
+  //                   crossAxisAlignment: CrossAxisAlignment.start,
+  //                   children: [
+  //                     // Header
+  //                     Row(
+  //                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //                       children: [
+  //                         Text(
+  //                           "Reporting To",
+  //                           style: GoogleFonts.inter(
+  //                             fontSize: 14.sp,
+  //                             fontWeight: FontWeight.w700,
+  //                             color: const Color(0xFF0A0258),
+  //                           ),
+  //                         ),
+  //                         GestureDetector(
+  //                           onTap: () => Navigator.pop(ctx),
+  //                           child: Icon(
+  //                             Icons.close,
+  //                             size: 20.r,
+  //                             color: const Color(0xFF6C7278),
+  //                           ),
+  //                         ),
+  //                       ],
+  //                     ),
+  //                     if (tempSelected.isNotEmpty) ...[
+  //                       SizedBox(height: 4.h),
+  //                       Text(
+  //                         "${tempSelected.length} selected",
+  //                         style: GoogleFonts.inter(
+  //                           fontSize: 11.sp,
+  //                           color: const Color(0xFF4338CA),
+  //                           fontWeight: FontWeight.w500,
+  //                         ),
+  //                       ),
+  //                     ],
+  //                     SizedBox(height: 10.h),
+
+  //                     // Search
+  //                     TextField(
+  //                       autofocus: false,
+  //                       onChanged: (val) => ss(() {
+  //                         filtered = _reportingUsers
+  //                             .where(
+  //                               (u) =>
+  //                                   u["name"]!.toLowerCase().contains(
+  //                                     val.toLowerCase().trim(),
+  //                                   ) ||
+  //                                   u["role"]!.toLowerCase().contains(
+  //                                     val.toLowerCase().trim(),
+  //                                   ),
+  //                             )
+  //                             .toList();
+  //                       }),
+  //                       style: GoogleFonts.inter(
+  //                         fontSize: 12.sp,
+  //                         color: const Color(0xFF344054),
+  //                       ),
+  //                       decoration: InputDecoration(
+  //                         isDense: true,
+  //                         hintText: "Search by name or role...",
+  //                         hintStyle: GoogleFonts.inter(
+  //                           fontSize: 12.sp,
+  //                           color: const Color(0xFFB8BEC5),
+  //                         ),
+  //                         prefixIcon: Icon(
+  //                           CupertinoIcons.search,
+  //                           size: 16.r,
+  //                           color: const Color(0xFF4338CA),
+  //                         ),
+  //                         filled: true,
+  //                         fillColor: const Color(0xFFF9FAFC),
+  //                         contentPadding: EdgeInsets.symmetric(
+  //                           horizontal: 10.w,
+  //                           vertical: 10.h,
+  //                         ),
+  //                         border: OutlineInputBorder(
+  //                           borderRadius: BorderRadius.circular(8.r),
+  //                           borderSide: const BorderSide(
+  //                             color: Color(0xFFD9DEE5),
+  //                           ),
+  //                         ),
+  //                         enabledBorder: OutlineInputBorder(
+  //                           borderRadius: BorderRadius.circular(8.r),
+  //                           borderSide: const BorderSide(
+  //                             color: Color(0xFFD9DEE5),
+  //                           ),
+  //                         ),
+  //                         focusedBorder: OutlineInputBorder(
+  //                           borderRadius: BorderRadius.circular(8.r),
+  //                           borderSide: const BorderSide(
+  //                             color: Color(0xFF0A0258),
+  //                           ),
+  //                         ),
+  //                       ),
+  //                     ),
+  //                     SizedBox(height: 8.h),
+  //                   ],
+  //                 ),
+  //               ),
+
+  //               // User list
+  //               Flexible(
+  //                 child: filtered.isEmpty
+  //                     ? Padding(
+  //                         padding: EdgeInsets.symmetric(vertical: 24.h),
+  //                         child: Center(
+  //                           child: Text(
+  //                             "No users found",
+  //                             style: GoogleFonts.inter(
+  //                               fontSize: 12.sp,
+  //                               color: const Color(0xFF9AA0AB),
+  //                             ),
+  //                           ),
+  //                         ),
+  //                       )
+  //                     : ListView.separated(
+  //                         shrinkWrap: true,
+  //                         padding: EdgeInsets.symmetric(horizontal: 16.w),
+  //                         itemCount: filtered.length,
+  //                         separatorBuilder: (_, __) => const Divider(
+  //                           height: 1,
+  //                           color: Color(0xFFE4E7EC),
+  //                         ),
+  //                         itemBuilder: (_, i) {
+  //                           final user = filtered[i];
+  //                           final name = user["name"]!;
+  //                           final role = user["role"]!;
+  //                           final isChecked = tempSelected.contains(name);
+  //                           return InkWell(
+  //                             borderRadius: BorderRadius.circular(8.r),
+  //                             onTap: () => ss(
+  //                               () => isChecked
+  //                                   ? tempSelected.remove(name)
+  //                                   : tempSelected.add(name),
+  //                             ),
+  //                             child: Padding(
+  //                               padding: EdgeInsets.symmetric(vertical: 10.h),
+  //                               child: Row(
+  //                                 children: [
+  //                                   CircleAvatar(
+  //                                     radius: 18.r,
+  //                                     backgroundColor: isChecked
+  //                                         ? const Color(0xFF0A0258)
+  //                                         : const Color(0xFFEEF0FF),
+  //                                     child: Text(
+  //                                       name[0].toUpperCase(),
+  //                                       style: GoogleFonts.inter(
+  //                                         fontSize: 13.sp,
+  //                                         fontWeight: FontWeight.w700,
+  //                                         color: isChecked
+  //                                             ? Colors.white
+  //                                             : const Color(0xFF4338CA),
+  //                                       ),
+  //                                     ),
+  //                                   ),
+  //                                   SizedBox(width: 10.w),
+  //                                   Expanded(
+  //                                     child: Column(
+  //                                       crossAxisAlignment:
+  //                                           CrossAxisAlignment.start,
+  //                                       children: [
+  //                                         Text(
+  //                                           name,
+  //                                           style: GoogleFonts.inter(
+  //                                             fontSize: 13.sp,
+  //                                             fontWeight: isChecked
+  //                                                 ? FontWeight.w600
+  //                                                 : FontWeight.w400,
+  //                                             color: const Color(0xFF1D2939),
+  //                                           ),
+  //                                         ),
+  //                                         SizedBox(height: 2.h),
+  //                                         Text(
+  //                                           role,
+  //                                           style: GoogleFonts.inter(
+  //                                             fontSize: 11.sp,
+  //                                             color: const Color(0xFF9AA0AB),
+  //                                           ),
+  //                                         ),
+  //                                       ],
+  //                                     ),
+  //                                   ),
+  //                                   AnimatedContainer(
+  //                                     duration: const Duration(
+  //                                       milliseconds: 200,
+  //                                     ),
+  //                                     width: 20.w,
+  //                                     height: 20.h,
+  //                                     decoration: BoxDecoration(
+  //                                       color: isChecked
+  //                                           ? const Color(0xFF0A0258)
+  //                                           : Colors.transparent,
+  //                                       borderRadius: BorderRadius.circular(
+  //                                         5.r,
+  //                                       ),
+  //                                       border: Border.all(
+  //                                         color: isChecked
+  //                                             ? const Color(0xFF0A0258)
+  //                                             : const Color(0xFFD9DEE5),
+  //                                         width: 1.5,
+  //                                       ),
+  //                                     ),
+  //                                     child: isChecked
+  //                                         ? Icon(
+  //                                             Icons.check,
+  //                                             size: 13.r,
+  //                                             color: Colors.white,
+  //                                           )
+  //                                         : null,
+  //                                   ),
+  //                                 ],
+  //                               ),
+  //                             ),
+  //                           );
+  //                         },
+  //                       ),
+  //               ),
+
+  //               // Action buttons
+  //               SafeArea(
+  //                 top: false,
+  //                 child: Padding(
+  //                   padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 16.h),
+  //                   child: Row(
+  //                     children: [
+  //                       Expanded(
+  //                         child: OutlinedButton(
+  //                           onPressed: () => ss(() => tempSelected.clear()),
+  //                           style: OutlinedButton.styleFrom(
+  //                             side: const BorderSide(color: Color(0xFFD9DEE5)),
+  //                             shape: RoundedRectangleBorder(
+  //                               borderRadius: BorderRadius.circular(8.r),
+  //                             ),
+  //                             padding: EdgeInsets.symmetric(vertical: 10.h),
+  //                           ),
+  //                           child: Text(
+  //                             "Clear All",
+  //                             style: GoogleFonts.inter(
+  //                               fontSize: 12.sp,
+  //                               fontWeight: FontWeight.w500,
+  //                               color: const Color(0xFF667085),
+  //                             ),
+  //                           ),
+  //                         ),
+  //                       ),
+  //                       SizedBox(width: 10.w),
+  //                       Expanded(
+  //                         flex: 2,
+  //                         child: Container(
+  //                           decoration: BoxDecoration(
+  //                             borderRadius: BorderRadius.circular(8.r),
+  //                             gradient: const LinearGradient(
+  //                               colors: [Color(0xFF0A0258), Color(0xFF4338CA)],
+  //                             ),
+  //                           ),
+  //                           child: ElevatedButton(
+  //                             onPressed: () {
+  //                               setState(() {
+  //                                 selectedReportingList = List.from(
+  //                                   tempSelected,
+  //                                 );
+  //                                 selectedReporting = tempSelected.isEmpty
+  //                                     ? "Select User"
+  //                                     : tempSelected.join(", ");
+  //                                 if (tempSelected.isNotEmpty) {
+  //                                   _reportingToError = null;
+  //                                 }
+  //                               });
+  //                               Navigator.pop(ctx);
+  //                             },
+  //                             style: ElevatedButton.styleFrom(
+  //                               elevation: 0,
+  //                               backgroundColor: Colors.transparent,
+  //                               shadowColor: Colors.transparent,
+  //                               padding: EdgeInsets.symmetric(vertical: 10.h),
+  //                               shape: RoundedRectangleBorder(
+  //                                 borderRadius: BorderRadius.circular(8.r),
+  //                               ),
+  //                             ),
+  //                             child: Text(
+  //                               tempSelected.isEmpty
+  //                                   ? "Confirm"
+  //                                   : "Confirm (${tempSelected.length})",
+  //                               style: GoogleFonts.inter(
+  //                                 fontSize: 12.sp,
+  //                                 fontWeight: FontWeight.w600,
+  //                                 color: Colors.white,
+  //                               ),
+  //                             ),
+  //                           ),
+  //                         ),
+  //                       ),
+  //                     ],
+  //                   ),
+  //                 ),
+  //               ),
+  //             ],
+  //           ),
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
+
   bool isAssignmentEnabled = false;
   bool isProofEnabled = false;
 
@@ -476,6 +856,10 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
   int occurrencesCount = 1;
   int timePeriodCount = 1;
 
+  late final DepartmentController departmentController;
+  late final EmployeeController employeeController;
+  late final TaskController taskController;
+
   // ─────────────────────────────────────────────────────────────────────────
   @override
   void initState() {
@@ -489,6 +873,17 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
         "${now.month.toString().padLeft(2, '0')}-"
         "${now.year}";
     dueTimeController.text = "";
+
+    departmentController = sl<DepartmentController>();
+    employeeController = sl<EmployeeController>();
+    taskController = sl<TaskController>();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // ✅ Use GetIt directly if your project isn't using the Provider package
+      departmentController.handleGetDepartments();
+
+      employeeController.handleGetEmployees(organizationId: '');
+    });
   }
 
   @override
@@ -521,7 +916,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       setState(() => _weekdayError = null);
     }
 
-    if (selectedDepartment == "Select Department") {
+    if (selectedDepartment == null) {
       setState(() => _departmentError = "Please select department");
       valid = false;
     } else {
@@ -529,6 +924,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     }
 
     if (selectedReportingList.isEmpty) {
+      print('selectedReportingList: $selectedReportingList');
       setState(() => _reportingToError = "Please select a user");
       valid = false;
     } else {
@@ -563,12 +959,12 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     }
 
     if (isAssignmentEnabled) {
-      if (selectedReporting == "Select User") {
-        setState(() => _reportingToError = "Please select a user");
-        valid = false;
-      } else {
-        setState(() => _reportingToError = null);
-      }
+      // if (selectedReporting == "Select User") {
+      //   setState(() => _reportingToError = "Please select a user");
+      //   valid = false;
+      // } else {
+      //   setState(() => _reportingToError = null);
+      // }
       if (selectedRepeatType.isEmpty) {
         setState(() => _repeatTypeError = "Please select a time period");
         valid = false;
@@ -620,7 +1016,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     return valid;
   }
 
-  void _submitForm() {
+  void _submitForm() async {
     setState(() => _autoValidate = true);
     final formValid = _formKey.currentState!.validate();
     final sectionsValid = _validateSections();
@@ -640,17 +1036,130 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       );
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          "Form submitted successfully!",
-          style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
+
+    print("Form is valid! Proceed with submission...");
+    print("Title: ${titleNameController.text}");
+    print("Department: $selectedDepartment");
+    print("Priority: $selectedPriority");
+    print("Assign To: $selectedAssignees");
+    print("Reporting To: $selectedReportingList");
+    print('Repoting time: ${dueTimeController.text} $dueSelectedAmPm');
+    print('Description: ${descriptionController.text}');
+
+    print("Repeat Type: $selectedRepeatType");
+    print("Time Period Count: $timePeriodCount");
+    print("Selected Weekdays: $selectedWeekdays");
+    print("start date: ${startDateController.text}");
+    print("End Type: $selectedEndType");
+    if (selectedEndType == "End by :") {
+      print("End Date: ${endDateController.text}");
+    } else {
+      print("Occurrences: $occurrencesCount");
+    }
+
+    print("Ai enabled: $isProofEnabled");
+    print("Proof Type: $selectedProofType");
+    if (selectedProofType.isNotEmpty) {
+      print("AI Validation: $selectedProofRadioType");
+    }
+    // print("Selected Files: $selectedFiles");
+
+    if (_validateSections() && _formKey.currentState!.validate()) {
+      taskController.clearMessages();
+
+      final String taskType = 'repetitive';
+
+      final bool success = await taskController.handleCreateTask(
+        bodyFields: {
+          "taskType": taskType,
+          "title": titleNameController.text.trim(),
+          "department": selectedDepartment?.id,
+          "priority": selectedPriority.toLowerCase(),
+          "assignees": jsonEncode(selectedAssignees),
+          "reportingTo": jsonEncode(selectedReportingList),
+          "reportingTime": {
+            "time": dueTimeController.text.trim(),
+            "period": dueSelectedAmPm,
+          },
+          "description": descriptionController.text.trim(),
+
+          "timePeriod": selectedRepeatType.toLowerCase(),
+          "everyN": timePeriodCount,
+          "daysOfWeek": selectedWeekdays,
+          "rangeStart": startDateController.text,
+          "endType": selectedEndType,
+          "endByDate": endDateController.text,
+          "endAfterCount": occurrencesCount,
+
+          "proofTypes": selectedProofType,
+          "aiValidationEnabled": selectedProofRadioType == "Yes" ? true : false,
+        },
+
+        // files:
+        //     selectedFiles, // Pass the list of file paths to the repository for upload handling
+      );
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Task created successfully!",
+              style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFF0DA99E),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8.r),
+            ),
+          ),
+        );
+        Navigator.pop(
+          context,
+        ); // Go back to previous screen after successful creation
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              taskController.errorMessage ?? "Failed to create task",
+              style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8.r),
+            ),
+          ),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Please fill all required fields and enable all sections.",
+            style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8.r),
+          ),
         ),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
-      ),
-    );
+      );
+    }
+
+    // print("Selected AI Proof Type: $")
+
+    // ScaffoldMessenger.of(context).showSnackBar(
+    //   SnackBar(
+    //     content: Text(
+    //       "Form submitted successfully!",
+    //       style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
+    //     ),
+    //     backgroundColor: Colors.green,
+    //     behavior: SnackBarBehavior.floating,
+    //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+    //   ),
+    // );
   }
 
   // ── FILE PICKER ────────────────────────────────────────────────────────────
@@ -809,6 +1318,9 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     }
   }
 
+  // TextEditingController? get descriptionController => null;
+  final descriptionController = TextEditingController();
+
   // ── BUILD ──────────────────────────────────────────────────────────────────
 
   @override
@@ -894,21 +1406,29 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                               // Department
                               _buildLabel("Department"),
                               SizedBox(height: 3.h),
+
                               _buildSearchableDropdownField(
-                                value: selectedDepartment,
+                                // If a department is selected, display its real name, otherwise display your placeholder hint
+                                value:
+                                    selectedDepartment?.name ??
+                                    "Select Department",
                                 hint: "Select Department",
-                                errorText: _departmentError,
+
                                 onTap: () => _showSearchableBottomSheet(
                                   context: context,
                                   title: "Select Department",
-                                  items: _departmentItems,
                                   selectedValue: selectedDepartment,
-                                  onSelected: (v) => setState(() {
-                                    selectedDepartment = v;
-                                    _departmentError = null;
-                                  }),
+                                  onSelected:
+                                      (DepartmentModel departmentModel) {
+                                        setState(() {
+                                          selectedDepartment = departmentModel;
+                                          _departmentError = null;
+                                        });
+                                      },
                                 ),
+                                errorText: _departmentError,
                               ),
+
                               if (_departmentError != null)
                                 Padding(
                                   padding: EdgeInsets.only(top: 4.h, left: 4.w),
@@ -921,6 +1441,32 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                   ),
                                 ),
 
+                              // _buildSearchableDropdownField(
+                              //   value: selectedDepartment,
+                              //   hint: "Select Department",
+                              //   errorText: _departmentError,
+                              //   onTap: () => _showSearchableBottomSheet(
+                              //     context: context,
+                              //     title: "Select Department",
+                              //     items: _departmentItems,
+                              //     selectedValue: selectedDepartment,
+                              //     onSelected: (v) => setState(() {
+                              //       selectedDepartment = v;
+                              //       _departmentError = null;
+                              //     }),
+                              //   ),
+                              // ),
+                              // if (_departmentError != null)
+                              //   Padding(
+                              //     padding: EdgeInsets.only(top: 4.h, left: 4.w),
+                              //     child: Text(
+                              //       _departmentError!,
+                              //       style: GoogleFonts.inter(
+                              //         color: Colors.red,
+                              //         fontSize: 10.sp,
+                              //       ),
+                              //     ),
+                              //   ),
                               SizedBox(height: 8.h),
 
                               // Priority
@@ -1028,8 +1574,18 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                               // Assign To (multi-select)
                               _buildLabel("Assign To"),
                               SizedBox(height: 3.h),
+
                               GestureDetector(
-                                onTap: () => _showAssignToBottomSheet(context),
+                                onTap: () {
+                                  final activeEmployees = employeeController
+                                      .employees
+                                      .toList();
+
+                                  _showAssignToBottomSheet(
+                                    context,
+                                    activeEmployees,
+                                  );
+                                },
                                 child: Container(
                                   width: double.infinity,
                                   padding: EdgeInsets.symmetric(
@@ -1061,9 +1617,25 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                             : Wrap(
                                                 spacing: 6.w,
                                                 runSpacing: 6.h,
-                                                children: selectedAssignees
-                                                    .map(_assigneeChip)
-                                                    .toList(),
+                                                children: selectedAssignees.map((
+                                                  id,
+                                                ) {
+                                                  // Match selected IDs back to names for display chips
+                                                  final emp = employeeController
+                                                      .employees
+                                                      .firstWhere(
+                                                        (e) => e.id == id,
+                                                        orElse: () =>
+                                                            EmployeeModel(
+                                                              firstName:
+                                                                  "Unknown",
+                                                            ),
+                                                      );
+                                                  return _assigneeChip(
+                                                    id,
+                                                    emp.fullName,
+                                                  );
+                                                }).toList(),
                                               ),
                                       ),
                                       SizedBox(width: 6.w),
@@ -1076,6 +1648,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                   ),
                                 ),
                               ),
+
                               if (_assignToError != null)
                                 Padding(
                                   padding: EdgeInsets.only(top: 4.h, left: 4.w),
@@ -1088,11 +1661,71 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                   ),
                                 ),
 
+                              // GestureDetector(
+                              //   onTap: () => _showAssignToBottomSheet(context),
+                              //   child: Container(
+                              //     width: double.infinity,
+                              //     padding: EdgeInsets.symmetric(
+                              //       horizontal: 10.w,
+                              //       vertical: 10.h,
+                              //     ),
+                              //     decoration: BoxDecoration(
+                              //       color: const Color(0xFFF9FAFC),
+                              //       borderRadius: BorderRadius.circular(8.r),
+                              //       border: Border.all(
+                              //         color: _assignToError != null
+                              //             ? Colors.red
+                              //             : const Color(0xFFD9DEE5),
+                              //       ),
+                              //     ),
+                              //     child: Row(
+                              //       children: [
+                              //         Expanded(
+                              //           child: selectedAssignees.isEmpty
+                              //               ? Text(
+                              //                   "Select assignees...",
+                              //                   style: GoogleFonts.inter(
+                              //                     fontSize: 12.sp,
+                              //                     color: const Color(
+                              //                       0xFFB8BEC5,
+                              //                     ),
+                              //                   ),
+                              //                 )
+                              //               : Wrap(
+                              //                   spacing: 6.w,
+                              //                   runSpacing: 6.h,
+                              //                   children: selectedAssignees
+                              //                       .map(_assigneeChip)
+                              //                       .toList(),
+                              //                 ),
+                              //         ),
+                              //         SizedBox(width: 6.w),
+                              //         Icon(
+                              //           CupertinoIcons.person_add,
+                              //           size: 16.r,
+                              //           color: const Color(0xFF4338CA),
+                              //         ),
+                              //       ],
+                              //     ),
+                              //   ),
+                              // ),
+                              // if (_assignToError != null)
+                              //   Padding(
+                              //     padding: EdgeInsets.only(top: 4.h, left: 4.w),
+                              //     child: Text(
+                              //       _assignToError!,
+                              //       style: GoogleFonts.inter(
+                              //         color: Colors.red,
+                              //         fontSize: 10.sp,
+                              //       ),
+                              //     ),
+                              //   ),
                               SizedBox(height: 8.h),
 
                               // Reporting To
                               _buildLabel("Reporting To"),
                               SizedBox(height: 3.h),
+
                               GestureDetector(
                                 onTap: () =>
                                     _showReportingToBottomSheet(context),
@@ -1127,9 +1760,25 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                             : Wrap(
                                                 spacing: 6.w,
                                                 runSpacing: 6.h,
-                                                children: selectedReportingList
-                                                    .map(_reportingChip)
-                                                    .toList(),
+                                                children: selectedReportingList.map((
+                                                  id,
+                                                ) {
+                                                  // Match selected IDs back to names for display chips
+                                                  final emp = employeeController
+                                                      .employees
+                                                      .firstWhere(
+                                                        (e) => e.id == id,
+                                                        orElse: () =>
+                                                            EmployeeModel(
+                                                              firstName:
+                                                                  "Unknown",
+                                                            ),
+                                                      );
+                                                  return _reportingChip(
+                                                    id,
+                                                    emp.fullName,
+                                                  );
+                                                }).toList(),
                                               ),
                                       ),
                                       SizedBox(width: 6.w),
@@ -1154,9 +1803,68 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                   ),
                                 ),
 
+                              // GestureDetector(
+                              //   onTap: () =>
+                              //       _showReportingToBottomSheet(context),
+                              //   child: Container(
+                              //     width: double.infinity,
+                              //     padding: EdgeInsets.symmetric(
+                              //       horizontal: 10.w,
+                              //       vertical: 10.h,
+                              //     ),
+                              //     decoration: BoxDecoration(
+                              //       color: const Color(0xFFF9FAFC),
+                              //       borderRadius: BorderRadius.circular(8.r),
+                              //       border: Border.all(
+                              //         color: _reportingToError != null
+                              //             ? Colors.red
+                              //             : const Color(0xFFD9DEE5),
+                              //       ),
+                              //     ),
+                              //     child: Row(
+                              //       children: [
+                              //         Expanded(
+                              //           child: selectedReportingList.isEmpty
+                              //               ? Text(
+                              //                   "Select reporting user...",
+                              //                   style: GoogleFonts.inter(
+                              //                     fontSize: 12.sp,
+                              //                     color: const Color(
+                              //                       0xFFB8BEC5,
+                              //                     ),
+                              //                   ),
+                              //                 )
+                              //               : Wrap(
+                              //                   spacing: 6.w,
+                              //                   runSpacing: 6.h,
+                              //                   children: selectedReportingList
+                              //                       .map(_reportingChip)
+                              //                       .toList(),
+                              //                 ),
+                              //         ),
+                              //         SizedBox(width: 6.w),
+                              //         Icon(
+                              //           CupertinoIcons.person_add,
+                              //           size: 16.r,
+                              //           color: const Color(0xFF4338CA),
+                              //         ),
+                              //       ],
+                              //     ),
+                              //   ),
+                              // ),
+                              // if (_reportingToError != null)
+                              //   Padding(
+                              //     padding: EdgeInsets.only(top: 4.h, left: 4.w),
+                              //     child: Text(
+                              //       _reportingToError!,
+                              //       style: GoogleFonts.inter(
+                              //         color: Colors.red,
+                              //         fontSize: 10.sp,
+                              //       ),
+                              //     ),
+                              //   ),
                               SizedBox(height: 8.h),
 
-                              // Reporting Time
                               Row(
                                 children: [
                                   SizedBox(width: 6.w),
@@ -1174,8 +1882,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                               child: _buildTimeField(
                                                 controller: dueTimeController,
                                                 validator: (v) {
-                                                  if (!isAssignmentEnabled)
-                                                    return null;
+                                                  // Always required — not gated by isAssignmentEnabled
                                                   if (v == null ||
                                                       v.trim().isEmpty)
                                                     return "Select time";
@@ -1220,12 +1927,79 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                 ],
                               ),
 
+                              // // Reporting Time
+                              // Row(
+                              //   children: [
+                              //     SizedBox(width: 6.w),
+                              //     Expanded(
+                              //       child: Column(
+                              //         crossAxisAlignment:
+                              //             CrossAxisAlignment.start,
+                              //         children: [
+                              //           _buildLabel("Reporting Time"),
+                              //           SizedBox(height: 4.h),
+                              //           Row(
+                              //             children: [
+                              //               Expanded(
+                              //                 flex: 1,
+                              //                 child: _buildTimeField(
+                              //                   controller: dueTimeController,
+                              //                   validator: (v) {
+                              //                     if (!isAssignmentEnabled) {
+                              //                       return null;
+                              //                     }
+                              //                     if (v == null ||
+                              //                         v.trim().isEmpty) {
+                              //                       return "Select time";
+                              //                     }
+                              //                     return null;
+                              //                   },
+                              //                   onTap: () async {
+                              //                     final t = await _pickTime(
+                              //                       context,
+                              //                     );
+                              //                     if (t != null) {
+                              //                       setState(() {
+                              //                         dueTimeController.text =
+                              //                             "${t.hourOfPeriod.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
+                              //                         dueSelectedAmPm =
+                              //                             t.period ==
+                              //                                 DayPeriod.am
+                              //                             ? "AM"
+                              //                             : "PM";
+                              //                       });
+                              //                     }
+                              //                   },
+                              //                 ),
+                              //               ),
+                              //               SizedBox(width: 6.w),
+                              //               ConstrainedBox(
+                              //                 constraints: BoxConstraints(
+                              //                   minWidth: 70.w,
+                              //                   maxWidth: 90.w,
+                              //                 ),
+                              //                 child: _buildAmPmDropdown(
+                              //                   value: dueSelectedAmPm,
+                              //                   onChanged: (v) => setState(
+                              //                     () => dueSelectedAmPm = v!,
+                              //                   ),
+                              //                 ),
+                              //               ),
+                              //             ],
+                              //           ),
+                              //         ],
+                              //       ),
+                              //     ),
+                              //   ],
+                              // ),
                               SizedBox(height: 8.h),
 
                               // Description
                               _buildLabel("Description"),
                               SizedBox(height: 3.h),
                               TextFormField(
+                                controller: descriptionController,
+
                                 maxLines: 3,
                                 validator: (v) =>
                                     (v == null || v.trim().isEmpty)
@@ -1613,8 +2387,10 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                                     ),
                                                     GestureDetector(
                                                       onTap: () => setState(() {
-                                                        if (timePeriodCount > 1)
+                                                        if (timePeriodCount >
+                                                            1) {
                                                           timePeriodCount--;
+                                                        }
                                                       }),
                                                       child: Icon(
                                                         Icons
@@ -1767,11 +2543,13 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                                     ),
                                                   ),
                                                   validator: (v) {
-                                                    if (!isAssignmentEnabled)
+                                                    if (!isAssignmentEnabled) {
                                                       return null;
+                                                    }
                                                     if (v == null ||
-                                                        v.trim().isEmpty)
+                                                        v.trim().isEmpty) {
                                                       return "Select start date";
+                                                    }
                                                     return null;
                                                   },
                                                 ),
@@ -1868,12 +2646,12 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                                                     ),
                                                                   ),
                                                                   GestureDetector(
-                                                                    onTap: () =>
-                                                                        setState(() {
-                                                                          if (occurrencesCount >
-                                                                              1)
-                                                                            occurrencesCount--;
-                                                                        }),
+                                                                    onTap: () => setState(() {
+                                                                      if (occurrencesCount >
+                                                                          1) {
+                                                                        occurrencesCount--;
+                                                                      }
+                                                                    }),
                                                                     child: Icon(
                                                                       Icons
                                                                           .keyboard_arrow_down,
@@ -1940,15 +2718,17 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                                                 ),
                                                           ),
                                                           validator: (v) {
-                                                            if (!isAssignmentEnabled)
+                                                            if (!isAssignmentEnabled) {
                                                               return null;
+                                                            }
                                                             if (selectedEndType ==
                                                                     "End by :" &&
                                                                 (v == null ||
                                                                     v
                                                                         .trim()
-                                                                        .isEmpty))
+                                                                        .isEmpty)) {
                                                               return "Select end date";
+                                                            }
                                                             return null;
                                                           },
                                                         ),
@@ -2201,7 +2981,52 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     child: child,
   );
 
-  Widget _assigneeChip(String name) => Container(
+  // Widget _assigneeChip(String name) => Container(
+  //   padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+  //   decoration: BoxDecoration(
+  //     color: const Color(0xFFEEF0FF),
+  //     borderRadius: BorderRadius.circular(20.r),
+  //     border: Border.all(color: const Color(0xFF4338CA)),
+  //   ),
+  //   child: Row(
+  //     mainAxisSize: MainAxisSize.min,
+  //     children: [
+  //       CircleAvatar(
+  //         radius: 8.r,
+  //         backgroundColor: const Color(0xFF0A0258),
+  //         child: Text(
+  //           name[0].toUpperCase(),
+  //           style: GoogleFonts.inter(
+  //             fontSize: 8.sp,
+  //             color: Colors.white,
+  //             fontWeight: FontWeight.w700,
+  //           ),
+  //         ),
+  //       ),
+  //       SizedBox(width: 4.w),
+  //       Text(
+  //         name.split(" ").first,
+  //         style: GoogleFonts.inter(
+  //           fontSize: 11.sp,
+  //           color: const Color(0xFF0A0258),
+  //           fontWeight: FontWeight.w500,
+  //         ),
+  //       ),
+  //       SizedBox(width: 4.w),
+  //       GestureDetector(
+  //         onTap: () => setState(() {
+  //           selectedAssignees.remove(name);
+  //           if (selectedAssignees.isEmpty) {
+  //             _assignToError = "Please select at least one assignee";
+  //           }
+  //         }),
+  //         child: Icon(Icons.close, size: 11.r, color: const Color(0xFF4338CA)),
+  //       ),
+  //     ],
+  //   ),
+  // );
+
+  Widget _assigneeChip(String id, String name) => Container(
     padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
     decoration: BoxDecoration(
       color: const Color(0xFFEEF0FF),
@@ -2215,7 +3040,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
           radius: 8.r,
           backgroundColor: const Color(0xFF0A0258),
           child: Text(
-            name[0].toUpperCase(),
+            name.isNotEmpty ? name[0].toUpperCase() : "?",
             style: GoogleFonts.inter(
               fontSize: 8.sp,
               color: Colors.white,
@@ -2235,7 +3060,10 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
         SizedBox(width: 4.w),
         GestureDetector(
           onTap: () => setState(() {
-            selectedAssignees.remove(name);
+            // 🌟 2. Remove by ID, not by Name!
+            selectedAssignees.remove(id);
+
+            // 🌟 3. The error check will now correctly trigger when the list hits 0
             if (selectedAssignees.isEmpty) {
               _assignToError = "Please select at least one assignee";
             }
@@ -2923,194 +3751,538 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     );
   }
 
-  void _showSearchableBottomSheet({
-    required BuildContext context,
-    required String title,
-    required List<String> items,
-    required String selectedValue,
-    required ValueChanged<String> onSelected,
-  }) {
-    String query = "";
-    List<String> filtered = List.from(items);
+  // void _showSearchableBottomSheet({
+  //   required BuildContext context,
+  //   required String title,
+  //   required List<String> items,
+  //   required String selectedValue,
+  //   required ValueChanged<String> onSelected,
+  // }) {
+  //   String query = "";
+  //   List<String> filtered = List.from(items);
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      useRootNavigator: true,
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, ss) => Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          ),
-          child: Container(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(ctx).size.height * 0.6,
-            ),
-            padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 24.h),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.12),
-                  blurRadius: 10.r,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.inter(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF0A0258),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () => Navigator.pop(ctx),
-                      child: Icon(
-                        Icons.close,
-                        size: 20.r,
-                        color: const Color(0xFF6C7278),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 12.h),
-                TextField(
-                  autofocus: true,
-                  onChanged: (val) => ss(() {
-                    query = val;
-                    filtered = items
-                        .where(
-                          (e) => e.toLowerCase().contains(
-                            val.toLowerCase().trim(),
-                          ),
-                        )
-                        .toList();
-                  }),
-                  style: GoogleFonts.inter(
-                    fontSize: 12.sp,
-                    color: const Color(0xFF344054),
-                  ),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    hintText: "Search...",
-                    hintStyle: GoogleFonts.inter(
-                      fontSize: 12.sp,
-                      color: const Color(0xFFB8BEC5),
-                    ),
-                    prefixIcon: Icon(
-                      CupertinoIcons.search,
-                      size: 16.r,
-                      color: const Color(0xFF4338CA),
-                    ),
-                    filled: true,
-                    fillColor: const Color(0xFFF9FAFC),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 10.w,
-                      vertical: 10.h,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.r),
-                      borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.r),
-                      borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.r),
-                      borderSide: const BorderSide(color: Color(0xFF0A0258)),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 8.h),
-                Flexible(
-                  child: filtered.isEmpty
-                      ? Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24.h),
-                          child: Center(
-                            child: Text(
-                              "No results found",
-                              style: GoogleFonts.inter(
-                                fontSize: 12.sp,
-                                color: const Color(0xFF9AA0AB),
-                              ),
-                            ),
-                          ),
-                        )
-                      : ListView.separated(
-                          shrinkWrap: true,
-                          itemCount: filtered.length,
-                          separatorBuilder: (_, __) => const Divider(
-                            height: 1,
-                            color: Color(0xFFE4E7EC),
-                          ),
-                          itemBuilder: (_, i) {
-                            final item = filtered[i];
-                            final isSel = item == selectedValue;
-                            return InkWell(
-                              borderRadius: BorderRadius.circular(8.r),
-                              onTap: () {
-                                onSelected(item);
-                                Navigator.pop(ctx);
-                              },
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 4.w,
-                                  vertical: 12.h,
-                                ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        item,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 13.sp,
-                                          fontWeight: isSel
-                                              ? FontWeight.w600
-                                              : FontWeight.w400,
-                                          color: isSel
-                                              ? const Color(0xFF0A0258)
-                                              : const Color(0xFF344054),
-                                        ),
-                                      ),
-                                    ),
-                                    if (isSel)
-                                      Icon(
-                                        Icons.check,
-                                        size: 16.r,
-                                        color: const Color(0xFF0A0258),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  //   showModalBottomSheet(
+  //     context: context,
+  //     backgroundColor: Colors.transparent,
+  //     isScrollControlled: true,
+  //     useRootNavigator: true,
+  //     builder: (_) => StatefulBuilder(
+  //       builder: (ctx, ss) => Padding(
+  //         padding: EdgeInsets.only(
+  //           bottom: MediaQuery.of(ctx).viewInsets.bottom,
+  //         ),
+  //         child: Container(
+  //           constraints: BoxConstraints(
+  //             maxHeight: MediaQuery.of(ctx).size.height * 0.6,
+  //           ),
+  //           padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 24.h),
+  //           decoration: BoxDecoration(
+  //             color: Colors.white,
+  //             borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+  //             boxShadow: [
+  //               BoxShadow(
+  //                 color: Colors.black.withOpacity(0.12),
+  //                 blurRadius: 10.r,
+  //                 offset: const Offset(0, -2),
+  //               ),
+  //             ],
+  //           ),
+  //           child: Column(
+  //             mainAxisSize: MainAxisSize.min,
+  //             crossAxisAlignment: CrossAxisAlignment.start,
+  //             children: [
+  //               Row(
+  //                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //                 children: [
+  //                   Text(
+  //                     title,
+  //                     style: GoogleFonts.inter(
+  //                       fontSize: 14.sp,
+  //                       fontWeight: FontWeight.w700,
+  //                       color: const Color(0xFF0A0258),
+  //                     ),
+  //                   ),
+  //                   GestureDetector(
+  //                     onTap: () => Navigator.pop(ctx),
+  //                     child: Icon(
+  //                       Icons.close,
+  //                       size: 20.r,
+  //                       color: const Color(0xFF6C7278),
+  //                     ),
+  //                   ),
+  //                 ],
+  //               ),
+  //               SizedBox(height: 12.h),
+  //               TextField(
+  //                 autofocus: true,
+  //                 onChanged: (val) => ss(() {
+  //                   query = val;
+  //                   filtered = items
+  //                       .where(
+  //                         (e) => e.toLowerCase().contains(
+  //                           val.toLowerCase().trim(),
+  //                         ),
+  //                       )
+  //                       .toList();
+  //                 }),
+  //                 style: GoogleFonts.inter(
+  //                   fontSize: 12.sp,
+  //                   color: const Color(0xFF344054),
+  //                 ),
+  //                 decoration: InputDecoration(
+  //                   isDense: true,
+  //                   hintText: "Search...",
+  //                   hintStyle: GoogleFonts.inter(
+  //                     fontSize: 12.sp,
+  //                     color: const Color(0xFFB8BEC5),
+  //                   ),
+  //                   prefixIcon: Icon(
+  //                     CupertinoIcons.search,
+  //                     size: 16.r,
+  //                     color: const Color(0xFF4338CA),
+  //                   ),
+  //                   filled: true,
+  //                   fillColor: const Color(0xFFF9FAFC),
+  //                   contentPadding: EdgeInsets.symmetric(
+  //                     horizontal: 10.w,
+  //                     vertical: 10.h,
+  //                   ),
+  //                   border: OutlineInputBorder(
+  //                     borderRadius: BorderRadius.circular(8.r),
+  //                     borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+  //                   ),
+  //                   enabledBorder: OutlineInputBorder(
+  //                     borderRadius: BorderRadius.circular(8.r),
+  //                     borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+  //                   ),
+  //                   focusedBorder: OutlineInputBorder(
+  //                     borderRadius: BorderRadius.circular(8.r),
+  //                     borderSide: const BorderSide(color: Color(0xFF0A0258)),
+  //                   ),
+  //                 ),
+  //               ),
+  //               SizedBox(height: 8.h),
+  //               Flexible(
+  //                 child: filtered.isEmpty
+  //                     ? Padding(
+  //                         padding: EdgeInsets.symmetric(vertical: 24.h),
+  //                         child: Center(
+  //                           child: Text(
+  //                             "No results found",
+  //                             style: GoogleFonts.inter(
+  //                               fontSize: 12.sp,
+  //                               color: const Color(0xFF9AA0AB),
+  //                             ),
+  //                           ),
+  //                         ),
+  //                       )
+  //                     : ListView.separated(
+  //                         shrinkWrap: true,
+  //                         itemCount: filtered.length,
+  //                         separatorBuilder: (_, __) => const Divider(
+  //                           height: 1,
+  //                           color: Color(0xFFE4E7EC),
+  //                         ),
+  //                         itemBuilder: (_, i) {
+  //                           final item = filtered[i];
+  //                           final isSel = item == selectedValue;
+  //                           return InkWell(
+  //                             borderRadius: BorderRadius.circular(8.r),
+  //                             onTap: () {
+  //                               onSelected(item);
+  //                               Navigator.pop(ctx);
+  //                             },
+  //                             child: Padding(
+  //                               padding: EdgeInsets.symmetric(
+  //                                 horizontal: 4.w,
+  //                                 vertical: 12.h,
+  //                               ),
+  //                               child: Row(
+  //                                 children: [
+  //                                   Expanded(
+  //                                     child: Text(
+  //                                       item,
+  //                                       style: GoogleFonts.inter(
+  //                                         fontSize: 13.sp,
+  //                                         fontWeight: isSel
+  //                                             ? FontWeight.w600
+  //                                             : FontWeight.w400,
+  //                                         color: isSel
+  //                                             ? const Color(0xFF0A0258)
+  //                                             : const Color(0xFF344054),
+  //                                       ),
+  //                                     ),
+  //                                   ),
+  //                                   if (isSel)
+  //                                     Icon(
+  //                                       Icons.check,
+  //                                       size: 16.r,
+  //                                       color: const Color(0xFF0A0258),
+  //                                     ),
+  //                                 ],
+  //                               ),
+  //                             ),
+  //                           );
+  //                         },
+  //                       ),
+  //               ),
+  //             ],
+  //           ),
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
 
-  // ── Assign To multi-select bottom sheet ───────────────────────────────────
+  // // ── Assign To multi-select bottom sheet ───────────────────────────────────
 
-  void _showAssignToBottomSheet(BuildContext context) {
-    List<String> tempSelected = List.from(selectedAssignees);
-    List<Map<String, String>> filtered = List.from(_allUsers);
+  // void _showAssignToBottomSheet(BuildContext context) {
+  //   List<String> tempSelected = List.from(selectedAssignees);
+  //   List<Map<String, String>> filtered = List.from(_allUsers);
+
+  //   showModalBottomSheet(
+  //     context: context,
+  //     backgroundColor: Colors.transparent,
+  //     isScrollControlled: true,
+  //     useRootNavigator: true,
+  //     builder: (_) => StatefulBuilder(
+  //       builder: (ctx, ss) => Padding(
+  //         padding: EdgeInsets.only(
+  //           bottom: MediaQuery.of(ctx).viewInsets.bottom,
+  //         ),
+  //         child: Container(
+  //           constraints: BoxConstraints(
+  //             maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+  //           ),
+  //           decoration: BoxDecoration(
+  //             color: Colors.white,
+  //             borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+  //             boxShadow: [
+  //               BoxShadow(
+  //                 color: Colors.black.withOpacity(0.12),
+  //                 blurRadius: 10.r,
+  //                 offset: const Offset(0, -2),
+  //               ),
+  //             ],
+  //           ),
+  //           child: Column(
+  //             mainAxisSize: MainAxisSize.min,
+  //             children: [
+  //               // Handle bar
+  //               Container(
+  //                 margin: EdgeInsets.only(top: 10.h),
+  //                 width: 36.w,
+  //                 height: 4.h,
+  //                 decoration: BoxDecoration(
+  //                   color: const Color(0xFFD9DEE5),
+  //                   borderRadius: BorderRadius.circular(4.r),
+  //                 ),
+  //               ),
+
+  //               Padding(
+  //                 padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 0),
+  //                 child: Column(
+  //                   crossAxisAlignment: CrossAxisAlignment.start,
+  //                   children: [
+  //                     Row(
+  //                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //                       children: [
+  //                         Text(
+  //                           "Assign To",
+  //                           style: GoogleFonts.inter(
+  //                             fontSize: 14.sp,
+  //                             fontWeight: FontWeight.w700,
+  //                             color: const Color(0xFF0A0258),
+  //                           ),
+  //                         ),
+  //                         GestureDetector(
+  //                           onTap: () => Navigator.pop(ctx),
+  //                           child: Icon(
+  //                             Icons.close,
+  //                             size: 20.r,
+  //                             color: const Color(0xFF6C7278),
+  //                           ),
+  //                         ),
+  //                       ],
+  //                     ),
+  //                     if (tempSelected.isNotEmpty) ...[
+  //                       SizedBox(height: 4.h),
+  //                       Text(
+  //                         "${tempSelected.length} selected",
+  //                         style: GoogleFonts.inter(
+  //                           fontSize: 11.sp,
+  //                           color: const Color(0xFF4338CA),
+  //                           fontWeight: FontWeight.w500,
+  //                         ),
+  //                       ),
+  //                     ],
+  //                     SizedBox(height: 10.h),
+  //                     TextField(
+  //                       autofocus: false,
+  //                       onChanged: (val) => ss(() {
+  //                         filtered = _allUsers
+  //                             .where(
+  //                               (u) =>
+  //                                   u["name"]!.toLowerCase().contains(
+  //                                     val.toLowerCase().trim(),
+  //                                   ) ||
+  //                                   u["role"]!.toLowerCase().contains(
+  //                                     val.toLowerCase().trim(),
+  //                                   ),
+  //                             )
+  //                             .toList();
+  //                       }),
+  //                       style: GoogleFonts.inter(
+  //                         fontSize: 12.sp,
+  //                         color: const Color(0xFF344054),
+  //                       ),
+  //                       decoration: InputDecoration(
+  //                         isDense: true,
+  //                         hintText: "Search by name or role...",
+  //                         hintStyle: GoogleFonts.inter(
+  //                           fontSize: 12.sp,
+  //                           color: const Color(0xFFB8BEC5),
+  //                         ),
+  //                         prefixIcon: Icon(
+  //                           CupertinoIcons.search,
+  //                           size: 16.r,
+  //                           color: const Color(0xFF4338CA),
+  //                         ),
+  //                         filled: true,
+  //                         fillColor: const Color(0xFFF9FAFC),
+  //                         contentPadding: EdgeInsets.symmetric(
+  //                           horizontal: 10.w,
+  //                           vertical: 10.h,
+  //                         ),
+  //                         border: OutlineInputBorder(
+  //                           borderRadius: BorderRadius.circular(8.r),
+  //                           borderSide: const BorderSide(
+  //                             color: Color(0xFFD9DEE5),
+  //                           ),
+  //                         ),
+  //                         enabledBorder: OutlineInputBorder(
+  //                           borderRadius: BorderRadius.circular(8.r),
+  //                           borderSide: const BorderSide(
+  //                             color: Color(0xFFD9DEE5),
+  //                           ),
+  //                         ),
+  //                         focusedBorder: OutlineInputBorder(
+  //                           borderRadius: BorderRadius.circular(8.r),
+  //                           borderSide: const BorderSide(
+  //                             color: Color(0xFF0A0258),
+  //                           ),
+  //                         ),
+  //                       ),
+  //                     ),
+  //                     SizedBox(height: 8.h),
+  //                   ],
+  //                 ),
+  //               ),
+
+  //               Flexible(
+  //                 child: filtered.isEmpty
+  //                     ? Padding(
+  //                         padding: EdgeInsets.symmetric(vertical: 24.h),
+  //                         child: Center(
+  //                           child: Text(
+  //                             "No users found",
+  //                             style: GoogleFonts.inter(
+  //                               fontSize: 12.sp,
+  //                               color: const Color(0xFF9AA0AB),
+  //                             ),
+  //                           ),
+  //                         ),
+  //                       )
+  //                     : ListView.separated(
+  //                         shrinkWrap: true,
+  //                         padding: EdgeInsets.symmetric(horizontal: 16.w),
+  //                         itemCount: filtered.length,
+  //                         separatorBuilder: (_, __) => const Divider(
+  //                           height: 1,
+  //                           color: Color(0xFFE4E7EC),
+  //                         ),
+  //                         itemBuilder: (_, i) {
+  //                           final user = filtered[i];
+  //                           final name = user["name"]!;
+  //                           final role = user["role"]!;
+  //                           final isChecked = tempSelected.contains(name);
+  //                           return InkWell(
+  //                             borderRadius: BorderRadius.circular(8.r),
+  //                             onTap: () => ss(
+  //                               () => isChecked
+  //                                   ? tempSelected.remove(name)
+  //                                   : tempSelected.add(name),
+  //                             ),
+  //                             child: Padding(
+  //                               padding: EdgeInsets.symmetric(vertical: 10.h),
+  //                               child: Row(
+  //                                 children: [
+  //                                   CircleAvatar(
+  //                                     radius: 18.r,
+  //                                     backgroundColor: isChecked
+  //                                         ? const Color(0xFF0A0258)
+  //                                         : const Color(0xFFEEF0FF),
+  //                                     child: Text(
+  //                                       name[0].toUpperCase(),
+  //                                       style: GoogleFonts.inter(
+  //                                         fontSize: 13.sp,
+  //                                         fontWeight: FontWeight.w700,
+  //                                         color: isChecked
+  //                                             ? Colors.white
+  //                                             : const Color(0xFF4338CA),
+  //                                       ),
+  //                                     ),
+  //                                   ),
+  //                                   SizedBox(width: 10.w),
+  //                                   Expanded(
+  //                                     child: Column(
+  //                                       crossAxisAlignment:
+  //                                           CrossAxisAlignment.start,
+  //                                       children: [
+  //                                         Text(
+  //                                           name,
+  //                                           style: GoogleFonts.inter(
+  //                                             fontSize: 13.sp,
+  //                                             fontWeight: isChecked
+  //                                                 ? FontWeight.w600
+  //                                                 : FontWeight.w400,
+  //                                             color: const Color(0xFF1D2939),
+  //                                           ),
+  //                                         ),
+  //                                         SizedBox(height: 2.h),
+  //                                         Text(
+  //                                           role,
+  //                                           style: GoogleFonts.inter(
+  //                                             fontSize: 11.sp,
+  //                                             color: const Color(0xFF9AA0AB),
+  //                                           ),
+  //                                         ),
+  //                                       ],
+  //                                     ),
+  //                                   ),
+  //                                   AnimatedContainer(
+  //                                     duration: const Duration(
+  //                                       milliseconds: 200,
+  //                                     ),
+  //                                     width: 20.w,
+  //                                     height: 20.h,
+  //                                     decoration: BoxDecoration(
+  //                                       color: isChecked
+  //                                           ? const Color(0xFF0A0258)
+  //                                           : Colors.transparent,
+  //                                       borderRadius: BorderRadius.circular(
+  //                                         5.r,
+  //                                       ),
+  //                                       border: Border.all(
+  //                                         color: isChecked
+  //                                             ? const Color(0xFF0A0258)
+  //                                             : const Color(0xFFD9DEE5),
+  //                                         width: 1.5,
+  //                                       ),
+  //                                     ),
+  //                                     child: isChecked
+  //                                         ? Icon(
+  //                                             Icons.check,
+  //                                             size: 13.r,
+  //                                             color: Colors.white,
+  //                                           )
+  //                                         : null,
+  //                                   ),
+  //                                 ],
+  //                               ),
+  //                             ),
+  //                           );
+  //                         },
+  //                       ),
+  //               ),
+
+  //               SafeArea(
+  //                 top: false,
+  //                 child: Padding(
+  //                   padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 16.h),
+  //                   child: Row(
+  //                     children: [
+  //                       Expanded(
+  //                         child: OutlinedButton(
+  //                           onPressed: () => ss(() => tempSelected.clear()),
+  //                           style: OutlinedButton.styleFrom(
+  //                             side: const BorderSide(color: Color(0xFFD9DEE5)),
+  //                             shape: RoundedRectangleBorder(
+  //                               borderRadius: BorderRadius.circular(8.r),
+  //                             ),
+  //                             padding: EdgeInsets.symmetric(vertical: 10.h),
+  //                           ),
+  //                           child: Text(
+  //                             "Clear All",
+  //                             style: GoogleFonts.inter(
+  //                               fontSize: 12.sp,
+  //                               fontWeight: FontWeight.w500,
+  //                               color: const Color(0xFF667085),
+  //                             ),
+  //                           ),
+  //                         ),
+  //                       ),
+  //                       SizedBox(width: 10.w),
+  //                       Expanded(
+  //                         flex: 2,
+  //                         child: Container(
+  //                           decoration: BoxDecoration(
+  //                             borderRadius: BorderRadius.circular(8.r),
+  //                             gradient: const LinearGradient(
+  //                               colors: [Color(0xFF0A0258), Color(0xFF4338CA)],
+  //                             ),
+  //                           ),
+  //                           child: ElevatedButton(
+  //                             onPressed: () {
+  //                               setState(() {
+  //                                 selectedAssignees = List.from(tempSelected);
+  //                                 if (selectedAssignees.isNotEmpty) {
+  //                                   _assignToError = null;
+  //                                 }
+  //                               });
+  //                               Navigator.pop(ctx);
+  //                             },
+  //                             style: ElevatedButton.styleFrom(
+  //                               elevation: 0,
+  //                               backgroundColor: Colors.transparent,
+  //                               shadowColor: Colors.transparent,
+  //                               padding: EdgeInsets.symmetric(vertical: 10.h),
+  //                               shape: RoundedRectangleBorder(
+  //                                 borderRadius: BorderRadius.circular(8.r),
+  //                               ),
+  //                             ),
+  //                             child: Text(
+  //                               tempSelected.isEmpty
+  //                                   ? "Confirm"
+  //                                   : "Confirm (${tempSelected.length})",
+  //                               style: GoogleFonts.inter(
+  //                                 fontSize: 12.sp,
+  //                                 fontWeight: FontWeight.w600,
+  //                                 color: Colors.white,
+  //                               ),
+  //                             ),
+  //                           ),
+  //                         ),
+  //                       ),
+  //                     ],
+  //                   ),
+  //                 ),
+  //               ),
+  //             ],
+  //           ),
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
+
+  void _showAssignToBottomSheet(
+    BuildContext context,
+    List<EmployeeModel> employees,
+  ) {
+    // Pass your active employee list into the sheet
+    List<String> tempSelected = List.from(selectedAssignees); // Tracks IDs
+    List<EmployeeModel> filtered = List.from(employees);
 
     showModalBottomSheet(
       context: context,
@@ -3192,17 +4364,16 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                       TextField(
                         autofocus: false,
                         onChanged: (val) => ss(() {
-                          filtered = _allUsers
-                              .where(
-                                (u) =>
-                                    u["name"]!.toLowerCase().contains(
-                                      val.toLowerCase().trim(),
-                                    ) ||
-                                    u["role"]!.toLowerCase().contains(
-                                      val.toLowerCase().trim(),
-                                    ),
-                              )
-                              .toList();
+                          final searchStr = val.toLowerCase().trim();
+                          filtered = employees.where((emp) {
+                            final matchName = emp.fullName
+                                .toLowerCase()
+                                .contains(searchStr);
+                            final matchRole = (emp.jobRole ?? '')
+                                .toLowerCase()
+                                .contains(searchStr);
+                            return matchName || matchRole;
+                          }).toList();
                         }),
                         style: GoogleFonts.inter(
                           fontSize: 12.sp,
@@ -3274,17 +4445,27 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                             color: Color(0xFFE4E7EC),
                           ),
                           itemBuilder: (_, i) {
-                            final user = filtered[i];
-                            final name = user["name"]!;
-                            final role = user["role"]!;
-                            final isChecked = tempSelected.contains(name);
+                            final employee = filtered[i];
+                            final empId = employee.id ?? '';
+                            final name = employee.fullName.isEmpty
+                                ? "No Name"
+                                : employee.fullName;
+                            final role = employee.jobRole?.isEmpty ?? true
+                                ? "No Role Assigned"
+                                : employee.jobRole!;
+
+                            // Track check marks using unique ID references
+                            final isChecked = tempSelected.contains(empId);
+
                             return InkWell(
                               borderRadius: BorderRadius.circular(8.r),
-                              onTap: () => ss(
-                                () => isChecked
-                                    ? tempSelected.remove(name)
-                                    : tempSelected.add(name),
-                              ),
+                              onTap: () => ss(() {
+                                if (isChecked) {
+                                  tempSelected.remove(empId);
+                                } else {
+                                  tempSelected.add(empId);
+                                }
+                              }),
                               child: Padding(
                                 padding: EdgeInsets.symmetric(vertical: 10.h),
                                 child: Row(
@@ -3295,7 +4476,9 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                           ? const Color(0xFF0A0258)
                                           : const Color(0xFFEEF0FF),
                                       child: Text(
-                                        name[0].toUpperCase(),
+                                        name.isNotEmpty
+                                            ? name[0].toUpperCase()
+                                            : 'E',
                                         style: GoogleFonts.inter(
                                           fontSize: 13.sp,
                                           fontWeight: FontWeight.w700,
@@ -3368,6 +4551,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                         ),
                 ),
 
+                // Action buttons
                 SafeArea(
                   top: false,
                   child: Padding(
@@ -3408,8 +4592,9 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                               onPressed: () {
                                 setState(() {
                                   selectedAssignees = List.from(tempSelected);
-                                  if (selectedAssignees.isNotEmpty)
+                                  if (selectedAssignees.isNotEmpty) {
                                     _assignToError = null;
+                                  }
                                 });
                                 Navigator.pop(ctx);
                               },
@@ -3447,7 +4632,109 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     );
   }
 
-  Widget _reportingChip(String name) => Container(
+  void _showSearchableBottomSheet({
+    required BuildContext context,
+    required String title,
+    required DepartmentModel? selectedValue,
+    required Function(DepartmentModel) onSelected,
+  }) {
+    // Grab the factory instance straight out of your service locator container
+    final departmentController = sl<DepartmentController>();
+    departmentController.handleGetDepartments(search: "");
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+      builder: (context) {
+        // Use ListenableBuilder (built straight into Flutter) to re-render when the controller notifies
+        return ListenableBuilder(
+          listenable: departmentController,
+          builder: (context, child) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.inter(
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 10.h),
+                  TextField(
+                    onChanged: (value) {
+                      departmentController.handleGetDepartments(
+                        search: value.trim(),
+                      );
+                    },
+                    decoration: InputDecoration(
+                      hintText: "Search...",
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 16.h),
+                  Expanded(
+                    child: departmentController.isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : departmentController.departments.isEmpty
+                        ? const Center(child: Text("No departments found"))
+                        : ListView.builder(
+                            itemCount: departmentController.departments.length,
+                            itemBuilder: (context, index) {
+                              final department =
+                                  departmentController.departments[index];
+                              final isSelected =
+                                  department.id == selectedValue?.id;
+
+                              return ListTile(
+                                title: Text(
+                                  department.name ?? "",
+                                  style: GoogleFonts.inter(
+                                    fontWeight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
+                                  ),
+                                ),
+                                trailing: isSelected
+                                    ? const Icon(
+                                        Icons.check,
+                                        color: Colors.blue,
+                                      )
+                                    : null,
+                                onTap: () {
+                                  onSelected(department);
+                                  Navigator.pop(context);
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _reportingChip(String id, String name) => Container(
     padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
     decoration: BoxDecoration(
       color: const Color(0xFFEEF0FF),
@@ -3461,7 +4748,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
           radius: 8.r,
           backgroundColor: const Color(0xFF0A0258),
           child: Text(
-            name[0].toUpperCase(),
+            name.isNotEmpty ? name[0].toUpperCase() : "?",
             style: GoogleFonts.inter(
               fontSize: 8.sp,
               color: Colors.white,
@@ -3481,12 +4768,9 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
         SizedBox(width: 4.w),
         GestureDetector(
           onTap: () => setState(() {
-            selectedReportingList.remove(name);
-            selectedReporting = selectedReportingList.isEmpty
-                ? "Select User"
-                : selectedReportingList.join(", ");
+            selectedReportingList.remove(id);
             if (selectedReportingList.isEmpty) {
-              _reportingToError = "Please select a user";
+              _reportingToError = "Please select at least one reporting user";
             }
           }),
           child: Icon(Icons.close, size: 11.r, color: const Color(0xFF4338CA)),
@@ -3494,4 +4778,52 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       ],
     ),
   );
+
+  // Widget _reportingChip(String name) => Container(
+  //   padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+  //   decoration: BoxDecoration(
+  //     color: const Color(0xFFEEF0FF),
+  //     borderRadius: BorderRadius.circular(20.r),
+  //     border: Border.all(color: const Color(0xFF4338CA)),
+  //   ),
+  //   child: Row(
+  //     mainAxisSize: MainAxisSize.min,
+  //     children: [
+  //       CircleAvatar(
+  //         radius: 8.r,
+  //         backgroundColor: const Color(0xFF0A0258),
+  //         child: Text(
+  //           name[0].toUpperCase(),
+  //           style: GoogleFonts.inter(
+  //             fontSize: 8.sp,
+  //             color: Colors.white,
+  //             fontWeight: FontWeight.w700,
+  //           ),
+  //         ),
+  //       ),
+  //       SizedBox(width: 4.w),
+  //       Text(
+  //         name.split(" ").first,
+  //         style: GoogleFonts.inter(
+  //           fontSize: 11.sp,
+  //           color: const Color(0xFF0A0258),
+  //           fontWeight: FontWeight.w500,
+  //         ),
+  //       ),
+  //       SizedBox(width: 4.w),
+  //       GestureDetector(
+  //         onTap: () => setState(() {
+  //           selectedReportingList.remove(name);
+  //           selectedReporting = selectedReportingList.isEmpty
+  //               ? "Select User"
+  //               : selectedReportingList.join(", ");
+  //           if (selectedReportingList.isEmpty) {
+  //             _reportingToError = "Please select a user";
+  //           }
+  //         }),
+  //         child: Icon(Icons.close, size: 11.r, color: const Color(0xFF4338CA)),
+  //       ),
+  //     ],
+  //   ),
+  // );
 }

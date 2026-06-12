@@ -1,4 +1,4 @@
-// ignore_for_file: file_names, unrelated_type_equality_checks, use_build_context_synchronously
+// ignore_for_file: deprecated_member_use, file_names, unrelated_type_equality_checks, use_build_context_synchronously
 import 'dart:convert';
 import 'dart:io';
 
@@ -406,6 +406,11 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     );
   }
 
+  
+  
+  
+  
+  
   // ── Department (searchable single-select) ─────────────────────────────────
   String? _departmentError;
 
@@ -441,6 +446,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
   final FocusNode monthFocus = FocusNode();
   final FocusNode yearFocus = FocusNode();
 
+  late final DepartmentController departmentController;
   late final EmployeeController employeeController;
   late final TaskController taskController;
 
@@ -463,12 +469,13 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
 
     // get departments for dropdown
 
+    departmentController = sl<DepartmentController>();
     employeeController = sl<EmployeeController>();
     taskController = sl<TaskController>();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // ✅ Use GetIt directly if your project isn't using the Provider package
-      sl<DepartmentController>().handleGetDepartments();
+      departmentController.handleGetDepartments();
 
       employeeController.handleGetEmployees(organizationId: '');
     });
@@ -661,6 +668,10 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
         ),
       );
     }
+  
+  
+  
+  
   }
 
   // ── FILE PICKER ────────────────────────────────────────────────────────────
@@ -1638,6 +1649,9 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     ),
   );
 
+  
+  
+  
   Future<TimeOfDay?> _pickTime(BuildContext context) async => showTimePicker(
     context: context,
     initialTime: TimeOfDay.now(),
@@ -2503,6 +2517,10 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     );
   }
 
+  
+  
+  
+  
   Widget _reportingChip(String id, String name) => Container(
     padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
     decoration: BoxDecoration(
@@ -2547,4 +2565,9 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
       ],
     ),
   );
+
+
+
+
+
 }
