@@ -1,6 +1,7 @@
 // ignore_for_file: curly_braces_in_flow_control_structures
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -844,7 +845,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
   final FocusNode monthFocus = FocusNode();
   final FocusNode yearFocus = FocusNode();
 
-  List<String> selectedFiles = [];
+  List<File> selectedFiles = [];
   String? fileError;
 
   final titleNameController = TextEditingController();
@@ -1096,7 +1097,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     if (selectedProofTypes.isNotEmpty) {
       print("AI Validation: $selectedProofRadioType");
     }
-    // print("Selected Files: $selectedFiles");
+    print("Selected Files: $selectedFiles");
 
     if (_validateSections() && _formKey.currentState!.validate()) {
       taskController.clearMessages();
@@ -1161,8 +1162,8 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       final bool success = await taskController.handleCreateTask(
         bodyFields: formData,
 
-        // files:
-        //     selectedFiles, // Pass the list of file paths to the repository for upload handling
+        files:
+            selectedFiles, // Pass the list of file paths to the repository for upload handling
       );
 
       if (success) {
@@ -1246,7 +1247,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       ],
     );
     if (result != null && result.files.isNotEmpty) {
-      final newFiles = result.files.map((f) => f.name).toList();
+      final newFiles = result.files.map((f) => File(f.path!)).toList();
       if ((selectedFiles.length + newFiles.length) > 5) {
         setState(() => fileError = "Maximum 5 files are allowed");
         return;
@@ -2228,7 +2229,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                                 SizedBox(width: 8.w),
                                                 Expanded(
                                                   child: Text(
-                                                    selectedFiles[i],
+                                                    selectedFiles[i].path,
                                                     overflow:
                                                         TextOverflow.ellipsis,
                                                     style: GoogleFonts.inter(
