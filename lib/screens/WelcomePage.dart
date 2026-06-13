@@ -71,13 +71,14 @@ class WelcomePageState extends State<WelcomePage> {
                     padding: EdgeInsets.symmetric(horizontal: 40),
                     child: ElevatedButton(
                       onPressed: () {
-                        Navigator.pushReplacement(
+                        Navigator.push(
                           context,
                           MaterialPageRoute(builder: (_) => SignInScreen()),
                         );
                       },
                       style: ElevatedButton.styleFrom(
                         elevation: 0,
+                        shadowColor: Colors.transparent,
                         backgroundColor: Colors.transparent,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8.r),
@@ -112,7 +113,7 @@ class WelcomePageState extends State<WelcomePage> {
                     padding: EdgeInsets.symmetric(horizontal: 40),
                     child: ElevatedButton(
                       onPressed: () {
-                        Navigator.pushReplacement(
+                        Navigator.push(
                           context,
                           MaterialPageRoute(builder: (_) => SignUpScreen()),
                         );

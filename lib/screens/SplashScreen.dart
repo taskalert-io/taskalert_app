@@ -127,7 +127,7 @@ class _SplashScreenState extends State<SplashScreen>
                 opacity: _buttonOpacity,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pushReplacement(
+                    Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (_) => WelcomePage(),

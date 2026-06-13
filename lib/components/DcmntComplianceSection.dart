@@ -3,50 +3,54 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
+import 'SectionValidatable.dart';
 
 class DcmntComplianceSection extends StatefulWidget {
   const DcmntComplianceSection({super.key});
   @override
-  State<DcmntComplianceSection> createState() => _DcmntComplianceSectionState();
+  State<DcmntComplianceSection> createState() => DcmntComplianceSectionState();
 }
 
-class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
-  // ── Controllers ────────────────────────────────────────────────────────────
-  final TextEditingController _ndasController                 = TextEditingController();
-  final TextEditingController _employmentAgreementsController = TextEditingController();
-  final TextEditingController _offerLettersController         = TextEditingController();
+class DcmntComplianceSectionState extends State<DcmntComplianceSection>
+    implements SectionValidatable {
+  final TextEditingController _ndasController = TextEditingController();
+  final TextEditingController _employmentAgreementsController =
+      TextEditingController();
+  final TextEditingController _offerLettersController = TextEditingController();
 
-  // ── Editing states ─────────────────────────────────────────────────────────
-  bool _isNdasEditing                 = false;
+  final FocusNode _ndasFocus = FocusNode();
+  final FocusNode _employmentAgreementsFocus = FocusNode();
+  final FocusNode _offerLettersFocus = FocusNode();
+
+  bool _isNdasEditing = false;
   bool _isEmploymentAgreementsEditing = false;
-  bool _isOfferLettersEditing         = false;
+  bool _isOfferLettersEditing = false;
 
-  // ── Identification file lists ──────────────────────────────────────────────
-  List<_UploadedFile> _passportFiles   = [];
-  List<_UploadedFile> _visaFiles       = [];
+  String? _ndasError;
+  String? _employmentAgreementsError;
+  String? _offerLettersError;
+  String? _verificationStatusError;
+  String? _verificationDateError;
+
+  List<_UploadedFile> _passportFiles = [];
+  List<_UploadedFile> _visaFiles = [];
   List<_UploadedFile> _driversLicFiles = [];
 
-  // ── Background Checks ──────────────────────────────────────────────────────
   String? _verificationStatus;
   final List<String> _statuses = ['Approved', 'Pending', 'Rejected'];
 
   DateTime? _verificationDate;
-  final TextEditingController _verDayController   = TextEditingController();
+  final TextEditingController _verDayController = TextEditingController();
   final TextEditingController _verMonthController = TextEditingController();
-  final TextEditingController _verYearController  = TextEditingController();
+  final TextEditingController _verYearController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _ndasController.text                 = "Business Negotiations";
+    _ndasController.text = "Business Negotiations";
     _employmentAgreementsController.text = "Yes";
-    _offerLettersController.text         = "Yes";
-
-    final now = DateTime.now();
-    _verificationDate        = now;
-    _verDayController.text   = now.day.toString().padLeft(2, '0');
-    _verMonthController.text = now.month.toString().padLeft(2, '0');
-    _verYearController.text  = now.year.toString();
+    _offerLettersController.text = "Yes";
+    _verificationDate = null;
   }
 
   @override
@@ -57,10 +61,44 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
     _verDayController.dispose();
     _verMonthController.dispose();
     _verYearController.dispose();
+    _ndasFocus.dispose();
+    _employmentAgreementsFocus.dispose();
+    _offerLettersFocus.dispose();
     super.dispose();
   }
 
-  // ── Section heading ────────────────────────────────────────────────────────
+  @override
+  bool validate() {
+    bool valid = true;
+    setState(() {
+      _ndasError = _ndasController.text.trim().isEmpty
+          ? "Please enter NDAs"
+          : null;
+      _employmentAgreementsError =
+          _employmentAgreementsController.text.trim().isEmpty
+          ? "Please enter employment agreements"
+          : null;
+      _offerLettersError = _offerLettersController.text.trim().isEmpty
+          ? "Please enter offer letters"
+          : null;
+      _verificationStatusError = _verificationStatus == null
+          ? "Please select verification status"
+          : null;
+      _verificationDateError = _verificationDate == null
+          ? "Please select verification date"
+          : null;
+
+      if (_ndasError != null ||
+          _employmentAgreementsError != null ||
+          _offerLettersError != null ||
+          _verificationStatusError != null ||
+          _verificationDateError != null) {
+        valid = false;
+      }
+    });
+    return valid;
+  }
+
   Widget _sectionHeading(String title) => Padding(
     padding: EdgeInsets.only(bottom: 8.h),
     child: Text(
@@ -73,86 +111,139 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
     ),
   );
 
-  // ── Field label ────────────────────────────────────────────────────────────
-  Widget _fieldLabel(String label) => Padding(
+  Widget _fieldLabel(String label, {bool required = false}) => Padding(
     padding: EdgeInsets.only(bottom: 6.h),
-    child: Text(
-      label,
-      style: GoogleFonts.inter(
-        fontSize: 12.sp,
-        fontWeight: FontWeight.w400,
-        color: const Color(0xFF303030),
+    child: RichText(
+      text: TextSpan(
+        text: label,
+        style: GoogleFonts.inter(
+          fontSize: 12.sp,
+          fontWeight: FontWeight.w400,
+          color: const Color(0xFF303030),
+        ),
+        children: required
+            ? const [
+                TextSpan(
+                  text: " *",
+                  style: TextStyle(color: Colors.red),
+                ),
+              ]
+            : [],
       ),
     ),
   );
 
-  // ── Reusable text field (EmpJobDetailsSection pattern) ────────────────────
   Widget _buildTextField({
-    required String hint,
     required TextEditingController controller,
     required bool isEditing,
     required VoidCallback onEdit,
-    TextInputType keyboardType = TextInputType.text,
+    required FocusNode focusNode,
+    String? errorText,
+    VoidCallback? onClearError,
   }) {
-    return TextFormField(
-      controller: controller,
-      readOnly: !isEditing,
-      keyboardType: keyboardType,
-      style: GoogleFonts.inter(
-        fontSize: 12.sp,
-        fontWeight: FontWeight.w400,
-        color: const Color(0xFF6C7278),
-      ),
-      decoration: InputDecoration(
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 10,
-        ),
-        hintText: hint,
-        hintStyle: GoogleFonts.inter(
-          fontSize: 12.sp,
-          fontWeight: FontWeight.w400,
-          color: const Color(0xFFB8BEC5),
-        ),
-        suffixIcon: GestureDetector(
-          onTap: onEdit,
-          child: Padding(
-            padding: const EdgeInsets.all(10),
-            child: Icon(
-              Icons.edit_outlined,
-              size: 18.sp,
-              color: const Color(0xFFB8BEC5),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextFormField(
+          controller: controller,
+          focusNode: focusNode,
+
+          readOnly: !isEditing,
+
+          // FIX: same behavior as ProfileSetting
+          enableInteractiveSelection: isEditing,
+          showCursor: isEditing,
+
+          onChanged: (_) {
+            if (onClearError != null) {
+              onClearError();
+            }
+          },
+
+          style: GoogleFonts.inter(
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w400,
+            color: const Color(0xFF6C7278),
+          ),
+
+          decoration: InputDecoration(
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
+
+            errorStyle: const TextStyle(fontSize: 0, height: 0),
+
+            suffixIcon: GestureDetector(
+              onTap: () {
+                if (!isEditing) {
+                  onEdit();
+                }
+
+                Future.microtask(() {
+                  focusNode.requestFocus();
+                });
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Icon(
+                  Icons.edit_outlined,
+                  size: 18.sp,
+                  color: const Color(0xFFB8BEC5),
+                ),
+              ),
+            ),
+
+            filled: true,
+            fillColor: const Color(0xFFF9FAFC),
+
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+            ),
+
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: BorderSide(
+                color: errorText != null ? Colors.red : const Color(0xFFD9DEE5),
+              ),
+            ),
+
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: BorderSide(
+                color: errorText != null ? Colors.red : const Color(0xFF0A0258),
+              ),
+            ),
+
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: const BorderSide(color: Colors.red),
+            ),
+
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: const BorderSide(color: Colors.red),
             ),
           ),
         ),
-        filled: true,
-        fillColor: const Color(0xFFF9FAFC),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8.r),
-          borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8.r),
-          borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8.r),
-          borderSide: const BorderSide(color: Color(0xFF0A0258)),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8.r),
-          borderSide: const BorderSide(color: Colors.red),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8.r),
-          borderSide: const BorderSide(color: Colors.red),
-        ),
-      ),
+
+        if (errorText != null)
+          Padding(
+            padding: EdgeInsets.only(top: 4.h, left: 4.w),
+            child: Text(
+              errorText,
+              style: GoogleFonts.inter(color: Colors.red, fontSize: 10.sp),
+            ),
+          ),
+      ],
     );
   }
 
-  // ── File upload section ────────────────────────────────────────────────────
+  // ... keep all your existing _buildFileUploadSection, _buildFileTile, _addMockFile, _showVerificationDatePicker, _buildDateRow methods unchanged ...
+
   Widget _buildFileUploadSection({
     required String label,
     required List<_UploadedFile> files,
@@ -164,9 +255,8 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
       children: [
         _fieldLabel(label),
         ...files.asMap().entries.map(
-              (entry) => _buildFileTile(
+          (entry) => _buildFileTile(
             file: entry.value,
-            onEdit: () {},
             onDelete: () => onDelete(entry.key),
           ),
         ),
@@ -204,10 +294,8 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
     );
   }
 
-  // ── Single file tile ───────────────────────────────────────────────────────
   Widget _buildFileTile({
     required _UploadedFile file,
-    required VoidCallback onEdit,
     required VoidCallback onDelete,
   }) {
     return Container(
@@ -257,25 +345,10 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
             ),
           ),
           GestureDetector(
-            onTap: onEdit,
-            child: Padding(
-              padding: EdgeInsets.all(6.r),
-              child: Icon(
-                Icons.edit_outlined,
-                size: 16.sp,
-                color: const Color(0xFFB8BEC5),
-              ),
-            ),
-          ),
-          GestureDetector(
             onTap: onDelete,
             child: Padding(
               padding: EdgeInsets.all(6.r),
-              child: Icon(
-                Icons.delete_outline,
-                size: 16.sp,
-                color: Colors.red,
-              ),
+              child: Icon(Icons.delete_outline, size: 16.sp, color: Colors.red),
             ),
           ),
         ],
@@ -283,14 +356,13 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
     );
   }
 
-  // ── Mock file add ──────────────────────────────────────────────────────────
   void _addMockFile(List<_UploadedFile> list) {
     setState(() => list.add(_UploadedFile(name: 'Photo.jpg', size: '254 KB')));
   }
 
-  // ── Verification date picker ───────────────────────────────────────────────
   void _showVerificationDatePicker(BuildContext context) {
     DateTime tempDate = _verificationDate ?? DateTime.now();
+    bool hasSelected = _verificationDate != null;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -303,8 +375,7 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
             padding: const EdgeInsets.fromLTRB(15, 15, 15, 25),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius:
-              BorderRadius.vertical(top: Radius.circular(20.r)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.2),
@@ -318,7 +389,7 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
               children: [
                 Expanded(
                   child: SfDateRangePicker(
-                    initialSelectedDate: tempDate,
+                    initialSelectedDate: _verificationDate,
                     selectionMode: DateRangePickerSelectionMode.single,
                     view: DateRangePickerView.month,
                     allowViewNavigation: true,
@@ -336,7 +407,10 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
                     ),
                     onSelectionChanged: (args) {
                       if (args.value is DateTime) {
-                        setModal(() => tempDate = args.value);
+                        setModal(() {
+                          tempDate = args.value;
+                          hasSelected = true;
+                        });
                       }
                     },
                   ),
@@ -357,13 +431,24 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
                     ),
                     TextButton(
                       onPressed: () {
-                        setState(() {
-                          _verificationDate        = tempDate;
-                          _verDayController.text   = tempDate.day.toString().padLeft(2, '0');
-                          _verMonthController.text = tempDate.month.toString().padLeft(2, '0');
-                          _verYearController.text  = tempDate.year.toString();
-                        });
-                        Navigator.pop(context);
+                        if (hasSelected) {
+                          setState(() {
+                            _verificationDate = tempDate;
+
+                            _verDayController.text =
+                                tempDate.day.toString().padLeft(2, '0');
+
+                            _verMonthController.text =
+                                tempDate.month.toString().padLeft(2, '0');
+
+                            _verYearController.text =
+                                tempDate.year.toString();
+
+                            _verificationDateError = null;
+                          });
+                        }
+
+                        Navigator.pop(ctx);
                       },
                       child: Text(
                         "OK",
@@ -383,132 +468,175 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
     );
   }
 
-  // ── Date row ───────────────────────────────────────────────────────────────
   Widget _buildDateRow() {
     const borderColor = Color(0xFFD9DEE5);
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // DAY
-        Expanded(
-          child: GestureDetector(
-            onTap: () => _showVerificationDatePicker(context),
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF9FAFC),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(8.r),
-                  bottomLeft: Radius.circular(8.r),
-                ),
-                border: Border.all(color: borderColor),
-              ),
-              child: IgnorePointer(
-                child: TextField(
-                  controller: _verDayController,
-                  readOnly: true,
-                  style: GoogleFonts.inter(
-                    fontSize: 12.sp,
-                    color: const Color(0xFF303030),
-                  ),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    border: InputBorder.none,
-                    hintText: "DD",
-                    hintStyle: GoogleFonts.inter(
-                      fontSize: 12.sp,
-                      color: const Color(0xFFB8BEC5),
+        Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () => _showVerificationDatePicker(context),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FAFC),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(8.r),
+                      bottomLeft: Radius.circular(8.r),
                     ),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 8.h,
+                    border: Border.all(
+                      color: _verificationDateError != null
+                          ? Colors.red
+                          : borderColor,
                     ),
                   ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        // MONTH
-        Expanded(
-          child: GestureDetector(
-            onTap: () => _showVerificationDatePicker(context),
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFFF9FAFC),
-                border: Border(
-                  top: BorderSide(color: borderColor),
-                  bottom: BorderSide(color: borderColor),
-                  right: BorderSide(color: borderColor),
-                ),
-              ),
-              child: IgnorePointer(
-                child: TextField(
-                  controller: _verMonthController,
-                  readOnly: true,
-                  style: GoogleFonts.inter(
-                    fontSize: 12.sp,
-                    color: const Color(0xFF303030),
-                  ),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    border: InputBorder.none,
-                    hintText: "MM",
-                    hintStyle: GoogleFonts.inter(
-                      fontSize: 12.sp,
-                      color: const Color(0xFFB8BEC5),
-                    ),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 8.h,
+                  child: IgnorePointer(
+                    child: TextField(
+                      controller: _verDayController,
+                      readOnly: true,
+                      enableInteractiveSelection: false,
+                      showCursor: false,
+                      style: GoogleFonts.inter(
+                        fontSize: 12.sp,
+                        color: const Color(0xFF303030),
+                      ),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        border: InputBorder.none,
+                        hintText: "dd",
+                        hintStyle: GoogleFonts.inter(
+                          fontSize: 12.sp,
+                          color: const Color(0xFFB8BEC5),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 8.h,
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-        ),
-        // YEAR
-        Expanded(
-          child: GestureDetector(
-            onTap: () => _showVerificationDatePicker(context),
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF9FAFC),
-                borderRadius: BorderRadius.only(
-                  topRight: Radius.circular(8.r),
-                  bottomRight: Radius.circular(8.r),
-                ),
-                border: const Border(
-                  top: BorderSide(color: borderColor),
-                  bottom: BorderSide(color: borderColor),
-                  right: BorderSide(color: borderColor),
-                ),
-              ),
-              child: IgnorePointer(
-                child: TextField(
-                  controller: _verYearController,
-                  readOnly: true,
-                  style: GoogleFonts.inter(
-                    fontSize: 12.sp,
-                    color: const Color(0xFF303030),
-                  ),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    border: InputBorder.none,
-                    hintText: "YYYY",
-                    hintStyle: GoogleFonts.inter(
-                      fontSize: 12.sp,
-                      color: const Color(0xFFB8BEC5),
+            Expanded(
+              child: GestureDetector(
+                onTap: () => _showVerificationDatePicker(context),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FAFC),
+                    border: Border(
+                      top: BorderSide(
+                        color: _verificationDateError != null
+                            ? Colors.red
+                            : borderColor,
+                      ),
+                      bottom: BorderSide(
+                        color: _verificationDateError != null
+                            ? Colors.red
+                            : borderColor,
+                      ),
+                      right: BorderSide(
+                        color: _verificationDateError != null
+                            ? Colors.red
+                            : borderColor,
+                      ),
                     ),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 8.h,
+                  ),
+                  child: IgnorePointer(
+                    child: TextField(
+                      controller: _verMonthController,
+                      readOnly: true,
+                      enableInteractiveSelection: false,
+                      showCursor: false,
+                      style: GoogleFonts.inter(
+                        fontSize: 12.sp,
+                        color: const Color(0xFF303030),
+                      ),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        border: InputBorder.none,
+                        hintText: "mm",
+                        hintStyle: GoogleFonts.inter(
+                          fontSize: 12.sp,
+                          color: const Color(0xFFB8BEC5),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 8.h,
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
+            Expanded(
+              child: GestureDetector(
+                onTap: () => _showVerificationDatePicker(context),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FAFC),
+                    borderRadius: BorderRadius.only(
+                      topRight: Radius.circular(8.r),
+                      bottomRight: Radius.circular(8.r),
+                    ),
+                    border: Border(
+                      top: BorderSide(
+                        color: _verificationDateError != null
+                            ? Colors.red
+                            : borderColor,
+                      ),
+                      bottom: BorderSide(
+                        color: _verificationDateError != null
+                            ? Colors.red
+                            : borderColor,
+                      ),
+                      right: BorderSide(
+                        color: _verificationDateError != null
+                            ? Colors.red
+                            : borderColor,
+                      ),
+                    ),
+                  ),
+                  child: IgnorePointer(
+                    child: TextField(
+                      controller: _verYearController,
+                      readOnly: true,
+                      enableInteractiveSelection: false,
+                      showCursor: false,
+                      style: GoogleFonts.inter(
+                        fontSize: 12.sp,
+                        color: const Color(0xFF303030),
+                      ),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        border: InputBorder.none,
+                        hintText: "yyyy",
+                        hintStyle: GoogleFonts.inter(
+                          fontSize: 12.sp,
+                          color: const Color(0xFFB8BEC5),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 8.h,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
+        if (_verificationDateError != null)
+          Padding(
+            padding: EdgeInsets.only(top: 4.h, left: 4.w),
+            child: Text(
+              _verificationDateError!,
+              style: GoogleFonts.inter(color: Colors.red, fontSize: 10.sp),
+            ),
+          ),
       ],
     );
   }
@@ -518,73 +646,85 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-
-        // ── Signed Contracts ─────────────────────────────────────────────
         _sectionHeading('Signed Contracts'),
-
-        _fieldLabel('NDAs'),
+        _fieldLabel('NDAs', required: true),
         _buildTextField(
-          hint: 'Business Negotiations',
           controller: _ndasController,
           isEditing: _isNdasEditing,
-          onEdit: () => setState(() => _isNdasEditing = !_isNdasEditing),
+          focusNode: _ndasFocus,
+          onEdit: () {
+            if (!_isNdasEditing) setState(() => _isNdasEditing = true);
+          },
+          errorText: _ndasError,
+          onClearError: () => setState(
+            () => _ndasError = _ndasController.text.trim().isEmpty
+                ? "Please enter NDAs"
+                : null,
+          ),
         ),
         SizedBox(height: 10.h),
-
-        _fieldLabel('Employment Agreements'),
+        _fieldLabel('Employment Agreements', required: true),
         _buildTextField(
-          hint: 'Yes',
           controller: _employmentAgreementsController,
           isEditing: _isEmploymentAgreementsEditing,
-          onEdit: () => setState(
-                  () => _isEmploymentAgreementsEditing = !_isEmploymentAgreementsEditing),
+          focusNode: _employmentAgreementsFocus,
+          onEdit: () {
+            if (!_isEmploymentAgreementsEditing)
+              setState(() => _isEmploymentAgreementsEditing = true);
+          },
+          errorText: _employmentAgreementsError,
+          onClearError: () => setState(
+            () => _employmentAgreementsError =
+                _employmentAgreementsController.text.trim().isEmpty
+                ? "Please enter employment agreements"
+                : null,
+          ),
         ),
         SizedBox(height: 10.h),
-
-        _fieldLabel('Offer Letters'),
+        _fieldLabel('Offer Letters', required: true),
         _buildTextField(
-          hint: 'Yes',
           controller: _offerLettersController,
           isEditing: _isOfferLettersEditing,
-          onEdit: () =>
-              setState(() => _isOfferLettersEditing = !_isOfferLettersEditing),
+          focusNode: _offerLettersFocus,
+          onEdit: () {
+            if (!_isOfferLettersEditing)
+              setState(() => _isOfferLettersEditing = true);
+          },
+          errorText: _offerLettersError,
+          onClearError: () => setState(
+            () =>
+                _offerLettersError = _offerLettersController.text.trim().isEmpty
+                ? "Please enter offer letters"
+                : null,
+          ),
         ),
         SizedBox(height: 16.h),
-
-        // ── Identification ───────────────────────────────────────────────
         _sectionHeading('Identification'),
-
         _buildFileUploadSection(
           label: 'Scans of Passports',
           files: _passportFiles,
           onAdd: () => _addMockFile(_passportFiles),
           onDelete: (i) => setState(() => _passportFiles.removeAt(i)),
         ),
-
         _buildFileUploadSection(
           label: 'Visas',
           files: _visaFiles,
           onAdd: () => _addMockFile(_visaFiles),
           onDelete: (i) => setState(() => _visaFiles.removeAt(i)),
         ),
-
         _buildFileUploadSection(
           label: "Driver's Licenses",
           files: _driversLicFiles,
           onAdd: () => _addMockFile(_driversLicFiles),
           onDelete: (i) => setState(() => _driversLicFiles.removeAt(i)),
         ),
-
         SizedBox(height: 6.h),
-
-        // ── Background Checks ────────────────────────────────────────────
         _sectionHeading('Background Checks'),
-
-        _fieldLabel('Verification Status'),
+        _fieldLabel('Verification Status', required: true),
         DropdownButtonFormField<String>(
           value: _verificationStatus,
           hint: Text(
-            'Approved',
+            'Select status',
             style: GoogleFonts.inter(
               fontSize: 12.sp,
               color: const Color(0xFF6C7278),
@@ -607,13 +747,18 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
             ),
             filled: true,
             fillColor: const Color(0xFFF9FAFC),
+            errorStyle: const TextStyle(fontSize: 0, height: 0),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.r),
               borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.r),
-              borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+              borderSide: BorderSide(
+                color: _verificationStatusError != null
+                    ? Colors.red
+                    : const Color(0xFFD9DEE5),
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.r),
@@ -623,18 +768,27 @@ class _DcmntComplianceSectionState extends State<DcmntComplianceSection> {
           items: _statuses
               .map((e) => DropdownMenuItem(value: e, child: Text(e)))
               .toList(),
-          onChanged: (v) => setState(() => _verificationStatus = v),
+          onChanged: (v) => setState(() {
+            _verificationStatus = v;
+            _verificationStatusError = null;
+          }),
         ),
+        if (_verificationStatusError != null)
+          Padding(
+            padding: EdgeInsets.only(top: 4.h, left: 4.w),
+            child: Text(
+              _verificationStatusError!,
+              style: GoogleFonts.inter(color: Colors.red, fontSize: 10.sp),
+            ),
+          ),
         SizedBox(height: 10.h),
-
-        _fieldLabel('Verification Date'),
+        _fieldLabel('Verification Date', required: true),
         _buildDateRow(),
       ],
     );
   }
 }
 
-// ── Model ──────────────────────────────────────────────────────────────────
 class _UploadedFile {
   final String name;
   final String size;

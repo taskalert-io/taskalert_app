@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../extras/MyTaskScreen.dart';
-import '../extras/NotificationScreen.dart';
+import '../extras/MyTaskDetails.dart';
 import '../screens/HomeScreen.dart';
 import '../screens/MoreScreen.dart';
+import '../screens/NotificationScreen.dart';
 
 class CustomBottomNavBar extends StatefulWidget {
   final int selectedIndex;
@@ -19,8 +19,7 @@ class CustomBottomNavBar extends StatefulWidget {
 }
 
 class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
-  final FlutterSecureStorage secureStorage =
-  const FlutterSecureStorage();
+  final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
 
   String memberName = '';
   int? hoverIndex;
@@ -32,34 +31,20 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
     super.initState();
 
     items = [
-      {
-        'icon': Icons.home_rounded,
-        'label': 'Home',
-      },
+      {'icon': Icons.home_rounded, 'label': 'Home'},
 
-      {
-        'icon': Icons.fact_check_outlined,
-        'label': 'My Task',
-      },
+      {'icon': Icons.fact_check_outlined, 'label': 'My Task'},
 
-      {
-        'icon': Icons.notifications_none_rounded,
-        'label': 'Notification',
-      },
+      {'icon': Icons.notifications_none_rounded, 'label': 'Notification'},
 
-      {
-        'icon': Icons.more_horiz_rounded,
-        'label': 'More',
-      },
+      {'icon': Icons.more_horiz_rounded, 'label': 'More'},
     ];
 
     _loadMemberName();
   }
 
   Future<void> _loadMemberName() async {
-    final storedName = await secureStorage.read(
-      key: 'user_name',
-    );
+    final storedName = await secureStorage.read(key: 'user_name');
 
     if (!mounted) return;
 
@@ -70,18 +55,12 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
 
   @override
   Widget build(BuildContext context) {
-    final double bottomPadding =
-        MediaQuery.of(context).padding.bottom;
+    final double bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Container(
       width: double.infinity,
 
-      padding: EdgeInsets.fromLTRB(
-        8.w,
-        8.h,
-        8.w,
-        6.h + bottomPadding,
-      ),
+      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 6.h + bottomPadding),
 
       decoration: BoxDecoration(
         color: Colors.white,
@@ -104,8 +83,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
 
         children: List.generate(items.length, (index) {
-          bool isSelected =
-              widget.selectedIndex == index;
+          bool isSelected = widget.selectedIndex == index;
 
           return Expanded(
             child: InkWell(
@@ -122,32 +100,29 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
                     break;
 
                   case 1:
-                    screen = MyTaskScreen();
+                    screen = TaskDetailScreen(userId: '');
                     break;
 
                   case 2:
-                    screen = NotificationScreen();
+                    screen = NotificationSetting(userId: '');
                     break;
 
                   case 3:
-                    screen = MoreScreen(userId: '',);
+                    screen = MoreScreen(userId: '');
                     break;
 
                   default:
                     screen = HomeScreen(userId: '');
                 }
 
-                Navigator.pushReplacement(
+                Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => screen,
-                  ),
+                  MaterialPageRoute(builder: (context) => screen),
                 );
               },
 
               child: Padding(
-                padding:
-                EdgeInsets.symmetric(vertical: 4.h),
+                padding: EdgeInsets.symmetric(vertical: 4.h),
 
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -155,66 +130,61 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
                   children: [
                     isSelected
                         ? ShaderMask(
-                      shaderCallback: (bounds) =>
-                          const LinearGradient(
-                            colors: [
-                              Color(0xFF52EBB9),
-                              Color(0xFF42A8FF),
-                              Color(0xFFF15EFF),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ).createShader(bounds),
+                            shaderCallback: (bounds) => const LinearGradient(
+                              colors: [
+                                Color(0xFF52EBB9),
+                                Color(0xFF42A8FF),
+                                Color(0xFFF15EFF),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ).createShader(bounds),
 
-                      child: Icon(
-                        items[index]['icon'],
-                        size: 22.r,
-                        color: Colors.white,
-                      ),
-                    )
+                            child: Icon(
+                              items[index]['icon'],
+                              size: 22.r,
+                              color: Colors.white,
+                            ),
+                          )
                         : Icon(
-                      items[index]['icon'],
-                      size: 22.r,
-                      color: const Color(0xFF667085),
-                    ),
+                            items[index]['icon'],
+                            size: 22.r,
+                            color: const Color(0xFF667085),
+                          ),
 
                     SizedBox(height: 3.h),
 
                     isSelected
                         ? ShaderMask(
-                      shaderCallback: (bounds) =>
-                          const LinearGradient(
-                            colors: [
-                              Color(0xFF52EBB9),
-                              Color(0xFF42A8FF),
-                              Color(0xFFF15EFF),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ).createShader(bounds),
+                            shaderCallback: (bounds) => const LinearGradient(
+                              colors: [
+                                Color(0xFF52EBB9),
+                                Color(0xFF42A8FF),
+                                Color(0xFFF15EFF),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ).createShader(bounds),
 
-                      child: Text(
-                        items[index]['label'],
+                            child: Text(
+                              items[index]['label'],
 
-                        style: GoogleFonts.inter(
-                          fontSize: 10.sp,
-                          fontWeight:
-                          FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    )
+                              style: GoogleFonts.inter(
+                                fontSize: 10.sp,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          )
                         : Text(
-                      items[index]['label'],
+                            items[index]['label'],
 
-                      style: GoogleFonts.inter(
-                        fontSize: 10.sp,
-                        fontWeight:
-                        FontWeight.w500,
-                        color:
-                        const Color(0xFF667085),
-                      ),
-                    ),
+                            style: GoogleFonts.inter(
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF667085),
+                            ),
+                          ),
                   ],
                 ),
               ),
