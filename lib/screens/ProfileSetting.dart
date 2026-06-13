@@ -22,20 +22,55 @@ class ProfileSetting extends StatefulWidget {
   State<StatefulWidget> createState() => ProfileSettingState();
 }
 
-class ProfileSettingState extends State<ProfileSetting>
-    with SingleTickerProviderStateMixin {
+class ProfileSettingState extends State<ProfileSetting> {
+  // ── Constants ──────────────────────────────────────────────────────────────
+  static const _primaryColor = Color(0xFF0A0258);
+  static const _borderColor = Color(0xFFD9DEE5);
+  static const _fillColor = Color(0xFFF9FAFC);
+  static const _labelColor = Color(0xFF303030);
+  static const _hintColor = Color(0xFFB8BEC5);
+  static const _textColor = Color(0xFF6C7278);
+  static const _dividerColor = Color(0xFFE4E7EC);
+  static const _shadowBlack08 = Color(0x14000000); // black.withOpacity(0.08)
+  static const _shadowBlack06 = Color(
+    0x0F101828,
+  ); // 0xFF101828.withOpacity(0.06)
+  static const _shadowBlack012 = Color(0x1F000000); // black.withOpacity(0.12)
+  static const _shadowBlack02 = Color(0x33000000); // black.withOpacity(0.2)
+
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
   final TextEditingController _dateController = TextEditingController();
+
+  // ── Form Keys ──────────────────────────────────────────────────────────────
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final GlobalKey<FormState> _acFormKey = GlobalKey<FormState>();
+
+  // ── Section GlobalKeys ─────────────────────────────────────────────────────
+  final GlobalKey<EmpJobDetailsSectionState> _empKey = GlobalKey();
+  final GlobalKey<CmpFinanceSectionState> _cmpKey = GlobalKey();
+  final GlobalKey<SkillPerformSectionState> _skillKey = GlobalKey();
+  final GlobalKey<TimeAttendSectionState> _timeKey = GlobalKey();
+  final GlobalKey<AssetSystemSectionState> _assetKey = GlobalKey();
+  final GlobalKey<DcmntComplianceSectionState> _dcmntKey = GlobalKey();
 
   bool _autoValidate = false;
+  bool _acAutoValidate = false;
 
-  // ── Editing states (mirrors EmpJobDetailsSection pattern) ─────────────────
+  final FocusNode _firstNameFocus = FocusNode();
+  final FocusNode _lastNameFocus = FocusNode();
+  final FocusNode _emailFocus = FocusNode();
+  final FocusNode _phoneFocus = FocusNode();
+  final FocusNode _accountEmailFocus = FocusNode();
+  final FocusNode _accountPasswordFocus = FocusNode();
+
+  // ── Editing states ─────────────────────────────────────────────────────────
   bool _isFirstNameEditing = false;
   bool _isLastNameEditing = false;
   bool _isEmailEditing = false;
   bool _isPhoneEditing = false;
+  bool _isAccountEmailEditing = false;
+  bool _isAccountPasswordEditing = false;
 
   // ── Section toggles ────────────────────────────────────────────────────────
   bool empJobDetailsEnabled = false;
@@ -60,40 +95,33 @@ class ProfileSettingState extends State<ProfileSetting>
   final TextEditingController yearController = TextEditingController();
   bool isDobError = false;
 
-  // ── Account Settings controllers & states ──────────────────────────────────
-  final TextEditingController _accountEmailController    = TextEditingController();
-  final TextEditingController _accountPasswordController = TextEditingController();
-  bool _isAccountEmailEditing    = false;
-  bool _isAccountPasswordEditing = false;
-  bool _isTwoStepEnabled         = true;
-  bool _isSupportAccessEnabled   = true;
+  // ── Account Settings ───────────────────────────────────────────────────────
+  final TextEditingController _accountEmailController = TextEditingController();
+  final TextEditingController _accountPasswordController =
+      TextEditingController();
+  bool _isTwoStepEnabled = true;
+  bool _isSupportAccessEnabled = true;
 
-  String selectedProofType = "";
-  String selectedProofRadioType = "";
-
-  String? _selectedLanguage;
+  String _selectedLanguage = "Select Language";
+  String? _languageError;
   final List<String> _languages = [
-    'English', 'Hindi', 'Bengali', 'Spanish', 'French', 'Arabic', 'Chinese',
+    'English',
+    'Hindi',
+    'Bengali',
+    'Spanish',
+    'French',
+    'Arabic',
+    'Chinese',
   ];
 
   @override
   void initState() {
     super.initState();
-
-    // Default DOB to today
-    final now = DateTime.now();
-    _selectedDate = now;
-    dayController.text = now.day.toString().padLeft(2, '0');
-    monthController.text = now.month.toString().padLeft(2, '0');
-    yearController.text = now.year.toString();
-
-    // Default profile values
     _firstNameController.text = "Michael";
     _lastNameController.text = "Smith";
     _emailController.text = "michaelsmith@gmail.com";
     _phoneController.text = "+14547260592";
-
-    _accountEmailController.text    = "michael Smith@gmail.com";
+    _accountEmailController.text = "michael Smith@gmail.com";
     _accountPasswordController.text = "••••••••";
   }
 
@@ -107,44 +135,250 @@ class ProfileSettingState extends State<ProfileSetting>
     _lastNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-
     _accountEmailController.dispose();
     _accountPasswordController.dispose();
-
+    _firstNameFocus.dispose();
+    _lastNameFocus.dispose();
+    _emailFocus.dispose();
+    _phoneFocus.dispose();
+    _accountEmailFocus.dispose();
+    _accountPasswordFocus.dispose();
     super.dispose();
   }
 
-  // ── Submit ─────────────────────────────────────────────────────────────────
+  // ── My Profile Submit ──────────────────────────────────────────────────────
   void _submitForm() {
     setState(() => _autoValidate = true);
+    bool mainValid = _formKey.currentState!.validate();
 
-    if (!_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "Please fill all required fields.",
-            style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
-          ),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8.r),
-          ),
-        ),
-      );
-      return;
+    if (_selectedDate == null) {
+      setState(() => isDobError = true);
+      mainValid = false;
     }
 
+    bool sectionsValid = true;
+    if (empJobDetailsEnabled && !(_empKey.currentState?.validate() ?? true))
+      sectionsValid = false;
+    if (cmpFinanceEnabled && !(_cmpKey.currentState?.validate() ?? true))
+      sectionsValid = false;
+    if (skillPerformEnabled && !(_skillKey.currentState?.validate() ?? true))
+      sectionsValid = false;
+    if (timeAttendEnabled && !(_timeKey.currentState?.validate() ?? true))
+      sectionsValid = false;
+    if (assetSystemEnabled && !(_assetKey.currentState?.validate() ?? true))
+      sectionsValid = false;
+    if (dcmntComplianceEnabled && !(_dcmntKey.currentState?.validate() ?? true))
+      sectionsValid = false;
+
+    if (!mainValid || !sectionsValid) {
+      _showSnackBar("Please fill all required fields.", Colors.red);
+      return;
+    }
+    _showSnackBar("Form submitted successfully!", Colors.green);
+  }
+
+  // ── Account Settings Submit ────────────────────────────────────────────────
+  void _submitAcForm() {
+    setState(() => _acAutoValidate = true);
+    bool valid = _acFormKey.currentState!.validate();
+
+    if (_selectedLanguage == "Select Language") {
+      setState(() => _languageError = "Please select language");
+      valid = false;
+    } else {
+      setState(() => _languageError = null);
+    }
+
+    if (!valid) {
+      _showSnackBar("Please fill all required fields.", Colors.red);
+      return;
+    }
+    _showSnackBar("Account settings saved successfully!", Colors.green);
+  }
+
+  // ── SnackBar helper ────────────────────────────────────────────────────────
+  void _showSnackBar(String message, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          "Form submitted successfully!",
+          message,
           style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
         ),
-        backgroundColor: Colors.green,
+        backgroundColor: color,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.r),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+      ),
+    );
+  }
+
+  // ── Language bottom sheet ──────────────────────────────────────────────────
+  void _showLanguageBottomSheet(BuildContext context) {
+    List<String> filtered = List.from(_languages);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, ss) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.6,
+            ),
+            padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 24.h),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+              boxShadow: [
+                BoxShadow(
+                  color: _shadowBlack012,
+                  blurRadius: 10.r,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Select Language",
+                      style: GoogleFonts.inter(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w700,
+                        color: _primaryColor,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(ctx),
+                      child: Icon(Icons.close, size: 20.r, color: _textColor),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 12.h),
+                TextField(
+                  autofocus: true,
+                  onChanged: (val) => ss(() {
+                    filtered = _languages
+                        .where(
+                          (e) => e.toLowerCase().contains(
+                            val.toLowerCase().trim(),
+                          ),
+                        )
+                        .toList();
+                  }),
+                  style: GoogleFonts.inter(
+                    fontSize: 12.sp,
+                    color: const Color(0xFF344054),
+                  ),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: "Search language...",
+                    hintStyle: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      color: _hintColor,
+                    ),
+                    prefixIcon: Icon(
+                      Icons.search,
+                      size: 16.r,
+                      color: const Color(0xFF4338CA),
+                    ),
+                    filled: true,
+                    fillColor: _fillColor,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 10.w,
+                      vertical: 10.h,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                      borderSide: const BorderSide(color: _borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                      borderSide: const BorderSide(color: _borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                      borderSide: const BorderSide(color: _primaryColor),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                Flexible(
+                  child: filtered.isEmpty
+                      ? Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24.h),
+                          child: Center(
+                            child: Text(
+                              "No results found",
+                              style: GoogleFonts.inter(
+                                fontSize: 12.sp,
+                                color: const Color(0xFF9AA0AB),
+                              ),
+                            ),
+                          ),
+                        )
+                      : ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, __) =>
+                              const Divider(height: 1, color: _dividerColor),
+                          itemBuilder: (_, i) {
+                            final item = filtered[i];
+                            final isSel = item == _selectedLanguage;
+                            return InkWell(
+                              borderRadius: BorderRadius.circular(8.r),
+                              onTap: () {
+                                setState(() {
+                                  _selectedLanguage = item;
+                                  _languageError = null;
+                                });
+                                Navigator.pop(ctx);
+                              },
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 4.w,
+                                  vertical: 12.h,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        item,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13.sp,
+                                          fontWeight: isSel
+                                              ? FontWeight.w600
+                                              : FontWeight.w400,
+                                          color: isSel
+                                              ? _primaryColor
+                                              : const Color(0xFF344054),
+                                        ),
+                                      ),
+                                    ),
+                                    if (isSel)
+                                      Icon(
+                                        Icons.check,
+                                        size: 16.r,
+                                        color: _primaryColor,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -162,9 +396,7 @@ class ProfileSettingState extends State<ProfileSetting>
             style: GoogleFonts.inter(
               fontSize: 13.sp,
               fontWeight: FontWeight.w700,
-              color: isSelected
-                  ? const Color(0xFF0A0258)
-                  : const Color(0xFF8B8C8E),
+              color: isSelected ? _primaryColor : const Color(0xFF8B8C8E),
             ),
           ),
         ),
@@ -175,12 +407,12 @@ class ProfileSettingState extends State<ProfileSetting>
           decoration: BoxDecoration(
             gradient: isSelected
                 ? const LinearGradient(
-              colors: [
-                Color(0xFFE040FB),
-                Color(0xFF40C4FF),
-                Color(0xFF64FFDA),
-              ],
-            )
+                    colors: [
+                      Color(0xFFE040FB),
+                      Color(0xFF40C4FF),
+                      Color(0xFF64FFDA),
+                    ],
+                  )
                 : null,
             color: isSelected ? null : const Color(0xFFE5E5E5),
           ),
@@ -191,64 +423,72 @@ class ProfileSettingState extends State<ProfileSetting>
 
   // ── Phone / Email launchers ────────────────────────────────────────────────
   Future<void> _callPhone() async {
-    final Uri uri = Uri.parse('tel:+14547260592');
     try {
-      await launchUrl(uri);
+      await launchUrl(Uri.parse('tel:+14547260592'));
     } catch (e) {
       debugPrint('Phone error: $e');
     }
   }
 
   Future<void> _sendEmail() async {
-    const String email = 'michaelsmith@gmail.com';
-    const String subject = 'Hello';
-    const String body = '';
-
-    final Uri gmailUri = Uri.parse(
-      'googlegmail://co?to=$email&subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body)}',
+    const email = 'michaelsmith@gmail.com';
+    const subject = 'Hello';
+    final gmailUri = Uri.parse(
+      'googlegmail://co?to=$email&subject=${Uri.encodeComponent(subject)}&body=',
     );
-    final Uri mailtoUri = Uri(
+    final mailtoUri = Uri(
       scheme: 'mailto',
       path: email,
-      queryParameters: {'subject': subject, 'body': body},
+      queryParameters: {'subject': subject, 'body': ''},
     );
-
     try {
       if (await canLaunchUrl(gmailUri)) {
         await launchUrl(gmailUri, mode: LaunchMode.externalApplication);
       } else if (await canLaunchUrl(mailtoUri)) {
         await launchUrl(mailtoUri, mode: LaunchMode.externalApplication);
       } else {
-        final Uri webGmail = Uri.parse(
-          'https://mail.google.com/mail/?view=cm&fs=1&to=$email&su=${Uri.encodeComponent(subject)}',
+        await launchUrl(
+          Uri.parse(
+            'https://mail.google.com/mail/?view=cm&fs=1&to=$email&su=${Uri.encodeComponent(subject)}',
+          ),
+          mode: LaunchMode.externalApplication,
         );
-        await launchUrl(webGmail, mode: LaunchMode.externalApplication);
       }
     } catch (e) {
       debugPrint('Email error: $e');
     }
   }
 
-  // ── Reusable text field (exact EmpJobDetailsSection pattern) ───────────────
+  // ── Reusable text field ────────────────────────────────────────────────────
   Widget _buildTextField({
     required String hint,
     required TextEditingController controller,
     required bool isEditing,
     required VoidCallback onEdit,
+    required FocusNode focusNode,
     TextInputType keyboardType = TextInputType.text,
     List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
+    bool isAccountField = false,
   }) {
     return TextFormField(
       controller: controller,
+      focusNode: focusNode,
       readOnly: !isEditing,
+      enableInteractiveSelection: isEditing,
+      showCursor: isEditing,
+      cursorColor: isEditing ? _primaryColor : Colors.transparent,
+      cursorWidth: isEditing ? 2.0 : 0,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       validator: validator,
+      autovalidateMode: (isAccountField ? _acAutoValidate : _autoValidate)
+          ? AutovalidateMode.onUserInteraction
+          : AutovalidateMode.disabled,
       style: GoogleFonts.inter(
         fontSize: 12.sp,
         fontWeight: FontWeight.w400,
-        color: const Color(0xFF6C7278),
+        color: _textColor,
       ),
       decoration: InputDecoration(
         isDense: true,
@@ -260,34 +500,32 @@ class ProfileSettingState extends State<ProfileSetting>
         hintStyle: GoogleFonts.inter(
           fontSize: 12.sp,
           fontWeight: FontWeight.w400,
-          color: const Color(0xFFB8BEC5),
+          color: _hintColor,
         ),
         errorStyle: TextStyle(fontSize: 10.sp),
-        // ── Edit / Done icon toggles exactly like EmpJobDetailsSection ──
         suffixIcon: GestureDetector(
-          onTap: onEdit,
+          onTap: () {
+            onEdit();
+            Future.microtask(() => focusNode.requestFocus());
+          },
           child: Padding(
             padding: const EdgeInsets.all(10),
-            child: Icon(
-              Icons.edit_outlined,
-              size: 18.sp,
-              color: const Color(0xFFB8BEC5),
-            ),
+            child: Icon(Icons.edit_outlined, size: 18.sp, color: _hintColor),
           ),
         ),
         filled: true,
-        fillColor: const Color(0xFFF9FAFC),
+        fillColor: _fillColor,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.r),
-          borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+          borderSide: const BorderSide(color: _borderColor),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.r),
-          borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+          borderSide: const BorderSide(color: _borderColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.r),
-          borderSide: const BorderSide(color: Color(0xFF0A0258)),
+          borderSide: const BorderSide(color: _primaryColor),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.r),
@@ -307,7 +545,7 @@ class ProfileSettingState extends State<ProfileSetting>
     style: GoogleFonts.inter(
       fontSize: 13.sp,
       fontWeight: FontWeight.w600,
-      color: const Color(0xFF0A0258),
+      color: _primaryColor,
     ),
   );
 
@@ -316,15 +554,12 @@ class ProfileSettingState extends State<ProfileSetting>
     style: GoogleFonts.inter(
       fontSize: 12.sp,
       fontWeight: FontWeight.w400,
-      color: const Color(0xFF303030),
+      color: _labelColor,
     ),
   );
 
   // ── Toggle switch ──────────────────────────────────────────────────────────
-  Widget _buildToggle({
-    required bool value,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildToggle({required bool value, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -348,8 +583,7 @@ class ProfileSettingState extends State<ProfileSetting>
             height: 14.h,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color:
-              value ? const Color(0xFF1DC230) : const Color(0xFF676299),
+              color: value ? const Color(0xFF1DC230) : const Color(0xFF676299),
             ),
           ),
         ),
@@ -357,7 +591,7 @@ class ProfileSettingState extends State<ProfileSetting>
     );
   }
 
-  // ── Section row (label + toggle + optional content) ───────────────────────
+  // ── Section row ───────────────────────────────────────────────────────────
   Widget _buildSectionRow({
     required String label,
     required bool value,
@@ -368,7 +602,7 @@ class ProfileSettingState extends State<ProfileSetting>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(height: 10.h),
-        const Divider(height: 1, color: Color(0xFFE4E7EC)),
+        const Divider(height: 1, color: _dividerColor),
         SizedBox(height: 10.h),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -378,15 +612,16 @@ class ProfileSettingState extends State<ProfileSetting>
               style: GoogleFonts.inter(
                 fontSize: 12.sp,
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFF0A0258),
+                color: _primaryColor,
               ),
             ),
             _buildToggle(value: value, onTap: onTap),
           ],
         ),
         SizedBox(height: 8.h),
-        if (value)
-          Container(
+        Offstage(
+          offstage: !value,
+          child: Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -394,7 +629,7 @@ class ProfileSettingState extends State<ProfileSetting>
               borderRadius: BorderRadius.circular(10.r),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF101828).withOpacity(0.06),
+                  color: _shadowBlack06,
                   blurRadius: 24.r,
                   offset: const Offset(0, 8),
                 ),
@@ -402,6 +637,46 @@ class ProfileSettingState extends State<ProfileSetting>
             ),
             child: child,
           ),
+        ),
+      ],
+    );
+  }
+
+  // ── Save button ────────────────────────────────────────────────────────────
+  Widget _buildSaveButton(VoidCallback onPressed) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8.r),
+            gradient: const LinearGradient(
+              colors: [Color(0xFFD96CFF), Color(0xFF5CE1E6)],
+            ),
+          ),
+          child: ElevatedButton(
+            onPressed: onPressed,
+            style: ElevatedButton.styleFrom(
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              shadowColor: Colors.transparent,
+              padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 8.h),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+            ),
+            child: Text(
+              "Save Changes",
+              style: GoogleFonts.inter(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -409,6 +684,7 @@ class ProfileSettingState extends State<ProfileSetting>
   // ── Date picker bottom sheet ───────────────────────────────────────────────
   void _showDatePicker(BuildContext context) {
     DateTime tempSelectedDate = _selectedDate ?? DateTime.now();
+    bool hasSelected = _selectedDate != null;
 
     showModalBottomSheet(
       context: context,
@@ -429,7 +705,7 @@ class ProfileSettingState extends State<ProfileSetting>
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: _shadowBlack02,
                       blurRadius: 10.r,
                       spreadRadius: 2.r,
                       offset: const Offset(0, -2),
@@ -441,14 +717,14 @@ class ProfileSettingState extends State<ProfileSetting>
                   children: [
                     Expanded(
                       child: SfDateRangePicker(
-                        initialSelectedDate: tempSelectedDate,
+                        initialSelectedDate: _selectedDate,
                         selectionMode: DateRangePickerSelectionMode.single,
                         view: DateRangePickerView.month,
                         allowViewNavigation: true,
                         showNavigationArrow: true,
                         backgroundColor: Colors.white,
-                        selectionColor: const Color(0xFF0A0258),
-                        todayHighlightColor: const Color(0xFF0A0258),
+                        selectionColor: _primaryColor,
+                        todayHighlightColor: _primaryColor,
                         startRangeSelectionColor: Colors.white,
                         endRangeSelectionColor: Colors.white,
                         rangeSelectionColor: Colors.white,
@@ -462,11 +738,13 @@ class ProfileSettingState extends State<ProfileSetting>
                         ),
                         onSelectionChanged:
                             (DateRangePickerSelectionChangedArgs args) {
-                          if (args.value is DateTime) {
-                            dialogSetState(
-                                    () => tempSelectedDate = args.value);
-                          }
-                        },
+                              if (args.value is DateTime) {
+                                dialogSetState(() {
+                                  tempSelectedDate = args.value;
+                                  hasSelected = true;
+                                });
+                              }
+                            },
                       ),
                     ),
                     SizedBox(height: 10.h),
@@ -485,22 +763,24 @@ class ProfileSettingState extends State<ProfileSetting>
                         ),
                         TextButton(
                           onPressed: () {
-                            setState(() {
-                              _selectedDate = tempSelectedDate;
-                              _dateController.text =
-                              "${tempSelectedDate.day.toString().padLeft(2, '0')}-"
-                                  "${tempSelectedDate.month.toString().padLeft(2, '0')}-"
-                                  "${tempSelectedDate.year}";
-                              dayController.text = tempSelectedDate.day
-                                  .toString()
-                                  .padLeft(2, '0');
-                              monthController.text = tempSelectedDate.month
-                                  .toString()
-                                  .padLeft(2, '0');
-                              yearController.text =
-                                  tempSelectedDate.year.toString();
-                              isDobError = false;
-                            });
+                            if (hasSelected) {
+                              setState(() {
+                                _selectedDate = tempSelectedDate;
+                                _dateController.text =
+                                    "${tempSelectedDate.day.toString().padLeft(2, '0')}-"
+                                    "${tempSelectedDate.month.toString().padLeft(2, '0')}-"
+                                    "${tempSelectedDate.year}";
+                                dayController.text = tempSelectedDate.day
+                                    .toString()
+                                    .padLeft(2, '0');
+                                monthController.text = tempSelectedDate.month
+                                    .toString()
+                                    .padLeft(2, '0');
+                                yearController.text = tempSelectedDate.year
+                                    .toString();
+                                isDobError = false;
+                              });
+                            }
                             Navigator.pop(context);
                           },
                           child: Text(
@@ -523,7 +803,7 @@ class ProfileSettingState extends State<ProfileSetting>
     );
   }
 
-  // ── My Profile tab content ─────────────────────────────────────────────────
+  // ── My Profile tab ─────────────────────────────────────────────────────────
   Widget _buildMyProfileContent() {
     return SingleChildScrollView(
       padding: EdgeInsets.only(
@@ -537,28 +817,23 @@ class ProfileSettingState extends State<ProfileSetting>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Profile Details card ───────────────────────────────────
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(8.r),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: _shadowBlack08,
                     blurRadius: 4,
                     offset: const Offset(0, 1),
                   ),
                 ],
               ),
               child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: 15.w,
-                  vertical: 16.h,
-                ),
+                padding: EdgeInsets.symmetric(horizontal: 15.w, vertical: 16.h),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── Profile Details ──────────────────────────────
                     _sectionHeading('Profile Details'),
                     SizedBox(height: 8.h),
 
@@ -568,10 +843,13 @@ class ProfileSettingState extends State<ProfileSetting>
                       hint: 'Enter first name',
                       controller: _firstNameController,
                       isEditing: _isFirstNameEditing,
-                      onEdit: () => setState(
-                              () => _isFirstNameEditing = !_isFirstNameEditing),
+                      focusNode: _firstNameFocus,
+                      onEdit: () {
+                        if (!_isFirstNameEditing)
+                          setState(() => _isFirstNameEditing = true);
+                      },
                       validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Required' : null,
+                          (v == null || v.trim().isEmpty) ? 'Required' : null,
                     ),
                     SizedBox(height: 8.h),
 
@@ -581,14 +859,16 @@ class ProfileSettingState extends State<ProfileSetting>
                       hint: 'Enter last name',
                       controller: _lastNameController,
                       isEditing: _isLastNameEditing,
-                      onEdit: () => setState(
-                              () => _isLastNameEditing = !_isLastNameEditing),
+                      focusNode: _lastNameFocus,
+                      onEdit: () {
+                        if (!_isLastNameEditing)
+                          setState(() => _isLastNameEditing = true);
+                      },
                       validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Required' : null,
+                          (v == null || v.trim().isEmpty) ? 'Required' : null,
                     ),
                     SizedBox(height: 10.h),
 
-                    // ── Contact Details ──────────────────────────────
                     _sectionHeading('Contact Details'),
                     SizedBox(height: 8.h),
 
@@ -598,13 +878,16 @@ class ProfileSettingState extends State<ProfileSetting>
                       hint: 'Enter email address',
                       controller: _emailController,
                       isEditing: _isEmailEditing,
-                      onEdit: () =>
-                          setState(() => _isEmailEditing = !_isEmailEditing),
+                      focusNode: _emailFocus,
                       keyboardType: TextInputType.emailAddress,
+                      onEdit: () {
+                        if (!_isEmailEditing)
+                          setState(() => _isEmailEditing = true);
+                      },
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return 'Required';
-                        final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-                        if (!emailRegex.hasMatch(v)) return 'Invalid email';
+                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v))
+                          return 'Invalid email';
                         return null;
                       },
                     ),
@@ -616,21 +899,26 @@ class ProfileSettingState extends State<ProfileSetting>
                       hint: 'Enter phone number',
                       controller: _phoneController,
                       isEditing: _isPhoneEditing,
-                      onEdit: () =>
-                          setState(() => _isPhoneEditing = !_isPhoneEditing),
+                      focusNode: _phoneFocus,
                       keyboardType: TextInputType.phone,
+                      onEdit: () {
+                        if (!_isPhoneEditing)
+                          setState(() => _isPhoneEditing = true);
+                      },
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(
-                          RegExp(r'[\d\s\-\+\(\)]'),
-                        ),
-                        LengthLimitingTextInputFormatter(15),
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(10),
                       ],
-                      validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Required' : null,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty)
+                          return 'Please enter phone number';
+                        if (v.trim().length < 10)
+                          return 'Phone number must be 10 digits';
+                        return null;
+                      },
                     ),
                     SizedBox(height: 8.h),
 
-                    // ── Date of Birth ────────────────────────────────
                     _fieldLabel('Date of Birth'),
                     SizedBox(height: 6.h),
 
@@ -642,32 +930,34 @@ class ProfileSettingState extends State<ProfileSetting>
                             onTap: () => _showDatePicker(context),
                             child: Container(
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF9FAFC),
+                                color: _fillColor,
                                 borderRadius: BorderRadius.only(
                                   topLeft: Radius.circular(8.r),
                                   bottomLeft: Radius.circular(8.r),
                                 ),
                                 border: Border.all(
-                                  color: isDobError
-                                      ? Colors.red
-                                      : const Color(0xFFD9DEE5),
+                                  color: isDobError ? Colors.red : _borderColor,
                                 ),
                               ),
                               child: IgnorePointer(
                                 child: TextField(
                                   controller: dayController,
                                   readOnly: true,
+                                  enableInteractiveSelection: false,
+                                  showCursor: false,
+                                  cursorColor: Colors.transparent,
+                                  cursorWidth: 0,
                                   style: GoogleFonts.inter(
                                     fontSize: 12.sp,
-                                    color: const Color(0xFF303030),
+                                    color: _labelColor,
                                   ),
                                   decoration: InputDecoration(
                                     isDense: true,
                                     border: InputBorder.none,
-                                    hintText: "Day",
+                                    hintText: "dd",
                                     hintStyle: GoogleFonts.inter(
                                       fontSize: 12.sp,
-                                      color: const Color(0xFFB8BEC5),
+                                      color: _hintColor,
                                     ),
                                     contentPadding: EdgeInsets.symmetric(
                                       horizontal: 12.w,
@@ -679,29 +969,28 @@ class ProfileSettingState extends State<ProfileSetting>
                             ),
                           ),
                         ),
-
                         // MONTH
                         Expanded(
                           child: GestureDetector(
                             onTap: () => _showDatePicker(context),
                             child: Container(
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF9FAFC),
+                                color: _fillColor,
                                 border: Border(
                                   top: BorderSide(
                                     color: isDobError
                                         ? Colors.red
-                                        : const Color(0xFFD9DEE5),
+                                        : _borderColor,
                                   ),
                                   bottom: BorderSide(
                                     color: isDobError
                                         ? Colors.red
-                                        : const Color(0xFFD9DEE5),
+                                        : _borderColor,
                                   ),
                                   right: BorderSide(
                                     color: isDobError
                                         ? Colors.red
-                                        : const Color(0xFFD9DEE5),
+                                        : _borderColor,
                                   ),
                                 ),
                               ),
@@ -709,17 +998,21 @@ class ProfileSettingState extends State<ProfileSetting>
                                 child: TextField(
                                   controller: monthController,
                                   readOnly: true,
+                                  enableInteractiveSelection: false,
+                                  showCursor: false,
+                                  cursorColor: Colors.transparent,
+                                  cursorWidth: 0,
                                   style: GoogleFonts.inter(
                                     fontSize: 12.sp,
-                                    color: const Color(0xFF303030),
+                                    color: _labelColor,
                                   ),
                                   decoration: InputDecoration(
                                     isDense: true,
                                     border: InputBorder.none,
-                                    hintText: "Month",
+                                    hintText: "mm",
                                     hintStyle: GoogleFonts.inter(
                                       fontSize: 12.sp,
-                                      color: const Color(0xFFB8BEC5),
+                                      color: _hintColor,
                                     ),
                                     contentPadding: EdgeInsets.symmetric(
                                       horizontal: 12.w,
@@ -731,14 +1024,13 @@ class ProfileSettingState extends State<ProfileSetting>
                             ),
                           ),
                         ),
-
                         // YEAR
                         Expanded(
                           child: GestureDetector(
                             onTap: () => _showDatePicker(context),
                             child: Container(
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF9FAFC),
+                                color: _fillColor,
                                 borderRadius: BorderRadius.only(
                                   topRight: Radius.circular(8.r),
                                   bottomRight: Radius.circular(8.r),
@@ -747,17 +1039,17 @@ class ProfileSettingState extends State<ProfileSetting>
                                   top: BorderSide(
                                     color: isDobError
                                         ? Colors.red
-                                        : const Color(0xFFD9DEE5),
+                                        : _borderColor,
                                   ),
                                   bottom: BorderSide(
                                     color: isDobError
                                         ? Colors.red
-                                        : const Color(0xFFD9DEE5),
+                                        : _borderColor,
                                   ),
                                   right: BorderSide(
                                     color: isDobError
                                         ? Colors.red
-                                        : const Color(0xFFD9DEE5),
+                                        : _borderColor,
                                   ),
                                 ),
                               ),
@@ -765,17 +1057,21 @@ class ProfileSettingState extends State<ProfileSetting>
                                 child: TextField(
                                   controller: yearController,
                                   readOnly: true,
+                                  enableInteractiveSelection: false,
+                                  showCursor: false,
+                                  cursorColor: Colors.transparent,
+                                  cursorWidth: 0,
                                   style: GoogleFonts.inter(
                                     fontSize: 12.sp,
-                                    color: const Color(0xFF303030),
+                                    color: _labelColor,
                                   ),
                                   decoration: InputDecoration(
                                     isDense: true,
                                     border: InputBorder.none,
-                                    hintText: "Year",
+                                    hintText: "yyyy",
                                     hintStyle: GoogleFonts.inter(
                                       fontSize: 12.sp,
-                                      color: const Color(0xFFB8BEC5),
+                                      color: _hintColor,
                                     ),
                                     contentPadding: EdgeInsets.symmetric(
                                       horizontal: 12.w,
@@ -808,7 +1104,6 @@ class ProfileSettingState extends State<ProfileSetting>
               ),
             ),
 
-            // ── Expandable sections ────────────────────────────────────
             _buildSectionRow(
               label: "Employment & Job Details",
               value: empJobDetailsEnabled,
@@ -822,9 +1117,8 @@ class ProfileSettingState extends State<ProfileSetting>
                   assetSystemEnabled = false;
                 }
               }),
-              child: const EmpJobDetailsSection(),
+              child: EmpJobDetailsSection(key: _empKey),
             ),
-
             _buildSectionRow(
               label: 'Compensation & Finance',
               value: cmpFinanceEnabled,
@@ -838,9 +1132,8 @@ class ProfileSettingState extends State<ProfileSetting>
                   assetSystemEnabled = false;
                 }
               }),
-              child: const CmpFinanceSection(),
+              child: CmpFinanceSection(key: _cmpKey),
             ),
-
             _buildSectionRow(
               label: 'Skills & Performance',
               value: skillPerformEnabled,
@@ -854,9 +1147,8 @@ class ProfileSettingState extends State<ProfileSetting>
                   assetSystemEnabled = false;
                 }
               }),
-              child: const SkillPerformSection(),
+              child: SkillPerformSection(key: _skillKey),
             ),
-
             _buildSectionRow(
               label: 'Time & Attendance',
               value: timeAttendEnabled,
@@ -870,9 +1162,8 @@ class ProfileSettingState extends State<ProfileSetting>
                   assetSystemEnabled = false;
                 }
               }),
-              child: const TimeAttendSection(),
+              child: TimeAttendSection(key: _timeKey),
             ),
-
             _buildSectionRow(
               label: 'Assets & Systems',
               value: assetSystemEnabled,
@@ -886,9 +1177,8 @@ class ProfileSettingState extends State<ProfileSetting>
                   timeAttendEnabled = false;
                 }
               }),
-              child: const AssetSystemSection(),
+              child: AssetSystemSection(key: _assetKey),
             ),
-
             _buildSectionRow(
               label: 'Document & Compliance',
               value: dcmntComplianceEnabled,
@@ -902,50 +1192,11 @@ class ProfileSettingState extends State<ProfileSetting>
                   assetSystemEnabled = false;
                 }
               }),
-              child: const DcmntComplianceSection(),
+              child: DcmntComplianceSection(key: _dcmntKey),
             ),
 
             SizedBox(height: 16.h),
-
-            // ── Save button ────────────────────────────────────────────
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8.r),
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFD96CFF), Color(0xFF5CE1E6)],
-                    ),
-                  ),
-                  child: ElevatedButton(
-                    onPressed: _submitForm,
-                    style: ElevatedButton.styleFrom(
-                      elevation: 0,
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 18.w,
-                        vertical: 8.h,
-                      ),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                    ),
-                    child: Text(
-                      "Save Changes",
-                      style: GoogleFonts.inter(
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            _buildSaveButton(_submitForm),
           ],
         ),
       ),
@@ -961,349 +1212,352 @@ class ProfileSettingState extends State<ProfileSetting>
         bottom: 16.h,
         right: 15.w,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Account Information card ───────────────────────────────────
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8.r),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 4,
-                  offset: const Offset(0, 1),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: 15.w,
-                vertical: 16.h,
+      child: Form(
+        key: _acFormKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8.r),
+                boxShadow: [
+                  BoxShadow(
+                    color: _shadowBlack08,
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ── Account Information ──────────────────────────────
-                  Text(
-                    'Account Information',
-                    style: GoogleFonts.inter(
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF0A0258),
-                    ),
-                  ),
-                  SizedBox(height: 12.h),
-
-                  // ── Email ID ─────────────────────────────────────────
-                  Text(
-                    'Email ID',
-                    style: GoogleFonts.inter(
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w400,
-                      color: const Color(0xFF303030),
-                    ),
-                  ),
-                  SizedBox(height: 6.h),
-                  _buildTextField(
-                    hint: 'Enter email address',
-                    controller: _accountEmailController,
-                    isEditing: _isAccountEmailEditing,
-                    onEdit: () => setState(
-                          () => _isAccountEmailEditing = !_isAccountEmailEditing,
-                    ),
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                  SizedBox(height: 10.h),
-
-                  // ── Password ─────────────────────────────────────────
-                  Text(
-                    'Password',
-                    style: GoogleFonts.inter(
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w400,
-                      color: const Color(0xFF303030),
-                    ),
-                  ),
-                  SizedBox(height: 6.h),
-                  _buildTextField(
-                    hint: '••••••••',
-                    controller: _accountPasswordController,
-                    isEditing: _isAccountPasswordEditing,
-                    onEdit: () => setState(
-                          () => _isAccountPasswordEditing = !_isAccountPasswordEditing,
-                    ),
-                  ),
-                  SizedBox(height: 16.h),
-
-                  // ── Divider ──────────────────────────────────────────
-                  const Divider(height: 1, color: Color(0xFFE4E7EC)),
-                  SizedBox(height: 16.h),
-
-                  // ── 2-Step Verifications ──────────────────────────────
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '2 - Step Verifications',
-                              style: GoogleFonts.inter(
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF0A0258),
-                              ),
-                            ),
-                            SizedBox(height: 4.h),
-                            Text(
-                              'Add an additional layer of security to your account during login.',
-                              style: GoogleFonts.inter(
-                                fontSize: 11.sp,
-                                fontWeight: FontWeight.w400,
-                                color: const Color(0xFF6C7278),
-                              ),
-                            ),
-                          ],
-                        ),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 15.w, vertical: 16.h),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Account Information',
+                      style: GoogleFonts.inter(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                        color: _primaryColor,
                       ),
-                      SizedBox(width: 12.w),
-                      _buildToggle(
-                        value: _isTwoStepEnabled,
-                        onTap: () => setState(
-                              () => _isTwoStepEnabled = !_isTwoStepEnabled,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  SizedBox(height: 16.h),
-                  const Divider(height: 1, color: Color(0xFFE4E7EC)),
-                  SizedBox(height: 16.h),
-
-                  // ── Support Access ────────────────────────────────────
-                  Text(
-                    'Support Access',
-                    style: GoogleFonts.inter(
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF0A0258),
                     ),
-                  ),
-                  SizedBox(height: 12.h),
+                    SizedBox(height: 12.h),
 
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Support Access',
+                    _fieldLabel('Email ID'),
+                    SizedBox(height: 6.h),
+                    _buildTextField(
+                      hint: 'Enter email address',
+                      controller: _accountEmailController,
+                      isEditing: _isAccountEmailEditing,
+                      focusNode: _accountEmailFocus,
+                      isAccountField: true,
+                      keyboardType: TextInputType.emailAddress,
+                      onEdit: () {
+                        if (!_isAccountEmailEditing)
+                          setState(() => _isAccountEmailEditing = true);
+                      },
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Required';
+                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v))
+                          return 'Invalid email';
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 10.h),
+
+                    _fieldLabel('Password'),
+                    SizedBox(height: 6.h),
+                    _buildTextField(
+                      hint: '••••••••',
+                      controller: _accountPasswordController,
+                      isEditing: _isAccountPasswordEditing,
+                      focusNode: _accountPasswordFocus,
+                      isAccountField: true,
+                      onEdit: () {
+                        if (!_isAccountPasswordEditing)
+                          setState(() => _isAccountPasswordEditing = true);
+                      },
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Required';
+                        if (v.trim().length < 6)
+                          return 'Minimum 6 characters required';
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 16.h),
+
+                    const Divider(height: 1, color: _dividerColor),
+                    SizedBox(height: 16.h),
+
+                    // 2-Step
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '2 - Step Verifications',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: _primaryColor,
+                                ),
+                              ),
+                              SizedBox(height: 4.h),
+                              Text(
+                                'Add an additional layer of security to your account during login.',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w400,
+                                  color: _textColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: 12.w),
+                        _buildToggle(
+                          value: _isTwoStepEnabled,
+                          onTap: () => setState(
+                            () => _isTwoStepEnabled = !_isTwoStepEnabled,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    SizedBox(height: 16.h),
+                    const Divider(height: 1, color: _dividerColor),
+                    SizedBox(height: 16.h),
+
+                    Text(
+                      'Support Access',
+                      style: GoogleFonts.inter(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                        color: _primaryColor,
+                      ),
+                    ),
+                    SizedBox(height: 12.h),
+
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Support Access',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w500,
+                                  color: _labelColor,
+                                ),
+                              ),
+                              SizedBox(height: 4.h),
+                              Text(
+                                'You have granted us to access to your account for support purposes until Aug 31, 2026, 9:40 PM.',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w400,
+                                  color: _textColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: 12.w),
+                        _buildToggle(
+                          value: _isSupportAccessEnabled,
+                          onTap: () => setState(
+                            () => _isSupportAccessEnabled =
+                                !_isSupportAccessEnabled,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    SizedBox(height: 16.h),
+                    const Divider(height: 1, color: _dividerColor),
+                    SizedBox(height: 16.h),
+
+                    // Delete Account
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Delete my account',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: _labelColor,
+                                ),
+                              ),
+                              SizedBox(height: 4.h),
+                              Text(
+                                'Permanently delete the account and remove access from all workspaces.',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w400,
+                                  color: _textColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: 12.w),
+                        GestureDetector(
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12.r),
+                                ),
+                                title: Text(
+                                  'Delete Account',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w700,
+                                    color: _labelColor,
+                                  ),
+                                ),
+                                content: Text(
+                                  'Are you sure you want to permanently delete your account? This action cannot be undone.',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.sp,
+                                    color: _textColor,
+                                  ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: Text(
+                                      'Cancel',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12.sp,
+                                        color: _textColor,
+                                      ),
+                                    ),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: Text(
+                                      'Delete',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.red,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 14.w,
+                              vertical: 8.h,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE5E5E5),
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
+                            child: Text(
+                              'Delete Account',
                               style: GoogleFonts.inter(
                                 fontSize: 12.sp,
                                 fontWeight: FontWeight.w500,
-                                color: const Color(0xFF303030),
+                                color: const Color(0xFF555555),
                               ),
                             ),
-                            SizedBox(height: 4.h),
-                            Text(
-                              'You have granted us to access to your account for support purposes until Aug 31, 2026, 9:40 PM.',
-                              style: GoogleFonts.inter(
-                                fontSize: 11.sp,
-                                fontWeight: FontWeight.w400,
-                                color: const Color(0xFF6C7278),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
+                      ],
+                    ),
+
+                    SizedBox(height: 16.h),
+                    const Divider(height: 1, color: _dividerColor),
+                    SizedBox(height: 16.h),
+
+                    Text(
+                      'Language Settings',
+                      style: GoogleFonts.inter(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF3F3F3F),
                       ),
-                      SizedBox(width: 12.w),
-                      _buildToggle(
-                        value: _isSupportAccessEnabled,
-                        onTap: () => setState(
-                              () => _isSupportAccessEnabled = !_isSupportAccessEnabled,
+                    ),
+                    SizedBox(height: 10.h),
+
+                    GestureDetector(
+                      onTap: () => _showLanguageBottomSheet(context),
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 10.w,
+                          vertical: 10.h,
                         ),
-                      ),
-                    ],
-                  ),
-
-                  SizedBox(height: 16.h),
-                  const Divider(height: 1, color: Color(0xFFE4E7EC)),
-                  SizedBox(height: 16.h),
-
-                  // ── Delete My Account ─────────────────────────────────────────
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        decoration: BoxDecoration(
+                          color: _fillColor,
+                          borderRadius: BorderRadius.circular(8.r),
+                          border: Border.all(
+                            color: _languageError != null
+                                ? Colors.red
+                                : _borderColor,
+                          ),
+                        ),
+                        child: Row(
                           children: [
-                            Text(
-                              'Delete my account',
-                              style: GoogleFonts.inter(
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF303030),
-                              ),
-                            ),
-                            SizedBox(height: 4.h),
-                            Text(
-                              'Permanently delete the account and remove access from all workspaces.',
-                              style: GoogleFonts.inter(
-                                fontSize: 11.sp,
-                                fontWeight: FontWeight.w400,
-                                color: const Color(0xFF6C7278),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: 12.w),
-                      GestureDetector(
-                        onTap: () {
-                          showDialog(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12.r),
-                              ),
-                              title: Text(
-                                'Delete Account',
-                                style: GoogleFonts.inter(
-                                  fontSize: 14.sp,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF303030),
-                                ),
-                              ),
-                              content: Text(
-                                'Are you sure you want to permanently delete your account? This action cannot be undone.',
+                            Expanded(
+                              child: Text(
+                                _selectedLanguage,
                                 style: GoogleFonts.inter(
                                   fontSize: 12.sp,
-                                  color: const Color(0xFF6C7278),
+                                  fontWeight: FontWeight.w400,
+                                  color: _selectedLanguage == "Select Language"
+                                      ? _hintColor
+                                      : _textColor,
                                 ),
                               ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(ctx),
-                                  child: Text(
-                                    'Cancel',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12.sp,
-                                      color: const Color(0xFF6C7278),
-                                    ),
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.pop(ctx),
-                                  child: Text(
-                                    'Delete',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12.sp,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.red,
-                                    ),
-                                  ),
-                                ),
-                              ],
                             ),
-                          );
-                        },
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 14.w,
-                            vertical: 8.h,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE5E5E5),
-                            borderRadius: BorderRadius.circular(8.r),
-                          ),
-                          child: Text(
-                            'Delete Account',
-                            style: GoogleFonts.inter(
-                              fontSize: 12.sp,
-                              fontWeight: FontWeight.w500,
-                              color: const Color(0xFF555555),
+                            Icon(
+                              Icons.keyboard_arrow_down,
+                              color: _textColor,
+                              size: 18.sp,
                             ),
-                          ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-
-                  SizedBox(height: 16.h),
-                  const Divider(height: 1, color: Color(0xFFE4E7EC)),
-                  SizedBox(height: 16.h),
-
-// ── Language Settings ─────────────────────────────────────────
-                  Text(
-                    'Language Settings',
-                    style: GoogleFonts.inter(
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF3F3F3F),
                     ),
-                  ),
-                  SizedBox(height: 10.h),
-
-                  DropdownButtonFormField<String>(
-                    value: _selectedLanguage ?? 'English',
-                    style: GoogleFonts.inter(
-                      fontSize: 12.sp,
-                      color: const Color(0xFF3F3F3F),
-                    ),
-                    icon: Icon(
-                      Icons.keyboard_arrow_down,
-                      color: const Color(0xFF6C7278),
-                      size: 20.sp,
-                    ),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      filled: true,
-                      fillColor: const Color(0xFFF9FAFC),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                        borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                        borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                        borderSide: const BorderSide(color: Color(0xFF0A0258)),
-                      ),
-                    ),
-                    items: _languages
-                        .map(
-                          (e) => DropdownMenuItem(
-                        value: e,
+                    if (_languageError != null)
+                      Padding(
+                        padding: EdgeInsets.only(top: 4.h, left: 4.w),
                         child: Text(
-                          e,
+                          _languageError!,
                           style: GoogleFonts.inter(
-                            fontSize: 12.sp,
-                            color: const Color(0xFF3F3F3F),
+                            color: Colors.red,
+                            fontSize: 10.sp,
                           ),
                         ),
                       ),
-                    )
-                        .toList(),
-                    onChanged: (v) => setState(() => _selectedLanguage = v),
-                  ),
-
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+
+            SizedBox(height: 16.h),
+            _buildSaveButton(_submitAcForm),
+          ],
+        ),
       ),
     );
   }
@@ -1325,123 +1579,118 @@ class ProfileSettingState extends State<ProfileSetting>
         onTap: () => FocusScope.of(context).unfocus(),
         child: Column(
           children: [
-            // ── Header ────────────────────────────────────────────────
-            SingleChildScrollView(
-              child: Container(
-                color: const Color(0xFFF5F7FB),
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 15,
-                  vertical: 10,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: InkWell(
-                        onTap: () => Navigator.pop(context),
-                        child: Icon(
-                          Icons.arrow_back,
-                          size: 20.r,
-                          color: const Color(0xFF0A0258),
+            Container(
+              color: const Color(0xFFF5F7FB),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: InkWell(
+                      onTap: () => Navigator.pop(context),
+                      child: Icon(
+                        Icons.arrow_back,
+                        size: 20.r,
+                        color: _primaryColor,
+                      ),
+                    ),
+                  ),
+
+                  Center(
+                    child: SizedBox(
+                      width: 100.w,
+                      height: 100.h,
+                      child: const CircleAvatar(
+                        backgroundImage: AssetImage(
+                          'assets/images/profile.png',
                         ),
                       ),
                     ),
+                  ),
 
-                    Center(
-                      child: SizedBox(
-                        width: 100.w,
-                        height: 100.h,
-                        child: const CircleAvatar(
-                          backgroundImage:
-                          AssetImage('assets/images/profile.png'),
-                        ),
+                  Center(
+                    child: Text(
+                      "Mr. Michel Smith",
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black,
                       ),
                     ),
+                  ),
 
-                    Center(
+                  Center(
+                    child: TextButton(
+                      onPressed: _callPhone,
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                      ),
                       child: Text(
-                        "Mr. Michel Smith",
-                        textAlign: TextAlign.center,
+                        "(454) 726-0592",
                         style: GoogleFonts.inter(
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF000000),
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w500,
+                          color: _primaryColor,
                         ),
                       ),
                     ),
+                  ),
 
-                    Center(
-                      child: TextButton(
-                        onPressed: _callPhone,
-                        style: TextButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        child: Text(
-                          "(454) 726-0592",
-                          style: GoogleFonts.inter(
-                            fontSize: 11.sp,
-                            fontWeight: FontWeight.w500,
-                            color: const Color(0xFF0A0258),
-                          ),
+                  Center(
+                    child: TextButton(
+                      onPressed: _sendEmail,
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      child: Text(
+                        "michaelsmith@gmail.com",
+                        style: GoogleFonts.inter(
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w500,
+                          color: _primaryColor,
                         ),
                       ),
                     ),
+                  ),
 
-                    Center(
-                      child: TextButton(
-                        onPressed: _sendEmail,
-                        style: TextButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          visualDensity: VisualDensity.compact,
+                  SizedBox(height: 20.h),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: () => setState(() => selectedTab = 0),
+                        child: SizedBox(
+                          width: 140.w,
+                          child: _buildTab("My Profile", selectedTab == 0),
                         ),
-                        child: Text(
-                          "michaelsmith@gmail.com",
-                          style: GoogleFonts.inter(
-                            fontSize: 11.sp,
-                            fontWeight: FontWeight.w500,
-                            color: const Color(0xFF0A0258),
+                      ),
+                      SizedBox(width: 20.w),
+                      GestureDetector(
+                        onTap: () => setState(() => selectedTab = 1),
+                        child: SizedBox(
+                          width: 140.w,
+                          child: _buildTab(
+                            "Account Settings",
+                            selectedTab == 1,
                           ),
                         ),
                       ),
-                    ),
-
-                    SizedBox(height: 20.h),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        GestureDetector(
-                          onTap: () => setState(() => selectedTab = 0),
-                          child: SizedBox(
-                            width: 140.w,
-                            child:
-                            _buildTab("My Profile", selectedTab == 0),
-                          ),
-                        ),
-                        SizedBox(width: 20.w),
-                        GestureDetector(
-                          onTap: () => setState(() => selectedTab = 1),
-                          child: SizedBox(
-                            width: 140.w,
-                            child: _buildTab(
-                                "Account Settings", selectedTab == 1),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ),
             ),
 
-            // ── Tab body ──────────────────────────────────────────────
             Expanded(
               child: Container(
                 color: const Color(0xFFF5F7FB),

@@ -406,11 +406,6 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     );
   }
 
-  
-  
-  
-  
-  
   // ── Department (searchable single-select) ─────────────────────────────────
   String? _departmentError;
 
@@ -668,10 +663,6 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
         ),
       );
     }
-  
-  
-  
-  
   }
 
   // ── FILE PICKER ────────────────────────────────────────────────────────────
@@ -1649,9 +1640,6 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     ),
   );
 
-  
-  
-  
   Future<TimeOfDay?> _pickTime(BuildContext context) async => showTimePicker(
     context: context,
     initialTime: TimeOfDay.now(),
@@ -2517,10 +2505,6 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     );
   }
 
-  
-  
-  
-  
   Widget _reportingChip(String id, String name) => Container(
     padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
     decoration: BoxDecoration(
@@ -2565,9 +2549,4 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
       ],
     ),
   );
-
-
-
-
-
 }
