@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:taskalert_app/screens/HomeScreen.dart';
 
 import 'HomeScreen.dart';
 
@@ -252,9 +253,14 @@ class LoginConfirmationScreenState extends State<LoginConfirmationScreen>
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
+<<<<<<< .merge_file_oW8Yn5
                                     builder: (context) => HomeScreen(
                                       userId: '',
                                     ), // your next screen
+=======
+                                    builder: (context) =>
+                                        HomeScreen(userId: ''), // your next screen
+>>>>>>> .merge_file_Z1RCNL
                                   ),
                                 );
                               },

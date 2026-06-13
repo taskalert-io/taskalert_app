@@ -2,12 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:taskalert_app/screens/CreateOneTimeScreen.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
-
-import 'CreateRepetitiveScreen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String userId;
@@ -23,45 +20,12 @@ class HomeScreenState extends State<HomeScreen> {
 
   /// PAGE CONTROLLER
   final PageController _pageController = PageController(
-    viewportFraction: .62,
-    initialPage: 1000,
   );
 
   final PageController _todoController = PageController();
 
-  /// DATA LIST
-  final List<Map<String, String>> workList = [
-    {
-      "number": "01",
-      "title": "Pending\nWork List",
-    },
 
-    {
-      "number": "02",
-      "title": "High Priority\nWork List",
-    },
-
-    {
-      "number": "03",
-      "title": "Scheduled\nWork List",
-    },
-  ];
-
-  final ValueNotifier<int> currentPageNotifier = ValueNotifier<int>(1000);
-
-  final ValueNotifier<int> todoCurrentPageNotifier = ValueNotifier<int>(0);
   String selectedSort = "All";
-  String selectedWorkspaceType = "";
-  @override
-  void dispose() {
-    _pageController.dispose();
-    _todoController.dispose();
-
-    currentPageNotifier.dispose();
-    todoCurrentPageNotifier.dispose();
-
-    super.dispose();
-  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -143,49 +107,27 @@ class HomeScreenState extends State<HomeScreen> {
                       SizedBox(height: 14.h),
 
                       /// PAGEVIEW
-                      /// PAGEVIEW
                       SizedBox(
                         height: 105.h,
 
-                        child: ValueListenableBuilder<int>(
-                          valueListenable: currentPageNotifier,
-
-                          builder: (context, currentPage, child) {
-                            return PageView.builder(
                               controller: _pageController,
 
-                              itemCount: null,
-
                               onPageChanged: (index) {
-                                currentPageNotifier.value = index;
                               },
 
-                              itemBuilder: (context, index) {
-                                final realIndex = index % workList.length;
 
-                                final item = workList[realIndex];
 
-                                return GestureDetector(
                                   onTap: () {
                                     _pageController.animateToPage(
-                                      index,
                                       duration: const Duration(milliseconds: 300),
                                       curve: Curves.easeInOut,
                                     );
 
-                                    currentPageNotifier.value = index;
                                   },
 
-                                  child: Center(
                                     child: _buildCard(
-                                      number: item["number"]!,
-                                      title: item["title"]!,
-                                      isActive:
-                                      currentPage % workList.length == realIndex,
                                     ),
                                   ),
-                                );
-                              },
                             );
                           },
                         ),
@@ -194,46 +136,15 @@ class HomeScreenState extends State<HomeScreen> {
                       SizedBox(height: 15.h),
 
                       /// DOT INDICATOR
-                      /// DOT INDICATOR
                       Padding(
                         padding: const EdgeInsets.only(bottom: 12),
 
-                        child: ValueListenableBuilder<int>(
-                          valueListenable: currentPageNotifier,
-
-                          builder: (context, currentPage, child) {
-                            return Row(
                               mainAxisAlignment: MainAxisAlignment.center,
 
                               children: List.generate(
-                                workList.length,
-                                    (index) => GestureDetector(
-                                  onTap: () {
-                                    final targetPage =
-                                        currentPage -
-                                            (currentPage % workList.length) +
-                                            index;
-
-                                    _pageController.animateToPage(
-                                      targetPage,
-                                      duration: const Duration(milliseconds: 300),
-                                      curve: Curves.easeInOut,
-                                    );
-
-                                    currentPageNotifier.value = targetPage;
-                                  },
-
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 3),
-
-                                    child: _dot(
-                                      currentPage % workList.length == index,
                                     ),
                                   ),
                                 ),
-                              ),
-                            );
-                          },
                         ),
                       ),
                     ],
@@ -348,9 +259,7 @@ class HomeScreenState extends State<HomeScreen> {
                                       ],
                                     ),
                                   ),
-                                ),
                               ],
-                            ),
                           ],
                         ),
                       ),
@@ -365,7 +274,6 @@ class HomeScreenState extends State<HomeScreen> {
                           controller: _todoController,
 
                           onPageChanged: (index) {
-                            todoCurrentPageNotifier.value = index;
                           },
 
                           children: [
@@ -432,8 +340,6 @@ class HomeScreenState extends State<HomeScreen> {
 
                                       statusColor: Colors.green,
 
-                                      requestedBy:
-                                          "Requested by Guadalupe Miró",
 
                                       priority: "Low",
 
@@ -530,237 +436,19 @@ class HomeScreenState extends State<HomeScreen> {
                       ),
 
                       /// DOTS
-                      ValueListenableBuilder<int>(
-                        valueListenable: todoCurrentPageNotifier,
-
-                        builder: (context, todoCurrentPage, child) {
-                          return Row(
                             mainAxisAlignment: MainAxisAlignment.center,
 
                             children: List.generate(
                               3,
-                                  (index) => GestureDetector(
-                                onTap: () {
-                                  _todoController.animateToPage(
-                                    index,
-                                    duration: const Duration(milliseconds: 300),
-                                    curve: Curves.easeInOut,
-                                  );
-
-                                  todoCurrentPageNotifier.value = index;
-                                },
-
-                                child: Padding(
                                   padding: const EdgeInsets.symmetric(horizontal: 3),
 
                                   child: _dot(todoCurrentPage == index),
                                 ),
                               ),
                             ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () {
-                    // Your action here
-
-                    // Navigator.push(
-                    //   context,
-                    //   MaterialPageRoute(
-                    //     builder: (context) => WorkspaceScreen(),
-                    //   ),
-                    // );
-                  },
-                  child: Container(
-                    margin:  EdgeInsets.only(left: 15,right:15,bottom: 15),
-
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-
-                      borderRadius: BorderRadius.circular(15.r),
-
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-
-                    child: Row(
-                      children: [
-                        /// LEFT ICON
-                        Container(
-                          height: 27.h,
-                          width: 30.w,
-
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(6.r),
-
-                            gradient: const LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Color(0xFF0F0C8B),
-                                Color(0xFF5B46F4),
-                              ],
-                            ),
-                          ),
-
-                          child: Padding(
-                            padding: const EdgeInsets.all(6),
-
-                            child: Image.asset(
-                              width: 20.w,
-                              height: 20.h,
-                              "assets/images/wrksp3d.png",
-                              fit: BoxFit.contain,
-                            ),
-                          ),
-                        ),
-
-                         SizedBox(width: 10.w),
-
-                        /// TITLE
-                        Expanded(
-                          child: Text(
-                            "Workspaces",
-                            style: GoogleFonts.inter(
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w700,
-                              color:  Color(0xFF0D095B),
-                            ),
-                          ),
-                        ),
-
-                        /// RIGHT BUTTON
-                        Container(
-                          height: 22.h,
-                          width: 26.w,
-
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF4F5FA),
-                            borderRadius: BorderRadius.circular(5.r),
-                          ),
-
-                          child:  Icon(
-                            Icons.arrow_forward,
-                            size: 15.r,
-                            color: Color(0xFF0A0258),
-                          ),
-                        ),
                       ],
                     ),
                   ),
-                ),
-                Container(
-                  width: double.infinity,
-                  clipBehavior: Clip.hardEdge,
-                  margin:  EdgeInsets.only(left: 15,right: 15,bottom: 20),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20.r),
-
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFF0A0F7A),
-                        Color(0xFF1B1F9E),
-                      ],
-                    ),
-                  ),
-
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      /// BACKGROUND SHAPE
-                      Positioned(
-                        right: 0,
-                        top: 0,
-                        bottom: 0,
-
-                        child: Image.asset(
-                          width: 146.w,
-                          height: 135.h,
-                          "assets/images/wrksprm.png",
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-
-                      /// CONTENT
-                      Padding(
-                        padding: EdgeInsets.only(top: 15,bottom: 15,left: 15,right: 10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-
-                          children: [
-                            Text(
-                              "Need Help?",
-                              style: GoogleFonts.inter(
-                                fontSize: 11.sp,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF46BAEB),
-                              ),
-                            ),
-
-                            SizedBox(height: 6.h),
-
-                            Text(
-                              "Smarter Solutions.\nBetter Results.",
-                              style: GoogleFonts.inter(
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-
-                            SizedBox(height: 10.h),
-
-                            GestureDetector(
-                              onTap: () {},
-
-                              child: Container(
-                                padding:  EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 10,
-                                ),
-
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(6.r),
-
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      Color(0xFFB26BFF),
-                                      Color(0xFF57D5FF),
-                                    ],
-                                  ),
-                                ),
-
-                                child: Text(
-                                  "Connect With Us",
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11.sp,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                )
               ],
             ),
           ),
@@ -772,378 +460,7 @@ class HomeScreenState extends State<HomeScreen> {
 
         child: FloatingActionButton(
           backgroundColor: const Color(0xFF0A0258),
-          shape: const CircleBorder(),
 
-          onPressed: () {
-            showModalBottomSheet(
-              context: context,
-              useSafeArea: true,
-              useRootNavigator: true,
-              backgroundColor: Colors.transparent,
-              isScrollControlled: true,
-
-              builder: (context) {
-                String selectedWorkspaceType = "";
-
-                return StatefulBuilder(
-                  builder: (context, modalSetState) {
-                    final bottomInset = MediaQuery.of(context).padding.bottom;
-
-                      return Container(
-                        padding: EdgeInsets.only(
-                          left: 20.w,
-                          right: 20.w,
-                          top: 18.h,
-                          bottom: bottomInset > 0 ? bottomInset : 25.h,
-                        ),
-
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(28.r),
-                            topRight: Radius.circular(28.r),
-                          ),
-                        ),
-
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            /// HEADER
-                            Row(
-                              children: [
-                                GestureDetector(
-                                  onTap: () => Navigator.pop(context),
-
-                                  child: Icon(
-                                    Icons.close,
-                                    size: 16.r,
-                                    color: const Color(0xFF101828),
-                                  ),
-                                ),
-
-                                Expanded(
-                                  child: Center(
-                                    child: Text(
-                                      "Create New Workspace",
-
-                                      style: GoogleFonts.inter(
-                                        fontSize: 14.sp,
-                                        fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF0A0258),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            SizedBox(height: 15.h),
-
-                            Divider(
-                              color: const Color(0xFFE4E7EC),
-                              height: 1,
-                            ),
-
-                            SizedBox(height: 15.h),
-
-                            /// SELECT TEXT
-                            Align(
-                              alignment: Alignment.centerLeft,
-
-                              child: Text(
-                                "Select one",
-
-                                style: GoogleFonts.inter(
-                                  fontSize: 12.sp,
-                                  fontWeight: FontWeight.w500,
-                                  color: const Color(0xFF324054),
-                                ),
-                              ),
-                            ),
-
-                            SizedBox(height: 10.h),
-
-                            /// =========================
-                            /// REPETITIVE
-                            /// =========================
-
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      modalSetState(() {
-                                        if (selectedWorkspaceType == "Repetitive") {
-                                          selectedWorkspaceType = "";
-                                        } else {
-                                          selectedWorkspaceType = "Repetitive";
-                                        }
-                                      });
-                                    },
-
-                                    child: Row(
-                                      children: [
-                                        /// RADIO
-                                        Container(
-                                          width: 16.w,
-                                          height: 16.w,
-
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: const Color(
-                                                0xFF0A0258,
-                                              ),
-                                              width: 1.3,
-                                            ),
-                                          ),
-
-                                          child: Center(
-                                            child: Container(
-                                              width: 10.w,
-                                              height: 10.w,
-
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color:
-                                                selectedWorkspaceType ==
-                                                    "Repetitive"
-                                                    ? const Color(
-                                                  0xFF24116A,
-                                                )
-                                                    : Colors.transparent,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-
-                                        SizedBox(width: 10.w),
-
-                                        /// TITLE
-                                        Text(
-                                          "Repetitive",
-
-                                          style: GoogleFonts.inter(
-                                            fontSize: 14.sp,
-                                            fontWeight:
-                                            FontWeight.w500,
-                                            color: const Color(
-                                              0xFF3F3F3F,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-
-                                /// ARROW BUTTON
-                                GestureDetector(
-                                  onTap:
-                                  selectedWorkspaceType ==
-                                      "Repetitive"
-                                      ? () {
-                                    Navigator.pop(context);
-
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            CreateRepetitiveScreen(
-                                              userId: '',
-                                            ),
-                                      ),
-                                    );
-                                  }
-                                      : null,
-
-                                  child: Container(
-                                    width: 27.w,
-                                    height: 27.w,
-
-                                    decoration: BoxDecoration(
-                                      color:
-                                      selectedWorkspaceType ==
-                                          "Repetitive"
-                                          ? const Color(
-                                        0xFFE4E7EC,
-                                      )
-                                          : const Color(
-                                        0xFFF2F4F7,
-                                      ),
-
-                                      borderRadius:
-                                      BorderRadius.circular(5.r),
-                                    ),
-
-                                    child: Icon(
-                                      Icons.arrow_forward,
-                                      size: 15.r,
-
-                                      color:
-                                      selectedWorkspaceType ==
-                                          "Repetitive"
-                                          ? const Color(
-                                        0xFF667085,
-                                      )
-                                          : const Color(
-                                        0xFF98A2B3,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            SizedBox(height: 10.h),
-
-                            /// =========================
-                            /// ONE TIME
-                            /// =========================
-
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      modalSetState(() {
-                                        if (selectedWorkspaceType == "One-time") {
-                                          selectedWorkspaceType = "";
-                                        } else {
-                                          selectedWorkspaceType = "One-time";
-                                        }
-                                      });
-                                    },
-
-                                    child: Row(
-                                      children: [
-                                        /// RADIO
-                                        Container(
-                                          width: 16.w,
-                                          height: 16.w,
-
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: const Color(
-                                                0xFF0A0258,
-                                              ),
-                                              width: 1.3,
-                                            ),
-                                          ),
-
-                                          child: Center(
-                                            child: Container(
-                                              width: 10.w,
-                                              height: 10.w,
-
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color:
-                                                selectedWorkspaceType ==
-                                                    "One-time"
-                                                    ? const Color(
-                                                  0xFF24116A,
-                                                )
-                                                    : Colors.transparent,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-
-                                        SizedBox(width: 10.w),
-
-                                        /// TITLE
-                                        Text(
-                                          "One-time",
-
-                                          style: GoogleFonts.inter(
-                                            fontSize: 14.sp,
-                                            fontWeight:
-                                            FontWeight.w500,
-                                            color: const Color(
-                                              0xFF3F3F3F,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-
-                                /// ARROW BUTTON
-                                GestureDetector(
-                                  onTap:
-                                  selectedWorkspaceType ==
-                                      "One-time"
-                                      ? () {
-                                    Navigator.pop(context);
-
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            CreateOneTimeScreen(
-                                              userId: '',
-                                            ),
-                                      ),
-                                    );
-                                  }
-                                      : null,
-
-                                  child: Container(
-                                    width: 27.w,
-                                    height: 27.w,
-
-                                    decoration: BoxDecoration(
-                                      color:
-                                      selectedWorkspaceType ==
-                                          "One-time"
-                                          ? const Color(
-                                        0xFFE4E7EC,
-                                      )
-                                          : const Color(
-                                          0xFFF2F4F7,
-                                      ),
-
-                                      borderRadius:
-                                      BorderRadius.circular(5.r),
-                                    ),
-
-                                    child: Icon(
-                                      Icons.arrow_forward,
-                                      size: 15.r,
-
-                                      color:
-                                      selectedWorkspaceType ==
-                                          "One-time"
-                                          ? const Color(
-                                        0xFF667085,
-                                      )
-                                          : const Color(
-                                        0xFF98A2B3,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 15.h),
-                          ],
-                        ),
-                      );
-
-                  },
-                );
-              },
-            );
-          },
-
-          child: Icon(
-            Icons.add,
-            color: Colors.white,
-            size: 34.r,
-          ),
         ),
       ),
       bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 0),
@@ -1267,7 +584,6 @@ class HomeScreenState extends State<HomeScreen> {
 
                   SizedBox(width: 14.w),
 
-                  Icon(Icons.access_time, size: 14.r, color: Color(0xFF324054)),
 
                   SizedBox(width: 4.w),
 
@@ -1317,7 +633,6 @@ class HomeScreenState extends State<HomeScreen> {
   }) {
     return Container(
       margin: const EdgeInsets.only(left: 8, right: 8),
-      width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
 
       decoration: BoxDecoration(
@@ -1410,87 +725,6 @@ class HomeScreenState extends State<HomeScreen> {
         color: active ? const Color(0xFF5B46F4) : const Color(0xFFC9C5D6),
         borderRadius: BorderRadius.circular(20.r),
       ),
-    );
-  }
-
-  Widget _buildWorkspaceOption({
-    required String title,
-    required String value,
-    required String selectedValue,
-    required VoidCallback onSelect,
-    required VoidCallback onArrowTap,
-  }) {
-    return Row(
-      children: [
-        Expanded(
-          child: GestureDetector(
-            onTap: onSelect,
-
-            child: Row(
-              children: [
-                Container(
-                  width: 18.w,
-                  height: 18.w,
-
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0xFF4338CA),
-                      width: 1.3,
-                    ),
-                  ),
-
-                  child: Center(
-                    child: Container(
-                      width: 10.w,
-                      height: 10.w,
-
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: selectedValue == value
-                            ? const Color(0xFF24116A)
-                            : Colors.transparent,
-                      ),
-                    ),
-                  ),
-                ),
-
-                SizedBox(width: 12.w),
-
-                Text(
-                  title,
-
-                  style: GoogleFonts.inter(
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF344054),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        GestureDetector(
-          onTap: onArrowTap,
-
-          child: Container(
-            width: 30.w,
-            height: 30.w,
-
-            decoration: BoxDecoration(
-              color: const Color(0xFFF2F4F7),
-              borderRadius: BorderRadius.circular(8.r),
-            ),
-
-            child: Icon(
-              Icons.arrow_forward,
-              size: 18.r,
-              color: const Color(0xFF667085),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
