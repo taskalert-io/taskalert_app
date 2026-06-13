@@ -1,14 +1,1205 @@
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
+import 'dart:convert';
 
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '../components/CustomAppBar.dart';
+import '../components/CustomBottomNavBar.dart';
+import '../components/CustomDrawer.dart';
+import 'package:http/http.dart' as http;
+
+import '../screens/CreateOneTimeScreen.dart';
+import '../screens/CreateRepetitiveScreen.dart';
+import 'MyTaskDetails.dart';
+
+// ── API configuration ─────────────────────────────────────────────────────
+class TaskApiConfig {
+  static const String baseUrl = 'https://your-api.example.com';
+
+  static const String tabCountsEndpoint = '$baseUrl/tasks/counts';
+  static const String todoListEndpoint = '$baseUrl/tasks';
+}
+
+// ── Model ────────────────────────────────────────────────────────────────
+class TodoItem {
+  final String? id;
+  final String image;
+  final String title;
+  final String status; // Pending | In progress | Done
+  final String requestedBy;
+  final String priority; // Low | High
+  final String date;
+  final String time;
+
+  TodoItem({
+    this.id,
+    this.image = '',
+    this.title = '',
+    this.status = '',
+    this.requestedBy = '',
+    this.priority = '',
+    this.date = '',
+    this.time = '',
+  });
+
+  factory TodoItem.fromJson(Map<String, dynamic> json) {
+    return TodoItem(
+      id: json['id']?.toString(),
+      image: json['image'] ?? '',
+      title: json['title'] ?? '',
+      status: json['status'] ?? '',
+      requestedBy: json['requestedBy'] ?? '',
+      priority: json['priority'] ?? '',
+      date: json['date'] ?? '',
+      time: json['time'] ?? '',
+    );
+  }
+}
+
+// ── API service ──────────────────────────────────────────────────────────
+class TaskApiService {
+  final FlutterSecureStorage secureStorage;
+
+  TaskApiService(this.secureStorage);
+
+  Future<Map<String, String>> _headers() async {
+    // final token = await secureStorage.read(key: 'auth_token');
+    return {
+      'Content-Type': 'application/json',
+      // 'Authorization': 'Bearer $token',
+    };
+  }
+
+  /// Fetch counts for each tab.
+  /// Expected response: { "today": 3, "next_day": 1, "this_week": 7, "next_week": 2 }
+  Future<Map<String, int>> getTabCounts() async {
+    final headers = await _headers();
+    final response = await http.get(
+      Uri.parse(TaskApiConfig.tabCountsEndpoint),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      return data.map((key, value) => MapEntry(key, (value as num).toInt()));
+    }
+    throw Exception('Failed to load tab counts (${response.statusCode})');
+  }
+
+  /// Fetch to-do list items for a given tab/range and sort filter.
+  /// Expected response: List of items matching [TodoItem.fromJson].
+  Future<List<TodoItem>> getTodoItems({
+    required String range,
+    required String sort,
+  }) async {
+    final headers = await _headers();
+    final uri = Uri.parse(TaskApiConfig.todoListEndpoint)
+        .replace(queryParameters: {'range': range, 'sort': sort});
+
+    final response = await http.get(uri, headers: headers);
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data
+          .map((e) => TodoItem.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+    throw Exception('Failed to load tasks (${response.statusCode})');
+  }
+}
+
+// ── Screen ───────────────────────────────────────────────────────────────
 class MyTaskScreen extends StatefulWidget {
+  final String userId;
+
+  const MyTaskScreen({super.key, required this.userId});
   @override
   State<StatefulWidget> createState() => MyTaskScreenState();
 }
 
 class MyTaskScreenState extends State<MyTaskScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  late final TaskApiService _api = TaskApiService(_secureStorage);
+
+  static const _primaryColor = Color(0xFF0A0258);
+
+  int _selectedTab = 0;
+
+  // ── Tab data: label + key (for API mapping) + count ────────────────────────
+  final List<Map<String, dynamic>> _tabs = [
+    {'label': 'Today', 'key': 'today', 'count': 0},
+    {'label': 'Next Day', 'key': 'next_day', 'count': 0},
+    {'label': 'This Week', 'key': 'this_week', 'count': 0},
+    {'label': 'Next Week', 'key': 'next_week', 'count': 0},
+  ];
+
+  // ── Expand/collapse state per section ───────────────────────────────────────
+  bool _isTodoExpanded = true;
+  bool _isInProgressExpanded = false;
+  bool _isCompletedExpanded = false;
+
+  String selectedSort = "Schedule Date (ASC)";
+
+  // ── To-do list data (per selected tab) ─────────────────────────────────────
+  bool _isLoadingTodos = true;
+  String? _todoError;
+  List<TodoItem> _todoItems = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchTabCounts();
+    _fetchTodoItems();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  // ── Fetch tab counts from API ──────────────────────────────────────────────
+  Future<void> _fetchTabCounts() async {
+    try {
+      // final counts = await _api.getTabCounts();
+      // setState(() {
+      //   for (var tab in _tabs) {
+      //     tab['count'] = counts[tab['key']] ?? 0;
+      //   }
+      // });
+    } catch (e) {
+      debugPrint('Failed to fetch tab counts: $e');
+    }
+  }
+
+  // ── Fetch to-do list items for the selected tab ─────────────────────────────
+  // Called on init, on tab change, and when sort changes.
+  Future<void> _fetchTodoItems() async {
+    setState(() {
+      _isLoadingTodos = true;
+      _todoError = null;
+    });
+
+    try {
+      // final tabKey = _tabs[_selectedTab]['key'] as String;
+      // final items = await _api.getTodoItems(range: tabKey, sort: selectedSort);
+      // _todoItems = items;
+
+      // Placeholder sample data (remove once the real API is wired up):
+      _todoItems = [
+        TodoItem(
+          id: '1',
+          image: "https://i.pravatar.cc/150?img=12",
+          title: "Retail Market",
+          status: "Pending",
+          requestedBy: "Assign to Guadalupe Miró",
+          priority: "Low",
+          date: "12.05.2026",
+          time: "09:30 AM",
+        ),
+        TodoItem(
+          id: '2',
+          image: "https://i.pravatar.cc/150?img=18",
+          title: "Yearly Food Service",
+          status: "In progress",
+          requestedBy: "Requested by John Kyte",
+          priority: "High",
+          date: "12.05.2026",
+          time: "09:30 AM",
+        ),
+        TodoItem(
+          id: '3',
+          image: "https://i.pravatar.cc/150?img=22",
+          title: "Manufacture PM",
+          status: "Done",
+          requestedBy: "Requested by Guadalupe Miró",
+          priority: "Low",
+          date: "12.05.2026",
+          time: "09:30 AM",
+        ),
+        TodoItem(
+          id: '4',
+          image: "https://i.pravatar.cc/150?img=30",
+          title: "Office Cleaning",
+          status: "Pending",
+          requestedBy: "Requested by Alex",
+          priority: "Low",
+          date: "12.05.2026",
+          time: "09:30 AM",
+        ),
+        TodoItem(
+          id: '5',
+          image: "https://i.pravatar.cc/150?img=35",
+          title: "Electrical Repair",
+          status: "In progress",
+          requestedBy: "Requested by Smith",
+          priority: "High",
+          date: "12.05.2026",
+          time: "09:30 AM",
+        ),
+        TodoItem(
+          id: '6',
+          image: "https://i.pravatar.cc/150?img=40",
+          title: "Water Supply",
+          status: "Done",
+          requestedBy: "Requested by Jacob",
+          priority: "Low",
+          date: "12.05.2026",
+          time: "09:30 AM",
+        ),
+      ];
+    } catch (e) {
+      _todoError = 'Something went wrong';
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingTodos = false;
+        });
+      }
+    }
+  }
+
+  // ── Helpers: map API string values to UI colors ────────────────────────────
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'done':
+        return Colors.green;
+      case 'in progress':
+        return Colors.orange;
+      case 'pending':
+      default:
+        return Colors.red;
+    }
+  }
+
+  Color _priorityColor(String priority) {
+    switch (priority.toLowerCase()) {
+      case 'high':
+        return Colors.red;
+      case 'low':
+      default:
+        return Colors.green;
+    }
+  }
+
+  // ── Filter items by section status ──────────────────────────────────────────
+  List<TodoItem> _itemsForSection(String sectionKey) {
+    return _todoItems.where((item) {
+      final status = item.status.toLowerCase();
+      switch (sectionKey) {
+        case 'in_progress':
+          return status == 'in progress';
+        case 'completed':
+          return status == 'done';
+        case 'todo':
+        default:
+          return status == 'pending' || status.isEmpty;
+      }
+    }).toList();
+  }
+
+  // ── Tab widget (gradient underline style) ───────────────────────────────────
+  Widget _buildTab(String label, int count, bool isSelected) {
+    return IntrinsicWidth(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w700,
+                  color: isSelected ? _primaryColor : const Color(0xFF8B8C8E),
+                ),
+              ),
+              SizedBox(width: 7.w),
+              Container(
+                width: 20.w,
+                height: 20.w,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE4E7EC),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '$count',
+                  style: GoogleFonts.inter(
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w700,
+                    color: isSelected ? _primaryColor : const Color(0xFF8B8C8E),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 3.h),
+          Container(
+            width: double.infinity,
+            height: 3.h,
+            decoration: BoxDecoration(
+              gradient: isSelected
+                  ? const LinearGradient(
+                colors: [
+                  Color(0xFFE040FB),
+                  Color(0xFF40C4FF),
+                  Color(0xFF64FFDA),
+                ],
+              )
+                  : null,
+              color: isSelected ? null : const Color(0xFFE5E5E5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Reusable task section card (To Do / In Progress / Completed) ────────────
+  Widget _buildTaskSection({
+    required String title,
+    required String sectionKey,
+    required bool isExpanded,
+    required VoidCallback onToggleExpand,
+  }) {
+    final items = _itemsForSection(sectionKey);
+
+    return Container(
+      margin: EdgeInsets.only(left: 15.w, right: 15.w, bottom: 15.h),
+      padding: const EdgeInsets.only(top: 14, bottom: 14),
+      clipBehavior: Clip.hardEdge,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.r),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+
+          /// HEADER: arrow + title ............ Sort By dropdown
+          InkWell(
+            onTap: onToggleExpand,
+            borderRadius: BorderRadius.circular(12.r),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GestureDetector(
+                          onTap: onToggleExpand,
+                          child: AnimatedRotation(
+                            duration: const Duration(milliseconds: 200),
+                            turns: isExpanded ? 0.5 : 0,
+                            child: Icon(
+                              Icons.keyboard_arrow_down,
+                              size: 20.r,
+                              color: const Color(0xFF16105D),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 6.w),
+                        Flexible(
+                          child: Text(
+                            title,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF0D095B),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 6.w),
+                        Container(
+                          width: 20.w,
+                          height: 20.w,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE4E7EC),
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            '${items.length}',
+                            style: GoogleFonts.inter(
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF0A0258),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+            
+                ],
+              ),
+            ),
+          ),
+
+          if (isExpanded) ...[
+            SizedBox(height: 18.h),
+            _buildTodoListBody(items, title),
+          ] else
+            SizedBox(height: 4.h),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTodoListBody(List<TodoItem> items, String sectionTitle) {
+    if (_isLoadingTodos) {
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: 60.h),
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_todoError != null) {
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: 40.h),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                _todoError!,
+                style: GoogleFonts.inter(
+                  fontSize: 12.sp,
+                  color: const Color(0xFF6C7278),
+                ),
+              ),
+              SizedBox(height: 10.h),
+              TextButton(
+                onPressed: _fetchTodoItems,
+                child: Text(
+                  "Retry",
+                  style: GoogleFonts.inter(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (items.isEmpty) {
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: 40.h),
+        child: Center(
+          child: Text(
+            "No $sectionTitle tasks for ${_tabs[_selectedTab]['label']}",
+            style: GoogleFonts.inter(
+              fontSize: 12.sp,
+              color: const Color(0xFF6C7278),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        children: [
+          for (int i = 0; i < items.length; i++) ...[
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => TaskDetailScreen(
+                      userId: widget.userId,
+                      taskId: items[i].id ?? '',
+                    ),
+                  ),
+                );
+              },
+              child: _buildTodoItemWrap(item: items[i]),
+            ),
+            if (i != items.length - 1) SizedBox(height: 12.h),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ── Wrapper: each to-do item inside its own card ────────────────────────────
+  Widget _buildTodoItemWrap({required TodoItem item}) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFAFAFC),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: const Color(0xFFE4E7EC)),
+      ),
+      child: _buildTodoItem(item: item),
+    );
+  }
+
+  Widget _buildTodoItem({required TodoItem item}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        /// PROFILE IMAGE
+        Stack(
+          children: [
+            CircleAvatar(
+              radius: 18.r,
+              backgroundColor: const Color(0xFFE4E7EC),
+              backgroundImage: item.image.isNotEmpty
+                  ? NetworkImage(item.image)
+                  : null,
+              child: item.image.isEmpty
+                  ? Icon(
+                Icons.person,
+                size: 18.r,
+                color: const Color(0xFF8B8C8E),
+              )
+                  : null,
+            ),
+            Positioned(
+              right: 0,
+              top: 0,
+              child: Container(
+                height: 8.h,
+                width: 8.w,
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5.w),
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        SizedBox(width: 10.w),
+
+        /// CONTENT
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              /// TITLE + STATUS
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.title,
+                      style: GoogleFonts.inter(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF0A0258),
+                      ),
+                    ),
+                  ),
+                  if (item.status.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _statusColor(item.status),
+                        borderRadius: BorderRadius.circular(30.r),
+                      ),
+                      child: Text(
+                        item.status,
+                        style: GoogleFonts.inter(
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+
+              SizedBox(height: 4.h),
+
+              /// SUBTITLE
+              if (item.requestedBy.isNotEmpty)
+                Text(
+                  item.requestedBy,
+                  style: GoogleFonts.inter(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF324054),
+                  ),
+                ),
+
+              SizedBox(height: 10.h),
+
+              /// DATE TIME PRIORITY
+              Wrap(
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (item.date.isNotEmpty)
+                        _buildInfoChip(
+                          Icons.calendar_today_outlined,
+                          item.date,
+                        ),
+
+                      if (item.date.isNotEmpty && item.time.isNotEmpty)
+                        SizedBox(width: 12.w),
+
+                      if (item.time.isNotEmpty)
+                        _buildInfoChip(
+                          Icons.access_time,
+                          item.time,
+                        ),
+
+                      if ((item.date.isNotEmpty || item.time.isNotEmpty) &&
+                          item.priority.isNotEmpty)
+                        SizedBox(width: 12.w),
+
+                      if (item.priority.isNotEmpty)
+                        _buildPriorityChip(item.priority),
+                    ],
+                  ),
+                ],
+              )
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold();
+    return Scaffold(
+      key: _scaffoldKey,
+      backgroundColor: const Color(0xFFF5F7FB),
+      appBar: CustomAppBar(
+        scaffoldKey: _scaffoldKey,
+        userId: widget.userId,
+        showLeading: true,
+        onBackPressed: () => Navigator.pop(context),
+      ),
+      drawer: CustomDrawer(activeTile: "Home", onTileTap: (value) {}),
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(height: 10.h),
+            SizedBox(
+              height: 40.h,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: EdgeInsets.symmetric(horizontal: 15.w),
+                child: Row(
+                  children: List.generate(_tabs.length, (i) {
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        right: i < _tabs.length - 1 ? 10.w : 0,
+                      ),
+                      child: GestureDetector(
+                        onTap: () {
+                          if (_selectedTab == i) return;
+                          setState(() => _selectedTab = i);
+                          _fetchTodoItems();
+                        },
+                        child: _buildTab(
+                          _tabs[i]['label'] as String,
+                          _tabs[i]['count'] as int,
+                          _selectedTab == i,
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ),
+            SizedBox(height: 14.h),
+            Container(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 15.w),
+                child: Flexible(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text(
+                        "Sort By :",
+                        style: GoogleFonts.inter(
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF324054),
+                        ),
+                      ),
+                      SizedBox(height: 2.h),
+                      DropdownButtonHideUnderline(
+                        child: PopupMenuButton<String>(
+                          padding: EdgeInsets.zero,
+                          onSelected: (value) {
+                            setState(() {
+                              selectedSort = value;
+                            });
+                            _fetchTodoItems();
+                          },
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(
+                              value: "Schedule Date (ASC)",
+                              child: Text("Schedule Date (ASC)"),
+                            ),
+                            const PopupMenuItem(
+                              value: "Schedule Date (DSC)",
+                              child: Text("Schedule Date (DSC)"),
+                            ),
+                            const PopupMenuItem(
+                              value: "Priority(ASC)",
+                              child: Text("Priority(ASC)"),
+                            ),
+                            const PopupMenuItem(
+                              value: "Priority(DSC)",
+                              child: Text("Priority(DSC)"),
+                            ),
+                          ],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  selectedSort,
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF0A0258),
+                                  ),
+                                ),
+                              ),
+                              Transform.translate(
+                                offset: const Offset(-2, 0),
+                                child: Icon(
+                                  Icons.keyboard_arrow_down,
+                                  size: 16.r,
+                                  color: const Color(0xFF16105D),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: 14.h),
+            /// CONTENT
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  children: [
+                    _buildTaskSection(
+                      title: "To Do",
+                      sectionKey: 'todo',
+                      isExpanded: _isTodoExpanded,
+                      onToggleExpand: () {
+                        setState(() {
+                          _isTodoExpanded = !_isTodoExpanded;
+
+                          if (_isTodoExpanded) {
+                            _isInProgressExpanded = false;
+                            _isCompletedExpanded = false;
+                          }
+                        });
+                      },
+                    ),
+                    _buildTaskSection(
+                      title: "In Progress",
+                      sectionKey: 'in_progress',
+                      isExpanded: _isInProgressExpanded,
+                      onToggleExpand: () {
+                        setState(() {
+                          _isInProgressExpanded = !_isInProgressExpanded;
+
+                          if (_isInProgressExpanded) {
+                            _isTodoExpanded = false;
+                            _isCompletedExpanded = false;
+                          }
+                        });
+                      },
+                    ),
+                    _buildTaskSection(
+                      title: "Completed",
+                      sectionKey: 'completed',
+                      isExpanded: _isCompletedExpanded,
+                      onToggleExpand: () {
+                        setState(() {
+                          _isCompletedExpanded = !_isCompletedExpanded;
+
+                          if (_isCompletedExpanded) {
+                            _isTodoExpanded = false;
+                            _isInProgressExpanded = false;
+                          }
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: SizedBox(
+        width: 56.w,
+        height: 56.h,
+        child: FloatingActionButton(
+          backgroundColor: const Color(0xFF0A0258),
+          shape: const CircleBorder(),
+          onPressed: () {
+            showModalBottomSheet(
+              context: context,
+              useSafeArea: true,
+              useRootNavigator: true,
+              backgroundColor: Colors.transparent,
+              isScrollControlled: true,
+              builder: (context) {
+                String selectedWorkspaceType = "";
+
+                return StatefulBuilder(
+                  builder: (context, modalSetState) {
+                    final bottomInset = MediaQuery.of(context).padding.bottom;
+
+                    return Container(
+                      padding: EdgeInsets.only(
+                        left: 20.w,
+                        right: 20.w,
+                        top: 18.h,
+                        bottom: bottomInset > 0 ? bottomInset : 25.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(28.r),
+                          topRight: Radius.circular(28.r),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          /// HEADER
+                          Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () => Navigator.pop(context),
+                                child: Icon(
+                                  Icons.close,
+                                  size: 16.r,
+                                  color: const Color(0xFF101828),
+                                ),
+                              ),
+                              Expanded(
+                                child: Center(
+                                  child: Text(
+                                    "Create New Workspace",
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF0A0258),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          SizedBox(height: 15.h),
+
+                          Divider(color: const Color(0xFFE4E7EC), height: 1),
+
+                          SizedBox(height: 15.h),
+
+                          /// SELECT TEXT
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              "Select one",
+                              style: GoogleFonts.inter(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFF324054),
+                              ),
+                            ),
+                          ),
+
+                          SizedBox(height: 10.h),
+
+                          /// =========================
+                          /// REPETITIVE
+                          /// =========================
+                          Row(
+                            children: [
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    modalSetState(() {
+                                      if (selectedWorkspaceType == "Repetitive") {
+                                        selectedWorkspaceType = "";
+                                      } else {
+                                        selectedWorkspaceType = "Repetitive";
+                                      }
+                                    });
+                                  },
+                                  child: Row(
+                                    children: [
+                                      /// RADIO
+                                      Container(
+                                        width: 16.w,
+                                        height: 16.w,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: const Color(0xFF0A0258),
+                                            width: 1.3,
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: Container(
+                                            width: 10.w,
+                                            height: 10.w,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: selectedWorkspaceType == "Repetitive"
+                                                  ? const Color(0xFF24116A)
+                                                  : Colors.transparent,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(width: 10.w),
+                                      /// TITLE
+                                      Text(
+                                        "Repetitive",
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14.sp,
+                                          fontWeight: FontWeight.w500,
+                                          color: const Color(0xFF3F3F3F),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                              /// ARROW BUTTON
+                              GestureDetector(
+                                onTap: selectedWorkspaceType == "Repetitive"
+                                    ? () {
+                                  Navigator.pop(context);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          CreateRepetitiveScreen(userId: ''),
+                                    ),
+                                  );
+                                }
+                                    : null,
+                                child: Container(
+                                  width: 27.w,
+                                  height: 27.w,
+                                  decoration: BoxDecoration(
+                                    color: selectedWorkspaceType == "Repetitive"
+                                        ? const Color(0xFFE4E7EC)
+                                        : const Color(0xFFF2F4F7),
+                                    borderRadius: BorderRadius.circular(5.r),
+                                  ),
+                                  child: Icon(
+                                    Icons.arrow_forward,
+                                    size: 15.r,
+                                    color: selectedWorkspaceType == "Repetitive"
+                                        ? const Color(0xFF667085)
+                                        : const Color(0xFF98A2B3),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          SizedBox(height: 10.h),
+
+                          /// =========================
+                          /// ONE TIME
+                          /// =========================
+                          Row(
+                            children: [
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    modalSetState(() {
+                                      if (selectedWorkspaceType == "One-time") {
+                                        selectedWorkspaceType = "";
+                                      } else {
+                                        selectedWorkspaceType = "One-time";
+                                      }
+                                    });
+                                  },
+                                  child: Row(
+                                    children: [
+                                      /// RADIO
+                                      Container(
+                                        width: 16.w,
+                                        height: 16.w,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: const Color(0xFF0A0258),
+                                            width: 1.3,
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: Container(
+                                            width: 10.w,
+                                            height: 10.w,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: selectedWorkspaceType == "One-time"
+                                                  ? const Color(0xFF24116A)
+                                                  : Colors.transparent,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(width: 10.w),
+                                      /// TITLE
+                                      Text(
+                                        "One-time",
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14.sp,
+                                          fontWeight: FontWeight.w500,
+                                          color: const Color(0xFF3F3F3F),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                              /// ARROW BUTTON
+                              GestureDetector(
+                                onTap: selectedWorkspaceType == "One-time"
+                                    ? () {
+                                  Navigator.pop(context);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          CreateOneTimeScreen(userId: ''),
+                                    ),
+                                  );
+                                }
+                                    : null,
+                                child: Container(
+                                  width: 27.w,
+                                  height: 27.w,
+                                  decoration: BoxDecoration(
+                                    color: selectedWorkspaceType == "One-time"
+                                        ? const Color(0xFFE4E7EC)
+                                        : const Color(0xFFF2F4F7),
+                                    borderRadius: BorderRadius.circular(5.r),
+                                  ),
+                                  child: Icon(
+                                    Icons.arrow_forward,
+                                    size: 15.r,
+                                    color: selectedWorkspaceType == "One-time"
+                                        ? const Color(0xFF667085)
+                                        : const Color(0xFF98A2B3),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 15.h),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          },
+          child: Icon(Icons.add, color: Colors.white, size: 34.r),
+        ),
+      ),
+      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 1),
+    );
+  }
+  Widget _buildInfoChip(IconData icon, String text) {
+    return IntrinsicWidth(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 14.r,
+            color: const Color(0xFF324054),
+          ),
+          SizedBox(width: 4.w),
+          Text(
+            text,
+            style: GoogleFonts.inter(
+              fontSize: 12.sp,
+              color: const Color(0xFF324054),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPriorityChip(String priority) {
+    return IntrinsicWidth(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7.w,
+            height: 7.h,
+            decoration: BoxDecoration(
+              color: _priorityColor(priority),
+              shape: BoxShape.circle,
+            ),
+          ),
+          SizedBox(width: 5.w),
+          Text(
+            priority,
+            style: GoogleFonts.inter(
+              fontSize: 12.sp,
+              color: const Color(0xFF324054),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

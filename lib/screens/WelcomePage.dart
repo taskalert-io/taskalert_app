@@ -80,9 +80,12 @@ class WelcomePageState extends State<WelcomePage> {
                         elevation: 0,
                         shadowColor: Colors.transparent,
                         backgroundColor: Colors.transparent,
+                        surfaceTintColor: Colors.transparent,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8.r),
                         ),
+                      ).copyWith(
+                        overlayColor: WidgetStateProperty.all(Colors.transparent),
                       ),
                       child: Ink(
                         decoration: BoxDecoration(
@@ -122,9 +125,12 @@ class WelcomePageState extends State<WelcomePage> {
                         elevation: 0,
                         shadowColor: Colors.transparent,
                         backgroundColor: Colors.transparent,
+                        surfaceTintColor: Colors.transparent,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8.r),
                         ),
+                      ).copyWith(
+                        overlayColor: WidgetStateProperty.all(Colors.transparent),
                       ),
                       child: Ink(
                         decoration: BoxDecoration(
