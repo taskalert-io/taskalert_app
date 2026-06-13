@@ -3,6 +3,15 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:taskalert_app/core/features/auth/controllers/signup_controller.dart';
 import 'package:taskalert_app/core/features/auth/data/repositories/auth_repository.dart';
 import 'package:taskalert_app/core/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:taskalert_app/core/features/departments/controllers/department_controller.dart';
+import 'package:taskalert_app/core/features/departments/data/repositories/department_repository.dart';
+import 'package:taskalert_app/core/features/departments/data/repositories/department_repository_impl.dart';
+import 'package:taskalert_app/core/features/employees/controllers/employee_controller.dart';
+import 'package:taskalert_app/core/features/employees/data/repositories/employee_repository.dart';
+import 'package:taskalert_app/core/features/employees/data/repositories/employee_respository_impl.dart';
+import 'package:taskalert_app/core/features/tasks/controllers/task_controller.dart';
+import 'package:taskalert_app/core/features/tasks/data/repositories/task_repository.dart';
+import 'package:taskalert_app/core/features/tasks/data/repositories/task_repository_impl.dart';
 import 'package:taskalert_app/core/network/dio_http_service.dart';
 import 'package:taskalert_app/core/network/http_service.dart';
 
@@ -31,6 +40,22 @@ Future<void> init() async {
   sl.registerLazySingleton(() => LoginController(sl<AuthRepository>()));
 
   sl.registerLazySingleton(() => SignUpController(sl<AuthRepository>()));
+
+  // 🏢 Departments Feature Layers
+  sl.registerLazySingleton<DepartmentRepository>(
+    () => DepartmentRepositoryImpl(sl<HttpService>()),
+  );
+  sl.registerFactory(() => DepartmentController(sl<DepartmentRepository>()));
+
+  sl.registerLazySingleton<EmployeeRepository>(
+    () => EmployeeRepositoryImpl(sl<HttpService>()),
+  );
+  sl.registerFactory(() => EmployeeController(sl<EmployeeRepository>()));
+
+  sl.registerLazySingleton<TaskRepository>(
+    () => TaskRepositoryImpl(sl<HttpService>()),
+  );
+  sl.registerFactory(() => TaskController(sl<TaskRepository>()));
 
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(sl<HttpService>(), sl<FlutterSecureStorage>()),
