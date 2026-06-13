@@ -927,7 +927,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     }
 
     if (selectedReportingList.isEmpty) {
-      print('selectedReportingList: $selectedReportingList');
+      //print('selectedReportingList: $selectedReportingList');
       setState(() => _reportingToError = "Please select a user");
       valid = false;
     } else {
@@ -1013,7 +1013,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     }
 
     if (isProofEnabled) {
-      print("Before Validation -> $selectedProofTypes");
+      // //print("Before Validation -> $selectedProofTypes");
       if (selectedProofTypes.isEmpty) {
         setState(() {
           _proofTypeError = "Please select at least one proof type";
@@ -1023,8 +1023,8 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
         setState(() {
           _proofTypeError = null;
         });
-        print("Proof Types Count: ${selectedProofTypes.length}");
-        print("Proof Types Values: $selectedProofTypes");
+        //print("Proof Types Count: ${selectedProofTypes.length}");
+        //print("Proof Types Values: $selectedProofTypes");
       }
 
       // AI Validation is optional
@@ -1072,32 +1072,32 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       return;
     }
 
-    print("Form is valid! Proceed with submission...");
-    print("Title: ${titleNameController.text}");
-    print("Department: $selectedDepartment");
-    print("Priority: $selectedPriority");
-    print("Assign To: $selectedAssignees");
-    print("Reporting To: $selectedReportingList");
-    print('Repoting time: ${dueTimeController.text} $dueSelectedAmPm');
-    print('Description: ${descriptionController.text}');
+    //print("Form is valid! Proceed with submission...");
+    //print("Title: ${titleNameController.text}");
+    //print("Department: $selectedDepartment");
+    //print("Priority: $selectedPriority");
+    //print("Assign To: $selectedAssignees");
+    //print("Reporting To: $selectedReportingList");
+    //print('Repoting time: ${dueTimeController.text} $dueSelectedAmPm');
+    //print('Description: ${descriptionController.text}');
 
-    print("Repeat Type: $selectedRepeatType");
-    print("Time Period Count: $timePeriodCount");
-    print("Selected Weekdays: $selectedWeekdays");
-    print("start date: ${startDateController.text}");
-    print("End Type: $selectedEndType");
+    //print("Repeat Type: $selectedRepeatType");
+    //print("Time Period Count: $timePeriodCount");
+    //print("Selected Weekdays: $selectedWeekdays");
+    //print("start date: ${startDateController.text}");
+    //print("End Type: $selectedEndType");
     if (selectedEndType == "end_by") {
-      print("End Date: ${endDateController.text}");
+      //print("End Date: ${endDateController.text}");
     } else {
-      print("Occurrences: $occurrencesCount");
+      //print("Occurrences: $occurrencesCount");
     }
 
-    print("Ai enabled: $isProofEnabled");
-    print("Proof Type: $selectedProofTypes");
+    //print("Ai enabled: $isProofEnabled");
+    //print("Proof Type: $selectedProofTypes");
     if (selectedProofTypes.isNotEmpty) {
-      print("AI Validation: $selectedProofRadioType");
+      //print("AI Validation: $selectedProofRadioType");
     }
-    print("Selected Files: $selectedFiles");
+    //print("Selected Files: $selectedFiles");
 
     if (_validateSections() && _formKey.currentState!.validate()) {
       taskController.clearMessages();
@@ -1138,7 +1138,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       }
 
       if (selectedEndType == 'end_by') {
-        print('end by active');
+        //print('end by active');
         // formData['endByDate'] = endDateController.text;
         formData['endByDate'] = DateTime(
           int.parse(endDateController.text.split('-')[2]),
@@ -1149,8 +1149,8 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
         formData['endAfterCount'] = occurrencesCount;
       }
 
-      print('Form Data');
-      print(formData);
+      //print('Form Data');
+      //print(formData);
 
       if (isProofEnabled) {
         formData['proofTypes'] = selectedProofTypes;
@@ -1214,7 +1214,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       );
     }
 
-    // print("Selected AI Proof Type: $")
+    // //print("Selected AI Proof Type: $")
 
     // ScaffoldMessenger.of(context).showSnackBar(
     //   SnackBar(
