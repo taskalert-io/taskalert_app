@@ -95,8 +95,9 @@ class TaskApiService {
     required String sort,
   }) async {
     final headers = await _headers();
-    final uri = Uri.parse(TaskApiConfig.todoListEndpoint)
-        .replace(queryParameters: {'range': range, 'sort': sort});
+    final uri = Uri.parse(
+      TaskApiConfig.todoListEndpoint,
+    ).replace(queryParameters: {'range': range, 'sort': sort});
 
     final response = await http.get(uri, headers: headers);
 
@@ -345,12 +346,12 @@ class MyTaskScreenState extends State<MyTaskScreen> {
             decoration: BoxDecoration(
               gradient: isSelected
                   ? const LinearGradient(
-                colors: [
-                  Color(0xFFE040FB),
-                  Color(0xFF40C4FF),
-                  Color(0xFF64FFDA),
-                ],
-              )
+                      colors: [
+                        Color(0xFFE040FB),
+                        Color(0xFF40C4FF),
+                        Color(0xFF64FFDA),
+                      ],
+                    )
                   : null,
               color: isSelected ? null : const Color(0xFFE5E5E5),
             ),
@@ -386,7 +387,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
       ),
       child: Column(
         children: [
-
           /// HEADER: arrow + title ............ Sort By dropdown
           InkWell(
             onTap: onToggleExpand,
@@ -446,7 +446,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                     ),
                   ),
                   SizedBox(width: 8.w),
-            
                 ],
               ),
             ),
@@ -571,10 +570,10 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                   : null,
               child: item.image.isEmpty
                   ? Icon(
-                Icons.person,
-                size: 18.r,
-                color: const Color(0xFF8B8C8E),
-              )
+                      Icons.person,
+                      size: 18.r,
+                      color: const Color(0xFF8B8C8E),
+                    )
                   : null,
             ),
             Positioned(
@@ -666,10 +665,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                         SizedBox(width: 12.w),
 
                       if (item.time.isNotEmpty)
-                        _buildInfoChip(
-                          Icons.access_time,
-                          item.time,
-                        ),
+                        _buildInfoChip(Icons.access_time, item.time),
 
                       if ((item.date.isNotEmpty || item.time.isNotEmpty) &&
                           item.priority.isNotEmpty)
@@ -680,7 +676,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                     ],
                   ),
                 ],
-              )
+              ),
             ],
           ),
         ),
@@ -812,6 +808,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
               ),
             ),
             SizedBox(height: 14.h),
+
             /// CONTENT
             Expanded(
               child: SingleChildScrollView(
@@ -963,7 +960,8 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                                 child: GestureDetector(
                                   onTap: () {
                                     modalSetState(() {
-                                      if (selectedWorkspaceType == "Repetitive") {
+                                      if (selectedWorkspaceType ==
+                                          "Repetitive") {
                                         selectedWorkspaceType = "";
                                       } else {
                                         selectedWorkspaceType = "Repetitive";
@@ -989,7 +987,9 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                                             height: 10.w,
                                             decoration: BoxDecoration(
                                               shape: BoxShape.circle,
-                                              color: selectedWorkspaceType == "Repetitive"
+                                              color:
+                                                  selectedWorkspaceType ==
+                                                      "Repetitive"
                                                   ? const Color(0xFF24116A)
                                                   : Colors.transparent,
                                             ),
@@ -997,6 +997,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                                         ),
                                       ),
                                       SizedBox(width: 10.w),
+
                                       /// TITLE
                                       Text(
                                         "Repetitive",
@@ -1015,15 +1016,17 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                               GestureDetector(
                                 onTap: selectedWorkspaceType == "Repetitive"
                                     ? () {
-                                  Navigator.pop(context);
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          CreateRepetitiveScreen(userId: ''),
-                                    ),
-                                  );
-                                }
+                                        Navigator.pop(context);
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                CreateRepetitiveScreen(
+                                                  userId: '',
+                                                ),
+                                          ),
+                                        );
+                                      }
                                     : null,
                                 child: Container(
                                   width: 27.w,
@@ -1083,7 +1086,9 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                                             height: 10.w,
                                             decoration: BoxDecoration(
                                               shape: BoxShape.circle,
-                                              color: selectedWorkspaceType == "One-time"
+                                              color:
+                                                  selectedWorkspaceType ==
+                                                      "One-time"
                                                   ? const Color(0xFF24116A)
                                                   : Colors.transparent,
                                             ),
@@ -1091,6 +1096,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                                         ),
                                       ),
                                       SizedBox(width: 10.w),
+
                                       /// TITLE
                                       Text(
                                         "One-time",
@@ -1109,15 +1115,15 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                               GestureDetector(
                                 onTap: selectedWorkspaceType == "One-time"
                                     ? () {
-                                  Navigator.pop(context);
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          CreateOneTimeScreen(userId: ''),
-                                    ),
-                                  );
-                                }
+                                        Navigator.pop(context);
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                CreateOneTimeScreen(userId: ''),
+                                          ),
+                                        );
+                                      }
                                     : null,
                                 child: Container(
                                   width: 27.w,
@@ -1154,16 +1160,13 @@ class MyTaskScreenState extends State<MyTaskScreen> {
       bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 1),
     );
   }
+
   Widget _buildInfoChip(IconData icon, String text) {
     return IntrinsicWidth(
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 14.r,
-            color: const Color(0xFF324054),
-          ),
+          Icon(icon, size: 14.r, color: const Color(0xFF324054)),
           SizedBox(width: 4.w),
           Text(
             text,
