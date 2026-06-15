@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../extras/MyTaskDetails.dart';
+import '../extras/MyTaskScreen.dart';
 import '../screens/HomeScreen.dart';
 import '../screens/MoreScreen.dart';
 import '../screens/NotificationScreen.dart';
@@ -100,7 +101,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
                     break;
 
                   case 1:
-                    screen = TaskDetailScreen(userId: '');
+                    screen = MyTaskScreen(userId: '');
                     break;
 
                   case 2:
@@ -130,61 +131,61 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
                   children: [
                     isSelected
                         ? ShaderMask(
-                            shaderCallback: (bounds) => const LinearGradient(
-                              colors: [
-                                Color(0xFF52EBB9),
-                                Color(0xFF42A8FF),
-                                Color(0xFFF15EFF),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ).createShader(bounds),
+                      shaderCallback: (bounds) => const LinearGradient(
+                        colors: [
+                          Color(0xFF52EBB9),
+                          Color(0xFF42A8FF),
+                          Color(0xFFF15EFF),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ).createShader(bounds),
 
-                            child: Icon(
-                              items[index]['icon'],
-                              size: 22.r,
-                              color: Colors.white,
-                            ),
-                          )
+                      child: Icon(
+                        items[index]['icon'],
+                        size: 22.r,
+                        color: Colors.white,
+                      ),
+                    )
                         : Icon(
-                            items[index]['icon'],
-                            size: 22.r,
-                            color: const Color(0xFF667085),
-                          ),
+                      items[index]['icon'],
+                      size: 22.r,
+                      color: const Color(0xFF667085),
+                    ),
 
                     SizedBox(height: 3.h),
 
                     isSelected
                         ? ShaderMask(
-                            shaderCallback: (bounds) => const LinearGradient(
-                              colors: [
-                                Color(0xFF52EBB9),
-                                Color(0xFF42A8FF),
-                                Color(0xFFF15EFF),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ).createShader(bounds),
+                      shaderCallback: (bounds) => const LinearGradient(
+                        colors: [
+                          Color(0xFF52EBB9),
+                          Color(0xFF42A8FF),
+                          Color(0xFFF15EFF),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ).createShader(bounds),
 
-                            child: Text(
-                              items[index]['label'],
+                      child: Text(
+                        items[index]['label'],
 
-                              style: GoogleFonts.inter(
-                                fontSize: 10.sp,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
-                          )
+                        style: GoogleFonts.inter(
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    )
                         : Text(
-                            items[index]['label'],
+                      items[index]['label'],
 
-                            style: GoogleFonts.inter(
-                              fontSize: 10.sp,
-                              fontWeight: FontWeight.w500,
-                              color: const Color(0xFF667085),
-                            ),
-                          ),
+                      style: GoogleFonts.inter(
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF667085),
+                      ),
+                    ),
                   ],
                 ),
               ),

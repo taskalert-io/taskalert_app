@@ -7,6 +7,7 @@ import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
 
+import '../extras/MyTaskDetails.dart';
 import 'CreateRepetitiveScreen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -31,20 +32,11 @@ class HomeScreenState extends State<HomeScreen> {
 
   /// DATA LIST
   final List<Map<String, String>> workList = [
-    {
-      "number": "01",
-      "title": "Pending\nWork List",
-    },
+    {"number": "01", "title": "Pending\nWork List"},
 
-    {
-      "number": "02",
-      "title": "High Priority\nWork List",
-    },
+    {"number": "02", "title": "High Priority\nWork List"},
 
-    {
-      "number": "03",
-      "title": "Scheduled\nWork List",
-    },
+    {"number": "03", "title": "Scheduled\nWork List"},
   ];
 
   final ValueNotifier<int> currentPageNotifier = ValueNotifier<int>(1000);
@@ -62,6 +54,7 @@ class HomeScreenState extends State<HomeScreen> {
 
     super.dispose();
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -169,7 +162,9 @@ class HomeScreenState extends State<HomeScreen> {
                                   onTap: () {
                                     _pageController.animateToPage(
                                       index,
-                                      duration: const Duration(milliseconds: 300),
+                                      duration: const Duration(
+                                        milliseconds: 300,
+                                      ),
                                       curve: Curves.easeInOut,
                                     );
 
@@ -181,7 +176,8 @@ class HomeScreenState extends State<HomeScreen> {
                                       number: item["number"]!,
                                       title: item["title"]!,
                                       isActive:
-                                      currentPage % workList.length == realIndex,
+                                          currentPage % workList.length ==
+                                          realIndex,
                                     ),
                                   ),
                                 );
@@ -207,16 +203,18 @@ class HomeScreenState extends State<HomeScreen> {
 
                               children: List.generate(
                                 workList.length,
-                                    (index) => GestureDetector(
+                                (index) => GestureDetector(
                                   onTap: () {
                                     final targetPage =
                                         currentPage -
-                                            (currentPage % workList.length) +
-                                            index;
+                                        (currentPage % workList.length) +
+                                        index;
 
                                     _pageController.animateToPage(
                                       targetPage,
-                                      duration: const Duration(milliseconds: 300),
+                                      duration: const Duration(
+                                        milliseconds: 300,
+                                      ),
                                       curve: Curves.easeInOut,
                                     );
 
@@ -224,7 +222,9 @@ class HomeScreenState extends State<HomeScreen> {
                                   },
 
                                   child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 3),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 3,
+                                    ),
 
                                     child: _dot(
                                       currentPage % workList.length == index,
@@ -370,159 +370,192 @@ class HomeScreenState extends State<HomeScreen> {
 
                           children: [
                             /// PAGE 1
-                            GestureDetector(
-                              // onTap: ,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
 
-                                child: Column(
-                                  children: [
-                                    _buildTodoItem(
+                              child: Column(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              TaskDetailScreen(
+                                                userId: widget.userId,
+                                                taskId: '1',
+                                              ),
+                                        ),
+                                      );
+                                    },
+                                    child: _buildTodoItem(
                                       image: "https://i.pravatar.cc/150?img=12",
-
                                       title: "Retail Market",
-
                                       status: "Pending",
-
                                       statusColor: Colors.red,
-
                                       requestedBy: "Assign to Guadalupe Miró",
-
                                       priority: "Low",
-
                                       priorityColor: Colors.green,
                                     ),
+                                  ),
 
-                                    SizedBox(height: 14.h),
+                                  SizedBox(height: 14.h),
+                                  Divider(color: Colors.grey.shade200),
+                                  SizedBox(height: 14.h),
 
-                                    Divider(color: Colors.grey.shade200),
-
-                                    SizedBox(height: 14.h),
-
-                                    _buildTodoItem(
+                                  GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              TaskDetailScreen(
+                                                userId: widget.userId,
+                                                taskId: '2',
+                                              ),
+                                        ),
+                                      );
+                                    },
+                                    child: _buildTodoItem(
                                       image: "https://i.pravatar.cc/150?img=18",
-
                                       title: "Yearly Food Service",
-
                                       status: "In progress",
-
                                       statusColor: Colors.orange,
-
                                       requestedBy: "Requested by John Kyte",
-
                                       priority: "High",
-
                                       priorityColor: Colors.red,
                                     ),
+                                  ),
 
-                                    SizedBox(height: 14.h),
+                                  SizedBox(height: 14.h),
+                                  Divider(color: Colors.grey.shade200),
+                                  SizedBox(height: 14.h),
 
-                                    Divider(color: Colors.grey.shade200),
-
-                                    SizedBox(height: 14.h),
-
-                                    _buildTodoItem(
+                                  GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              TaskDetailScreen(
+                                                userId: widget.userId,
+                                                taskId: '3',
+                                              ),
+                                        ),
+                                      );
+                                    },
+                                    child: _buildTodoItem(
                                       image: "https://i.pravatar.cc/150?img=22",
-
                                       title: "Manufacture PM",
-
                                       status: "Done",
-
                                       statusColor: Colors.green,
-
                                       requestedBy:
                                           "Requested by Guadalupe Miró",
-
                                       priority: "Low",
-
                                       priorityColor: Colors.green,
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             ),
 
                             /// PAGE 2
-                            GestureDetector(
-                              // onTap: ,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
 
-                                child: Column(
-                                  children: [
-                                    _buildTodoItem(
+                              child: Column(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              TaskDetailScreen(
+                                                userId: widget.userId,
+                                                taskId: '4',
+                                              ),
+                                        ),
+                                      );
+                                    },
+                                    child: _buildTodoItem(
                                       image: "https://i.pravatar.cc/150?img=30",
-
                                       title: "Office Cleaning",
-
                                       status: "Pending",
-
                                       statusColor: Colors.red,
-
                                       requestedBy: "Requested by Alex",
-
                                       priority: "Low",
-
                                       priorityColor: Colors.green,
                                     ),
+                                  ),
 
-                                    SizedBox(height: 14.h),
+                                  SizedBox(height: 14.h),
+                                  Divider(color: Colors.grey.shade200),
+                                  SizedBox(height: 14.h),
 
-                                    Divider(color: Colors.grey.shade200),
-
-                                    SizedBox(height: 14.h),
-
-                                    _buildTodoItem(
+                                  GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              TaskDetailScreen(
+                                                userId: widget.userId,
+                                                taskId: '5',
+                                              ),
+                                        ),
+                                      );
+                                    },
+                                    child: _buildTodoItem(
                                       image: "https://i.pravatar.cc/150?img=35",
-
                                       title: "Electrical Repair",
-
                                       status: "In progress",
-
                                       statusColor: Colors.orange,
-
                                       requestedBy: "Requested by Smith",
-
                                       priority: "High",
-
                                       priorityColor: Colors.red,
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             ),
 
                             /// PAGE 3
-                            GestureDetector(
-                              // onTap: ,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
 
-                                child: Column(
-                                  children: [
-                                    _buildTodoItem(
+                              child: Column(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              TaskDetailScreen(
+                                                userId: widget.userId,
+                                                taskId: '6',
+                                              ),
+                                        ),
+                                      );
+                                    },
+                                    child: _buildTodoItem(
                                       image: "https://i.pravatar.cc/150?img=40",
-
                                       title: "Water Supply",
-
                                       status: "Done",
-
                                       statusColor: Colors.green,
-
                                       requestedBy: "Requested by Jacob",
-
                                       priority: "Low",
-
                                       priorityColor: Colors.green,
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -539,7 +572,7 @@ class HomeScreenState extends State<HomeScreen> {
 
                             children: List.generate(
                               3,
-                                  (index) => GestureDetector(
+                              (index) => GestureDetector(
                                 onTap: () {
                                   _todoController.animateToPage(
                                     index,
@@ -551,7 +584,9 @@ class HomeScreenState extends State<HomeScreen> {
                                 },
 
                                 child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 3,
+                                  ),
 
                                   child: _dot(todoCurrentPage == index),
                                 ),
@@ -575,7 +610,7 @@ class HomeScreenState extends State<HomeScreen> {
                     // );
                   },
                   child: Container(
-                    margin:  EdgeInsets.only(left: 15,right:15,bottom: 15),
+                    margin: EdgeInsets.only(left: 15, right: 15, bottom: 15),
 
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
@@ -609,10 +644,7 @@ class HomeScreenState extends State<HomeScreen> {
                             gradient: const LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
-                              colors: [
-                                Color(0xFF0F0C8B),
-                                Color(0xFF5B46F4),
-                              ],
+                              colors: [Color(0xFF0F0C8B), Color(0xFF5B46F4)],
                             ),
                           ),
 
@@ -628,7 +660,7 @@ class HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
 
-                         SizedBox(width: 10.w),
+                        SizedBox(width: 10.w),
 
                         /// TITLE
                         Expanded(
@@ -637,7 +669,7 @@ class HomeScreenState extends State<HomeScreen> {
                             style: GoogleFonts.inter(
                               fontSize: 14.sp,
                               fontWeight: FontWeight.w700,
-                              color:  Color(0xFF0D095B),
+                              color: Color(0xFF0D095B),
                             ),
                           ),
                         ),
@@ -652,7 +684,7 @@ class HomeScreenState extends State<HomeScreen> {
                             borderRadius: BorderRadius.circular(5.r),
                           ),
 
-                          child:  Icon(
+                          child: Icon(
                             Icons.arrow_forward,
                             size: 15.r,
                             color: Color(0xFF0A0258),
@@ -665,17 +697,14 @@ class HomeScreenState extends State<HomeScreen> {
                 Container(
                   width: double.infinity,
                   clipBehavior: Clip.hardEdge,
-                  margin:  EdgeInsets.only(left: 15,right: 15,bottom: 20),
+                  margin: EdgeInsets.only(left: 15, right: 15, bottom: 20),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20.r),
 
                     gradient: const LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFF0A0F7A),
-                        Color(0xFF1B1F9E),
-                      ],
+                      colors: [Color(0xFF0A0F7A), Color(0xFF1B1F9E)],
                     ),
                   ),
 
@@ -698,7 +727,12 @@ class HomeScreenState extends State<HomeScreen> {
 
                       /// CONTENT
                       Padding(
-                        padding: EdgeInsets.only(top: 15,bottom: 15,left: 15,right: 10),
+                        padding: EdgeInsets.only(
+                          top: 15,
+                          bottom: 15,
+                          left: 15,
+                          right: 10,
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
 
@@ -729,7 +763,7 @@ class HomeScreenState extends State<HomeScreen> {
                               onTap: () {},
 
                               child: Container(
-                                padding:  EdgeInsets.symmetric(
+                                padding: EdgeInsets.symmetric(
                                   horizontal: 10,
                                   vertical: 10,
                                 ),
@@ -760,7 +794,7 @@ class HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                   ),
-                )
+                ),
               ],
             ),
           ),
@@ -789,361 +823,306 @@ class HomeScreenState extends State<HomeScreen> {
                   builder: (context, modalSetState) {
                     final bottomInset = MediaQuery.of(context).padding.bottom;
 
-                      return Container(
-                        padding: EdgeInsets.only(
-                          left: 20.w,
-                          right: 20.w,
-                          top: 18.h,
-                          bottom: bottomInset > 0 ? bottomInset : 25.h,
+                    return Container(
+                      padding: EdgeInsets.only(
+                        left: 20.w,
+                        right: 20.w,
+                        top: 18.h,
+                        bottom: bottomInset > 0 ? bottomInset : 25.h,
+                      ),
+
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(28.r),
+                          topRight: Radius.circular(28.r),
                         ),
+                      ),
 
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(28.r),
-                            topRight: Radius.circular(28.r),
-                          ),
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          /// HEADER
+                          Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () => Navigator.pop(context),
 
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            /// HEADER
-                            Row(
-                              children: [
-                                GestureDetector(
-                                  onTap: () => Navigator.pop(context),
-
-                                  child: Icon(
-                                    Icons.close,
-                                    size: 16.r,
-                                    color: const Color(0xFF101828),
-                                  ),
-                                ),
-
-                                Expanded(
-                                  child: Center(
-                                    child: Text(
-                                      "Create New Workspace",
-
-                                      style: GoogleFonts.inter(
-                                        fontSize: 14.sp,
-                                        fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF0A0258),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            SizedBox(height: 15.h),
-
-                            Divider(
-                              color: const Color(0xFFE4E7EC),
-                              height: 1,
-                            ),
-
-                            SizedBox(height: 15.h),
-
-                            /// SELECT TEXT
-                            Align(
-                              alignment: Alignment.centerLeft,
-
-                              child: Text(
-                                "Select one",
-
-                                style: GoogleFonts.inter(
-                                  fontSize: 12.sp,
-                                  fontWeight: FontWeight.w500,
-                                  color: const Color(0xFF324054),
+                                child: Icon(
+                                  Icons.close,
+                                  size: 16.r,
+                                  color: const Color(0xFF101828),
                                 ),
                               ),
+
+                              Expanded(
+                                child: Center(
+                                  child: Text(
+                                    "Create New Workspace",
+
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF0A0258),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          SizedBox(height: 15.h),
+
+                          Divider(color: const Color(0xFFE4E7EC), height: 1),
+
+                          SizedBox(height: 15.h),
+
+                          /// SELECT TEXT
+                          Align(
+                            alignment: Alignment.centerLeft,
+
+                            child: Text(
+                              "Select one",
+
+                              style: GoogleFonts.inter(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFF324054),
+                              ),
                             ),
+                          ),
 
-                            SizedBox(height: 10.h),
+                          SizedBox(height: 10.h),
 
-                            /// =========================
-                            /// REPETITIVE
-                            /// =========================
+                          /// =========================
+                          /// REPETITIVE
+                          /// =========================
+                          Row(
+                            children: [
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    modalSetState(() {
+                                      if (selectedWorkspaceType ==
+                                          "Repetitive") {
+                                        selectedWorkspaceType = "";
+                                      } else {
+                                        selectedWorkspaceType = "Repetitive";
+                                      }
+                                    });
+                                  },
 
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      modalSetState(() {
-                                        if (selectedWorkspaceType == "Repetitive") {
-                                          selectedWorkspaceType = "";
-                                        } else {
-                                          selectedWorkspaceType = "Repetitive";
-                                        }
-                                      });
-                                    },
+                                  child: Row(
+                                    children: [
+                                      /// RADIO
+                                      Container(
+                                        width: 16.w,
+                                        height: 16.w,
 
-                                    child: Row(
-                                      children: [
-                                        /// RADIO
-                                        Container(
-                                          width: 16.w,
-                                          height: 16.w,
-
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: const Color(
-                                                0xFF0A0258,
-                                              ),
-                                              width: 1.3,
-                                            ),
-                                          ),
-
-                                          child: Center(
-                                            child: Container(
-                                              width: 10.w,
-                                              height: 10.w,
-
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color:
-                                                selectedWorkspaceType ==
-                                                    "Repetitive"
-                                                    ? const Color(
-                                                  0xFF24116A,
-                                                )
-                                                    : Colors.transparent,
-                                              ),
-                                            ),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: const Color(0xFF0A0258),
+                                            width: 1.3,
                                           ),
                                         ),
 
-                                        SizedBox(width: 10.w),
+                                        child: Center(
+                                          child: Container(
+                                            width: 10.w,
+                                            height: 10.w,
 
-                                        /// TITLE
-                                        Text(
-                                          "Repetitive",
-
-                                          style: GoogleFonts.inter(
-                                            fontSize: 14.sp,
-                                            fontWeight:
-                                            FontWeight.w500,
-                                            color: const Color(
-                                              0xFF3F3F3F,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color:
+                                                  selectedWorkspaceType ==
+                                                      "Repetitive"
+                                                  ? const Color(0xFF24116A)
+                                                  : Colors.transparent,
                                             ),
                                           ),
                                         ),
-                                      ],
-                                    ),
+                                      ),
+
+                                      SizedBox(width: 10.w),
+
+                                      /// TITLE
+                                      Text(
+                                        "Repetitive",
+
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14.sp,
+                                          fontWeight: FontWeight.w500,
+                                          color: const Color(0xFF3F3F3F),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
+                              ),
 
-                                /// ARROW BUTTON
-                                GestureDetector(
-                                  onTap:
-                                  selectedWorkspaceType ==
-                                      "Repetitive"
-                                      ? () {
-                                    Navigator.pop(context);
+                              /// ARROW BUTTON
+                              GestureDetector(
+                                onTap: selectedWorkspaceType == "Repetitive"
+                                    ? () {
+                                        Navigator.pop(context);
 
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            CreateRepetitiveScreen(
-                                              userId: '',
-                                            ),
-                                      ),
-                                    );
-                                  }
-                                      : null,
-
-                                  child: Container(
-                                    width: 27.w,
-                                    height: 27.w,
-
-                                    decoration: BoxDecoration(
-                                      color:
-                                      selectedWorkspaceType ==
-                                          "Repetitive"
-                                          ? const Color(
-                                        0xFFE4E7EC,
-                                      )
-                                          : const Color(
-                                        0xFFF2F4F7,
-                                      ),
-
-                                      borderRadius:
-                                      BorderRadius.circular(5.r),
-                                    ),
-
-                                    child: Icon(
-                                      Icons.arrow_forward,
-                                      size: 15.r,
-
-                                      color:
-                                      selectedWorkspaceType ==
-                                          "Repetitive"
-                                          ? const Color(
-                                        0xFF667085,
-                                      )
-                                          : const Color(
-                                        0xFF98A2B3,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            SizedBox(height: 10.h),
-
-                            /// =========================
-                            /// ONE TIME
-                            /// =========================
-
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      modalSetState(() {
-                                        if (selectedWorkspaceType == "One-time") {
-                                          selectedWorkspaceType = "";
-                                        } else {
-                                          selectedWorkspaceType = "One-time";
-                                        }
-                                      });
-                                    },
-
-                                    child: Row(
-                                      children: [
-                                        /// RADIO
-                                        Container(
-                                          width: 16.w,
-                                          height: 16.w,
-
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: const Color(
-                                                0xFF0A0258,
-                                              ),
-                                              width: 1.3,
-                                            ),
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                CreateRepetitiveScreen(
+                                                  userId: '',
+                                                ),
                                           ),
+                                        );
+                                      }
+                                    : null,
 
-                                          child: Center(
-                                            child: Container(
-                                              width: 10.w,
-                                              height: 10.w,
+                                child: Container(
+                                  width: 27.w,
+                                  height: 27.w,
 
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color:
-                                                selectedWorkspaceType ==
-                                                    "One-time"
-                                                    ? const Color(
-                                                  0xFF24116A,
-                                                )
-                                                    : Colors.transparent,
-                                              ),
-                                            ),
+                                  decoration: BoxDecoration(
+                                    color: selectedWorkspaceType == "Repetitive"
+                                        ? const Color(0xFFE4E7EC)
+                                        : const Color(0xFFF2F4F7),
+
+                                    borderRadius: BorderRadius.circular(5.r),
+                                  ),
+
+                                  child: Icon(
+                                    Icons.arrow_forward,
+                                    size: 15.r,
+
+                                    color: selectedWorkspaceType == "Repetitive"
+                                        ? const Color(0xFF667085)
+                                        : const Color(0xFF98A2B3),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          SizedBox(height: 10.h),
+
+                          /// =========================
+                          /// ONE TIME
+                          /// =========================
+                          Row(
+                            children: [
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    modalSetState(() {
+                                      if (selectedWorkspaceType == "One-time") {
+                                        selectedWorkspaceType = "";
+                                      } else {
+                                        selectedWorkspaceType = "One-time";
+                                      }
+                                    });
+                                  },
+
+                                  child: Row(
+                                    children: [
+                                      /// RADIO
+                                      Container(
+                                        width: 16.w,
+                                        height: 16.w,
+
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: const Color(0xFF0A0258),
+                                            width: 1.3,
                                           ),
                                         ),
 
-                                        SizedBox(width: 10.w),
+                                        child: Center(
+                                          child: Container(
+                                            width: 10.w,
+                                            height: 10.w,
 
-                                        /// TITLE
-                                        Text(
-                                          "One-time",
-
-                                          style: GoogleFonts.inter(
-                                            fontSize: 14.sp,
-                                            fontWeight:
-                                            FontWeight.w500,
-                                            color: const Color(
-                                              0xFF3F3F3F,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color:
+                                                  selectedWorkspaceType ==
+                                                      "One-time"
+                                                  ? const Color(0xFF24116A)
+                                                  : Colors.transparent,
                                             ),
                                           ),
                                         ),
-                                      ],
-                                    ),
+                                      ),
+
+                                      SizedBox(width: 10.w),
+
+                                      /// TITLE
+                                      Text(
+                                        "One-time",
+
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14.sp,
+                                          fontWeight: FontWeight.w500,
+                                          color: const Color(0xFF3F3F3F),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
+                              ),
 
-                                /// ARROW BUTTON
-                                GestureDetector(
-                                  onTap:
-                                  selectedWorkspaceType ==
-                                      "One-time"
-                                      ? () {
-                                    Navigator.pop(context);
+                              /// ARROW BUTTON
+                              GestureDetector(
+                                onTap: selectedWorkspaceType == "One-time"
+                                    ? () {
+                                        Navigator.pop(context);
 
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            CreateOneTimeScreen(
-                                              userId: '',
-                                            ),
-                                      ),
-                                    );
-                                  }
-                                      : null,
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                CreateOneTimeScreen(userId: ''),
+                                          ),
+                                        );
+                                      }
+                                    : null,
 
-                                  child: Container(
-                                    width: 27.w,
-                                    height: 27.w,
+                                child: Container(
+                                  width: 27.w,
+                                  height: 27.w,
 
-                                    decoration: BoxDecoration(
-                                      color:
-                                      selectedWorkspaceType ==
-                                          "One-time"
-                                          ? const Color(
-                                        0xFFE4E7EC,
-                                      )
-                                          : const Color(
-                                          0xFFF2F4F7,
-                                      ),
+                                  decoration: BoxDecoration(
+                                    color: selectedWorkspaceType == "One-time"
+                                        ? const Color(0xFFE4E7EC)
+                                        : const Color(0xFFF2F4F7),
 
-                                      borderRadius:
-                                      BorderRadius.circular(5.r),
-                                    ),
+                                    borderRadius: BorderRadius.circular(5.r),
+                                  ),
 
-                                    child: Icon(
-                                      Icons.arrow_forward,
-                                      size: 15.r,
+                                  child: Icon(
+                                    Icons.arrow_forward,
+                                    size: 15.r,
 
-                                      color:
-                                      selectedWorkspaceType ==
-                                          "One-time"
-                                          ? const Color(
-                                        0xFF667085,
-                                      )
-                                          : const Color(
-                                        0xFF98A2B3,
-                                      ),
-                                    ),
+                                    color: selectedWorkspaceType == "One-time"
+                                        ? const Color(0xFF667085)
+                                        : const Color(0xFF98A2B3),
                                   ),
                                 ),
-                              ],
-                            ),
-                            SizedBox(height: 15.h),
-                          ],
-                        ),
-                      );
-
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 15.h),
+                        ],
+                      ),
+                    );
                   },
                 );
               },
             );
           },
 
-          child: Icon(
-            Icons.add,
-            color: Colors.white,
-            size: 34.r,
-          ),
+          child: Icon(Icons.add, color: Colors.white, size: 34.r),
         ),
       ),
       bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 0),

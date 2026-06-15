@@ -311,7 +311,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                       showDialog(
                         context: context,
                         barrierDismissible:
-                            false, // User must explicitly tap a choice button
+                        false, // User must explicitly tap a choice button
                         builder: (BuildContext dialogContext) {
                           return AlertDialog(
                             shape: RoundedRectangleBorder(
@@ -364,10 +364,10 @@ class _CustomDrawerState extends State<CustomDrawer> {
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) =>
-                                          const SignInScreen(), // Adjust to match your exact Sign In widget class name
+                                      const SignInScreen(), // Adjust to match your exact Sign In widget class name
                                     ),
-                                    (Route<dynamic> route) =>
-                                        false, // Erases the backward view stack array history completely
+                                        (Route<dynamic> route) =>
+                                    false, // Erases the backward view stack array history completely
                                   );
                                 },
                                 child: Text(
@@ -444,7 +444,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                   backgroundImage: userThumbnail.isNotEmpty
                       ? NetworkImage(userThumbnail)
                       : const AssetImage("assets/images/profile.png")
-                            as ImageProvider,
+                  as ImageProvider,
                 ),
                 SizedBox(width: 12.w),
                 Expanded(
