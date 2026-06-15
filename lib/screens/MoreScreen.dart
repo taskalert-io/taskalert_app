@@ -1,8 +1,11 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:taskalert_app/core/features/auth/controllers/login_controller.dart';
 import 'package:taskalert_app/screens/ProfileSetting.dart';
+import 'package:taskalert_app/utils/injection_container.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
@@ -66,6 +69,39 @@ class MoreScreenState extends State<MoreScreen> {
     }
   }
 
+  final _loginController = sl<LoginController>();
+  final FlutterSecureStorage storage = const FlutterSecureStorage();
+  String userName = "User";
+  String userPhone = "";
+  String userEmail = "";
+  String userThumbnail = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _loginController.handleGetProfile();
+    loadUserData();
+  }
+
+  Future<void> loadUserData() async {
+    String? storedFirstName = await storage.read(key: "user_first_name");
+    String? storedLastName = await storage.read(key: "user_last_name");
+    String? storedName = (storedFirstName != null && storedLastName != null)
+        ? "$storedFirstName $storedLastName"
+        : null;
+    String? storedEmail = await storage.read(key: "user_email");
+
+    String? storedThumbnail = await storage.read(key: "user_avatar_thumbnail");
+    String? storedPhoneNumber = await storage.read(key: "user_phone");
+
+    setState(() {
+      userName = storedName ?? "User";
+      userEmail = storedEmail ?? "";
+      userThumbnail = storedThumbnail ?? "assets/images/profile.png";
+      userPhone = storedPhoneNumber ?? "";
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -107,15 +143,16 @@ class MoreScreenState extends State<MoreScreen> {
                     SizedBox(
                       width: 100.w,
                       height: 100.h,
-                      child: const CircleAvatar(
-                        backgroundImage: AssetImage(
-                          'assets/images/profile.png',
-                        ),
+                      child: CircleAvatar(
+                        backgroundImage: userThumbnail.isNotEmpty
+                            ?  NetworkImage(userThumbnail)
+                            : const AssetImage("assets/images/profile.png")
+                                  as ImageProvider,
                       ),
                     ),
 
                     Text(
-                      "Mr. Michel Smith",
+                      userName,
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inter(
                         fontSize: 14.sp,
@@ -133,7 +170,7 @@ class MoreScreenState extends State<MoreScreen> {
                         visualDensity: VisualDensity.compact,
                       ),
                       child: Text(
-                        "(454) 726-0592",
+                        "(+91) $userPhone",
                         style: GoogleFonts.inter(
                           fontSize: 11.sp,
                           fontWeight: FontWeight.w500,
@@ -151,7 +188,7 @@ class MoreScreenState extends State<MoreScreen> {
                         visualDensity: VisualDensity.compact,
                       ),
                       child: Text(
-                        "michaelsmith@gmail.com",
+                        userEmail,
                         style: GoogleFonts.inter(
                           fontSize: 11.sp,
                           fontWeight: FontWeight.w500,
