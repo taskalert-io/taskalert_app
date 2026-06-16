@@ -361,6 +361,20 @@ class AuthRepositoryImpl implements AuthRepository {
             value: user.lastName,
           );
 
+          await _secureStorage.write(
+            key: 'user_dob',
+            value: user.dateOfBirth.toString(),
+          );
+
+          await _secureStorage.write(
+            key: 'user_job',
+            value: user.jobRole?.title,
+          );
+          await _secureStorage.write(
+            key: 'user_department',
+            value: user.department?.name,
+          );
+
           // 🌟 Safely accessing nested Cloudinary profile image trees
           await _secureStorage.write(
             key: 'user_avatar_original',

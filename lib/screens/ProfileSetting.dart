@@ -123,6 +123,10 @@ class ProfileSettingState extends State<ProfileSetting> {
   String userEmail = "";
   String userThumbnail = "";
 
+  Map<String, dynamic>? _employeeData;
+
+  bool isLoading = true;
+
   @override
   void initState() {
     super.initState();
@@ -153,11 +157,39 @@ class ProfileSettingState extends State<ProfileSetting> {
     String? storedThumbnail = await storage.read(key: "user_avatar_thumbnail");
     String? storedPhoneNumber = await storage.read(key: "user_phone");
 
+    String? storedDOB = await storage.read(key: "user_dob");
+
+    DateTime dateTime = DateTime.parse(storedDOB!);
+
+    String? storedJobRole = await storage.read(key: "user_job");
+    String? storedDepartment = await storage.read(key: "user_department");
+
+    print(storedJobRole);
+
     setState(() {
       userName = storedName ?? "User";
       userEmail = storedEmail ?? "";
       userThumbnail = storedThumbnail ?? "assets/images/profile.png";
       userPhone = storedPhoneNumber ?? "";
+
+      _firstNameController.text = storedFirstName ?? "";
+      _lastNameController.text = storedLastName ?? "";
+      _emailController.text = storedEmail ?? "";
+      _phoneController.text = storedPhoneNumber ?? "";
+      _accountEmailController.text = storedEmail ?? "";
+      _selectedDate = dateTime;
+      // dayController.text = dateTime.day;
+      dayController.text = dateTime.day.toString().padLeft(2, '0');
+      monthController.text = dateTime.month.toString().padLeft(2, '0');
+      yearController.text = dateTime.year.toString();
+
+      _employeeData = {
+        // "id": employeeId ?? "",
+        "designation": storedJobRole ?? "Not Assigned",
+        "department": storedDepartment ?? "General",
+      };
+
+      isLoading = false;
     });
   }
 
@@ -655,25 +687,28 @@ class ProfileSettingState extends State<ProfileSetting> {
           ],
         ),
         SizedBox(height: 8.h),
-        Offstage(
-          offstage: !value,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10.r),
-              boxShadow: [
-                BoxShadow(
-                  color: _shadowBlack06,
-                  blurRadius: 24.r,
-                  offset: const Offset(0, 8),
-                ),
-              ],
+        if (isLoading)
+          const Center(child: CircularProgressIndicator())
+        else
+          Offstage(
+            offstage: !value,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10.r),
+                boxShadow: [
+                  BoxShadow(
+                    color: _shadowBlack06,
+                    blurRadius: 24.r,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: child,
             ),
-            child: child,
           ),
-        ),
       ],
     );
   }
@@ -1153,7 +1188,10 @@ class ProfileSettingState extends State<ProfileSetting> {
                   assetSystemEnabled = false;
                 }
               }),
-              child: EmpJobDetailsSection(key: _empKey),
+              child: EmpJobDetailsSection(
+                key: _empKey,
+                employeeData: _employeeData,
+              ),
             ),
             _buildSectionRow(
               label: 'Compensation & Finance',

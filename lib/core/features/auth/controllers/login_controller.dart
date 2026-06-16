@@ -167,6 +167,8 @@ class LoginController extends ChangeNotifier {
       _profile = apiResponse.data;
       _successMessage = apiResponse.message;
       isSuccess = true;
+
+      // print(_profile?.dateOfBirth);
     } else if (result is Failure) {
       _errorMessage = (result as Failure).exception.userMessage;
       isSuccess = false;

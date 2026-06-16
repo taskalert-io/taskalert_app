@@ -6,7 +6,8 @@ import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 import 'SectionValidatable.dart';
 
 class EmpJobDetailsSection extends StatefulWidget {
-  const EmpJobDetailsSection({super.key});
+  final Map<String, dynamic>? employeeData; // 🌟 Accept data directly
+  const EmpJobDetailsSection({super.key, required this.employeeData});
   @override
   State<EmpJobDetailsSection> createState() => EmpJobDetailsSectionState();
 }
@@ -64,14 +65,33 @@ class EmpJobDetailsSectionState extends State<EmpJobDetailsSection>
 
   @override
   void initState() {
+    print(widget.employeeData);
     super.initState();
-    _jobTitleController.text = "Senior Backend Engineer";
-    _departmentController.text = "Product";
+    _jobTitleController.text = widget.employeeData?['designation'] ?? "";
+    _departmentController.text =
+        widget.employeeData?['department'] ?? "Product";
     _shiftController.text = "Morning";
     _hoursController.text = "8";
     _whoReportsToController.text = "Amit Kumar Mondal";
     _whoReportsThemController.text = "Maulik Seith";
     _tenureController.text = "5";
+  }
+
+  @override
+  void didUpdateWidget(covariant EmpJobDetailsSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // If the employeeData object changed (e.g., went from null to populated), sync fields!
+    if (widget.employeeData != oldWidget.employeeData) {
+      _populateFields();
+    }
+  }
+
+  void _populateFields() {
+    if (widget.employeeData != null) {
+      _jobTitleController.text = widget.employeeData?['designation'] ?? "";
+      _departmentController.text = widget.employeeData?['department'] ?? "";
+    }
   }
 
   @override
