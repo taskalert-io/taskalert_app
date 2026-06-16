@@ -126,15 +126,20 @@ class ProfileSettingState extends State<ProfileSetting> {
   @override
   void initState() {
     super.initState();
-    _firstNameController.text = "Michael";
-    _lastNameController.text = "Smith";
-    _emailController.text = "michaelsmith@gmail.com";
-    _phoneController.text = "+14547260592";
-    _accountEmailController.text = "michael Smith@gmail.com";
-    _accountPasswordController.text = "••••••••";
 
-    _loginController.handleGetProfile();
-    loadUserData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _firstNameController.text = "Michael";
+        _lastNameController.text = "Smith";
+        _emailController.text = "michaelsmith@gmail.com";
+        _phoneController.text = "+14547260592";
+        _accountEmailController.text = "michael Smith@gmail.com";
+        _accountPasswordController.text = "••••••••";
+
+        _loginController.handleGetProfile();
+        loadUserData();
+      }
+    });
   }
 
   Future<void> loadUserData() async {

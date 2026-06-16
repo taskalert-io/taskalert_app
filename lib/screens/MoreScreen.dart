@@ -79,8 +79,13 @@ class MoreScreenState extends State<MoreScreen> {
   @override
   void initState() {
     super.initState();
-    _loginController.handleGetProfile();
-    loadUserData();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loginController.handleGetProfile();
+        loadUserData();
+      }
+    });
   }
 
   Future<void> loadUserData() async {
@@ -145,7 +150,7 @@ class MoreScreenState extends State<MoreScreen> {
                       height: 100.h,
                       child: CircleAvatar(
                         backgroundImage: userThumbnail.isNotEmpty
-                            ?  NetworkImage(userThumbnail)
+                            ? NetworkImage(userThumbnail)
                             : const AssetImage("assets/images/profile.png")
                                   as ImageProvider,
                       ),
