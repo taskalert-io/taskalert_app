@@ -568,19 +568,6 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
       return;
     }
 
-    // final String taskType = 'one_time';
-
-    // print("Title: ${titleNameController.text}");
-    // print("Description: ${descriptionController.text}");
-    // print("Department: ${selectedDepartment?.name}");
-    // print("Priority: $selectedPriority");
-    // print("Assign Date: ${assignDateController.text} $assignSelectedAmPm");
-    // print("Assign Time: ${assignTimeController.text}");
-    // print("Assign To IDs: $selectedAssignees");
-    // print("Reporting To IDs: $selectedReportingList");
-    print("Due Date: ${dueDateController.text} $dueSelectedAmPm");
-    print("Files: $selectedFiles");
-
     if (_validateSections() && _formKey.currentState!.validate()) {
       taskController.clearMessages();
 
@@ -805,732 +792,857 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     );
   }
 
+  bool _isFormDirty() {
+    // 1. Check basic input strings / text fields
+    if (titleNameController.text.trim().isNotEmpty) return true;
+    if (descriptionController.text.trim().isNotEmpty) return true;
+    if (assignTimeController.text.trim().isNotEmpty) return true;
+
+    // 2. Check dropdown selections / object entities
+    if (selectedDepartment != null) return true;
+
+    // Assuming "Low" or "Medium" is your default selectedPriority fallback,
+    // check if it has been altered. If there is no default, check: selectedPriority.isNotEmpty
+    if (selectedPriority.toLowerCase() != "low") return true;
+
+    // 3. Check picked date conditions
+    if (assignSelectedDate != null) return true;
+
+    // 4. Check collections / array list parameters
+    if (selectedAssignees.isNotEmpty) return true;
+    if (selectedReportingList.isNotEmpty) return true;
+    if (selectedFiles.isNotEmpty) return true;
+
+    // If none of the conditions above matched, the form is pristine (clean)
+    return false;
+  }
+
+  /// The Confirmation Dialog Box Function
+  Future<bool> _showExitConfirmationDialog() async {
+    final bool? shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14.r),
+        ),
+        title: Text(
+          "Confirm Action",
+          style: GoogleFonts.inter(
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF0A0258),
+          ),
+        ),
+        content: Text(
+          "Are you sure you want to close this form?",
+          style: GoogleFonts.inter(
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w400,
+            color: const Color(0xFF324054),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(context, false), // Dismiss dialog, stay on page
+            child: Text(
+              "Cancel",
+              style: GoogleFonts.inter(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4338CA),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+            ),
+            onPressed: () =>
+                Navigator.pop(context, true), // Dismiss dialog, confirm exit
+            child: Text(
+              "Confirm",
+              style: GoogleFonts.inter(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return shouldExit ??
+        false; // Fallback to false if tapped outside dialog dismiss boundary
+  }
+
   // ── BUILD ──────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      key: _scaffoldKey,
-      appBar: CustomAppBar(
-        scaffoldKey: _scaffoldKey,
-        userId: widget.userId,
-        onBackPressed: () => Navigator.pop(context),
-      ),
-      drawer: CustomDrawer(activeTile: "Home", onTileTap: (value) {}),
-      body: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: Container(
-                  color: const Color(0xFFF5F7FB),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 15,
-                    vertical: 10,
-                  ),
-                  width: double.infinity,
-                  child: Form(
-                    key: _formKey,
-                    autovalidateMode: _autoValidate
-                        ? AutovalidateMode.onUserInteraction
-                        : AutovalidateMode.disabled,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Back + page title
-                        GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: Icon(
-                            Icons.arrow_back,
-                            size: 17.r,
-                            color: const Color(0xFF0A0258),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, dynamic result) async {
+        if (didPop) return; // If it already popped somehow, do nothing
+
+        if (!_isFormDirty()) {
+          // We use an internal navigator pop call to close the screen safely
+          Navigator.of(context).pop();
+          return;
+        }
+
+        // 2. If form is dirty, explicitly wait for the modal dialog value
+        final bool shouldExit = await _showExitConfirmationDialog();
+
+        if (shouldExit && context.mounted) {
+          Navigator.of(context).pop(); // Actually exit the screen layout tree
+        }
+      },
+      child: Scaffold(
+        key: _scaffoldKey,
+        appBar: CustomAppBar(
+          scaffoldKey: _scaffoldKey,
+          userId: widget.userId,
+          onBackPressed: () => Navigator.pop(context),
+        ),
+        drawer: CustomDrawer(activeTile: "Home", onTileTap: (value) {}),
+        body: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Container(
+                    color: const Color(0xFFF5F7FB),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 15,
+                      vertical: 10,
+                    ),
+                    width: double.infinity,
+                    child: Form(
+                      key: _formKey,
+                      autovalidateMode: _autoValidate
+                          ? AutovalidateMode.onUserInteraction
+                          : AutovalidateMode.disabled,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Back + page title
+                          GestureDetector(
+                            onTap: () => Navigator.maybePop(context),
+                            child: Icon(
+                              Icons.arrow_back,
+                              size: 17.r,
+                              color: const Color(0xFF0A0258),
+                            ),
                           ),
-                        ),
-                        SizedBox(height: 5.h),
-                        Text(
-                          "Core Identity & Media",
-                          style: GoogleFonts.inter(
-                            fontSize: 13.sp,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF0A0258),
+                          SizedBox(height: 5.h),
+                          Text(
+                            "Core Identity & Media",
+                            style: GoogleFonts.inter(
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF0A0258),
+                            ),
                           ),
-                        ),
 
-                        SizedBox(height: 14.h),
+                          SizedBox(height: 14.h),
 
-                        // ── MAIN CARD ─────────────────────────────────────
-                        _card(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // Title
-                              _buildLabel("Title"),
-                              SizedBox(height: 3.h),
-                              buildTextField(
-                                hint: "Clean Production Floor",
-                                controller: titleNameController,
-                                suffixIcon: Icon(
-                                  CupertinoIcons.pencil,
-                                  size: 18.r,
-                                  color: Colors.black54,
+                          // ── MAIN CARD ─────────────────────────────────────
+                          _card(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Title
+                                _buildLabel("Title"),
+                                SizedBox(height: 3.h),
+                                buildTextField(
+                                  hint: "Clean Production Floor",
+                                  controller: titleNameController,
+                                  suffixIcon: Icon(
+                                    CupertinoIcons.pencil,
+                                    size: 18.r,
+                                    color: Colors.black54,
+                                  ),
+                                  validator: (v) =>
+                                      (v == null || v.trim().isEmpty)
+                                      ? "Enter title"
+                                      : null,
                                 ),
-                                validator: (v) =>
-                                    (v == null || v.trim().isEmpty)
-                                    ? "Enter title"
-                                    : null,
-                              ),
 
-                              SizedBox(height: 8.h),
+                                SizedBox(height: 8.h),
 
-                              // Department — searchable single-select
-                              _buildLabel("Department"),
-                              SizedBox(height: 3.h),
+                                // Department — searchable single-select
+                                _buildLabel("Department"),
+                                SizedBox(height: 3.h),
 
-                              _buildSearchableDropdownField(
-                                // If a department is selected, display its real name, otherwise display your placeholder hint
-                                value:
-                                    selectedDepartment?.name ??
-                                    "Select Department",
-                                hint: "Select Department",
+                                _buildSearchableDropdownField(
+                                  // If a department is selected, display its real name, otherwise display your placeholder hint
+                                  value:
+                                      selectedDepartment?.name ??
+                                      "Select Department",
+                                  hint: "Select Department",
 
-                                onTap: () => _showSearchableBottomSheet(
-                                  context: context,
-                                  title: "Select Department",
-                                  selectedValue: selectedDepartment,
-                                  onSelected:
-                                      (DepartmentModel departmentModel) {
-                                        setState(() {
-                                          selectedDepartment = departmentModel;
-                                          _departmentError = null;
-                                        });
-                                      },
+                                  onTap: () => _showSearchableBottomSheet(
+                                    context: context,
+                                    title: "Select Department",
+                                    selectedValue: selectedDepartment,
+                                    onSelected:
+                                        (DepartmentModel departmentModel) {
+                                          setState(() {
+                                            selectedDepartment =
+                                                departmentModel;
+                                            _departmentError = null;
+                                          });
+                                        },
+                                  ),
+                                  errorText: _departmentError,
                                 ),
-                                errorText: _departmentError,
-                              ),
 
-                              if (_departmentError != null)
-                                Padding(
-                                  padding: EdgeInsets.only(top: 4.h, left: 4.w),
-                                  child: Text(
-                                    _departmentError!,
-                                    style: GoogleFonts.inter(
-                                      color: Colors.red,
-                                      fontSize: 10.sp,
+                                if (_departmentError != null)
+                                  Padding(
+                                    padding: EdgeInsets.only(
+                                      top: 4.h,
+                                      left: 4.w,
                                     ),
-                                  ),
-                                ),
-
-                              // Remove the code block that displays the error message on screen load
-                              SizedBox(height: 8.h),
-
-                              // Priority
-                              _buildLabel("Priority"),
-                              SizedBox(height: 3.h),
-                              _buildDropdown(
-                                value: selectedPriority,
-                                items: ["High", "Medium", "Low"],
-                                onChanged: (v) =>
-                                    setState(() => selectedPriority = v!),
-                              ),
-
-                              SizedBox(height: 8.h),
-
-                              // Assign To — multi-select
-                              _buildLabel("Assign To"),
-                              SizedBox(height: 3.h),
-
-                              GestureDetector(
-                                onTap: () {
-                                  final activeEmployees = employeeController
-                                      .employees
-                                      .toList();
-
-                                  _showAssignToBottomSheet(
-                                    context,
-                                    activeEmployees,
-                                  );
-                                },
-                                child: Container(
-                                  width: double.infinity,
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 10.w,
-                                    vertical: 10.h,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF9FAFC),
-                                    borderRadius: BorderRadius.circular(8.r),
-                                    border: Border.all(
-                                      color: _assignToError != null
-                                          ? Colors.red
-                                          : const Color(0xFFD9DEE5),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: selectedAssignees.isEmpty
-                                            ? Text(
-                                                "Select assignees...",
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 12.sp,
-                                                  color: const Color(
-                                                    0xFFB8BEC5,
-                                                  ),
-                                                ),
-                                              )
-                                            : Wrap(
-                                                spacing: 6.w,
-                                                runSpacing: 6.h,
-                                                children: selectedAssignees.map((
-                                                  id,
-                                                ) {
-                                                  // Match selected IDs back to names for display chips
-                                                  final emp = employeeController
-                                                      .employees
-                                                      .firstWhere(
-                                                        (e) => e.id == id,
-                                                        orElse: () =>
-                                                            EmployeeModel(
-                                                              firstName:
-                                                                  "Unknown",
-                                                            ),
-                                                      );
-                                                  return _assigneeChip(
-                                                    id,
-                                                    emp.fullName,
-                                                  );
-                                                }).toList(),
-                                              ),
+                                    child: Text(
+                                      _departmentError!,
+                                      style: GoogleFonts.inter(
+                                        color: Colors.red,
+                                        fontSize: 10.sp,
                                       ),
-                                      SizedBox(width: 6.w),
-                                      Icon(
-                                        CupertinoIcons.person_add,
-                                        size: 16.r,
-                                        color: const Color(0xFF4338CA),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-
-                              if (_assignToError != null)
-                                Padding(
-                                  padding: EdgeInsets.only(top: 4.h, left: 4.w),
-                                  child: Text(
-                                    _assignToError!,
-                                    style: GoogleFonts.inter(
-                                      color: Colors.red,
-                                      fontSize: 10.sp,
                                     ),
                                   ),
+
+                                // Remove the code block that displays the error message on screen load
+                                SizedBox(height: 8.h),
+
+                                // Priority
+                                _buildLabel("Priority"),
+                                SizedBox(height: 3.h),
+                                _buildDropdown(
+                                  value: selectedPriority,
+                                  items: ["High", "Medium", "Low"],
+                                  onChanged: (v) =>
+                                      setState(() => selectedPriority = v!),
                                 ),
 
-                              SizedBox(height: 8.h),
+                                SizedBox(height: 8.h),
 
-                              _buildLabel("Reporting To"),
-                              SizedBox(height: 3.h),
-                              GestureDetector(
-                                onTap: () =>
-                                    _showReportingToBottomSheet(context),
-                                child: Container(
-                                  width: double.infinity,
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 10.w,
-                                    vertical: 10.h,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF9FAFC),
-                                    borderRadius: BorderRadius.circular(8.r),
-                                    border: Border.all(
-                                      color: _reportingToError != null
-                                          ? Colors.red
-                                          : const Color(0xFFD9DEE5),
+                                // Assign To — multi-select
+                                _buildLabel("Assign To"),
+                                SizedBox(height: 3.h),
+
+                                GestureDetector(
+                                  onTap: () {
+                                    final activeEmployees = employeeController
+                                        .employees
+                                        .toList();
+
+                                    _showAssignToBottomSheet(
+                                      context,
+                                      activeEmployees,
+                                    );
+                                  },
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 10.w,
+                                      vertical: 10.h,
                                     ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: selectedReportingList.isEmpty
-                                            ? Text(
-                                                "Select reporting user...",
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 12.sp,
-                                                  color: const Color(
-                                                    0xFFB8BEC5,
-                                                  ),
-                                                ),
-                                              )
-                                            : Wrap(
-                                                spacing: 6.w,
-                                                runSpacing: 6.h,
-                                                children: selectedReportingList.map((
-                                                  id,
-                                                ) {
-                                                  // Match selected IDs back to names for display chips
-                                                  final emp = employeeController
-                                                      .employees
-                                                      .firstWhere(
-                                                        (e) => e.id == id,
-                                                        orElse: () =>
-                                                            EmployeeModel(
-                                                              firstName:
-                                                                  "Unknown",
-                                                            ),
-                                                      );
-                                                  return _reportingChip(
-                                                    id,
-                                                    emp.fullName,
-                                                  );
-                                                }).toList(),
-                                              ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF9FAFC),
+                                      borderRadius: BorderRadius.circular(8.r),
+                                      border: Border.all(
+                                        color: _assignToError != null
+                                            ? Colors.red
+                                            : const Color(0xFFD9DEE5),
                                       ),
-                                      SizedBox(width: 6.w),
-                                      Icon(
-                                        CupertinoIcons.person_add,
-                                        size: 16.r,
-                                        color: const Color(0xFF4338CA),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              if (_reportingToError != null)
-                                Padding(
-                                  padding: EdgeInsets.only(top: 4.h, left: 4.w),
-                                  child: Text(
-                                    _reportingToError!,
-                                    style: GoogleFonts.inter(
-                                      color: Colors.red,
-                                      fontSize: 10.sp,
                                     ),
-                                  ),
-                                ),
-
-                              // Reporting To — searchable single-select
-                              SizedBox(height: 8.h),
-
-                              // Reporting Date & Time
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                    child: Row(
                                       children: [
-                                        _buildLabel("Reporting Date"),
-                                        SizedBox(height: 4.h),
-                                        _buildDateField(
-                                          controller: assignDateController,
-                                          onTap: () => showCustomDatePicker(
-                                            context: context,
+                                        Expanded(
+                                          child: selectedAssignees.isEmpty
+                                              ? Text(
+                                                  "Select assignees...",
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 12.sp,
+                                                    color: const Color(
+                                                      0xFFB8BEC5,
+                                                    ),
+                                                  ),
+                                                )
+                                              : Wrap(
+                                                  spacing: 6.w,
+                                                  runSpacing: 6.h,
+                                                  children: selectedAssignees.map((
+                                                    id,
+                                                  ) {
+                                                    // Match selected IDs back to names for display chips
+                                                    final emp = employeeController
+                                                        .employees
+                                                        .firstWhere(
+                                                          (e) => e.id == id,
+                                                          orElse: () =>
+                                                              EmployeeModel(
+                                                                firstName:
+                                                                    "Unknown",
+                                                              ),
+                                                        );
+                                                    return _assigneeChip(
+                                                      id,
+                                                      emp.fullName,
+                                                    );
+                                                  }).toList(),
+                                                ),
+                                        ),
+                                        SizedBox(width: 6.w),
+                                        Icon(
+                                          CupertinoIcons.person_add,
+                                          size: 16.r,
+                                          color: const Color(0xFF4338CA),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+
+                                if (_assignToError != null)
+                                  Padding(
+                                    padding: EdgeInsets.only(
+                                      top: 4.h,
+                                      left: 4.w,
+                                    ),
+                                    child: Text(
+                                      _assignToError!,
+                                      style: GoogleFonts.inter(
+                                        color: Colors.red,
+                                        fontSize: 10.sp,
+                                      ),
+                                    ),
+                                  ),
+
+                                SizedBox(height: 8.h),
+
+                                _buildLabel("Reporting To"),
+                                SizedBox(height: 3.h),
+                                GestureDetector(
+                                  onTap: () =>
+                                      _showReportingToBottomSheet(context),
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 10.w,
+                                      vertical: 10.h,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF9FAFC),
+                                      borderRadius: BorderRadius.circular(8.r),
+                                      border: Border.all(
+                                        color: _reportingToError != null
+                                            ? Colors.red
+                                            : const Color(0xFFD9DEE5),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: selectedReportingList.isEmpty
+                                              ? Text(
+                                                  "Select reporting user...",
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 12.sp,
+                                                    color: const Color(
+                                                      0xFFB8BEC5,
+                                                    ),
+                                                  ),
+                                                )
+                                              : Wrap(
+                                                  spacing: 6.w,
+                                                  runSpacing: 6.h,
+                                                  children: selectedReportingList.map((
+                                                    id,
+                                                  ) {
+                                                    // Match selected IDs back to names for display chips
+                                                    final emp = employeeController
+                                                        .employees
+                                                        .firstWhere(
+                                                          (e) => e.id == id,
+                                                          orElse: () =>
+                                                              EmployeeModel(
+                                                                firstName:
+                                                                    "Unknown",
+                                                              ),
+                                                        );
+                                                    return _reportingChip(
+                                                      id,
+                                                      emp.fullName,
+                                                    );
+                                                  }).toList(),
+                                                ),
+                                        ),
+                                        SizedBox(width: 6.w),
+                                        Icon(
+                                          CupertinoIcons.person_add,
+                                          size: 16.r,
+                                          color: const Color(0xFF4338CA),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                if (_reportingToError != null)
+                                  Padding(
+                                    padding: EdgeInsets.only(
+                                      top: 4.h,
+                                      left: 4.w,
+                                    ),
+                                    child: Text(
+                                      _reportingToError!,
+                                      style: GoogleFonts.inter(
+                                        color: Colors.red,
+                                        fontSize: 10.sp,
+                                      ),
+                                    ),
+                                  ),
+
+                                // Reporting To — searchable single-select
+                                SizedBox(height: 8.h),
+
+                                // Reporting Date & Time
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          _buildLabel("Reporting Date"),
+                                          SizedBox(height: 4.h),
+                                          _buildDateField(
                                             controller: assignDateController,
-                                            initialDate: assignSelectedDate,
-                                            minDate: DateTime.now(),
-                                            onDateSelected: (d) => setState(() {
-                                              assignSelectedDate = d;
-                                              // If due date is now before assign, clear due
-                                              if (dueSelectedDate != null) {
-                                                final aDay = DateTime(
-                                                  d.year,
-                                                  d.month,
-                                                  d.day,
-                                                );
-                                                final dDay = DateTime(
-                                                  dueSelectedDate!.year,
-                                                  dueSelectedDate!.month,
-                                                  dueSelectedDate!.day,
-                                                );
-                                                if (dDay.isBefore(aDay)) {
-                                                  dueSelectedDate = null;
-                                                  dueDateController.clear();
-                                                  _dueDateError =
-                                                      "Due date cannot be before assign date";
-                                                }
-                                              }
-                                            }),
-                                          ),
-                                          validator: (v) =>
-                                              (v == null || v.trim().isEmpty)
-                                              ? "Select Reporting date"
-                                              : null,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  SizedBox(width: 6.w),
-
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        _buildLabel("Reporting Time"),
-                                        SizedBox(height: 4.h),
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              flex: 3,
-                                              child: _buildTimeField(
-                                                controller:
-                                                    assignTimeController,
-                                                validator: (v) =>
-                                                    (v == null ||
-                                                        v.trim().isEmpty)
-                                                    ? "Select time"
-                                                    : null,
-                                                onTap: () async {
-                                                  final t = await _pickTime(
-                                                    context,
+                                            onTap: () => showCustomDatePicker(
+                                              context: context,
+                                              controller: assignDateController,
+                                              initialDate: assignSelectedDate,
+                                              minDate: DateTime.now(),
+                                              onDateSelected: (d) => setState(() {
+                                                assignSelectedDate = d;
+                                                // If due date is now before assign, clear due
+                                                if (dueSelectedDate != null) {
+                                                  final aDay = DateTime(
+                                                    d.year,
+                                                    d.month,
+                                                    d.day,
                                                   );
-                                                  if (t != null) {
-                                                    setState(() {
-                                                      assignTimeController
-                                                              .text =
-                                                          "${t.hourOfPeriod.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
-                                                      assignSelectedAmPm =
-                                                          t.period ==
-                                                              DayPeriod.am
-                                                          ? "AM"
-                                                          : "PM";
-                                                    });
+                                                  final dDay = DateTime(
+                                                    dueSelectedDate!.year,
+                                                    dueSelectedDate!.month,
+                                                    dueSelectedDate!.day,
+                                                  );
+                                                  if (dDay.isBefore(aDay)) {
+                                                    dueSelectedDate = null;
+                                                    dueDateController.clear();
+                                                    _dueDateError =
+                                                        "Due date cannot be before assign date";
                                                   }
-                                                },
-                                              ),
+                                                }
+                                              }),
                                             ),
-                                            SizedBox(width: 6.w),
-                                            Expanded(
-                                              flex: 2,
-                                              child: _buildAmPmDropdown(
-                                                value: assignSelectedAmPm,
-                                                onChanged: (v) => setState(
-                                                  () => assignSelectedAmPm = v!,
+                                            validator: (v) =>
+                                                (v == null || v.trim().isEmpty)
+                                                ? "Select Reporting date"
+                                                : null,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                    SizedBox(width: 6.w),
+
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          _buildLabel("Reporting Time"),
+                                          SizedBox(height: 4.h),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                flex: 3,
+                                                child: _buildTimeField(
+                                                  controller:
+                                                      assignTimeController,
+                                                  validator: (v) =>
+                                                      (v == null ||
+                                                          v.trim().isEmpty)
+                                                      ? "Select time"
+                                                      : null,
+                                                  onTap: () async {
+                                                    final t = await _pickTime(
+                                                      context,
+                                                    );
+                                                    if (t != null) {
+                                                      setState(() {
+                                                        assignTimeController
+                                                                .text =
+                                                            "${t.hourOfPeriod.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
+                                                        assignSelectedAmPm =
+                                                            t.period ==
+                                                                DayPeriod.am
+                                                            ? "AM"
+                                                            : "PM";
+                                                      });
+                                                    }
+                                                  },
                                                 ),
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
+                                              SizedBox(width: 6.w),
+                                              Expanded(
+                                                flex: 2,
+                                                child: _buildAmPmDropdown(
+                                                  value: assignSelectedAmPm,
+                                                  onChanged: (v) => setState(
+                                                    () =>
+                                                        assignSelectedAmPm = v!,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-
-                              SizedBox(height: 8.h),
-
-                              // Description
-                              _buildLabel("Description"),
-                              SizedBox(height: 3.h),
-                              TextFormField(
-                                controller: descriptionController,
-                                maxLines: 3,
-                                validator: (v) =>
-                                    (v == null || v.trim().isEmpty)
-                                    ? "Please enter a description"
-                                    : null,
-                                style: GoogleFonts.inter(
-                                  fontSize: 12.sp,
-                                  fontWeight: FontWeight.w400,
-                                  color: const Color(0xFF6C7278),
+                                  ],
                                 ),
-                                decoration: InputDecoration(
-                                  isDense: true,
-                                  hintText: "Write a description....",
-                                  hintStyle: GoogleFonts.inter(
+
+                                SizedBox(height: 8.h),
+
+                                // Description
+                                _buildLabel("Description"),
+                                SizedBox(height: 3.h),
+                                TextFormField(
+                                  controller: descriptionController,
+                                  maxLines: 3,
+                                  validator: (v) =>
+                                      (v == null || v.trim().isEmpty)
+                                      ? "Please enter a description"
+                                      : null,
+                                  style: GoogleFonts.inter(
                                     fontSize: 12.sp,
                                     fontWeight: FontWeight.w400,
-                                    color: const Color(0xFFB8BEC5),
+                                    color: const Color(0xFF6C7278),
                                   ),
-                                  contentPadding: EdgeInsets.all(14.w),
-                                  filled: true,
-                                  fillColor: const Color(0xFFF9FAFC),
-                                  errorStyle: TextStyle(fontSize: 10.sp),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8.r),
-                                    borderSide: const BorderSide(
-                                      color: Color(0xFFD9DEE5),
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    hintText: "Write a description....",
+                                    hintStyle: GoogleFonts.inter(
+                                      fontSize: 12.sp,
+                                      fontWeight: FontWeight.w400,
+                                      color: const Color(0xFFB8BEC5),
                                     ),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8.r),
-                                    borderSide: const BorderSide(
-                                      color: Color(0xFFD9DEE5),
-                                    ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8.r),
-                                    borderSide: const BorderSide(
-                                      color: Color(0xFF0A0258),
-                                    ),
-                                  ),
-                                  errorBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8.r),
-                                    borderSide: const BorderSide(
-                                      color: Colors.red,
-                                    ),
-                                  ),
-                                  focusedErrorBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8.r),
-                                    borderSide: const BorderSide(
-                                      color: Colors.red,
-                                    ),
-                                  ),
-                                ),
-                              ),
-
-                              SizedBox(height: 8.h),
-
-                              // Attachments
-                              Text(
-                                "Add Attachments",
-                                style: GoogleFonts.inter(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13.sp,
-                                  color: const Color(0xFF3F3F3F),
-                                ),
-                              ),
-                              Text(
-                                "File must be in pdf, doc, png, jpg, gif or mp4 format\nand upto 5 file(s) at a time.",
-                                style: GoogleFonts.inter(
-                                  color: const Color(0xFF797979),
-                                  fontSize: 11.sp,
-                                ),
-                              ),
-                              SizedBox(height: 3.h),
-                              GestureDetector(
-                                onTap: pickFiles,
-                                child: Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 28,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF9FAFF),
-                                    borderRadius: BorderRadius.circular(8.r),
-                                    border: Border.all(
-                                      color: fileError != null
-                                          ? Colors.red
-                                          : const Color(0xFFB9C3FF),
-                                    ),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      Text(
-                                        "Drag & drop your file(s) here or",
-                                        style: GoogleFonts.inter(
-                                          color: const Color(0xFF797979),
-                                          fontSize: 11.sp,
-                                        ),
+                                    contentPadding: EdgeInsets.all(14.w),
+                                    filled: true,
+                                    fillColor: const Color(0xFFF9FAFC),
+                                    errorStyle: TextStyle(fontSize: 10.sp),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8.r),
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFFD9DEE5),
                                       ),
-                                      SizedBox(height: 3.h),
-                                      Text(
-                                        "Browse",
-                                        style: GoogleFonts.inter(
-                                          color: const Color(0xFF304DDB),
-                                          fontWeight: FontWeight.w600,
-                                          decoration: TextDecoration.underline,
-                                        ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8.r),
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFFD9DEE5),
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              if (fileError != null)
-                                Padding(
-                                  padding: EdgeInsets.only(top: 6.h, left: 4.w),
-                                  child: Text(
-                                    fileError!,
-                                    style: GoogleFonts.inter(
-                                      color: Colors.red,
-                                      fontSize: 11.sp,
-                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8.r),
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFF0A0258),
+                                      ),
+                                    ),
+                                    errorBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8.r),
+                                      borderSide: const BorderSide(
+                                        color: Colors.red,
+                                      ),
+                                    ),
+                                    focusedErrorBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8.r),
+                                      borderSide: const BorderSide(
+                                        color: Colors.red,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              if (selectedFiles.isNotEmpty)
-                                Padding(
-                                  padding: EdgeInsets.only(top: 14.h),
-                                  child: Column(
-                                    children: List.generate(selectedFiles.length, (
-                                      i,
-                                    ) {
-                                      const progress = 1.0;
-                                      return Container(
-                                        margin: EdgeInsets.only(bottom: 10.h),
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: 10.w,
-                                          vertical: 10.h,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(
-                                            8.r,
-                                          ),
-                                          border: Border.all(
-                                            color: const Color(0xFFE4E7EC),
+
+                                SizedBox(height: 8.h),
+
+                                // Attachments
+                                Text(
+                                  "Add Attachments",
+                                  style: GoogleFonts.inter(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13.sp,
+                                    color: const Color(0xFF3F3F3F),
+                                  ),
+                                ),
+                                Text(
+                                  "File must be in pdf, doc, png, jpg, gif or mp4 format\nand upto 5 file(s) at a time.",
+                                  style: GoogleFonts.inter(
+                                    color: const Color(0xFF797979),
+                                    fontSize: 11.sp,
+                                  ),
+                                ),
+                                SizedBox(height: 3.h),
+                                GestureDetector(
+                                  onTap: pickFiles,
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 28,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF9FAFF),
+                                      borderRadius: BorderRadius.circular(8.r),
+                                      border: Border.all(
+                                        color: fileError != null
+                                            ? Colors.red
+                                            : const Color(0xFFB9C3FF),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          "Drag & drop your file(s) here or",
+                                          style: GoogleFonts.inter(
+                                            color: const Color(0xFF797979),
+                                            fontSize: 11.sp,
                                           ),
                                         ),
-                                        child: Column(
-                                          children: [
-                                            Row(
-                                              children: [
-                                                Icon(
-                                                  Icons
-                                                      .insert_drive_file_outlined,
-                                                  size: 18.r,
-                                                  color: const Color(
-                                                    0xFF667085,
+                                        SizedBox(height: 3.h),
+                                        Text(
+                                          "Browse",
+                                          style: GoogleFonts.inter(
+                                            color: const Color(0xFF304DDB),
+                                            fontWeight: FontWeight.w600,
+                                            decoration:
+                                                TextDecoration.underline,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                if (fileError != null)
+                                  Padding(
+                                    padding: EdgeInsets.only(
+                                      top: 6.h,
+                                      left: 4.w,
+                                    ),
+                                    child: Text(
+                                      fileError!,
+                                      style: GoogleFonts.inter(
+                                        color: Colors.red,
+                                        fontSize: 11.sp,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                if (selectedFiles.isNotEmpty)
+                                  Padding(
+                                    padding: EdgeInsets.only(top: 14.h),
+                                    child: Column(
+                                      children: List.generate(selectedFiles.length, (
+                                        i,
+                                      ) {
+                                        const progress = 1.0;
+                                        return Container(
+                                          margin: EdgeInsets.only(bottom: 10.h),
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 10.w,
+                                            vertical: 10.h,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(
+                                              8.r,
+                                            ),
+                                            border: Border.all(
+                                              color: const Color(0xFFE4E7EC),
+                                            ),
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons
+                                                        .insert_drive_file_outlined,
+                                                    size: 18.r,
+                                                    color: const Color(
+                                                      0xFF667085,
+                                                    ),
                                                   ),
-                                                ),
-                                                SizedBox(width: 8.w),
-                                                Expanded(
-                                                  child: Text(
-                                                    selectedFiles[i].path,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
+                                                  SizedBox(width: 8.w),
+                                                  Expanded(
+                                                    child: Text(
+                                                      selectedFiles[i].path,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 11.sp,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                        color: const Color(
+                                                          0xFF475467,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  SizedBox(width: 10.w),
+                                                  Text(
+                                                    "${(progress * 100).toInt()}%",
                                                     style: GoogleFonts.inter(
                                                       fontSize: 11.sp,
                                                       fontWeight:
                                                           FontWeight.w500,
                                                       color: const Color(
-                                                        0xFF475467,
+                                                        0xFF667085,
                                                       ),
                                                     ),
                                                   ),
-                                                ),
-                                                SizedBox(width: 10.w),
-                                                Text(
-                                                  "${(progress * 100).toInt()}%",
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 11.sp,
-                                                    fontWeight: FontWeight.w500,
-                                                    color: const Color(
-                                                      0xFF667085,
+                                                  SizedBox(width: 6.w),
+                                                  InkWell(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          20.r,
+                                                        ),
+                                                    onTap: () => setState(
+                                                      () => selectedFiles
+                                                          .removeAt(i),
                                                     ),
-                                                  ),
-                                                ),
-                                                SizedBox(width: 6.w),
-                                                InkWell(
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                        20.r,
+                                                    child: Padding(
+                                                      padding: EdgeInsets.all(
+                                                        8.r,
                                                       ),
-                                                  onTap: () => setState(
-                                                    () => selectedFiles
-                                                        .removeAt(i),
-                                                  ),
-                                                  child: Padding(
-                                                    padding: EdgeInsets.all(
-                                                      8.r,
-                                                    ),
-                                                    child: Icon(
-                                                      Icons.close,
-                                                      size: 15.r,
-                                                      color: const Color(
-                                                        0xFF98A2B3,
+                                                      child: Icon(
+                                                        Icons.close,
+                                                        size: 15.r,
+                                                        color: const Color(
+                                                          0xFF98A2B3,
+                                                        ),
                                                       ),
                                                     ),
                                                   ),
+                                                ],
+                                              ),
+                                              SizedBox(height: 8.h),
+                                              ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(20.r),
+                                                child: LinearProgressIndicator(
+                                                  value: progress,
+                                                  minHeight: 2.5.h,
+                                                  backgroundColor: const Color(
+                                                    0xFFE4E7EC,
+                                                  ),
+                                                  valueColor:
+                                                      const AlwaysStoppedAnimation(
+                                                        Color(0xFF4F6EF7),
+                                                      ),
                                                 ),
-                                              ],
-                                            ),
-                                            SizedBox(height: 8.h),
-                                            ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(20.r),
-                                              child: LinearProgressIndicator(
-                                                value: progress,
-                                                minHeight: 2.5.h,
-                                                backgroundColor: const Color(
-                                                  0xFFE4E7EC,
-                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+
+                          SizedBox(height: 20.h),
+
+                          // ── Save Button ────────────────────────────────────
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8.r),
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFFD96CFF),
+                                      Color(0xFF5CE1E6),
+                                    ],
+                                  ),
+                                ),
+                                child: ElevatedButton(
+                                  onPressed: _submitForm,
+                                  style: ElevatedButton.styleFrom(
+                                    elevation: 0,
+                                    backgroundColor: Colors.transparent,
+                                    shadowColor: Colors.transparent,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 18.w,
+                                      vertical: 8.h,
+                                    ),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8.r),
+                                    ),
+                                  ),
+                                  child: taskController.isLoading
+                                      ? SizedBox(
+                                          width: 16.w,
+                                          height: 16.w,
+                                          child:
+                                              const CircularProgressIndicator(
+                                                strokeWidth: 2,
                                                 valueColor:
-                                                    const AlwaysStoppedAnimation(
-                                                      Color(0xFF4F6EF7),
+                                                    AlwaysStoppedAnimation(
+                                                      Colors.white,
                                                     ),
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    }),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-
-                        SizedBox(height: 20.h),
-
-                        // ── Save Button ────────────────────────────────────
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8.r),
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFFD96CFF),
-                                    Color(0xFF5CE1E6),
-                                  ],
-                                ),
-                              ),
-                              child: ElevatedButton(
-                                onPressed: _submitForm,
-                                style: ElevatedButton.styleFrom(
-                                  elevation: 0,
-                                  backgroundColor: Colors.transparent,
-                                  shadowColor: Colors.transparent,
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 18.w,
-                                    vertical: 8.h,
-                                  ),
-                                  minimumSize: Size.zero,
-                                  tapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8.r),
-                                  ),
-                                ),
-                                child: taskController.isLoading
-                                    ? SizedBox(
-                                        width: 16.w,
-                                        height: 16.w,
-                                        child: const CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor: AlwaysStoppedAnimation(
-                                            Colors.white,
+                                        )
+                                      : Text(
+                                          "Save Changes",
+                                          style: GoogleFonts.inter(
+                                            fontSize: 12.sp,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.white,
                                           ),
                                         ),
-                                      )
-                                    : Text(
-                                        "Save Changes",
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12.sp,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.white,
-                                        ),
-                                      ),
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 20.h),
-                      ],
+                            ],
+                          ),
+                          SizedBox(height: 20.h),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
+        bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 0),
       ),
-      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 0),
     );
   }
 

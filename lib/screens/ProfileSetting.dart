@@ -129,11 +129,11 @@ class ProfileSettingState extends State<ProfileSetting> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        _firstNameController.text = "Michael";
-        _lastNameController.text = "Smith";
-        _emailController.text = "michaelsmith@gmail.com";
-        _phoneController.text = "+14547260592";
-        _accountEmailController.text = "michael Smith@gmail.com";
+        _firstNameController.text = "";
+        _lastNameController.text = "";
+        _emailController.text = "";
+        _phoneController.text = "";
+        _accountEmailController.text = "";
         _accountPasswordController.text = "••••••••";
 
         _loginController.handleGetProfile();

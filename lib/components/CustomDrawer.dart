@@ -35,9 +35,13 @@ class _CustomDrawerState extends State<CustomDrawer> {
   @override
   void initState() {
     super.initState();
-    activeTile = widget.activeTile;
-    _loginController.handleGetProfile();
-    loadUserData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        activeTile = widget.activeTile;
+        _loginController.handleGetProfile();
+        loadUserData();
+      }
+    });
     // _loginController.addListener(_onControllerChanged);
   }
 
