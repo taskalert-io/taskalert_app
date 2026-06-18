@@ -23,6 +23,7 @@ abstract class TaskRepository {
     String? taskType,
     String? status,
     String? department,
+    String? assigned
   });
 
   Future<ApiResult<BaseApiResponse<TaskModel>>> createTask({

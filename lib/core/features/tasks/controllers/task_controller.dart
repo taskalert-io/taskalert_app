@@ -40,6 +40,7 @@ class TaskController extends ChangeNotifier {
     String? taskType,
     String? status,
     String? department,
+    String? assigned,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -49,6 +50,7 @@ class TaskController extends ChangeNotifier {
       taskType: taskType,
       status: status,
       department: department,
+      assigned: assigned,
     );
 
     _isLoading = false;
@@ -58,6 +60,8 @@ class TaskController extends ChangeNotifier {
           (result as Success).data as BaseApiResponse<List<TaskModel>>;
       _tasks = apiResponse.data ?? [];
       _pagination = apiResponse.pagination;
+
+      // print(_tasks);
     } else if (result is Failure) {
       _errorMessage = (result as Failure).exception.userMessage;
     }
@@ -220,9 +224,9 @@ class TaskController extends ChangeNotifier {
       isSubTask: model.isSubTask,
       parentTask: model.parentTask,
       title: model.title,
-      department: model.department,
+      department: model.department, // Passes down the DepartmentModel?
       priority: model.priority,
-      assignees: model.assignees,
+      assignees: model.assignees, // Passes down the List<ReportingUserModel>
       reportingDate: model.reportingDate,
       reportingTime: model.reportingTime,
       description: model.description,
@@ -233,19 +237,48 @@ class TaskController extends ChangeNotifier {
       createdAt: model.createdAt,
       updatedAt: model.updatedAt,
       reportingTo: model.reportingTo,
-      timePeriod: model.timePeriod,
-      everyN: model.everyN,
-      daysOfWeek: model.daysOfWeek,
-      monthlyType: model.monthlyType,
-      dayOfMonth: model.dayOfMonth,
-      weekOfMonth: model.weekOfMonth,
-      dayOfWeekMonthly: model.dayOfWeekMonthly,
-      rangeStart: model.rangeStart,
-      endType: model.endType,
-      endByDate: model.endByDate,
-      endAfterCount: model.endAfterCount,
-      proofTypes: model.proofTypes,
-      aiValidationEnabled: model.aiValidationEnabled,
+
+      // 🌟 Updated: Pass the clean nested sub-models we created
+      recurrence: model.recurrence,
+      proofConfig: model.proofConfig,
     );
   }
+
+  // /// Helper utility logic to safely assign status modifications locally
+  // TaskModel _updateLocalStatus(TaskModel model, String newStatus) {
+  //   return TaskModel(
+  //     id: model.id,
+  //     taskType: model.taskType,
+  //     taskId: model.taskId,
+  //     isSubTask: model.isSubTask,
+  //     parentTask: model.parentTask,
+  //     title: model.title,
+  //     department: model.department,
+  //     priority: model.priority,
+  //     assignees: model.assignees,
+  //     reportingDate: model.reportingDate,
+  //     reportingTime: model.reportingTime,
+  //     description: model.description,
+  //     attachments: model.attachments,
+  //     organization: model.organization,
+  //     createdBy: model.createdBy,
+  //     completionStatus: newStatus, // Target updated field 🌟
+  //     createdAt: model.createdAt,
+  //     updatedAt: model.updatedAt,
+  //     reportingTo: model.reportingTo,
+  //     timePeriod: model.timePeriod,
+  //     everyN: model.everyN,
+  //     daysOfWeek: model.daysOfWeek,
+  //     monthlyType: model.monthlyType,
+  //     dayOfMonth: model.dayOfMonth,
+  //     weekOfMonth: model.weekOfMonth,
+  //     dayOfWeekMonthly: model.dayOfWeekMonthly,
+  //     rangeStart: model.rangeStart,
+  //     endType: model.endType,
+  //     endByDate: model.endByDate,
+  //     endAfterCount: model.endAfterCount,
+  //     proofTypes: model.proofTypes,
+  //     aiValidationEnabled: model.aiValidationEnabled,
+  //   );
+  // }
 }

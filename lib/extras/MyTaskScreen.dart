@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:taskalert_app/core/features/tasks/controllers/task_controller.dart';
+import 'package:taskalert_app/core/features/tasks/data/models/task_model.dart';
+import 'package:taskalert_app/utils/injection_container.dart';
 
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
@@ -149,11 +152,45 @@ class MyTaskScreenState extends State<MyTaskScreen> {
   String? _todoError;
   List<TodoItem> _todoItems = [];
 
+  late final TaskController taskController;
+
+  List<Map<String, dynamic>> tasks = [];
+
   @override
   void initState() {
     super.initState();
     _fetchTabCounts();
     _fetchTodoItems();
+
+    taskController = sl<TaskController>();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await taskController.handleGetAllTasks(assigned: 'to_me');
+
+      if (mounted) {
+        setState(() {
+          tasks = taskController.tasks.map<Map<String, dynamic>>((
+            TaskModel task,
+          ) {
+            return {
+              "id": task.id,
+              "title": task.title,
+              "description": task.description,
+              "taskType": task.taskType,
+              "status": task.completionStatus,
+              "prioprity": task.priority,
+              "reportingDate": task.reportingDate,
+              "reportingTime":
+                  "${task.reportingTime?.time} ${task.reportingTime?.period}",
+
+              // Add any other specific model properties you need here
+            };
+          }).toList();
+        });
+
+        print(tasks);
+      }
+    });
   }
 
   @override
