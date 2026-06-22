@@ -93,7 +93,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
   void _showReportingToBottomSheet(BuildContext context) {
     // ── Grab real data from your controller ──
-    final realEmployees = employeeController.employees
+    final realEmployees = employeeController.allEmployees
         .where((e) => e.id != widget.userId)
         .toList(); // Exclude self from reporting list
 
@@ -885,7 +885,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       // ✅ Use GetIt directly if your project isn't using the Provider package
       departmentController.handleGetDepartments();
 
-      employeeController.handleGetEmployees(organizationId: '');
+      employeeController.handleGetEmployees();
     });
   }
 
@@ -1957,7 +1957,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                                   ) {
                                                     // Match selected IDs back to names for display chips
                                                     final emp = employeeController
-                                                        .employees
+                                                        .allEmployees
                                                         .firstWhere(
                                                           (e) => e.id == id,
                                                           orElse: () =>
@@ -5054,6 +5054,10 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                 onTap: () {
                                   onSelected(department);
                                   Navigator.pop(context);
+
+                                  employeeController.handleGetEmployees(
+                                    department: department.name,
+                                  );
                                 },
                               );
                             },
