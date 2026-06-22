@@ -4,6 +4,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
+import 'package:taskalert_app/core/features/auth/controllers/login_controller.dart';
+import 'package:taskalert_app/utils/injection_container.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../components/AssetSystemSection.dart';
 import '../components/CmpFinanceSection.dart';
@@ -114,15 +116,81 @@ class ProfileSettingState extends State<ProfileSetting> {
     'Chinese',
   ];
 
+  final _loginController = sl<LoginController>();
+  final FlutterSecureStorage storage = const FlutterSecureStorage();
+  String userName = "User";
+  String userPhone = "";
+  String userEmail = "";
+  String userThumbnail = "";
+
+  Map<String, dynamic>? _employeeData;
+
+  bool isLoading = true;
+
   @override
   void initState() {
     super.initState();
-    _firstNameController.text = "Michael";
-    _lastNameController.text = "Smith";
-    _emailController.text = "michaelsmith@gmail.com";
-    _phoneController.text = "+14547260592";
-    _accountEmailController.text = "michael Smith@gmail.com";
-    _accountPasswordController.text = "••••••••";
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _firstNameController.text = "";
+        _lastNameController.text = "";
+        _emailController.text = "";
+        _phoneController.text = "";
+        _accountEmailController.text = "";
+        _accountPasswordController.text = "••••••••";
+
+        _loginController.handleGetProfile();
+        loadUserData();
+      }
+    });
+  }
+
+  Future<void> loadUserData() async {
+    String? storedFirstName = await storage.read(key: "user_first_name");
+    String? storedLastName = await storage.read(key: "user_last_name");
+    String? storedName = (storedFirstName != null && storedLastName != null)
+        ? "$storedFirstName $storedLastName"
+        : null;
+    String? storedEmail = await storage.read(key: "user_email");
+
+    String? storedThumbnail = await storage.read(key: "user_avatar_thumbnail");
+    String? storedPhoneNumber = await storage.read(key: "user_phone");
+
+    String? storedDOB = await storage.read(key: "user_dob");
+
+    DateTime dateTime = DateTime.parse(storedDOB!);
+
+    String? storedJobRole = await storage.read(key: "user_job");
+    String? storedDepartment = await storage.read(key: "user_department");
+
+    print(storedJobRole);
+
+    setState(() {
+      userName = storedName ?? "User";
+      userEmail = storedEmail ?? "";
+      userThumbnail = storedThumbnail ?? "assets/images/profile.png";
+      userPhone = storedPhoneNumber ?? "";
+
+      _firstNameController.text = storedFirstName ?? "";
+      _lastNameController.text = storedLastName ?? "";
+      _emailController.text = storedEmail ?? "";
+      _phoneController.text = storedPhoneNumber ?? "";
+      _accountEmailController.text = storedEmail ?? "";
+      _selectedDate = dateTime;
+      // dayController.text = dateTime.day;
+      dayController.text = dateTime.day.toString().padLeft(2, '0');
+      monthController.text = dateTime.month.toString().padLeft(2, '0');
+      yearController.text = dateTime.year.toString();
+
+      _employeeData = {
+        // "id": employeeId ?? "",
+        "designation": storedJobRole ?? "Not Assigned",
+        "department": storedDepartment ?? "General",
+      };
+
+      isLoading = false;
+    });
   }
 
   @override
@@ -619,25 +687,28 @@ class ProfileSettingState extends State<ProfileSetting> {
           ],
         ),
         SizedBox(height: 8.h),
-        Offstage(
-          offstage: !value,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10.r),
-              boxShadow: [
-                BoxShadow(
-                  color: _shadowBlack06,
-                  blurRadius: 24.r,
-                  offset: const Offset(0, 8),
-                ),
-              ],
+        if (isLoading)
+          const Center(child: CircularProgressIndicator())
+        else
+          Offstage(
+            offstage: !value,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10.r),
+                boxShadow: [
+                  BoxShadow(
+                    color: _shadowBlack06,
+                    blurRadius: 24.r,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: child,
             ),
-            child: child,
           ),
-        ),
       ],
     );
   }
@@ -1117,7 +1188,10 @@ class ProfileSettingState extends State<ProfileSetting> {
                   assetSystemEnabled = false;
                 }
               }),
-              child: EmpJobDetailsSection(key: _empKey),
+              child: EmpJobDetailsSection(
+                key: _empKey,
+                employeeData: _employeeData,
+              ),
             ),
             _buildSectionRow(
               label: 'Compensation & Finance',
@@ -1602,17 +1676,18 @@ class ProfileSettingState extends State<ProfileSetting> {
                     child: SizedBox(
                       width: 100.w,
                       height: 100.h,
-                      child: const CircleAvatar(
-                        backgroundImage: AssetImage(
-                          'assets/images/profile.png',
-                        ),
+                      child: CircleAvatar(
+                        backgroundImage: userThumbnail.isNotEmpty
+                            ? NetworkImage(userThumbnail)
+                            : const AssetImage("assets/images/profile.png")
+                                  as ImageProvider,
                       ),
                     ),
                   ),
 
                   Center(
                     child: Text(
-                      "Mr. Michel Smith",
+                      userName,
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inter(
                         fontSize: 14.sp,
@@ -1632,7 +1707,7 @@ class ProfileSettingState extends State<ProfileSetting> {
                         visualDensity: VisualDensity.compact,
                       ),
                       child: Text(
-                        "(454) 726-0592",
+                        "(+91) $userPhone",
                         style: GoogleFonts.inter(
                           fontSize: 11.sp,
                           fontWeight: FontWeight.w500,
@@ -1652,7 +1727,7 @@ class ProfileSettingState extends State<ProfileSetting> {
                         visualDensity: VisualDensity.compact,
                       ),
                       child: Text(
-                        "michaelsmith@gmail.com",
+                        userEmail,
                         style: GoogleFonts.inter(
                           fontSize: 11.sp,
                           fontWeight: FontWeight.w500,

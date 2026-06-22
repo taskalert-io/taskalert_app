@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:taskalert_app/core/features/tasks/controllers/task_controller.dart';
+import 'package:taskalert_app/core/features/tasks/data/models/task_model.dart';
+import 'package:taskalert_app/utils/injection_container.dart';
 
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
@@ -149,11 +152,45 @@ class MyTaskScreenState extends State<MyTaskScreen> {
   String? _todoError;
   List<TodoItem> _todoItems = [];
 
+  late final TaskController taskController;
+
+  List<Map<String, dynamic>> tasks = [];
+
   @override
   void initState() {
     super.initState();
     _fetchTabCounts();
     _fetchTodoItems();
+
+    taskController = sl<TaskController>();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await taskController.handleGetAllTasks(assigned: 'to_me');
+
+      if (mounted) {
+        setState(() {
+          tasks = taskController.tasks.map<Map<String, dynamic>>((
+            TaskModel task,
+          ) {
+            return {
+              "id": task.id,
+              "title": task.title,
+              "description": task.description,
+              "taskType": task.taskType,
+              "status": task.completionStatus,
+              "prioprity": task.priority,
+              "reportingDate": task.reportingDate,
+              "reportingTime":
+                  "${task.reportingTime?.time} ${task.reportingTime?.period}",
+
+              // Add any other specific model properties you need here
+            };
+          }).toList();
+        });
+
+        print(tasks);
+      }
+    });
   }
 
   @override
@@ -361,7 +398,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
     );
   }
 
-  // ── Reusable task section card (To Do / In Progress / Completed) ────────────
   Widget _buildTaskSection({
     required String title,
     required String sectionKey,
@@ -372,7 +408,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
 
     return Container(
       margin: EdgeInsets.only(left: 15.w, right: 15.w, bottom: 15.h),
-      padding: const EdgeInsets.only(top: 14, bottom: 14),
+      padding: EdgeInsets.symmetric(vertical: 14.h),
       clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         color: Colors.white,
@@ -386,8 +422,9 @@ class MyTaskScreenState extends State<MyTaskScreen> {
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          /// HEADER: arrow + title ............ Sort By dropdown
+          /// HEADER: Arrow + Title + Counter Badge
           InkWell(
             onTap: onToggleExpand,
             borderRadius: BorderRadius.circular(12.r),
@@ -396,20 +433,18 @@ class MyTaskScreenState extends State<MyTaskScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Flexible(
+                  // ➔ Left side: Arrow, text, and circular badge count
+                  Expanded(
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        GestureDetector(
-                          onTap: onToggleExpand,
-                          child: AnimatedRotation(
-                            duration: const Duration(milliseconds: 200),
-                            turns: isExpanded ? 0.5 : 0,
-                            child: Icon(
-                              Icons.keyboard_arrow_down,
-                              size: 20.r,
-                              color: const Color(0xFF16105D),
-                            ),
+                        AnimatedRotation(
+                          duration: const Duration(milliseconds: 200),
+                          turns: isExpanded ? 0.5 : 0,
+                          child: Icon(
+                            Icons.keyboard_arrow_down,
+                            size: 20.r,
+                            color: const Color(0xFF16105D),
                           ),
                         ),
                         SizedBox(width: 6.w),
@@ -428,8 +463,8 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                         Container(
                           width: 20.w,
                           height: 20.w,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE4E7EC),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFE4E7EC),
                             shape: BoxShape.circle,
                           ),
                           alignment: Alignment.center,
@@ -460,6 +495,107 @@ class MyTaskScreenState extends State<MyTaskScreen> {
       ),
     );
   }
+
+  // ── Reusable task section card (To Do / In Progress / Completed) ────────────
+  // Widget _buildTaskSection({
+  //   required String title,
+  //   required String sectionKey,
+  //   required bool isExpanded,
+  //   required VoidCallback onToggleExpand,
+  // }) {
+  //   final items = _itemsForSection(sectionKey);
+
+  //   return Container(
+  //     margin: EdgeInsets.only(left: 15.w, right: 15.w, bottom: 15.h),
+  //     padding: const EdgeInsets.only(top: 14, bottom: 14),
+  //     clipBehavior: Clip.hardEdge,
+  //     decoration: BoxDecoration(
+  //       color: Colors.white,
+  //       borderRadius: BorderRadius.circular(14.r),
+  //       boxShadow: [
+  //         BoxShadow(
+  //           color: Colors.black.withOpacity(.04),
+  //           blurRadius: 10,
+  //           offset: const Offset(0, 4),
+  //         ),
+  //       ],
+  //     ),
+  //     child: Column(
+  //       children: [
+  //         /// HEADER: arrow + title ............ Sort By dropdown
+  //         InkWell(
+  //           onTap: onToggleExpand,
+  //           borderRadius: BorderRadius.circular(12.r),
+  //           child: Padding(
+  //             padding: EdgeInsets.symmetric(horizontal: 16.w),
+  //             child: Row(
+  //               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //               children: [
+  //                 Flexible(
+  //                   child: Row(
+  //                     mainAxisSize: MainAxisSize.min,
+  //                     children: [
+  //                       GestureDetector(
+  //                         onTap: onToggleExpand,
+  //                         child: AnimatedRotation(
+  //                           duration: const Duration(milliseconds: 200),
+  //                           turns: isExpanded ? 0.5 : 0,
+  //                           child: Icon(
+  //                             Icons.keyboard_arrow_down,
+  //                             size: 20.r,
+  //                             color: const Color(0xFF16105D),
+  //                           ),
+  //                         ),
+  //                       ),
+  //                       SizedBox(width: 6.w),
+  //                       Flexible(
+  //                         child: Text(
+  //                           title,
+  //                           overflow: TextOverflow.ellipsis,
+  //                           style: GoogleFonts.inter(
+  //                             fontSize: 14.sp,
+  //                             fontWeight: FontWeight.w700,
+  //                             color: const Color(0xFF0D095B),
+  //                           ),
+  //                         ),
+  //                       ),
+  //                       SizedBox(width: 6.w),
+  //                       Container(
+  //                         width: 20.w,
+  //                         height: 20.w,
+  //                         decoration: BoxDecoration(
+  //                           color: const Color(0xFFE4E7EC),
+  //                           shape: BoxShape.circle,
+  //                         ),
+  //                         alignment: Alignment.center,
+  //                         child: Text(
+  //                           '${items.length}',
+  //                           style: GoogleFonts.inter(
+  //                             fontSize: 11.sp,
+  //                             fontWeight: FontWeight.w700,
+  //                             color: const Color(0xFF0A0258),
+  //                           ),
+  //                         ),
+  //                       ),
+  //                     ],
+  //                   ),
+  //                 ),
+
+  //                 SizedBox(width: 8.w),
+  //               ],
+  //             ),
+  //           ),
+  //         ),
+
+  //         if (isExpanded) ...[
+  //           SizedBox(height: 18.h),
+  //           _buildTodoListBody(items, title),
+  //         ] else
+  //           SizedBox(height: 4.h),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Widget _buildTodoListBody(List<TodoItem> items, String sectionTitle) {
     if (_isLoadingTodos) {
@@ -732,79 +868,74 @@ class MyTaskScreenState extends State<MyTaskScreen> {
               ),
             ),
             SizedBox(height: 14.h),
-            Container(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 15.w),
-                child: Flexible(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text(
-                        "Sort By :",
-                        style: GoogleFonts.inter(
-                          fontSize: 11.sp,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF324054),
-                        ),
-                      ),
-                      SizedBox(height: 2.h),
-                      DropdownButtonHideUnderline(
-                        child: PopupMenuButton<String>(
-                          padding: EdgeInsets.zero,
-                          onSelected: (value) {
-                            setState(() {
-                              selectedSort = value;
-                            });
-                            _fetchTodoItems();
-                          },
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(
-                              value: "Schedule Date (ASC)",
-                              child: Text("Schedule Date (ASC)"),
-                            ),
-                            const PopupMenuItem(
-                              value: "Schedule Date (DSC)",
-                              child: Text("Schedule Date (DSC)"),
-                            ),
-                            const PopupMenuItem(
-                              value: "Priority(ASC)",
-                              child: Text("Priority(ASC)"),
-                            ),
-                            const PopupMenuItem(
-                              value: "Priority(DSC)",
-                              child: Text("Priority(DSC)"),
-                            ),
-                          ],
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  selectedSort,
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12.sp,
-                                    fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF0A0258),
-                                  ),
-                                ),
-                              ),
-                              Transform.translate(
-                                offset: const Offset(-2, 0),
-                                child: Icon(
-                                  Icons.keyboard_arrow_down,
-                                  size: 16.r,
-                                  color: const Color(0xFF16105D),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
+
+            /// 🌟 FIX: Removed the invalid outer Flexible wrapper widget here
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 15.w),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    "Sort By : ",
+                    style: GoogleFonts.inter(
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF324054),
+                    ),
                   ),
-                ),
+                  DropdownButtonHideUnderline(
+                    child: PopupMenuButton<String>(
+                      padding: EdgeInsets.zero,
+                      onSelected: (value) {
+                        setState(() {
+                          selectedSort = value;
+                        });
+                        _fetchTodoItems();
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: "Schedule Date (ASC)",
+                          child: Text("Schedule Date (ASC)"),
+                        ),
+                        const PopupMenuItem(
+                          value: "Schedule Date (DSC)",
+                          child: Text("Schedule Date (DSC)"),
+                        ),
+                        const PopupMenuItem(
+                          value: "Priority(ASC)",
+                          child: Text("Priority(ASC)"),
+                        ),
+                        const PopupMenuItem(
+                          value: "Priority(DSC)",
+                          child: Text("Priority(DSC)"),
+                        ),
+                      ],
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            selectedSort,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            style: GoogleFonts.inter(
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF0A0258),
+                            ),
+                          ),
+                          Transform.translate(
+                            offset: const Offset(-2, 0),
+                            child: Icon(
+                              Icons.keyboard_arrow_down,
+                              size: 16.r,
+                              color: const Color(0xFF16105D),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             SizedBox(height: 14.h),
@@ -822,7 +953,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                       onToggleExpand: () {
                         setState(() {
                           _isTodoExpanded = !_isTodoExpanded;
-
                           if (_isTodoExpanded) {
                             _isInProgressExpanded = false;
                             _isCompletedExpanded = false;
@@ -837,7 +967,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                       onToggleExpand: () {
                         setState(() {
                           _isInProgressExpanded = !_isInProgressExpanded;
-
                           if (_isInProgressExpanded) {
                             _isTodoExpanded = false;
                             _isCompletedExpanded = false;
@@ -852,7 +981,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                       onToggleExpand: () {
                         setState(() {
                           _isCompletedExpanded = !_isCompletedExpanded;
-
                           if (_isCompletedExpanded) {
                             _isTodoExpanded = false;
                             _isInProgressExpanded = false;
@@ -929,11 +1057,8 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                               ),
                             ],
                           ),
-
                           SizedBox(height: 15.h),
-
                           Divider(color: const Color(0xFFE4E7EC), height: 1),
-
                           SizedBox(height: 15.h),
 
                           /// SELECT TEXT
@@ -948,12 +1073,9 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                               ),
                             ),
                           ),
-
                           SizedBox(height: 10.h),
 
-                          /// =========================
-                          /// REPETITIVE
-                          /// =========================
+                          /// REPETITIVE WORKSPACE OPTION
                           Row(
                             children: [
                               Expanded(
@@ -970,7 +1092,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                                   },
                                   child: Row(
                                     children: [
-                                      /// RADIO
                                       Container(
                                         width: 16.w,
                                         height: 16.w,
@@ -997,8 +1118,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                                         ),
                                       ),
                                       SizedBox(width: 10.w),
-
-                                      /// TITLE
                                       Text(
                                         "Repetitive",
                                         style: GoogleFonts.inter(
@@ -1011,8 +1130,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                                   ),
                                 ),
                               ),
-
-                              /// ARROW BUTTON
                               GestureDetector(
                                 onTap: selectedWorkspaceType == "Repetitive"
                                     ? () {
@@ -1048,12 +1165,9 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                               ),
                             ],
                           ),
-
                           SizedBox(height: 10.h),
 
-                          /// =========================
-                          /// ONE TIME
-                          /// =========================
+                          /// ONE TIME WORKSPACE OPTION
                           Row(
                             children: [
                               Expanded(
@@ -1069,7 +1183,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                                   },
                                   child: Row(
                                     children: [
-                                      /// RADIO
                                       Container(
                                         width: 16.w,
                                         height: 16.w,
@@ -1096,8 +1209,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                                         ),
                                       ),
                                       SizedBox(width: 10.w),
-
-                                      /// TITLE
                                       Text(
                                         "One-time",
                                         style: GoogleFonts.inter(
@@ -1110,8 +1221,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                                   ),
                                 ),
                               ),
-
-                              /// ARROW BUTTON
                               GestureDetector(
                                 onTap: selectedWorkspaceType == "One-time"
                                     ? () {
@@ -1160,6 +1269,479 @@ class MyTaskScreenState extends State<MyTaskScreen> {
       bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 1),
     );
   }
+  // Widget build(BuildContext context) {
+  //   return Scaffold(
+  //     key: _scaffoldKey,
+  //     backgroundColor: const Color(0xFFF5F7FB),
+  //     appBar: CustomAppBar(
+  //       scaffoldKey: _scaffoldKey,
+  //       userId: widget.userId,
+  //       showLeading: true,
+  //       onBackPressed: () => Navigator.pop(context),
+  //     ),
+  //     drawer: CustomDrawer(activeTile: "Home", onTileTap: (value) {}),
+  //     body: GestureDetector(
+  //       behavior: HitTestBehavior.opaque,
+  //       onTap: () => FocusScope.of(context).unfocus(),
+  //       child: Column(
+  //         crossAxisAlignment: CrossAxisAlignment.start,
+  //         children: [
+  //           SizedBox(height: 10.h),
+  //           SizedBox(
+  //             height: 40.h,
+  //             child: SingleChildScrollView(
+  //               scrollDirection: Axis.horizontal,
+  //               padding: EdgeInsets.symmetric(horizontal: 15.w),
+  //               child: Row(
+  //                 children: List.generate(_tabs.length, (i) {
+  //                   return Padding(
+  //                     padding: EdgeInsets.only(
+  //                       right: i < _tabs.length - 1 ? 10.w : 0,
+  //                     ),
+  //                     child: GestureDetector(
+  //                       onTap: () {
+  //                         if (_selectedTab == i) return;
+  //                         setState(() => _selectedTab = i);
+  //                         _fetchTodoItems();
+  //                       },
+  //                       child: _buildTab(
+  //                         _tabs[i]['label'] as String,
+  //                         _tabs[i]['count'] as int,
+  //                         _selectedTab == i,
+  //                       ),
+  //                     ),
+  //                   );
+  //                 }),
+  //               ),
+  //             ),
+  //           ),
+  //           SizedBox(height: 14.h),
+  //           Padding(
+  //             padding: EdgeInsets.symmetric(horizontal: 15.w),
+  //             child: Flexible(
+  //               child: Row(
+  //                 mainAxisAlignment: MainAxisAlignment.end,
+  //                 children: [
+  //                   Text(
+  //                     "Sort By :",
+  //                     style: GoogleFonts.inter(
+  //                       fontSize: 11.sp,
+  //                       fontWeight: FontWeight.w500,
+  //                       color: const Color(0xFF324054),
+  //                     ),
+  //                   ),
+  //                   SizedBox(height: 2.h),
+  //                   DropdownButtonHideUnderline(
+  //                     child: PopupMenuButton<String>(
+  //                       padding: EdgeInsets.zero,
+  //                       onSelected: (value) {
+  //                         setState(() {
+  //                           selectedSort = value;
+  //                         });
+  //                         _fetchTodoItems();
+  //                       },
+  //                       itemBuilder: (context) => [
+  //                         const PopupMenuItem(
+  //                           value: "Schedule Date (ASC)",
+  //                           child: Text("Schedule Date (ASC)"),
+  //                         ),
+  //                         const PopupMenuItem(
+  //                           value: "Schedule Date (DSC)",
+  //                           child: Text("Schedule Date (DSC)"),
+  //                         ),
+  //                         const PopupMenuItem(
+  //                           value: "Priority(ASC)",
+  //                           child: Text("Priority(ASC)"),
+  //                         ),
+  //                         const PopupMenuItem(
+  //                           value: "Priority(DSC)",
+  //                           child: Text("Priority(DSC)"),
+  //                         ),
+  //                       ],
+  //                       child: Row(
+  //                         mainAxisSize: MainAxisSize.min,
+  //                         children: [
+  //                           Flexible(
+  //                             child: Text(
+  //                               selectedSort,
+  //                               overflow: TextOverflow.ellipsis,
+  //                               maxLines: 1,
+  //                               style: GoogleFonts.inter(
+  //                                 fontSize: 12.sp,
+  //                                 fontWeight: FontWeight.w700,
+  //                                 color: const Color(0xFF0A0258),
+  //                               ),
+  //                             ),
+  //                           ),
+  //                           Transform.translate(
+  //                             offset: const Offset(-2, 0),
+  //                             child: Icon(
+  //                               Icons.keyboard_arrow_down,
+  //                               size: 16.r,
+  //                               color: const Color(0xFF16105D),
+  //                             ),
+  //                           ),
+  //                         ],
+  //                       ),
+  //                     ),
+  //                   ),
+  //                 ],
+  //               ),
+  //             ),
+  //           ),
+  //           SizedBox(height: 14.h),
+
+  //           /// CONTENT
+  //           Expanded(
+  //             child: SingleChildScrollView(
+  //               physics: const AlwaysScrollableScrollPhysics(),
+  //               child: Column(
+  //                 children: [
+  //                   _buildTaskSection(
+  //                     title: "To Do",
+  //                     sectionKey: 'todo',
+  //                     isExpanded: _isTodoExpanded,
+  //                     onToggleExpand: () {
+  //                       setState(() {
+  //                         _isTodoExpanded = !_isTodoExpanded;
+
+  //                         if (_isTodoExpanded) {
+  //                           _isInProgressExpanded = false;
+  //                           _isCompletedExpanded = false;
+  //                         }
+  //                       });
+  //                     },
+  //                   ),
+  //                   _buildTaskSection(
+  //                     title: "In Progress",
+  //                     sectionKey: 'in_progress',
+  //                     isExpanded: _isInProgressExpanded,
+  //                     onToggleExpand: () {
+  //                       setState(() {
+  //                         _isInProgressExpanded = !_isInProgressExpanded;
+
+  //                         if (_isInProgressExpanded) {
+  //                           _isTodoExpanded = false;
+  //                           _isCompletedExpanded = false;
+  //                         }
+  //                       });
+  //                     },
+  //                   ),
+  //                   _buildTaskSection(
+  //                     title: "Completed",
+  //                     sectionKey: 'completed',
+  //                     isExpanded: _isCompletedExpanded,
+  //                     onToggleExpand: () {
+  //                       setState(() {
+  //                         _isCompletedExpanded = !_isCompletedExpanded;
+
+  //                         if (_isCompletedExpanded) {
+  //                           _isTodoExpanded = false;
+  //                           _isInProgressExpanded = false;
+  //                         }
+  //                       });
+  //                     },
+  //                   ),
+  //                 ],
+  //               ),
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //     floatingActionButton: SizedBox(
+  //       width: 56.w,
+  //       height: 56.h,
+  //       child: FloatingActionButton(
+  //         backgroundColor: const Color(0xFF0A0258),
+  //         shape: const CircleBorder(),
+  //         onPressed: () {
+  //           showModalBottomSheet(
+  //             context: context,
+  //             useSafeArea: true,
+  //             useRootNavigator: true,
+  //             backgroundColor: Colors.transparent,
+  //             isScrollControlled: true,
+  //             builder: (context) {
+  //               String selectedWorkspaceType = "";
+
+  //               return StatefulBuilder(
+  //                 builder: (context, modalSetState) {
+  //                   final bottomInset = MediaQuery.of(context).padding.bottom;
+
+  //                   return Container(
+  //                     padding: EdgeInsets.only(
+  //                       left: 20.w,
+  //                       right: 20.w,
+  //                       top: 18.h,
+  //                       bottom: bottomInset > 0 ? bottomInset : 25.h,
+  //                     ),
+  //                     decoration: BoxDecoration(
+  //                       color: Colors.white,
+  //                       borderRadius: BorderRadius.only(
+  //                         topLeft: Radius.circular(28.r),
+  //                         topRight: Radius.circular(28.r),
+  //                       ),
+  //                     ),
+  //                     child: Column(
+  //                       mainAxisSize: MainAxisSize.min,
+  //                       children: [
+  //                         /// HEADER
+  //                         Row(
+  //                           children: [
+  //                             GestureDetector(
+  //                               onTap: () => Navigator.pop(context),
+  //                               child: Icon(
+  //                                 Icons.close,
+  //                                 size: 16.r,
+  //                                 color: const Color(0xFF101828),
+  //                               ),
+  //                             ),
+  //                             Expanded(
+  //                               child: Center(
+  //                                 child: Text(
+  //                                   "Create New Workspace",
+  //                                   style: GoogleFonts.inter(
+  //                                     fontSize: 14.sp,
+  //                                     fontWeight: FontWeight.w600,
+  //                                     color: const Color(0xFF0A0258),
+  //                                   ),
+  //                                 ),
+  //                               ),
+  //                             ),
+  //                           ],
+  //                         ),
+
+  //                         SizedBox(height: 15.h),
+
+  //                         Divider(color: const Color(0xFFE4E7EC), height: 1),
+
+  //                         SizedBox(height: 15.h),
+
+  //                         /// SELECT TEXT
+  //                         Align(
+  //                           alignment: Alignment.centerLeft,
+  //                           child: Text(
+  //                             "Select one",
+  //                             style: GoogleFonts.inter(
+  //                               fontSize: 12.sp,
+  //                               fontWeight: FontWeight.w500,
+  //                               color: const Color(0xFF324054),
+  //                             ),
+  //                           ),
+  //                         ),
+
+  //                         SizedBox(height: 10.h),
+
+  //                         /// =========================
+  //                         /// REPETITIVE
+  //                         /// =========================
+  //                         Row(
+  //                           children: [
+  //                             Expanded(
+  //                               child: GestureDetector(
+  //                                 onTap: () {
+  //                                   modalSetState(() {
+  //                                     if (selectedWorkspaceType ==
+  //                                         "Repetitive") {
+  //                                       selectedWorkspaceType = "";
+  //                                     } else {
+  //                                       selectedWorkspaceType = "Repetitive";
+  //                                     }
+  //                                   });
+  //                                 },
+  //                                 child: Row(
+  //                                   children: [
+  //                                     /// RADIO
+  //                                     Container(
+  //                                       width: 16.w,
+  //                                       height: 16.w,
+  //                                       decoration: BoxDecoration(
+  //                                         shape: BoxShape.circle,
+  //                                         border: Border.all(
+  //                                           color: const Color(0xFF0A0258),
+  //                                           width: 1.3,
+  //                                         ),
+  //                                       ),
+  //                                       child: Center(
+  //                                         child: Container(
+  //                                           width: 10.w,
+  //                                           height: 10.w,
+  //                                           decoration: BoxDecoration(
+  //                                             shape: BoxShape.circle,
+  //                                             color:
+  //                                                 selectedWorkspaceType ==
+  //                                                     "Repetitive"
+  //                                                 ? const Color(0xFF24116A)
+  //                                                 : Colors.transparent,
+  //                                           ),
+  //                                         ),
+  //                                       ),
+  //                                     ),
+  //                                     SizedBox(width: 10.w),
+
+  //                                     /// TITLE
+  //                                     Text(
+  //                                       "Repetitive",
+  //                                       style: GoogleFonts.inter(
+  //                                         fontSize: 14.sp,
+  //                                         fontWeight: FontWeight.w500,
+  //                                         color: const Color(0xFF3F3F3F),
+  //                                       ),
+  //                                     ),
+  //                                   ],
+  //                                 ),
+  //                               ),
+  //                             ),
+
+  //                             /// ARROW BUTTON
+  //                             GestureDetector(
+  //                               onTap: selectedWorkspaceType == "Repetitive"
+  //                                   ? () {
+  //                                       Navigator.pop(context);
+  //                                       Navigator.push(
+  //                                         context,
+  //                                         MaterialPageRoute(
+  //                                           builder: (context) =>
+  //                                               CreateRepetitiveScreen(
+  //                                                 userId: '',
+  //                                               ),
+  //                                         ),
+  //                                       );
+  //                                     }
+  //                                   : null,
+  //                               child: Container(
+  //                                 width: 27.w,
+  //                                 height: 27.w,
+  //                                 decoration: BoxDecoration(
+  //                                   color: selectedWorkspaceType == "Repetitive"
+  //                                       ? const Color(0xFFE4E7EC)
+  //                                       : const Color(0xFFF2F4F7),
+  //                                   borderRadius: BorderRadius.circular(5.r),
+  //                                 ),
+  //                                 child: Icon(
+  //                                   Icons.arrow_forward,
+  //                                   size: 15.r,
+  //                                   color: selectedWorkspaceType == "Repetitive"
+  //                                       ? const Color(0xFF667085)
+  //                                       : const Color(0xFF98A2B3),
+  //                                 ),
+  //                               ),
+  //                             ),
+  //                           ],
+  //                         ),
+
+  //                         SizedBox(height: 10.h),
+
+  //                         /// =========================
+  //                         /// ONE TIME
+  //                         /// =========================
+  //                         Row(
+  //                           children: [
+  //                             Expanded(
+  //                               child: GestureDetector(
+  //                                 onTap: () {
+  //                                   modalSetState(() {
+  //                                     if (selectedWorkspaceType == "One-time") {
+  //                                       selectedWorkspaceType = "";
+  //                                     } else {
+  //                                       selectedWorkspaceType = "One-time";
+  //                                     }
+  //                                   });
+  //                                 },
+  //                                 child: Row(
+  //                                   children: [
+  //                                     /// RADIO
+  //                                     Container(
+  //                                       width: 16.w,
+  //                                       height: 16.w,
+  //                                       decoration: BoxDecoration(
+  //                                         shape: BoxShape.circle,
+  //                                         border: Border.all(
+  //                                           color: const Color(0xFF0A0258),
+  //                                           width: 1.3,
+  //                                         ),
+  //                                       ),
+  //                                       child: Center(
+  //                                         child: Container(
+  //                                           width: 10.w,
+  //                                           height: 10.w,
+  //                                           decoration: BoxDecoration(
+  //                                             shape: BoxShape.circle,
+  //                                             color:
+  //                                                 selectedWorkspaceType ==
+  //                                                     "One-time"
+  //                                                 ? const Color(0xFF24116A)
+  //                                                 : Colors.transparent,
+  //                                           ),
+  //                                         ),
+  //                                       ),
+  //                                     ),
+  //                                     SizedBox(width: 10.w),
+
+  //                                     /// TITLE
+  //                                     Text(
+  //                                       "One-time",
+  //                                       style: GoogleFonts.inter(
+  //                                         fontSize: 14.sp,
+  //                                         fontWeight: FontWeight.w500,
+  //                                         color: const Color(0xFF3F3F3F),
+  //                                       ),
+  //                                     ),
+  //                                   ],
+  //                                 ),
+  //                               ),
+  //                             ),
+
+  //                             /// ARROW BUTTON
+  //                             GestureDetector(
+  //                               onTap: selectedWorkspaceType == "One-time"
+  //                                   ? () {
+  //                                       Navigator.pop(context);
+  //                                       Navigator.push(
+  //                                         context,
+  //                                         MaterialPageRoute(
+  //                                           builder: (context) =>
+  //                                               CreateOneTimeScreen(userId: ''),
+  //                                         ),
+  //                                       );
+  //                                     }
+  //                                   : null,
+  //                               child: Container(
+  //                                 width: 27.w,
+  //                                 height: 27.w,
+  //                                 decoration: BoxDecoration(
+  //                                   color: selectedWorkspaceType == "One-time"
+  //                                       ? const Color(0xFFE4E7EC)
+  //                                       : const Color(0xFFF2F4F7),
+  //                                   borderRadius: BorderRadius.circular(5.r),
+  //                                 ),
+  //                                 child: Icon(
+  //                                   Icons.arrow_forward,
+  //                                   size: 15.r,
+  //                                   color: selectedWorkspaceType == "One-time"
+  //                                       ? const Color(0xFF667085)
+  //                                       : const Color(0xFF98A2B3),
+  //                                 ),
+  //                               ),
+  //                             ),
+  //                           ],
+  //                         ),
+  //                         SizedBox(height: 15.h),
+  //                       ],
+  //                     ),
+  //                   );
+  //                 },
+  //               );
+  //             },
+  //           );
+  //         },
+  //         child: Icon(Icons.add, color: Colors.white, size: 34.r),
+  //       ),
+  //     ),
+  //     bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 1),
+  //   );
+  // }
 
   Widget _buildInfoChip(IconData icon, String text) {
     return IntrinsicWidth(

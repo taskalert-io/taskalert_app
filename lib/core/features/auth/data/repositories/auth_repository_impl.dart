@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart' as dio;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:taskalert_app/core/features/auth/data/models/profile_model.dart';
 import 'auth_repository.dart';
 import '../../../../network/api_result.dart';
 import '../../../../network/base_api_response.dart';
@@ -126,6 +127,7 @@ class AuthRepositoryImpl implements AuthRepository {
         }
         return ApiResult.success(apiResponse);
       }
+
       _handleErrorEnvelope(apiResponse);
       return ApiResult.failure(
         NetworkException(
@@ -323,18 +325,70 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<ApiResult<BaseApiResponse<dynamic>>> getProfile() async {
+  Future<ApiResult<BaseApiResponse<ProfileModel>>> getProfile() async {
     try {
       final responseData = await _httpService.get('/auth/profile');
 
       final apiResponse = BaseApiResponse.fromJson(
-        responseData,
-        (json) => UserModel.fromJson(json),
+        responseData as Map<String, dynamic>,
+        (json) => ProfileModel.fromJson(json as Map<String, dynamic>),
       );
 
+      // if (apiResponse.success) {
+      //   // return ApiResult.success(apiResponse);
+      // }
+
       if (apiResponse.success && apiResponse.data != null) {
-        return ApiResult.success(apiResponse.data! as BaseApiResponse<dynamic>);
+        final user = apiResponse.data!;
+
+        // 🌟 Safe persistence check using the explicit profile userId property mapping
+        if (user.userId.isNotEmpty) {
+          // Note: If your /auth/profile endpoint provides token variants, extract them from user properties here.
+          // Assuming token tracking might belong to login models, but keeping your storage keys matching perfectly:
+
+          await _secureStorage.write(key: 'user_id', value: user.userId);
+          await _secureStorage.write(key: 'user_email', value: user.email);
+          await _secureStorage.write(
+            key: 'user_phone',
+            value: user.phoneNumber,
+          );
+          await _secureStorage.write(
+            key: 'user_first_name',
+            value: user.firstName,
+          );
+          await _secureStorage.write(
+            key: 'user_last_name',
+            value: user.lastName,
+          );
+
+          await _secureStorage.write(
+            key: 'user_dob',
+            value: user.dateOfBirth.toString(),
+          );
+
+          await _secureStorage.write(
+            key: 'user_job',
+            value: user.jobRole?.title,
+          );
+          await _secureStorage.write(
+            key: 'user_department',
+            value: user.department?.name,
+          );
+
+          // 🌟 Safely accessing nested Cloudinary profile image trees
+          await _secureStorage.write(
+            key: 'user_avatar_original',
+            value: user.image?.originalUrl ?? '',
+          );
+          await _secureStorage.write(
+            key: 'user_avatar_thumbnail',
+            value: user.image?.thumbnailUrl ?? '',
+          );
+        }
+
+        return ApiResult.success(apiResponse);
       }
+
       _handleErrorEnvelope(apiResponse);
       return ApiResult.failure(
         NetworkException(
@@ -346,6 +400,31 @@ class AuthRepositoryImpl implements AuthRepository {
       return ApiResult.failure(e);
     }
   }
+
+  // @override
+  // Future<ApiResult<BaseApiResponse<dynamic>>> getProfile() async {
+  //   try {
+  //     final responseData = await _httpService.get('/auth/profile');
+
+  //     final apiResponse = BaseApiResponse.fromJson(
+  //       responseData,
+  //       (json) => UserModel.fromJson(json),
+  //     );
+
+  //     if (apiResponse.success && apiResponse.data != null) {
+  //       return ApiResult.success(apiResponse.data! as BaseApiResponse<dynamic>);
+  //     }
+  //     _handleErrorEnvelope(apiResponse);
+  //     return ApiResult.failure(
+  //       NetworkException(
+  //         errorType: NetworkErrorType.unknown,
+  //         userMessage: apiResponse.message,
+  //       ),
+  //     );
+  //   } on NetworkException catch (e) {
+  //     return ApiResult.failure(e);
+  //   }
+  // }
 
   @override
   Future<ApiResult<BaseApiResponse<dynamic>>> updateProfile({

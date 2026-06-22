@@ -119,12 +119,14 @@ class TaskRepositoryImpl implements TaskRepository {
     String? taskType,
     String? status,
     String? department,
+    String? assigned,
   }) async {
     try {
       final Map<String, dynamic> queryParameters = {};
       if (taskType != null) queryParameters['taskType'] = taskType;
       if (status != null) queryParameters['status'] = status;
       if (department != null) queryParameters['department'] = department;
+      if (assigned != null) queryParameters['assigned'] = assigned;
 
       final responseData = await _httpService.get(
         '/tasks',

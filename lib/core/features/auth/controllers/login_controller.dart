@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:taskalert_app/core/features/auth/data/models/profile_model.dart';
 import 'package:taskalert_app/core/features/auth/data/models/user_model.dart';
 import 'package:taskalert_app/core/network/base_api_response.dart';
 import '../data/repositories/auth_repository.dart';
@@ -20,6 +21,9 @@ class LoginController extends ChangeNotifier {
 
   String? _currentPhoneNumber;
   String? get currentPhoneNumber => _currentPhoneNumber;
+
+  ProfileModel? _profile;
+  ProfileModel? get profile => _profile;
 
   /// Calls the repository and returns true if the OTP was successfully dispatched
   Future<bool> handlePhoneSignIn({required String phoneNumber}) async {
@@ -143,5 +147,34 @@ class LoginController extends ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
+  }
+
+  Future<bool> handleGetProfile() async {
+    _isLoading = true;
+    _errorMessage = null;
+    _successMessage = null;
+    notifyListeners();
+
+    final result = await _authRepository.getProfile();
+    bool isSuccess = false;
+
+    _isLoading = false;
+
+    if (result is Success) {
+      final apiResponse =
+          (result as Success).data as BaseApiResponse<ProfileModel>;
+
+      _profile = apiResponse.data;
+      _successMessage = apiResponse.message;
+      isSuccess = true;
+
+      // print(_profile?.dateOfBirth);
+    } else if (result is Failure) {
+      _errorMessage = (result as Failure).exception.userMessage;
+      isSuccess = false;
+    }
+
+    notifyListeners();
+    return isSuccess;
   }
 }
