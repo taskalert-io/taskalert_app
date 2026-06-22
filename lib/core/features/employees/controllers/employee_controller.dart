@@ -22,6 +22,9 @@ class EmployeeController extends ChangeNotifier {
   List<EmployeeModel> _employees = [];
   List<EmployeeModel> get employees => _employees;
 
+  List<EmployeeModel> _allEmployees = [];
+  List<EmployeeModel> get allEmployees => _allEmployees;
+
   List<EmployeeModel> _recommendations = [];
   List<EmployeeModel> get recommendations => _recommendations;
 
@@ -62,7 +65,16 @@ class EmployeeController extends ChangeNotifier {
     if (result is Success) {
       final apiResponse =
           (result as Success).data as BaseApiResponse<List<EmployeeModel>>;
-      _employees = apiResponse.data ?? [];
+
+      print(department);
+
+      if (department != null) {
+        _employees = apiResponse.data ?? [];
+      } else {
+        _allEmployees = apiResponse.data ?? [];
+      }
+
+      // print(_allEmployees);
 
       // print all employee names for debugging
       // print(
