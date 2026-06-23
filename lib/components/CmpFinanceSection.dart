@@ -347,8 +347,9 @@ class CmpFinanceSectionState extends State<CmpFinanceSection>
           isEditing: _isHourlyRateEditing,
           focusNode: _hourlyRateFocus,
           onEdit: () {
-            if (!_isHourlyRateEditing)
+            if (!_isHourlyRateEditing) {
               setState(() => _isHourlyRateEditing = true);
+            }
           },
           errorText: _hourlyRateError,
           keyboardType: TextInputType.number,
@@ -366,8 +367,9 @@ class CmpFinanceSectionState extends State<CmpFinanceSection>
           isEditing: _isCommissionEditing,
           focusNode: _commissionFocus,
           onEdit: () {
-            if (!_isCommissionEditing)
+            if (!_isCommissionEditing) {
               setState(() => _isCommissionEditing = true);
+            }
           },
           errorText: _commissionError,
           onClearError: () => setState(
@@ -384,8 +386,9 @@ class CmpFinanceSectionState extends State<CmpFinanceSection>
           isEditing: _isAccountHolderEditing,
           focusNode: _accountHolderFocus,
           onEdit: () {
-            if (!_isAccountHolderEditing)
+            if (!_isAccountHolderEditing) {
               setState(() => _isAccountHolderEditing = true);
+            }
           },
           errorText: _accountHolderError,
           onClearError: () => setState(
@@ -402,8 +405,9 @@ class CmpFinanceSectionState extends State<CmpFinanceSection>
           isEditing: _isAccountNumberEditing,
           focusNode: _accountNumberFocus,
           onEdit: () {
-            if (!_isAccountNumberEditing)
+            if (!_isAccountNumberEditing) {
               setState(() => _isAccountNumberEditing = true);
+            }
           },
           errorText: _accountNumberError,
           keyboardType: TextInputType.number,
@@ -422,8 +426,9 @@ class CmpFinanceSectionState extends State<CmpFinanceSection>
           isEditing: _isBranchNameEditing,
           focusNode: _branchNameFocus,
           onEdit: () {
-            if (!_isBranchNameEditing)
+            if (!_isBranchNameEditing) {
               setState(() => _isBranchNameEditing = true);
+            }
           },
           errorText: _branchNameError,
           onClearError: () => setState(
@@ -476,8 +481,9 @@ class CmpFinanceSectionState extends State<CmpFinanceSection>
           isEditing: _isSsnNumberEditing,
           focusNode: _ssnNumberFocus,
           onEdit: () {
-            if (!_isSsnNumberEditing)
+            if (!_isSsnNumberEditing) {
               setState(() => _isSsnNumberEditing = true);
+            }
           },
           errorText: _ssnNumberError,
           keyboardType: TextInputType.number,
@@ -495,8 +501,9 @@ class CmpFinanceSectionState extends State<CmpFinanceSection>
           isEditing: _isPanNumberEditing,
           focusNode: _panNumberFocus,
           onEdit: () {
-            if (!_isPanNumberEditing)
+            if (!_isPanNumberEditing) {
               setState(() => _isPanNumberEditing = true);
+            }
           },
           errorText: _panNumberError,
           keyboardType: TextInputType.visiblePassword, // ✅ full keyboard
@@ -526,8 +533,9 @@ class CmpFinanceSectionState extends State<CmpFinanceSection>
           isEditing: _isHealthInsuranceEditing,
           focusNode: _healthInsuranceFocus,
           onEdit: () {
-            if (!_isHealthInsuranceEditing)
+            if (!_isHealthInsuranceEditing) {
               setState(() => _isHealthInsuranceEditing = true);
+            }
           },
           errorText: _healthInsuranceError,
           onClearError: () => setState(
@@ -544,8 +552,9 @@ class CmpFinanceSectionState extends State<CmpFinanceSection>
           isEditing: _isPensionDetailsEditing,
           focusNode: _pensionDetailsFocus,
           onEdit: () {
-            if (!_isPensionDetailsEditing)
+            if (!_isPensionDetailsEditing) {
               setState(() => _isPensionDetailsEditing = true);
+            }
           },
           errorText: _pensionDetailsError,
           onClearError: () => setState(

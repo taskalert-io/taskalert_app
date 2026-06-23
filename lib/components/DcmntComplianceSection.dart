@@ -32,9 +32,9 @@ class DcmntComplianceSectionState extends State<DcmntComplianceSection>
   String? _verificationStatusError;
   String? _verificationDateError;
 
-  List<_UploadedFile> _passportFiles = [];
-  List<_UploadedFile> _visaFiles = [];
-  List<_UploadedFile> _driversLicFiles = [];
+  final List<_UploadedFile> _passportFiles = [];
+  final List<_UploadedFile> _visaFiles = [];
+  final List<_UploadedFile> _driversLicFiles = [];
 
   String? _verificationStatus;
   final List<String> _statuses = ['Approved', 'Pending', 'Rejected'];
@@ -669,8 +669,9 @@ class DcmntComplianceSectionState extends State<DcmntComplianceSection>
           isEditing: _isEmploymentAgreementsEditing,
           focusNode: _employmentAgreementsFocus,
           onEdit: () {
-            if (!_isEmploymentAgreementsEditing)
+            if (!_isEmploymentAgreementsEditing) {
               setState(() => _isEmploymentAgreementsEditing = true);
+            }
           },
           errorText: _employmentAgreementsError,
           onClearError: () => setState(
@@ -687,8 +688,9 @@ class DcmntComplianceSectionState extends State<DcmntComplianceSection>
           isEditing: _isOfferLettersEditing,
           focusNode: _offerLettersFocus,
           onEdit: () {
-            if (!_isOfferLettersEditing)
+            if (!_isOfferLettersEditing) {
               setState(() => _isOfferLettersEditing = true);
+            }
           },
           errorText: _offerLettersError,
           onClearError: () => setState(

@@ -225,18 +225,24 @@ class ProfileSettingState extends State<ProfileSetting> {
     }
 
     bool sectionsValid = true;
-    if (empJobDetailsEnabled && !(_empKey.currentState?.validate() ?? true))
+    if (empJobDetailsEnabled && !(_empKey.currentState?.validate() ?? true)) {
       sectionsValid = false;
-    if (cmpFinanceEnabled && !(_cmpKey.currentState?.validate() ?? true))
+    }
+    if (cmpFinanceEnabled && !(_cmpKey.currentState?.validate() ?? true)) {
       sectionsValid = false;
-    if (skillPerformEnabled && !(_skillKey.currentState?.validate() ?? true))
+    }
+    if (skillPerformEnabled && !(_skillKey.currentState?.validate() ?? true)) {
       sectionsValid = false;
-    if (timeAttendEnabled && !(_timeKey.currentState?.validate() ?? true))
+    }
+    if (timeAttendEnabled && !(_timeKey.currentState?.validate() ?? true)) {
       sectionsValid = false;
-    if (assetSystemEnabled && !(_assetKey.currentState?.validate() ?? true))
+    }
+    if (assetSystemEnabled && !(_assetKey.currentState?.validate() ?? true)) {
       sectionsValid = false;
-    if (dcmntComplianceEnabled && !(_dcmntKey.currentState?.validate() ?? true))
+    }
+    if (dcmntComplianceEnabled && !(_dcmntKey.currentState?.validate() ?? true)) {
       sectionsValid = false;
+    }
 
     if (!mainValid || !sectionsValid) {
       _showSnackBar("Please fill all required fields.", Colors.red);
@@ -916,8 +922,9 @@ class ProfileSettingState extends State<ProfileSetting> {
                       isEditing: _isFirstNameEditing,
                       focusNode: _firstNameFocus,
                       onEdit: () {
-                        if (!_isFirstNameEditing)
+                        if (!_isFirstNameEditing) {
                           setState(() => _isFirstNameEditing = true);
+                        }
                       },
                       validator: (v) =>
                           (v == null || v.trim().isEmpty) ? 'Required' : null,
@@ -932,8 +939,9 @@ class ProfileSettingState extends State<ProfileSetting> {
                       isEditing: _isLastNameEditing,
                       focusNode: _lastNameFocus,
                       onEdit: () {
-                        if (!_isLastNameEditing)
+                        if (!_isLastNameEditing) {
                           setState(() => _isLastNameEditing = true);
+                        }
                       },
                       validator: (v) =>
                           (v == null || v.trim().isEmpty) ? 'Required' : null,
@@ -952,13 +960,15 @@ class ProfileSettingState extends State<ProfileSetting> {
                       focusNode: _emailFocus,
                       keyboardType: TextInputType.emailAddress,
                       onEdit: () {
-                        if (!_isEmailEditing)
+                        if (!_isEmailEditing) {
                           setState(() => _isEmailEditing = true);
+                        }
                       },
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return 'Required';
-                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v))
+                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v)) {
                           return 'Invalid email';
+                        }
                         return null;
                       },
                     ),
@@ -973,18 +983,21 @@ class ProfileSettingState extends State<ProfileSetting> {
                       focusNode: _phoneFocus,
                       keyboardType: TextInputType.phone,
                       onEdit: () {
-                        if (!_isPhoneEditing)
+                        if (!_isPhoneEditing) {
                           setState(() => _isPhoneEditing = true);
+                        }
                       },
                       inputFormatters: [
                         FilteringTextInputFormatter.digitsOnly,
                         LengthLimitingTextInputFormatter(10),
                       ],
                       validator: (v) {
-                        if (v == null || v.trim().isEmpty)
+                        if (v == null || v.trim().isEmpty) {
                           return 'Please enter phone number';
-                        if (v.trim().length < 10)
+                        }
+                        if (v.trim().length < 10) {
                           return 'Phone number must be 10 digits';
+                        }
                         return null;
                       },
                     ),
@@ -1328,13 +1341,15 @@ class ProfileSettingState extends State<ProfileSetting> {
                       isAccountField: true,
                       keyboardType: TextInputType.emailAddress,
                       onEdit: () {
-                        if (!_isAccountEmailEditing)
+                        if (!_isAccountEmailEditing) {
                           setState(() => _isAccountEmailEditing = true);
+                        }
                       },
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return 'Required';
-                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v))
+                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v)) {
                           return 'Invalid email';
+                        }
                         return null;
                       },
                     ),
@@ -1349,13 +1364,15 @@ class ProfileSettingState extends State<ProfileSetting> {
                       focusNode: _accountPasswordFocus,
                       isAccountField: true,
                       onEdit: () {
-                        if (!_isAccountPasswordEditing)
+                        if (!_isAccountPasswordEditing) {
                           setState(() => _isAccountPasswordEditing = true);
+                        }
                       },
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return 'Required';
-                        if (v.trim().length < 6)
+                        if (v.trim().length < 6) {
                           return 'Minimum 6 characters required';
+                        }
                         return null;
                       },
                     ),
