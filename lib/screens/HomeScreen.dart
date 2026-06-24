@@ -22,6 +22,11 @@ class HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
 
+  Future<bool> get userTaskPermission async {
+    String? permission = await secureStorage.read(key: 'user_task_permission');
+    return permission == 'true';
+  }
+
   /// PAGE CONTROLLER
   final PageController _pageController = PageController(
     viewportFraction: .62,
@@ -800,6 +805,7 @@ class HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
+
       floatingActionButton: SizedBox(
         width: 56.w,
         height: 56.h,
@@ -808,323 +814,338 @@ class HomeScreenState extends State<HomeScreen> {
           backgroundColor: const Color(0xFF0A0258),
           shape: const CircleBorder(),
 
-          onPressed: () {
-            showModalBottomSheet(
-              context: context,
-              useSafeArea: true,
-              useRootNavigator: true,
-              backgroundColor: Colors.transparent,
-              isScrollControlled: true,
+          onPressed: () async {
+            if (await userTaskPermission) {
+              showModalBottomSheet(
+                context: context,
+                useSafeArea: true,
+                useRootNavigator: true,
+                backgroundColor: Colors.transparent,
+                isScrollControlled: true,
 
-              builder: (context) {
-                String selectedWorkspaceType = "";
+                builder: (context) {
+                  String selectedWorkspaceType = "";
 
-                return StatefulBuilder(
-                  builder: (context, modalSetState) {
-                    final bottomInset = MediaQuery.of(context).padding.bottom;
+                  return StatefulBuilder(
+                    builder: (context, modalSetState) {
+                      final bottomInset = MediaQuery.of(context).padding.bottom;
 
-                    return Container(
-                      padding: EdgeInsets.only(
-                        left: 20.w,
-                        right: 20.w,
-                        top: 18.h,
-                        bottom: bottomInset > 0 ? bottomInset : 25.h,
-                      ),
-
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(28.r),
-                          topRight: Radius.circular(28.r),
+                      return Container(
+                        padding: EdgeInsets.only(
+                          left: 20.w,
+                          right: 20.w,
+                          top: 18.h,
+                          bottom: bottomInset > 0 ? bottomInset : 25.h,
                         ),
-                      ),
 
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          /// HEADER
-                          Row(
-                            children: [
-                              GestureDetector(
-                                onTap: () => Navigator.pop(context),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(28.r),
+                            topRight: Radius.circular(28.r),
+                          ),
+                        ),
 
-                                child: Icon(
-                                  Icons.close,
-                                  size: 16.r,
-                                  color: const Color(0xFF101828),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            /// HEADER
+                            Row(
+                              children: [
+                                GestureDetector(
+                                  onTap: () => Navigator.pop(context),
+
+                                  child: Icon(
+                                    Icons.close,
+                                    size: 16.r,
+                                    color: const Color(0xFF101828),
+                                  ),
                                 ),
-                              ),
 
-                              Expanded(
-                                child: Center(
-                                  child: Text(
-                                    "Create New Workspace",
+                                Expanded(
+                                  child: Center(
+                                    child: Text(
+                                      "Create New Workspace",
 
-                                    style: GoogleFonts.inter(
-                                      fontSize: 14.sp,
-                                      fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF0A0258),
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF0A0258),
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
+                              ],
+                            ),
 
-                          SizedBox(height: 15.h),
+                            SizedBox(height: 15.h),
 
-                          Divider(color: const Color(0xFFE4E7EC), height: 1),
+                            Divider(color: const Color(0xFFE4E7EC), height: 1),
 
-                          SizedBox(height: 15.h),
+                            SizedBox(height: 15.h),
 
-                          /// SELECT TEXT
-                          Align(
-                            alignment: Alignment.centerLeft,
+                            /// SELECT TEXT
+                            Align(
+                              alignment: Alignment.centerLeft,
 
-                            child: Text(
-                              "Select one",
+                              child: Text(
+                                "Select one",
 
-                              style: GoogleFonts.inter(
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w500,
-                                color: const Color(0xFF324054),
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF324054),
+                                ),
                               ),
                             ),
-                          ),
 
-                          SizedBox(height: 10.h),
+                            SizedBox(height: 10.h),
 
-                          /// =========================
-                          /// REPETITIVE
-                          /// =========================
-                          Row(
-                            children: [
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () {
-                                    modalSetState(() {
-                                      if (selectedWorkspaceType ==
-                                          "Repetitive") {
-                                        selectedWorkspaceType = "";
-                                      } else {
-                                        selectedWorkspaceType = "Repetitive";
-                                      }
-                                    });
-                                  },
+                            /// =========================
+                            /// REPETITIVE
+                            /// =========================
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      modalSetState(() {
+                                        if (selectedWorkspaceType ==
+                                            "Repetitive") {
+                                          selectedWorkspaceType = "";
+                                        } else {
+                                          selectedWorkspaceType = "Repetitive";
+                                        }
+                                      });
+                                    },
 
-                                  child: Row(
-                                    children: [
-                                      /// RADIO
-                                      Container(
-                                        width: 16.w,
-                                        height: 16.w,
+                                    child: Row(
+                                      children: [
+                                        /// RADIO
+                                        Container(
+                                          width: 16.w,
+                                          height: 16.w,
 
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: const Color(0xFF0A0258),
-                                            width: 1.3,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: const Color(0xFF0A0258),
+                                              width: 1.3,
+                                            ),
                                           ),
-                                        ),
 
-                                        child: Center(
-                                          child: Container(
-                                            width: 10.w,
-                                            height: 10.w,
+                                          child: Center(
+                                            child: Container(
+                                              width: 10.w,
+                                              height: 10.w,
 
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              color:
-                                                  selectedWorkspaceType ==
-                                                      "Repetitive"
-                                                  ? const Color(0xFF24116A)
-                                                  : Colors.transparent,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color:
+                                                    selectedWorkspaceType ==
+                                                        "Repetitive"
+                                                    ? const Color(0xFF24116A)
+                                                    : Colors.transparent,
+                                              ),
                                             ),
                                           ),
                                         ),
-                                      ),
 
-                                      SizedBox(width: 10.w),
+                                        SizedBox(width: 10.w),
 
-                                      /// TITLE
-                                      Text(
-                                        "Repetitive",
+                                        /// TITLE
+                                        Text(
+                                          "Repetitive",
 
-                                        style: GoogleFonts.inter(
-                                          fontSize: 14.sp,
-                                          fontWeight: FontWeight.w500,
-                                          color: const Color(0xFF3F3F3F),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-
-                              /// ARROW BUTTON
-                              GestureDetector(
-                                onTap: selectedWorkspaceType == "Repetitive"
-                                    ? () {
-                                        Navigator.pop(context);
-
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                CreateRepetitiveScreen(
-                                                  userId: '',
-                                                ),
-                                          ),
-                                        );
-                                      }
-                                    : null,
-
-                                child: Container(
-                                  width: 27.w,
-                                  height: 27.w,
-
-                                  decoration: BoxDecoration(
-                                    color: selectedWorkspaceType == "Repetitive"
-                                        ? const Color(0xFFE4E7EC)
-                                        : const Color(0xFFF2F4F7),
-
-                                    borderRadius: BorderRadius.circular(5.r),
-                                  ),
-
-                                  child: Icon(
-                                    Icons.arrow_forward,
-                                    size: 15.r,
-
-                                    color: selectedWorkspaceType == "Repetitive"
-                                        ? const Color(0xFF667085)
-                                        : const Color(0xFF98A2B3),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          SizedBox(height: 10.h),
-
-                          /// =========================
-                          /// ONE TIME
-                          /// =========================
-                          Row(
-                            children: [
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () {
-                                    modalSetState(() {
-                                      if (selectedWorkspaceType == "One-time") {
-                                        selectedWorkspaceType = "";
-                                      } else {
-                                        selectedWorkspaceType = "One-time";
-                                      }
-                                    });
-                                  },
-
-                                  child: Row(
-                                    children: [
-                                      /// RADIO
-                                      Container(
-                                        width: 16.w,
-                                        height: 16.w,
-
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: const Color(0xFF0A0258),
-                                            width: 1.3,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 14.sp,
+                                            fontWeight: FontWeight.w500,
+                                            color: const Color(0xFF3F3F3F),
                                           ),
                                         ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
 
-                                        child: Center(
-                                          child: Container(
-                                            width: 10.w,
-                                            height: 10.w,
+                                /// ARROW BUTTON
+                                GestureDetector(
+                                  onTap: selectedWorkspaceType == "Repetitive"
+                                      ? () {
+                                          Navigator.pop(context);
 
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              color:
-                                                  selectedWorkspaceType ==
-                                                      "One-time"
-                                                  ? const Color(0xFF24116A)
-                                                  : Colors.transparent,
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  CreateRepetitiveScreen(
+                                                    userId: '',
+                                                  ),
+                                            ),
+                                          );
+                                        }
+                                      : null,
+
+                                  child: Container(
+                                    width: 27.w,
+                                    height: 27.w,
+
+                                    decoration: BoxDecoration(
+                                      color:
+                                          selectedWorkspaceType == "Repetitive"
+                                          ? const Color(0xFFE4E7EC)
+                                          : const Color(0xFFF2F4F7),
+
+                                      borderRadius: BorderRadius.circular(5.r),
+                                    ),
+
+                                    child: Icon(
+                                      Icons.arrow_forward,
+                                      size: 15.r,
+
+                                      color:
+                                          selectedWorkspaceType == "Repetitive"
+                                          ? const Color(0xFF667085)
+                                          : const Color(0xFF98A2B3),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            SizedBox(height: 10.h),
+
+                            /// =========================
+                            /// ONE TIME
+                            /// =========================
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      modalSetState(() {
+                                        if (selectedWorkspaceType ==
+                                            "One-time") {
+                                          selectedWorkspaceType = "";
+                                        } else {
+                                          selectedWorkspaceType = "One-time";
+                                        }
+                                      });
+                                    },
+
+                                    child: Row(
+                                      children: [
+                                        /// RADIO
+                                        Container(
+                                          width: 16.w,
+                                          height: 16.w,
+
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: const Color(0xFF0A0258),
+                                              width: 1.3,
+                                            ),
+                                          ),
+
+                                          child: Center(
+                                            child: Container(
+                                              width: 10.w,
+                                              height: 10.w,
+
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color:
+                                                    selectedWorkspaceType ==
+                                                        "One-time"
+                                                    ? const Color(0xFF24116A)
+                                                    : Colors.transparent,
+                                              ),
                                             ),
                                           ),
                                         ),
-                                      ),
 
-                                      SizedBox(width: 10.w),
+                                        SizedBox(width: 10.w),
 
-                                      /// TITLE
-                                      Text(
-                                        "One-time",
+                                        /// TITLE
+                                        Text(
+                                          "One-time",
 
-                                        style: GoogleFonts.inter(
-                                          fontSize: 14.sp,
-                                          fontWeight: FontWeight.w500,
-                                          color: const Color(0xFF3F3F3F),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-
-                              /// ARROW BUTTON
-                              GestureDetector(
-                                onTap: selectedWorkspaceType == "One-time"
-                                    ? () {
-                                        Navigator.pop(context);
-
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                CreateOneTimeScreen(userId: ''),
+                                          style: GoogleFonts.inter(
+                                            fontSize: 14.sp,
+                                            fontWeight: FontWeight.w500,
+                                            color: const Color(0xFF3F3F3F),
                                           ),
-                                        );
-                                      }
-                                    : null,
-
-                                child: Container(
-                                  width: 27.w,
-                                  height: 27.w,
-
-                                  decoration: BoxDecoration(
-                                    color: selectedWorkspaceType == "One-time"
-                                        ? const Color(0xFFE4E7EC)
-                                        : const Color(0xFFF2F4F7),
-
-                                    borderRadius: BorderRadius.circular(5.r),
-                                  ),
-
-                                  child: Icon(
-                                    Icons.arrow_forward,
-                                    size: 15.r,
-
-                                    color: selectedWorkspaceType == "One-time"
-                                        ? const Color(0xFF667085)
-                                        : const Color(0xFF98A2B3),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 15.h),
-                        ],
-                      ),
-                    );
-                  },
-                );
-              },
-            );
+
+                                /// ARROW BUTTON
+                                GestureDetector(
+                                  onTap: selectedWorkspaceType == "One-time"
+                                      ? () {
+                                          Navigator.pop(context);
+
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  CreateOneTimeScreen(
+                                                    userId: '',
+                                                  ),
+                                            ),
+                                          );
+                                        }
+                                      : null,
+
+                                  child: Container(
+                                    width: 27.w,
+                                    height: 27.w,
+
+                                    decoration: BoxDecoration(
+                                      color: selectedWorkspaceType == "One-time"
+                                          ? const Color(0xFFE4E7EC)
+                                          : const Color(0xFFF2F4F7),
+
+                                      borderRadius: BorderRadius.circular(5.r),
+                                    ),
+
+                                    child: Icon(
+                                      Icons.arrow_forward,
+                                      size: 15.r,
+
+                                      color: selectedWorkspaceType == "One-time"
+                                          ? const Color(0xFF667085)
+                                          : const Color(0xFF98A2B3),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 15.h),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('You are not authorized to create tasks.'),
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
           },
 
           child: Icon(Icons.add, color: Colors.white, size: 34.r),
         ),
       ),
+
       bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 0),
     );
   }

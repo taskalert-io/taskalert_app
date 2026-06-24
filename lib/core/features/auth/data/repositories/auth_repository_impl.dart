@@ -111,6 +111,18 @@ class AuthRepositoryImpl implements AuthRepository {
             value: user.phoneNumber,
           );
           await _secureStorage.write(
+            key: 'user_account_type',
+            value: user.accountType,
+          );
+          await _secureStorage.write(
+            key: 'user_task_permission',
+            value: user.taskPermission?.toString() ?? '',
+          );
+          await _secureStorage.write(
+            key: 'user_task_type',
+            value: user.taskType,
+          );
+          await _secureStorage.write(
             key: 'user_first_name',
             value: user.firstName,
           );
@@ -240,6 +252,18 @@ class AuthRepositoryImpl implements AuthRepository {
             value: user.lastName,
           );
           await _secureStorage.write(
+            key: 'user_account_type',
+            value: user.accountType,
+          );
+          await _secureStorage.write(
+            key: 'user_task_permission',
+            value: user.taskPermission?.toString() ?? '',
+          );
+          await _secureStorage.write(
+            key: 'user_task_type',
+            value: user.taskType,
+          );
+          await _secureStorage.write(
             key: 'user_avatar_original',
             value: user.originalAvatarUrl ?? '',
           );
@@ -361,6 +385,19 @@ class AuthRepositoryImpl implements AuthRepository {
           await _secureStorage.write(
             key: 'user_last_name',
             value: user.lastName,
+          );
+
+          await _secureStorage.write(
+            key: 'user_account_type',
+            value: user.accountType,
+          );
+          await _secureStorage.write(
+            key: 'user_task_permission',
+            value: user.taskPermission?.toString() ?? '',
+          );
+          await _secureStorage.write(
+            key: 'user_task_type',
+            value: user.taskType,
           );
 
           await _secureStorage.write(
