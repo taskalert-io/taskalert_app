@@ -24,6 +24,7 @@ abstract class AuthRepository {
     required String password,
     required bool agreeTerms,
     required String otpCode,
+    required String accountType,
     String? email,
     String? gender,
     String? dateOfBirth,
