@@ -13,8 +13,8 @@ import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
 import 'package:http/http.dart' as http;
 
-import '../screens/CreateOneTimeScreen.dart';
-import '../screens/CreateRepetitiveScreen.dart';
+import 'CreateOneTimeScreen.dart';
+import 'CreateRepetitiveScreen.dart';
 import 'MyTaskDetails.dart';
 
 // ── API configuration ─────────────────────────────────────────────────────

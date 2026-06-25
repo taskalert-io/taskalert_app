@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
@@ -119,6 +120,13 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   static const _greyOff = Color(0xFF676299);
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
+
+  Future<bool> get userTaskPermission async {
+    String? permission = await secureStorage.read(key: 'user_task_permission');
+    return permission == 'true';
+  }
 
   // ── Text controllers & focus nodes for editable fields ───────────────────
   late final TextEditingController _titleCtrl;
@@ -1642,8 +1650,38 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                   child: Material(
                                     color: Colors.transparent,
                                     child: InkWell(
-                                      onTap: () {
-                                        if (!_isSaving) _saveTask();
+                                      onTap: () async {
+                                        if (!_isSaving &&
+                                            await userTaskPermission) {
+                                          _saveTask();
+                                        } else {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'You are not authorized to edit tasks.',
+                                              ),
+                                              duration: Duration(seconds: 3),
+                                            ),
+                                            // SnackBar(
+                                            //   content: Text(
+                                            //     'You are not authorized to update this task',
+                                            //     style: GoogleFonts.inter(
+                                            //       color: Colors.white,
+                                            //       fontSize: 13.sp,
+                                            //     ),
+                                            //   ),
+                                            //   backgroundColor: _greyOff,
+                                            //   behavior:
+                                            //       SnackBarBehavior.floating,
+                                            //   shape: RoundedRectangleBorder(
+                                            //     borderRadius:
+                                            //         BorderRadius.circular(8.r),
+                                            //   ),
+                                            // ),
+                                          );
+                                        }
                                       },
                                       splashColor: Colors.white.withOpacity(
                                         0.15,

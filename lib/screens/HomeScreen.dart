@@ -7,7 +7,7 @@ import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
 
-import '../extras/MyTaskDetails.dart';
+import 'MyTaskDetails.dart';
 import 'CreateRepetitiveScreen.dart';
 
 class HomeScreen extends StatefulWidget {
