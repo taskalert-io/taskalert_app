@@ -52,6 +52,8 @@ class SignUpScreenState extends State<SignUpScreen> {
   final rePasswordController = TextEditingController();
   bool isGenderError = false;
 
+  String _selectedAccountType = 'individual';
+
   final _signUpController = sl<SignUpController>();
 
   @override
@@ -892,6 +894,204 @@ class SignUpScreenState extends State<SignUpScreen> {
 
                                 SizedBox(height: 8.h),
 
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Account Type",
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.w400,
+                                        fontSize: 12.sp,
+                                        color: const Color(0xFF6C7278),
+                                      ),
+                                    ),
+                                    SizedBox(height: 3.h),
+                                    Row(
+                                      children: [
+                                        // Individual Radio Option
+                                        Expanded(
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Radio<String>(
+                                                value: 'individual',
+                                                groupValue:
+                                                    _selectedAccountType,
+                                                activeColor: const Color(
+                                                  0xFF0A0258,
+                                                ), // Matches your focused border color
+                                                onChanged: (String? value) {
+                                                  setState(() {
+                                                    _selectedAccountType =
+                                                        value!;
+                                                  });
+                                                },
+                                              ),
+                                              Text(
+                                                'Individual',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 12.sp,
+                                                  fontWeight: FontWeight.w400,
+                                                  color: const Color(
+                                                    0xFF6C7278,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+
+                                        // Organization Radio Option
+                                        Expanded(
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Radio<String>(
+                                                value: 'organization',
+                                                groupValue:
+                                                    _selectedAccountType,
+                                                activeColor: const Color(
+                                                  0xFF0A0258,
+                                                ),
+                                                onChanged: (String? value) {
+                                                  setState(() {
+                                                    _selectedAccountType =
+                                                        value!;
+                                                  });
+                                                },
+                                              ),
+                                              Text(
+                                                'Organization',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 12.sp,
+                                                  fontWeight: FontWeight.w400,
+                                                  color: const Color(
+                                                    0xFF6C7278,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+
+                                // Column(
+                                //   crossAxisAlignment: CrossAxisAlignment.start,
+                                //   children: [
+                                //     Text(
+                                //       "Account Type",
+                                //       style: GoogleFonts.inter(
+                                //         fontWeight: FontWeight.w400,
+                                //         fontSize: 12.sp,
+                                //         color: const Color(0xFF6C7278),
+                                //       ),
+                                //     ),
+                                //     SizedBox(height: 3.h),
+                                //     TextFormField(
+                                //       controller: passwordController,
+                                //       obscureText: obscurePassword,
+                                //       validator: (value) {
+                                //         if (value == null ||
+                                //             value.trim().isEmpty) {
+                                //           return "Enter password";
+                                //         }
+                                //         if (value.length < 6) {
+                                //           return "Minimum 6 characters";
+                                //         }
+                                //         return null;
+                                //       },
+                                //       onChanged: (value) => setState(() {}),
+                                //       style: GoogleFonts.inter(
+                                //         fontSize: 12.sp,
+                                //         fontWeight: FontWeight.w400,
+                                //         color: const Color(0xFF6C7278),
+                                //       ),
+                                //       decoration: InputDecoration(
+                                //         isDense: true,
+                                //         contentPadding:
+                                //             const EdgeInsets.symmetric(
+                                //               horizontal: 12,
+                                //               vertical: 10,
+                                //             ),
+                                //         hintText: "********",
+                                //         errorStyle: TextStyle(
+                                //           fontSize: 10.sp,
+                                //           height: 1.h,
+                                //         ),
+                                //         suffixIconConstraints: BoxConstraints(
+                                //           minHeight: 20.h,
+                                //           minWidth: 20.w,
+                                //         ),
+                                //         suffixIcon: Padding(
+                                //           padding: const EdgeInsets.only(
+                                //             right: 12,
+                                //           ),
+                                //           child: GestureDetector(
+                                //             onTap: () => setState(() {
+                                //               obscurePassword =
+                                //                   !obscurePassword;
+                                //             }),
+                                //             child: Icon(
+                                //               obscurePassword
+                                //                   ? Icons
+                                //                         .visibility_off_outlined
+                                //                   : Icons.visibility_outlined,
+                                //               size: 18.r,
+                                //               color: Colors.grey,
+                                //             ),
+                                //           ),
+                                //         ),
+                                //         filled: true,
+                                //         fillColor: const Color(0xFFF9FAFC),
+                                //         border: OutlineInputBorder(
+                                //           borderRadius: BorderRadius.circular(
+                                //             8.r,
+                                //           ),
+                                //           borderSide: const BorderSide(
+                                //             color: Color(0xFFD9DEE5),
+                                //           ),
+                                //         ),
+                                //         enabledBorder: OutlineInputBorder(
+                                //           borderRadius: BorderRadius.circular(
+                                //             8.r,
+                                //           ),
+                                //           borderSide: const BorderSide(
+                                //             color: Color(0xFFD9DEE5),
+                                //           ),
+                                //         ),
+                                //         focusedBorder: OutlineInputBorder(
+                                //           borderRadius: BorderRadius.circular(
+                                //             8.r,
+                                //           ),
+                                //           borderSide: const BorderSide(
+                                //             color: Color(0xFF0A0258),
+                                //           ),
+                                //         ),
+                                //         errorBorder: OutlineInputBorder(
+                                //           borderRadius: BorderRadius.circular(
+                                //             8.r,
+                                //           ),
+                                //           borderSide: const BorderSide(
+                                //             color: Colors.red,
+                                //           ),
+                                //         ),
+                                //         focusedErrorBorder: OutlineInputBorder(
+                                //           borderRadius: BorderRadius.circular(
+                                //             8.r,
+                                //           ),
+                                //           borderSide: const BorderSide(
+                                //             color: Colors.red,
+                                //           ),
+                                //         ),
+                                //       ),
+                                //     ),
+                                //   ],
+                                // ),
+                                SizedBox(height: 8.h),
+
                                 // PASSWORD
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1306,6 +1506,8 @@ class SignUpScreenState extends State<SignUpScreen> {
                                                                   0,
                                                                   10,
                                                                 ),
+                                                        accountType:
+                                                            _selectedAccountType,
                                                       ),
                                                 ),
                                               );

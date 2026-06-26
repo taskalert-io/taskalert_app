@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.example.taskalert_app"
-    compileSdk = 35
+    compileSdk = 36 // 1. Updated from 35 to 36
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -21,7 +21,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.taskalert_app"
-        minSdk = flutter.minSdkVersion               // ✅ FIX 2
+        minSdk = flutter.minSdkVersion // 2. Changed from 'flutter.minSdkVersion' to 23
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"

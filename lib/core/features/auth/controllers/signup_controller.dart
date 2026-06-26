@@ -71,6 +71,8 @@ class SignUpController extends ChangeNotifier {
     required String password,
     required bool agreeTerms,
     required String otpCode,
+    required String accountType,
+
     String? email,
     String? gender,
     String? dateOfBirth,
@@ -96,6 +98,7 @@ class SignUpController extends ChangeNotifier {
       email: email,
       gender: gender,
       dateOfBirth: dateOfBirth,
+      accountType: accountType,
     );
 
     _isLoading = false;

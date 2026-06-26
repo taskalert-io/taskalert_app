@@ -21,6 +21,7 @@ class OtpVerificationScreen extends StatefulWidget {
   final String? dateOfBirth;
   final String? password;
   final bool? agreeTerms;
+  final String? accountType;
 
   const OtpVerificationScreen({
     super.key,
@@ -33,6 +34,7 @@ class OtpVerificationScreen extends StatefulWidget {
     this.dateOfBirth,
     this.password,
     this.agreeTerms,
+    this.accountType,
   });
 
   @override
@@ -322,7 +324,6 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                     },
                                   ),
                                 ),
-
                               ),
                             ),
                           ),
@@ -395,6 +396,8 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                                 gender: widget.gender ?? '',
                                                 dateOfBirth:
                                                     widget.dateOfBirth ?? '',
+                                                accountType:
+                                                    widget.accountType ?? '',
                                               )
                                         : await _loginController
                                               .handleVerifyOtp(

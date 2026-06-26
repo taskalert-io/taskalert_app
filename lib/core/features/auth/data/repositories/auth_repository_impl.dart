@@ -68,6 +68,7 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
     required bool agreeTerms,
     required String otpCode,
+    required String accountType,
     String? email,
     String? gender,
     String? dateOfBirth,
@@ -82,6 +83,7 @@ class AuthRepositoryImpl implements AuthRepository {
           'password': password,
           'agreeTerms': agreeTerms,
           'otpCode': otpCode,
+          'accountType': accountType,
           if (email != null) 'email': email,
           if (gender != null) 'gender': gender,
           if (dateOfBirth != null) 'dateOfBirth': dateOfBirth,
@@ -107,6 +109,18 @@ class AuthRepositoryImpl implements AuthRepository {
           await _secureStorage.write(
             key: 'user_phone',
             value: user.phoneNumber,
+          );
+          await _secureStorage.write(
+            key: 'user_account_type',
+            value: user.accountType,
+          );
+          await _secureStorage.write(
+            key: 'user_task_permission',
+            value: user.taskPermission?.toString() ?? '',
+          );
+          await _secureStorage.write(
+            key: 'user_task_type',
+            value: user.taskType,
           );
           await _secureStorage.write(
             key: 'user_first_name',
@@ -238,6 +252,18 @@ class AuthRepositoryImpl implements AuthRepository {
             value: user.lastName,
           );
           await _secureStorage.write(
+            key: 'user_account_type',
+            value: user.accountType,
+          );
+          await _secureStorage.write(
+            key: 'user_task_permission',
+            value: user.taskPermission?.toString() ?? '',
+          );
+          await _secureStorage.write(
+            key: 'user_task_type',
+            value: user.taskType,
+          );
+          await _secureStorage.write(
             key: 'user_avatar_original',
             value: user.originalAvatarUrl ?? '',
           );
@@ -359,6 +385,19 @@ class AuthRepositoryImpl implements AuthRepository {
           await _secureStorage.write(
             key: 'user_last_name',
             value: user.lastName,
+          );
+
+          await _secureStorage.write(
+            key: 'user_account_type',
+            value: user.accountType,
+          );
+          await _secureStorage.write(
+            key: 'user_task_permission',
+            value: user.taskPermission?.toString() ?? '',
+          );
+          await _secureStorage.write(
+            key: 'user_task_type',
+            value: user.taskType,
           );
 
           await _secureStorage.write(
