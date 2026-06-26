@@ -9,6 +9,9 @@ class UserModel {
   final String? token; // This will cleanly map the root accessToken
   final String? refreshToken; // This will map the root refreshToken
   final String? videoUrl; // New field for video URL
+  final String? accountType;
+  final bool? taskPermission;
+  final String? taskType;
 
   UserModel({
     required this.id,
@@ -21,6 +24,9 @@ class UserModel {
     this.token,
     this.refreshToken,
     this.videoUrl,
+    this.accountType,
+    this.taskPermission,
+    this.taskType,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -41,6 +47,9 @@ class UserModel {
       firstName: userMap['firstName'] ?? '',
       lastName: userMap['lastName'] ?? '',
       phoneNumber: (userMap['phoneNumber'] ?? '').toString(),
+      accountType: (userMap['accountType'] ?? '').toString(),
+      taskPermission: userMap['taskPermission'],
+      taskType: (userMap['taskType'] ?? '').toString(),
 
       // Dig cleanly into your multi-variant image object keys
       originalAvatarUrl: imageMap?['originalUrl']?.toString(),

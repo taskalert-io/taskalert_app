@@ -469,9 +469,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     taskController = sl<TaskController>();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // ✅ Use GetIt directly if your project isn't using the Provider package
       departmentController.handleGetDepartments();
-
       employeeController.handleGetEmployees();
     });
   }

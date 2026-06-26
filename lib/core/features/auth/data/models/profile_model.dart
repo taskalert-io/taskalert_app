@@ -5,6 +5,9 @@ class ProfileModel {
   final String phoneNumber;
   final String email;
   final String gender;
+  final String? accountType;
+  final bool? taskPermission;
+  final String? taskType;
   final DateTime? dateOfBirth;
   final ProfileImage? image;
   final ProfileOrganization? organization;
@@ -20,6 +23,9 @@ class ProfileModel {
     required this.phoneNumber,
     required this.email,
     required this.gender,
+    this.accountType,
+    this.taskPermission,
+    this.taskType,
     this.dateOfBirth,
     this.image,
     this.organization,
@@ -40,6 +46,9 @@ class ProfileModel {
       phoneNumber: json['phoneNumber'] ?? '',
       email: json['email'] ?? '',
       gender: json['gender'] ?? '',
+      accountType: json['accountType'] ?? '',
+      taskPermission: json['taskPermission'],
+      taskType: json['taskType'] ?? '',
       dateOfBirth: json['dateOfBirth'] != null
           ? DateTime.tryParse(json['dateOfBirth'])
           : null,
