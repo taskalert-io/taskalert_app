@@ -9,6 +9,7 @@ import '../components/CustomDrawer.dart';
 
 import 'MyTaskDetails.dart';
 import 'CreateRepetitiveScreen.dart';
+import 'organization_setup_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   final String userId;
@@ -22,9 +23,30 @@ class HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
 
+  // ✅ ADD THIS
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAndShowOrgDialog();
+    });
+  }
+
   Future<bool> get userTaskPermission async {
     String? permission = await secureStorage.read(key: 'user_task_permission');
     return permission == 'true';
+  }
+
+  Future<void> _checkAndShowOrgDialog() async {
+    final accountType = await secureStorage.read(key: 'pending_account_type');
+    if (accountType == 'organization' && mounted) {
+      await secureStorage.delete(key: 'pending_account_type');
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const OrganizationSetupDialog(),
+      );
+    }
   }
 
   /// PAGE CONTROLLER

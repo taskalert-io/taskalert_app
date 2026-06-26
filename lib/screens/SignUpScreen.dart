@@ -10,6 +10,8 @@ import 'package:taskalert_app/utils/injection_container.dart';
 import 'SignInScreen.dart';
 import 'package:flutter/services.dart';
 
+import 'organization_setup_dialog.dart';
+
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
 
@@ -1433,6 +1435,16 @@ class SignUpScreenState extends State<SignUpScreen> {
                                               return;
                                             }
 
+                                            // ── Show org dialog first if account type is organization ──
+                                            if (_selectedAccountType == 'organization') {
+                                              await showDialog(
+                                                context: context,
+                                                barrierDismissible: false,
+                                                builder: (_) => const OrganizationSetupDialog(),
+                                              );
+                                              return; // stop here; org dialog handles its own flow
+                                            }
+
                                             // 3. Fire off the backend request to register the phone and send the OTP code
                                             final isOtpSent =
                                                 await _signUpController
@@ -1449,66 +1461,38 @@ class SignUpScreenState extends State<SignUpScreen> {
 
                                             // 4. If the backend sends a successful response, route to the verification step
                                             if (isOtpSent) {
-                                              if (_signUpController
-                                                      .successMessage !=
-                                                  null) {
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(
+                                              if (_signUpController.successMessage != null) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
                                                   SnackBar(
-                                                    content: Text(
-                                                      _signUpController
-                                                          .successMessage!,
-                                                    ),
-                                                    backgroundColor:
-                                                        Colors.green,
+                                                    content: Text(_signUpController.successMessage!),
+                                                    backgroundColor: Colors.green,
                                                   ),
                                                 );
                                               }
 
+                                              // ✅ Save account type so home screen knows to show org dialog
+                                              await secureStorage.write(
+                                                key: 'pending_account_type',
+                                                value: _selectedAccountType,
+                                              );
+
                                               Navigator.push(
                                                 context,
                                                 MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      OtpVerificationScreen(
-                                                        phoneNumber:
-                                                            phoneController.text
-                                                                .trim(),
-                                                        isSignUpFlow:
-                                                            true, // Let the screen know to use the sign-up endpoint routing
-                                                        firstName:
-                                                            firstNameController
-                                                                .text
-                                                                .trim(),
-                                                        lastName:
-                                                            lastNameController
-                                                                .text
-                                                                .trim(),
-                                                        password:
-                                                            passwordController
-                                                                .text
-                                                                .trim(),
-                                                        agreeTerms:
-                                                            isTermsAccepted,
-                                                        email:
-                                                            emailController.text
-                                                                .trim()
-                                                                .isEmpty
-                                                            ? null
-                                                            : emailController
-                                                                  .text
-                                                                  .trim(),
-                                                        gender: selectedGender,
-                                                        dateOfBirth:
-                                                            _selectedDate
-                                                                ?.toString()
-                                                                .substring(
-                                                                  0,
-                                                                  10,
-                                                                ),
-                                                        accountType:
-                                                            _selectedAccountType,
-                                                      ),
+                                                  builder: (context) => OtpVerificationScreen(
+                                                    phoneNumber: phoneController.text.trim(),
+                                                    isSignUpFlow: true,
+                                                    firstName: firstNameController.text.trim(),
+                                                    lastName: lastNameController.text.trim(),
+                                                    password: passwordController.text.trim(),
+                                                    agreeTerms: isTermsAccepted,
+                                                    email: emailController.text.trim().isEmpty
+                                                        ? null
+                                                        : emailController.text.trim(),
+                                                    gender: selectedGender,
+                                                    dateOfBirth: _selectedDate?.toString().substring(0, 10),
+                                                    accountType: _selectedAccountType,
+                                                  ),
                                                 ),
                                               );
                                             } else if (_signUpController
