@@ -20,7 +20,6 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class SignUpScreenState extends State<SignUpScreen> {
-  // final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final FlutterSecureStorage secureStorage = FlutterSecureStorage();
   final TextEditingController _dateController = TextEditingController();
 
@@ -62,7 +61,7 @@ class SignUpScreenState extends State<SignUpScreen> {
   void initState() {
     super.initState();
     final now = DateTime.now();
-    _selectedDate = now; // ✅ default selected = today
+    _selectedDate = now;
 
     dayController.text = now.day.toString().padLeft(2, '0');
     monthController.text = now.month.toString().padLeft(2, '0');
@@ -910,7 +909,6 @@ class SignUpScreenState extends State<SignUpScreen> {
                                     SizedBox(height: 3.h),
                                     Row(
                                       children: [
-                                        // Individual Radio Option
                                         Expanded(
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
@@ -921,7 +919,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                                                     _selectedAccountType,
                                                 activeColor: const Color(
                                                   0xFF0A0258,
-                                                ), // Matches your focused border color
+                                                ),
                                                 onChanged: (String? value) {
                                                   setState(() {
                                                     _selectedAccountType =
@@ -942,8 +940,6 @@ class SignUpScreenState extends State<SignUpScreen> {
                                             ],
                                           ),
                                         ),
-
-                                        // Organization Radio Option
                                         Expanded(
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
@@ -980,118 +976,6 @@ class SignUpScreenState extends State<SignUpScreen> {
                                   ],
                                 ),
 
-                                // Column(
-                                //   crossAxisAlignment: CrossAxisAlignment.start,
-                                //   children: [
-                                //     Text(
-                                //       "Account Type",
-                                //       style: GoogleFonts.inter(
-                                //         fontWeight: FontWeight.w400,
-                                //         fontSize: 12.sp,
-                                //         color: const Color(0xFF6C7278),
-                                //       ),
-                                //     ),
-                                //     SizedBox(height: 3.h),
-                                //     TextFormField(
-                                //       controller: passwordController,
-                                //       obscureText: obscurePassword,
-                                //       validator: (value) {
-                                //         if (value == null ||
-                                //             value.trim().isEmpty) {
-                                //           return "Enter password";
-                                //         }
-                                //         if (value.length < 6) {
-                                //           return "Minimum 6 characters";
-                                //         }
-                                //         return null;
-                                //       },
-                                //       onChanged: (value) => setState(() {}),
-                                //       style: GoogleFonts.inter(
-                                //         fontSize: 12.sp,
-                                //         fontWeight: FontWeight.w400,
-                                //         color: const Color(0xFF6C7278),
-                                //       ),
-                                //       decoration: InputDecoration(
-                                //         isDense: true,
-                                //         contentPadding:
-                                //             const EdgeInsets.symmetric(
-                                //               horizontal: 12,
-                                //               vertical: 10,
-                                //             ),
-                                //         hintText: "********",
-                                //         errorStyle: TextStyle(
-                                //           fontSize: 10.sp,
-                                //           height: 1.h,
-                                //         ),
-                                //         suffixIconConstraints: BoxConstraints(
-                                //           minHeight: 20.h,
-                                //           minWidth: 20.w,
-                                //         ),
-                                //         suffixIcon: Padding(
-                                //           padding: const EdgeInsets.only(
-                                //             right: 12,
-                                //           ),
-                                //           child: GestureDetector(
-                                //             onTap: () => setState(() {
-                                //               obscurePassword =
-                                //                   !obscurePassword;
-                                //             }),
-                                //             child: Icon(
-                                //               obscurePassword
-                                //                   ? Icons
-                                //                         .visibility_off_outlined
-                                //                   : Icons.visibility_outlined,
-                                //               size: 18.r,
-                                //               color: Colors.grey,
-                                //             ),
-                                //           ),
-                                //         ),
-                                //         filled: true,
-                                //         fillColor: const Color(0xFFF9FAFC),
-                                //         border: OutlineInputBorder(
-                                //           borderRadius: BorderRadius.circular(
-                                //             8.r,
-                                //           ),
-                                //           borderSide: const BorderSide(
-                                //             color: Color(0xFFD9DEE5),
-                                //           ),
-                                //         ),
-                                //         enabledBorder: OutlineInputBorder(
-                                //           borderRadius: BorderRadius.circular(
-                                //             8.r,
-                                //           ),
-                                //           borderSide: const BorderSide(
-                                //             color: Color(0xFFD9DEE5),
-                                //           ),
-                                //         ),
-                                //         focusedBorder: OutlineInputBorder(
-                                //           borderRadius: BorderRadius.circular(
-                                //             8.r,
-                                //           ),
-                                //           borderSide: const BorderSide(
-                                //             color: Color(0xFF0A0258),
-                                //           ),
-                                //         ),
-                                //         errorBorder: OutlineInputBorder(
-                                //           borderRadius: BorderRadius.circular(
-                                //             8.r,
-                                //           ),
-                                //           borderSide: const BorderSide(
-                                //             color: Colors.red,
-                                //           ),
-                                //         ),
-                                //         focusedErrorBorder: OutlineInputBorder(
-                                //           borderRadius: BorderRadius.circular(
-                                //             8.r,
-                                //           ),
-                                //           borderSide: const BorderSide(
-                                //             color: Colors.red,
-                                //           ),
-                                //         ),
-                                //       ),
-                                //     ),
-                                //   ],
-                                // ),
                                 SizedBox(height: 8.h),
 
                                 // PASSWORD
@@ -1397,7 +1281,6 @@ class SignUpScreenState extends State<SignUpScreen> {
                                     vertical: 10,
                                   ),
                                   child: ElevatedButton(
-                                    // 1. Disable the button completely if the controller is waiting for the backend response
                                     onPressed: _signUpController.isLoading
                                         ? null
                                         : () async {
@@ -1409,7 +1292,6 @@ class SignUpScreenState extends State<SignUpScreen> {
                                                   selectedGender == null;
                                             });
 
-                                            // 2. Perform local client validations first
                                             if (!_formKey.currentState!
                                                 .validate()) {
                                               return;
@@ -1435,17 +1317,11 @@ class SignUpScreenState extends State<SignUpScreen> {
                                               return;
                                             }
 
-                                            // ── Show org dialog first if account type is organization ──
-                                            if (_selectedAccountType == 'organization') {
-                                              await showDialog(
-                                                context: context,
-                                                barrierDismissible: false,
-                                                builder: (_) => const OrganizationSetupDialog(),
-                                              );
-                                              return; // stop here; org dialog handles its own flow
-                                            }
+                                            // ✅ FIX: Removed the org dialog block from here.
+                                            // We save the account type to secure storage and let
+                                            // HomeScreen._checkAndShowOrgDialog() handle it
+                                            // AFTER navigation, so HomeScreen is the background.
 
-                                            // 3. Fire off the backend request to register the phone and send the OTP code
                                             final isOtpSent =
                                                 await _signUpController
                                                     .handleSignUp(
@@ -1459,18 +1335,26 @@ class SignUpScreenState extends State<SignUpScreen> {
 
                                             if (!mounted) return;
 
-                                            // 4. If the backend sends a successful response, route to the verification step
                                             if (isOtpSent) {
-                                              if (_signUpController.successMessage != null) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
+                                              if (_signUpController
+                                                      .successMessage !=
+                                                  null) {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
                                                   SnackBar(
-                                                    content: Text(_signUpController.successMessage!),
-                                                    backgroundColor: Colors.green,
+                                                    content: Text(
+                                                      _signUpController
+                                                          .successMessage!,
+                                                    ),
+                                                    backgroundColor:
+                                                        Colors.green,
                                                   ),
                                                 );
                                               }
 
-                                              // ✅ Save account type so home screen knows to show org dialog
+                                              // ✅ Save account type so HomeScreen knows
+                                              // to show org dialog after navigation
                                               await secureStorage.write(
                                                 key: 'pending_account_type',
                                                 value: _selectedAccountType,
@@ -1479,26 +1363,50 @@ class SignUpScreenState extends State<SignUpScreen> {
                                               Navigator.push(
                                                 context,
                                                 MaterialPageRoute(
-                                                  builder: (context) => OtpVerificationScreen(
-                                                    phoneNumber: phoneController.text.trim(),
-                                                    isSignUpFlow: true,
-                                                    firstName: firstNameController.text.trim(),
-                                                    lastName: lastNameController.text.trim(),
-                                                    password: passwordController.text.trim(),
-                                                    agreeTerms: isTermsAccepted,
-                                                    email: emailController.text.trim().isEmpty
-                                                        ? null
-                                                        : emailController.text.trim(),
-                                                    gender: selectedGender,
-                                                    dateOfBirth: _selectedDate?.toString().substring(0, 10),
-                                                    accountType: _selectedAccountType,
-                                                  ),
+                                                  builder: (context) =>
+                                                      OtpVerificationScreen(
+                                                        phoneNumber:
+                                                            phoneController.text
+                                                                .trim(),
+                                                        isSignUpFlow: true,
+                                                        firstName:
+                                                            firstNameController
+                                                                .text
+                                                                .trim(),
+                                                        lastName:
+                                                            lastNameController
+                                                                .text
+                                                                .trim(),
+                                                        password:
+                                                            passwordController
+                                                                .text
+                                                                .trim(),
+                                                        agreeTerms:
+                                                            isTermsAccepted,
+                                                        email:
+                                                            emailController.text
+                                                                .trim()
+                                                                .isEmpty
+                                                            ? null
+                                                            : emailController
+                                                                  .text
+                                                                  .trim(),
+                                                        gender: selectedGender,
+                                                        dateOfBirth:
+                                                            _selectedDate
+                                                                ?.toString()
+                                                                .substring(
+                                                                  0,
+                                                                  10,
+                                                                ),
+                                                        accountType:
+                                                            _selectedAccountType,
+                                                      ),
                                                 ),
                                               );
                                             } else if (_signUpController
                                                     .errorMessage !=
                                                 null) {
-                                              // 5. Handle server validation errors gracefully
                                               ScaffoldMessenger.of(
                                                 context,
                                               ).showSnackBar(
@@ -1531,7 +1439,6 @@ class SignUpScreenState extends State<SignUpScreen> {
                                         borderRadius: BorderRadius.circular(
                                           8.r,
                                         ),
-                                        // Reduce opacity of gradient visually to indicate a loading/disabled state
                                         gradient: LinearGradient(
                                           colors: _signUpController.isLoading
                                               ? [
@@ -1578,99 +1485,6 @@ class SignUpScreenState extends State<SignUpScreen> {
                                   ),
                                 ),
 
-                                /// CREATE ACCOUNT BUTTON
-                                // Container(
-                                //   width: double.infinity,
-                                //   padding: const EdgeInsets.symmetric(
-                                //     vertical: 10,
-                                //   ),
-                                //   child: ElevatedButton(
-                                //     onPressed: () {
-                                //       setState(() {
-                                //         _autoValidate = true;
-                                //         isDobError = _selectedDate == null;
-                                //         isGenderError = selectedGender == null;
-                                //       });
-
-                                //       if (!_formKey.currentState!.validate()) {
-                                //         return;
-                                //       }
-
-                                //       if (_selectedDate == null ||
-                                //           selectedGender == null) {
-                                //         return;
-                                //       }
-
-                                //       if (!isTermsAccepted) {
-                                //         ScaffoldMessenger.of(
-                                //           context,
-                                //         ).showSnackBar(
-                                //           const SnackBar(
-                                //             content: Text(
-                                //               "Accept Terms & Conditions",
-                                //             ),
-                                //           ),
-                                //         );
-                                //         return;
-                                //       }
-
-                                //       Navigator.push(
-                                //         context,
-                                //         MaterialPageRoute(
-                                //           builder: (context) =>
-                                //               OtpVerificationScreen(
-                                //                 phoneNumber: phoneController
-                                //                     .text
-                                //                     .trim(),
-                                //                 isSignUpFlow: true,
-                                //               ),
-                                //         ),
-                                //       );
-                                //     },
-                                //     style: ElevatedButton.styleFrom(
-                                //       padding: EdgeInsets.zero,
-                                //       elevation: 0,
-                                //       backgroundColor: Colors.transparent,
-                                //       shadowColor: Colors.transparent,
-                                //       disabledBackgroundColor:
-                                //           Colors.transparent,
-                                //       shape: RoundedRectangleBorder(
-                                //         borderRadius: BorderRadius.circular(
-                                //           8.r,
-                                //         ),
-                                //       ),
-                                //     ),
-                                //     child: Ink(
-                                //       decoration: BoxDecoration(
-                                //         borderRadius: BorderRadius.circular(
-                                //           8.r,
-                                //         ),
-                                //         gradient: const LinearGradient(
-                                //           colors: [
-                                //             Color(0xFF98E0D5),
-                                //             Color(0xFFE49AEF),
-                                //           ],
-                                //         ),
-                                //       ),
-                                //       child: Container(
-                                //         width: double.infinity,
-                                //         alignment: Alignment.center,
-                                //         padding: const EdgeInsets.symmetric(
-                                //           horizontal: 10,
-                                //           vertical: 12,
-                                //         ),
-                                //         child: Text(
-                                //           "Create An Account",
-                                //           style: GoogleFonts.inter(
-                                //             fontSize: 12.sp,
-                                //             fontWeight: FontWeight.w600,
-                                //             color: Colors.white,
-                                //           ),
-                                //         ),
-                                //       ),
-                                //     ),
-                                //   ),
-                                // ),
                                 SizedBox(height: 8.h),
 
                                 /// OR DIVIDER
