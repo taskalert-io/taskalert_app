@@ -28,7 +28,6 @@ class HomeScreenState extends State<HomeScreen> {
     super.initState();
     // ✅ After HomeScreen is fully built and visible on screen,
     // check if we need to show the OrganizationSetupDialog.
-    // This ensures HomeScreen is the background behind the dialog.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAndShowOrgDialog();
     });
@@ -39,15 +38,28 @@ class HomeScreenState extends State<HomeScreen> {
     return permission == 'true';
   }
 
-  /// ✅ This method reads 'pending_account_type' from secure storage.
-  /// If the user signed up as an organization, it shows the OrganizationSetupDialog
-  /// with HomeScreen fully visible in the background, then deletes the key so it
-  /// never shows again on the next app launch.
+  /// ✅ FIXED: Now checks BOTH:
+  /// 1. 'pending_account_type' — set during sign-up (first time)
+  /// 2. 'account_type' + 'org_setup_done' — covers sign-in on new device
+  ///    or after storage clear, where pending_account_type was never set
   Future<void> _checkAndShowOrgDialog() async {
-    final accountType = await secureStorage.read(key: 'pending_account_type');
-    if (accountType == 'organization' && mounted) {
-      // Delete the key BEFORE showing dialog so it doesn't show again
+    final pendingAccountType = await secureStorage.read(
+      key: 'pending_account_type',
+    );
+    final accountType = await secureStorage.read(key: 'account_type');
+    final orgSetupDone = await secureStorage.read(key: 'org_setup_done');
+
+    // ✅ Show dialog if EITHER:
+    // - pending_account_type is 'organization' (sign-up flow / sign-in flag)
+    // - OR account_type is 'organization' AND org setup is not done yet
+    final shouldShow =
+        (pendingAccountType == 'organization') ||
+        (accountType == 'organization' && orgSetupDone == null);
+
+    if (shouldShow && mounted) {
+      // ✅ Clean up pending flag before showing dialog
       await secureStorage.delete(key: 'pending_account_type');
+
       await showDialog(
         context: context,
         barrierDismissible: false,

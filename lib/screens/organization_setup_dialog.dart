@@ -418,7 +418,11 @@ class _OrganizationSetupDialogState extends State<OrganizationSetupDialog> {
 
                                     if (!mounted) return;
                                     setState(() => _isLoading = false);
-
+                                    // ✅ Mark org setup as done so dialog never shows again
+                                    await _secureStorage.write(
+                                      key: 'org_setup_done',
+                                      value: 'true',
+                                    );
                                     // Only closes dialog after successful submission
                                     Navigator.pop(context, {
                                       'orgName': _orgNameController.text.trim(),

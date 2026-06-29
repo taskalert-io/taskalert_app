@@ -1353,12 +1353,20 @@ class SignUpScreenState extends State<SignUpScreen> {
                                                 );
                                               }
 
-                                              // ✅ Save account type so HomeScreen knows
-                                              // to show org dialog after navigation
+                                              // ✅ Save account_type always (used by SignInScreen check)
                                               await secureStorage.write(
-                                                key: 'pending_account_type',
+                                                key: 'account_type',
                                                 value: _selectedAccountType,
                                               );
+
+                                              // ✅ Only trigger org dialog if account is organization
+                                              if (_selectedAccountType ==
+                                                  'organization') {
+                                                await secureStorage.write(
+                                                  key: 'pending_account_type',
+                                                  value: 'organization',
+                                                );
+                                              }
 
                                               Navigator.push(
                                                 context,
