@@ -374,8 +374,9 @@ class TimeAttendSectionState extends State<TimeAttendSection>
           isEditing: _isPartTimeOffEditing,
           focusNode: _partTimeOffFocus,
           onEdit: () {
-            if (!_isPartTimeOffEditing)
+            if (!_isPartTimeOffEditing) {
               setState(() => _isPartTimeOffEditing = true);
+            }
           },
           errorText: _partTimeOffError,
           onClearError: () => setState(
@@ -391,8 +392,9 @@ class TimeAttendSectionState extends State<TimeAttendSection>
           isEditing: _isSickLeaveEditing,
           focusNode: _sickLeaveFocus,
           onEdit: () {
-            if (!_isSickLeaveEditing)
+            if (!_isSickLeaveEditing) {
               setState(() => _isSickLeaveEditing = true);
+            }
           },
           errorText: _sickLeaveError,
           onClearError: () => setState(
@@ -408,8 +410,9 @@ class TimeAttendSectionState extends State<TimeAttendSection>
           isEditing: _isOtherLeaveEditing,
           focusNode: _otherLeaveFocus,
           onEdit: () {
-            if (!_isOtherLeaveEditing)
+            if (!_isOtherLeaveEditing) {
               setState(() => _isOtherLeaveEditing = true);
+            }
           },
           errorText: _otherLeaveError,
           onClearError: () => setState(
@@ -448,8 +451,9 @@ class TimeAttendSectionState extends State<TimeAttendSection>
           isEditing: _isAutomatedActivityEditing,
           focusNode: _automatedActivityFocus,
           onEdit: () {
-            if (!_isAutomatedActivityEditing)
+            if (!_isAutomatedActivityEditing) {
               setState(() => _isAutomatedActivityEditing = true);
+            }
           },
           errorText: _automatedActivityError,
           onClearError: () => setState(
@@ -474,8 +478,9 @@ class TimeAttendSectionState extends State<TimeAttendSection>
           isEditing: _isRegionalHolidaysEditing,
           focusNode: _regionalHolidaysFocus,
           onEdit: () {
-            if (!_isRegionalHolidaysEditing)
+            if (!_isRegionalHolidaysEditing) {
               setState(() => _isRegionalHolidaysEditing = true);
+            }
           },
           errorText: _regionalHolidaysError,
           onClearError: () => setState(
@@ -492,8 +497,9 @@ class TimeAttendSectionState extends State<TimeAttendSection>
           isEditing: _isOfficeLocationEditing,
           focusNode: _officeLocationFocus,
           onEdit: () {
-            if (!_isOfficeLocationEditing)
+            if (!_isOfficeLocationEditing) {
               setState(() => _isOfficeLocationEditing = true);
+            }
           },
           errorText: _officeLocationError,
           onClearError: () => setState(

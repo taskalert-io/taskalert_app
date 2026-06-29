@@ -3,9 +3,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../utils/injection_container.dart'; // 1. Import your service locator
-import 'package:taskalert_app/core/features/auth/controllers/login_controller.dart'; // 2. Import your controller
+import '../../../utils/injection_container.dart';
+import 'package:taskalert_app/core/features/auth/controllers/login_controller.dart';
 import 'OtpVerificationScreen.dart';
 import 'SignUpScreen.dart';
 
@@ -17,18 +18,19 @@ class SignInScreen extends StatefulWidget {
 }
 
 class SignInScreenState extends State<SignInScreen> {
+  // ✅ Declare secureStorage here — no await in class body
+  final secureStorage = const FlutterSecureStorage();
+
   final _formKey = GlobalKey<FormState>();
   bool isTermsAccepted = false;
   bool _autoValidate = false;
   final phoneController = TextEditingController();
 
-  // 3. Locate your controller instance via dependency injection
   final _loginController = sl<LoginController>();
 
   @override
   void initState() {
     super.initState();
-    // 4. Attach a listener to re-draw the UI when isLoading or errorMessage changes
     _loginController.addListener(_onControllerChanged);
   }
 
@@ -58,7 +60,7 @@ class SignInScreenState extends State<SignInScreen> {
             physics: const BouncingScrollPhysics(),
             child: Column(
               children: [
-                // TOP SECTION
+                // ── TOP SECTION ──────────────────────────────────────
                 Container(
                   width: double.infinity,
                   height: MediaQuery.of(context).size.height * 0.5,
@@ -66,7 +68,7 @@ class SignInScreenState extends State<SignInScreen> {
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      // TOP RIGHT GLOW
+                      // TOP GLOW
                       Positioned(
                         top: -140.h,
                         left: -90.w,
@@ -94,6 +96,7 @@ class SignInScreenState extends State<SignInScreen> {
                           ),
                         ),
                       ),
+
                       Padding(
                         padding: const EdgeInsets.only(
                           left: 10,
@@ -143,7 +146,7 @@ class SignInScreenState extends State<SignInScreen> {
                   ),
                 ),
 
-                // LOGIN CARD
+                // ── LOGIN CARD ────────────────────────────────────────
                 Transform.translate(
                   offset: const Offset(0, -130),
                   child: Container(
@@ -170,7 +173,7 @@ class SignInScreenState extends State<SignInScreen> {
                           : AutovalidateMode.disabled,
                       child: Column(
                         children: [
-                          // GOOGLE BUTTON
+                          // GOOGLE / EMAIL BUTTON
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.symmetric(vertical: 10),
@@ -291,21 +294,17 @@ class SignInScreenState extends State<SignInScreen> {
                                   ),
                                 ),
                               ),
-                              // 5. Disable button interaction while loading
                               onPressed: _loginController.isLoading
                                   ? null
                                   : () async {
                                       FocusScope.of(context).unfocus();
-                                      setState(() {
-                                        _autoValidate =
-                                            true; // ✅ trigger validation on press
-                                      });
+                                      setState(() => _autoValidate = true);
 
                                       if (!_formKey.currentState!.validate()) {
                                         return;
                                       }
 
-                                      // 6. Execute network call via controller
+                                      // Execute network call
                                       final isSuccess = await _loginController
                                           .handlePhoneSignIn(
                                             phoneNumber: phoneController.text
@@ -315,6 +314,7 @@ class SignInScreenState extends State<SignInScreen> {
                                       if (!mounted) return;
 
                                       if (isSuccess) {
+                                        // Show success snackbar if message exists
                                         if (_loginController.successMessage !=
                                             null) {
                                           ScaffoldMessenger.of(
@@ -325,15 +325,40 @@ class SignInScreenState extends State<SignInScreen> {
                                                 _loginController
                                                     .successMessage!,
                                               ),
-                                              backgroundColor: Colors
-                                                  .green, // Visual indicator for success
+                                              backgroundColor: Colors.green,
                                               duration: const Duration(
                                                 seconds: 5,
-                                              ), // Keep it brief so it doesn't slow down the flow
+                                              ),
                                             ),
                                           );
                                         }
-                                        // 7. Route clean push on backend success
+
+                                        // ✅ Read storage INSIDE onPressed (async context)
+                                        // Check if this is an org account that
+                                        // hasn't completed setup yet.
+                                        // 'account_type' is written during sign-up.
+                                        // 'org_setup_done' is written after the
+                                        // OrganizationSetupDialog is submitted.
+                                        final accountType = await secureStorage
+                                            .read(key: 'account_type');
+                                        final isOrgSetupDone =
+                                            await secureStorage.read(
+                                              key: 'org_setup_done',
+                                            );
+
+                                        if (accountType == 'organization' &&
+                                            isOrgSetupDone == null) {
+                                          // ✅ This triggers HomeScreen to show
+                                          // OrganizationSetupDialog on load
+                                          await secureStorage.write(
+                                            key: 'pending_account_type',
+                                            value: 'organization',
+                                          );
+                                        }
+
+                                        if (!mounted) return;
+
+                                        // Navigate to OTP screen
                                         Navigator.pushReplacement(
                                           context,
                                           MaterialPageRoute(
@@ -349,7 +374,6 @@ class SignInScreenState extends State<SignInScreen> {
                                       } else if (_loginController
                                               .errorMessage !=
                                           null) {
-                                        // 8. Safely catch and toast validation errors
                                         ScaffoldMessenger.of(
                                           context,
                                         ).showSnackBar(
@@ -360,12 +384,11 @@ class SignInScreenState extends State<SignInScreen> {
                                             backgroundColor: Colors.redAccent,
                                             duration: const Duration(
                                               seconds: 5,
-                                            ), // Keep it brief so it doesn't slow down the flow
+                                            ),
                                           ),
                                         );
                                       }
                                     },
-                              // 9. Show inline native loader during active requests
                               child: _loginController.isLoading
                                   ? SizedBox(
                                       height: 20.h,
@@ -386,12 +409,12 @@ class SignInScreenState extends State<SignInScreen> {
                           ),
                           SizedBox(height: 8.h),
 
-                          // SIGN UP
+                          // SIGN UP LINK
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                "Don’t have an account? ",
+                                "Don't have an account? ",
                                 style: GoogleFonts.inter(
                                   fontSize: 12.sp,
                                   color: const Color(0xFF6C7278),
@@ -454,8 +477,6 @@ class SignInScreenState extends State<SignInScreen> {
       obscureText: obscure,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
-
-      // autovalidateMode: AutovalidateMode.onUserInteraction,
       validator: validator,
       style: GoogleFonts.inter(
         fontSize: 12.sp,

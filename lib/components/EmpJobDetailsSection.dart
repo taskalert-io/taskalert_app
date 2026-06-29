@@ -777,8 +777,9 @@ class EmpJobDetailsSectionState extends State<EmpJobDetailsSection>
           isEditing: _isDepartmentEditing,
           focusNode: _departmentFocus,
           onEdit: () {
-            if (!_isDepartmentEditing)
+            if (!_isDepartmentEditing) {
               setState(() => _isDepartmentEditing = true);
+            }
           },
           errorText: _departmentError,
           onClearError: () => setState(
@@ -893,8 +894,9 @@ class EmpJobDetailsSectionState extends State<EmpJobDetailsSection>
           isEditing: _isReportThemEditing,
           focusNode: _reportThemFocus,
           onEdit: () {
-            if (!_isReportThemEditing)
+            if (!_isReportThemEditing) {
               setState(() => _isReportThemEditing = true);
+            }
           },
           errorText: _reportThemError,
           onClearError: () => setState(

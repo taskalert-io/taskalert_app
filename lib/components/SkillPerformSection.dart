@@ -618,8 +618,9 @@ class SkillPerformSectionState extends State<SkillPerformSection>
           isEditing: _isProgrammingEditing,
           focusNode: _programmingFocus,
           onEdit: () {
-            if (!_isProgrammingEditing)
+            if (!_isProgrammingEditing) {
               setState(() => _isProgrammingEditing = true);
+            }
           },
           errorText: _programmingError,
           onClearError: () => setState(
@@ -679,8 +680,9 @@ class SkillPerformSectionState extends State<SkillPerformSection>
           isEditing: _isCertificationEditing,
           focusNode: _certificationFocus,
           onEdit: () {
-            if (!_isCertificationEditing)
+            if (!_isCertificationEditing) {
               setState(() => _isCertificationEditing = true);
+            }
           },
           errorText: _certificationError,
           onClearError: () => setState(
@@ -748,8 +750,9 @@ class SkillPerformSectionState extends State<SkillPerformSection>
           isEditing: _isTrainingCoursesEditing,
           focusNode: _trainingCoursesFocus,
           onEdit: () {
-            if (!_isTrainingCoursesEditing)
+            if (!_isTrainingCoursesEditing) {
               setState(() => _isTrainingCoursesEditing = true);
+            }
           },
           errorText: _trainingCoursesError,
           onClearError: () => setState(
@@ -766,8 +769,9 @@ class SkillPerformSectionState extends State<SkillPerformSection>
           isEditing: _isComplianceTrainingEditing,
           focusNode: _complianceTrainingFocus,
           onEdit: () {
-            if (!_isComplianceTrainingEditing)
+            if (!_isComplianceTrainingEditing) {
               setState(() => _isComplianceTrainingEditing = true);
+            }
           },
           errorText: _complianceTrainingError,
           onClearError: () => setState(

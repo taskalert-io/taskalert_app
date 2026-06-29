@@ -231,8 +231,9 @@ class AssetSystemSectionState extends State<AssetSystemSection>
           isEditing: _isHardwareInventoryEditing,
           focusNode: _hardwareInventoryFocus,
           onEdit: () {
-            if (!_isHardwareInventoryEditing)
+            if (!_isHardwareInventoryEditing) {
               setState(() => _isHardwareInventoryEditing = true);
+            }
           },
           errorText: _hardwareInventoryError,
           onClearError: () => setState(
@@ -249,8 +250,9 @@ class AssetSystemSectionState extends State<AssetSystemSection>
           isEditing: _isSerialMonitorsEditing,
           focusNode: _serialMonitorsFocus,
           onEdit: () {
-            if (!_isSerialMonitorsEditing)
+            if (!_isSerialMonitorsEditing) {
               setState(() => _isSerialMonitorsEditing = true);
+            }
           },
           errorText: _serialMonitorsError,
           onClearError: () => setState(
@@ -267,8 +269,9 @@ class AssetSystemSectionState extends State<AssetSystemSection>
           isEditing: _isSerialPhonesEditing,
           focusNode: _serialPhonesFocus,
           onEdit: () {
-            if (!_isSerialPhonesEditing)
+            if (!_isSerialPhonesEditing) {
               setState(() => _isSerialPhonesEditing = true);
+            }
           },
           errorText: _serialPhonesError,
           onClearError: () => setState(
@@ -286,8 +289,9 @@ class AssetSystemSectionState extends State<AssetSystemSection>
           isEditing: _isSoftwarePermissionsEditing,
           focusNode: _softwarePermissionsFocus,
           onEdit: () {
-            if (!_isSoftwarePermissionsEditing)
+            if (!_isSoftwarePermissionsEditing) {
               setState(() => _isSoftwarePermissionsEditing = true);
+            }
           },
           errorText: _softwarePermissionsError,
           onClearError: () => setState(
@@ -305,8 +309,9 @@ class AssetSystemSectionState extends State<AssetSystemSection>
           isEditing: _isSecurityClearanceEditing,
           focusNode: _securityClearanceFocus,
           onEdit: () {
-            if (!_isSecurityClearanceEditing)
+            if (!_isSecurityClearanceEditing) {
               setState(() => _isSecurityClearanceEditing = true);
+            }
           },
           errorText: _securityClearanceError,
           onClearError: () => setState(

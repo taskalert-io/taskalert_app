@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:taskalert_app/screens/HomeScreen.dart';
 import 'package:taskalert_app/screens/LoginConfirmationScreen.dart';
@@ -52,6 +53,9 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
   final _loginController = sl<LoginController>();
   final _signupController = sl<SignUpController>();
 
+  // ✅ Secure storage to write account_type after successful verification
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+
   @override
   void initState() {
     super.initState();
@@ -76,23 +80,16 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
   int secondsRemaining = 60;
   Timer? timer;
 
-  // bool get isSignUpFlow => null;
-
   void startTimer() {
-    /// CANCEL OLD TIMER
     timer?.cancel();
-
-    /// RESET TIMER
     setState(() {
       secondsRemaining = 60;
     });
 
     timer = Timer.periodic(const Duration(seconds: 1), (Timer t) {
       if (!mounted) return;
-
       if (secondsRemaining <= 1) {
         t.cancel();
-
         setState(() {
           secondsRemaining = 0;
         });
@@ -165,7 +162,6 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            // LOGO
                             Image.asset(
                               "assets/images/antprolgo.png",
                               fit: BoxFit.cover,
@@ -204,6 +200,7 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     ],
                   ),
                 ),
+
                 // OTP CARD
                 Transform.translate(
                   offset: const Offset(0, -130),
@@ -226,7 +223,6 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     ),
                     child: Column(
                       children: [
-                        // TITLE
                         Text(
                           "OTP Verification",
                           style: GoogleFonts.inter(
@@ -236,7 +232,6 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           ),
                         ),
                         SizedBox(height: 12.h),
-                        // DESCRIPTION
                         Text(
                           "Enter the one-time password sent to your\nregistered mobile number or email to securely\naccess your account.",
                           textAlign: TextAlign.center,
@@ -317,7 +312,6 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                       ),
                                     ),
                                     onChanged: (value) {
-                                      // MOVE TO NEXT BOX
                                       if (value.isNotEmpty && index < 5) {
                                         otpFocusNodes[index + 1].requestFocus();
                                       }
@@ -333,12 +327,10 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         // TIMER
                         Align(
                           alignment: Alignment.centerRight,
-
                           child: Text(
                             secondsRemaining > 0
                                 ? "00:${secondsRemaining.toString().padLeft(2, '0')} sec"
                                 : "00:00 sec",
-
                             style: GoogleFonts.inter(
                               fontSize: 11.sp,
                               color: const Color(0xFF7B7B7B),
@@ -354,7 +346,6 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           width: double.infinity,
                           height: 42,
                           child: ElevatedButton(
-                            // 1. Disable button press if controller is executing a request
                             onPressed: _loginController.isLoading
                                 ? null
                                 : () async {
@@ -376,12 +367,10 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                       return;
                                     }
 
-                                    // 2. Combine the 6 boxes into a single string parameter
                                     String completeOtp = otpControllers
                                         .map((c) => c.text.trim())
                                         .join();
 
-                                    // 3. Fire request using both OTP and cached phoneNumber
                                     final userModel = widget.isSignUpFlow
                                         ? await _signupController
                                               .handleVerifySignUpOtp(
@@ -407,7 +396,66 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                     if (!mounted) return;
 
                                     if (userModel != null) {
-                                      // Greet user with their extracted name parameter
+                                      // ✅ SIGN-UP FLOW:
+                                      // account_type comes from widget.accountType
+                                      // passed from SignUpScreen. Write it to
+                                      // storage so HomeScreen can check it.
+                                      if (widget.isSignUpFlow) {
+                                        final accountType =
+                                            widget.accountType ?? '';
+
+                                        // Always save account_type for future logins
+                                        await _secureStorage.write(
+                                          key: 'account_type',
+                                          value: accountType,
+                                        );
+
+                                        // Trigger org dialog on HomeScreen
+                                        // only if org account
+                                        if (accountType == 'organization') {
+                                          await _secureStorage.write(
+                                            key: 'pending_account_type',
+                                            value: 'organization',
+                                          );
+                                        }
+                                      } else {
+                                        // ✅ SIGN-IN FLOW:
+                                        // userModel should have account_type
+                                        // from the API response. Write it so
+                                        // HomeScreen can check it.
+                                        // ⚠️ Replace 'userModel.accountType'
+                                        // with the actual field name your
+                                        // API returns (e.g. userModel.role,
+                                        // userModel.type, etc.)
+                                        final accountType =
+                                            userModel.accountType ?? '';
+
+                                        // Always save account_type for
+                                        // future reference
+                                        await _secureStorage.write(
+                                          key: 'account_type',
+                                          value: accountType,
+                                        );
+
+                                        // Check if org setup was already done
+                                        final orgSetupDone =
+                                            await _secureStorage.read(
+                                              key: 'org_setup_done',
+                                            );
+
+                                        // Trigger org dialog on HomeScreen
+                                        // if org account and setup not done
+                                        if (accountType == 'organization' &&
+                                            orgSetupDone == null) {
+                                          await _secureStorage.write(
+                                            key: 'pending_account_type',
+                                            value: 'organization',
+                                          );
+                                        }
+                                      }
+
+                                      if (!mounted) return;
+
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
@@ -430,7 +478,6 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                       );
                                     } else if (_loginController.errorMessage !=
                                         null) {
-                                      // Display error extracted by our new stack-trace parser
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
@@ -443,7 +490,6 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                       );
                                     } else if (_signupController.errorMessage !=
                                         null) {
-                                      // Display error extracted by our new stack-trace parser
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
@@ -468,7 +514,6 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                     Colors.transparent,
                                   ),
                                 ),
-                            // 4. Switch to white loader inline if async loading state triggers
                             child: Ink(
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(8.r),
@@ -512,23 +557,19 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              "Didn’t receive the code? ",
+                              "Didn't receive the code? ",
                               style: GoogleFonts.inter(
                                 fontSize: 12.sp,
                                 color: const Color(0xFF6C7278),
                                 fontWeight: FontWeight.w400,
                               ),
                             ),
-
                             TextButton(
-                              // The button triggers only if the countdown is finished and the controller isn't busy
                               onPressed:
                                   (secondsRemaining == 0 &&
                                       (!_loginController.isLoading ||
                                           !_signupController.isLoading))
                                   ? () async {
-                                      // 1. Fire off the asynchronous resend network request
-
                                       final isResent = widget.isSignUpFlow
                                           ? await _signupController
                                                 .handleResendSignUpOtp()
@@ -537,7 +578,6 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
                                       if (!mounted) return;
 
-                                      // 2. Handle a successful response envelope dispatch
                                       if (isResent &&
                                           (_loginController.successMessage !=
                                                   null ||
@@ -558,12 +598,9 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                             backgroundColor: Colors.green,
                                           ),
                                         );
-
-                                        // 3. Restart your localized visual clock countdown ticks
                                         startTimer();
-                                      }
-                                      // 4. Handle structural or network failure outputs cleanly
-                                      else if (_loginController.errorMessage !=
+                                      } else if (_loginController
+                                                  .errorMessage !=
                                               null ||
                                           _signupController.errorMessage !=
                                               null) {
@@ -583,19 +620,16 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                         );
                                       }
                                     }
-                                  : null, // Keeps the button disabled visually while loading or while the timer counts down
-
+                                  : null,
                               style: TextButton.styleFrom(
                                 padding: EdgeInsets.zero,
                                 minimumSize: Size.zero,
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
-
                               child: Text(
                                 "Resend",
                                 style: GoogleFonts.inter(
                                   fontSize: 12.sp,
-                                  // Dynamic color change based on active validation state
                                   color:
                                       (secondsRemaining == 0 &&
                                           (!_loginController.isLoading ||
