@@ -1,8 +1,9 @@
-import '../../../tasks/data/models/task_model.dart'; // 🌟 Reuse TaskTime, CreatedByModel, ReportingUserModel
+import '../../../tasks/data/models/task_model.dart'; // Reuse ReportingUserModel, TaskTime, CreatedByModel
 
 class TaskInstanceModel {
   final String id;
   final String taskDocId;
+  final String instanceId; // 🌟 Added to match list payload
   final TaskTime? scheduledTime;
   final DateTime? scheduledDate;
   final String taskType;
@@ -11,16 +12,16 @@ class TaskInstanceModel {
   final String priority;
   final String status;
   final String taskId;
-  final String department; // Plain String in this payload
-  final String organization; // Plain String in this payload
-  final List<String> assignees; // Array of hex strings in this payload
+  final String department;
+  final String organization;
+  final List<ReportingUserModel>
+  assignees; // 🌟 Updated from String to Model to match list payload safely
 
-  // Instance Lifecycle tracking properties
   final String? parentInstance;
-  final CreatedByModel? completedBy; // Structure matches CreatedByModel
+  final CreatedByModel? completedBy;
   final DateTime? completedAt;
   final String? proofSubmission;
-  final CreatedByModel? reviewedBy; // Reuses name/id extraction logic safely
+  final CreatedByModel? reviewedBy;
   final DateTime? reviewedAt;
   final String? reviewNote;
   final CreatedByModel? createdBy;
@@ -28,7 +29,7 @@ class TaskInstanceModel {
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
-  // Flattened recurrence metrics fallback properties
+  // Recurrence metrics
   final String? timePeriod;
   final int? everyN;
   final List<String>? daysOfWeek;
@@ -44,6 +45,7 @@ class TaskInstanceModel {
   TaskInstanceModel({
     required this.id,
     required this.taskDocId,
+    required this.instanceId,
     this.scheduledTime,
     this.scheduledDate,
     required this.taskType,
@@ -82,7 +84,8 @@ class TaskInstanceModel {
   factory TaskInstanceModel.fromJson(Map<String, dynamic> json) {
     return TaskInstanceModel(
       id: json['_id'] ?? '',
-      taskDocId: json['taskDocId'] ?? '',
+      taskDocId: json['taskDocId'] ?? json['_id'] ?? '', // Fallback handle
+      instanceId: json['instanceId'] ?? json['_id'] ?? '', // Fallback handle
       scheduledTime: json['scheduledTime'] != null
           ? TaskTime.fromJson(json['scheduledTime'] as Map<String, dynamic>)
           : null,
@@ -98,7 +101,17 @@ class TaskInstanceModel {
       department: json['department'] ?? '',
       organization: json['organization'] ?? '',
       assignees: json['assignees'] != null
-          ? List<String>.from(json['assignees'])
+          ? (json['assignees'] as List).map((x) {
+              if (x is Map<String, dynamic>) {
+                return ReportingUserModel.fromJson(x);
+              }
+              // Handle fallback string variants gracefully if mixed
+              return ReportingUserModel(
+                id: x.toString(),
+                firstName: '',
+                lastName: '',
+              );
+            }).toList()
           : [],
       parentInstance: json['parentInstance'],
       completedBy: json['completedBy'] != null
@@ -125,8 +138,6 @@ class TaskInstanceModel {
       updatedAt: json['updatedAt'] != null
           ? DateTime.tryParse(json['updatedAt'])
           : null,
-
-      // Recurrence definitions
       timePeriod: json['timePeriod'],
       everyN: json['everyN'] != null ? (json['everyN'] as num).toInt() : null,
       daysOfWeek: json['daysOfWeek'] != null

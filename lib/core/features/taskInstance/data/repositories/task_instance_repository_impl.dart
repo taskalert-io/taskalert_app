@@ -1,3 +1,5 @@
+import 'package:taskalert_app/core/features/taskInstance/data/models/task_instances_response.dart';
+
 import '../../../../network/api_result.dart';
 import '../../../../network/base_api_response.dart';
 import '../../../../network/http_service.dart';
@@ -12,24 +14,20 @@ class TaskInstanceRepositoryImpl implements TaskInstanceRepository {
 
   /// 1. GET: Fetch all task instances for the logged-in user
   @override
-  Future<ApiResult<BaseApiResponse<List<TaskInstanceModel>>>>
+  Future<ApiResult<BaseApiResponse<List<TaskInstancesResponse>>>>
   getAllInstances() async {
     try {
       final responseData = await _httpService.get('/tasks/instances');
+      final responseMap = responseData as Map<String, dynamic>;
 
       final apiResponse = BaseApiResponse.fromJson(
-        responseData as Map<String, dynamic>,
-        (dataJson) {
-          if (dataJson is List) {
-            return dataJson
-                .map(
-                  (item) =>
-                      TaskInstanceModel.fromJson(item as Map<String, dynamic>),
-                )
-                .toList();
-          }
-          return <TaskInstanceModel>[];
-        },
+        responseMap,
+        (json) => (json as List<dynamic>)
+            .map(
+              (item) =>
+                  TaskInstancesResponse.fromJson(item as Map<String, dynamic>),
+            )
+            .toList(),
       );
 
       if (apiResponse.success) return ApiResult.success(apiResponse);

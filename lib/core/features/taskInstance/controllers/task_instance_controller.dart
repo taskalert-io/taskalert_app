@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:taskalert_app/core/features/taskInstance/data/models/task_instance_counts_model.dart';
+import 'package:taskalert_app/core/features/taskInstance/data/models/task_instances_response.dart';
 import 'package:taskalert_app/core/network/api_result.dart';
 import 'package:taskalert_app/core/network/base_api_response.dart';
 import 'package:taskalert_app/core/features/pagination/models/pagination_model.dart';
@@ -25,6 +27,9 @@ class TaskInstanceController extends ChangeNotifier {
   TaskInstanceModel? _selectedInstance;
   TaskInstanceModel? get selectedInstance => _selectedInstance;
 
+  TaskInstanceCountsModel? _instanceCounts;
+  TaskInstanceCountsModel? get instanceCounts => _instanceCounts;
+
   PaginationModel? _pagination;
   PaginationModel? get pagination => _pagination;
 
@@ -45,8 +50,12 @@ class TaskInstanceController extends ChangeNotifier {
 
     if (result is Success) {
       final apiResponse =
-          (result as Success).data as BaseApiResponse<List<TaskInstanceModel>>;
-      _instances = apiResponse.data ?? [];
+          (result as Success).data as BaseApiResponse<TaskInstancesResponse>;
+
+      // Clean, type-safe assignment extracted directly from our custom wrapper
+      _instances = apiResponse.data?.instances ?? [];
+      _instanceCounts = apiResponse.data?.counts;
+
       _pagination = apiResponse.pagination;
     } else if (result is Failure) {
       _errorMessage = (result as Failure).exception.userMessage;

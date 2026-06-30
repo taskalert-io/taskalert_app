@@ -1,9 +1,12 @@
+import 'package:taskalert_app/core/features/taskInstance/data/models/task_instances_response.dart';
+
 import '../../../../network/api_result.dart';
 import '../../../../network/base_api_response.dart';
 import '../models/task_instance_model.dart';
 
 abstract class TaskInstanceRepository {
-  Future<ApiResult<BaseApiResponse<List<TaskInstanceModel>>>> getAllInstances();
+  Future<ApiResult<BaseApiResponse<List<TaskInstancesResponse>>>>
+  getAllInstances();
 
   Future<ApiResult<BaseApiResponse<TaskInstanceModel>>> getInstanceById({
     required String instanceId,

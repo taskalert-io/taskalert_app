@@ -71,10 +71,7 @@ Future<void> init() async {
   );
 
   sl.registerLazySingleton<OrganizationRepository>(
-    () => OrganizationRepositoryImpl(
-      sl<HttpService>(),
-      // sl<FlutterSecureStorage>(),
-    ),
+    () => OrganizationRepositoryImpl(sl<HttpService>()),
   );
   sl.registerFactory(
     () => OrganizationController(sl<OrganizationRepository>()),
