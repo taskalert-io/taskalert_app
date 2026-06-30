@@ -38,20 +38,11 @@ class HomeScreenState extends State<HomeScreen> {
     return permission == 'true';
   }
 
-  /// ✅ FIXED: Now checks BOTH:
-  /// 1. 'pending_account_type' — set during sign-up (first time)
-  /// 2. 'account_type' + 'org_setup_done' — covers sign-in on new device
-  ///    or after storage clear, where pending_account_type was never set
   Future<void> _checkAndShowOrgDialog() async {
     final pendingAccountType = await secureStorage.read(
       key: 'user_requires_organization',
     );
-    // final accountType = await secureStorage.read(key: 'account_type');
-    // final orgSetupDone = await secureStorage.read(key: 'org_setup_done');
 
-    // ✅ Show dialog if EITHER:
-    // - pending_account_type is 'organization' (sign-up flow / sign-in flag)
-    // - OR account_type is 'organization' AND org setup is not done yet
     final shouldShow = (pendingAccountType == 'true');
 
     if (shouldShow && mounted) {

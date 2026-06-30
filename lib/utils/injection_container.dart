@@ -9,6 +9,9 @@ import 'package:taskalert_app/core/features/departments/data/repositories/depart
 import 'package:taskalert_app/core/features/employees/controllers/employee_controller.dart';
 import 'package:taskalert_app/core/features/employees/data/repositories/employee_repository.dart';
 import 'package:taskalert_app/core/features/employees/data/repositories/employee_respository_impl.dart';
+import 'package:taskalert_app/core/features/organization/controllers/organization_controller.dart';
+import 'package:taskalert_app/core/features/organization/data/repositories/organization_repository.dart';
+import 'package:taskalert_app/core/features/organization/data/repositories/organization_repository_impl.dart';
 import 'package:taskalert_app/core/features/tasks/controllers/task_controller.dart';
 import 'package:taskalert_app/core/features/tasks/data/repositories/task_repository.dart';
 import 'package:taskalert_app/core/features/tasks/data/repositories/task_repository_impl.dart';
@@ -56,6 +59,13 @@ Future<void> init() async {
     () => TaskRepositoryImpl(sl<HttpService>()),
   );
   sl.registerFactory(() => TaskController(sl<TaskRepository>()));
+
+  sl.registerLazySingleton<OrganizationRepository>(
+    () => OrganizationRepositoryImpl(sl<HttpService>()),
+  );
+  sl.registerFactory(
+    () => OrganizationController(sl<OrganizationRepository>()),
+  );
 
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(sl<HttpService>(), sl<FlutterSecureStorage>()),
