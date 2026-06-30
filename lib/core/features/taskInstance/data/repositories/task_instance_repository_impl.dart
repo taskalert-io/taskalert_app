@@ -14,21 +14,16 @@ class TaskInstanceRepositoryImpl implements TaskInstanceRepository {
 
   /// 1. GET: Fetch all task instances for the logged-in user
   @override
-  Future<ApiResult<BaseApiResponse<List<TaskInstancesResponse>>>>
+  Future<ApiResult<BaseApiResponse<TaskInstancesResponse>>>
   getAllInstances() async {
     try {
       final responseData = await _httpService.get('/tasks/instances');
       final responseMap = responseData as Map<String, dynamic>;
 
-      final apiResponse = BaseApiResponse.fromJson(
-        responseMap,
-        (json) => (json as List<dynamic>)
-            .map(
-              (item) =>
-                  TaskInstancesResponse.fromJson(item as Map<String, dynamic>),
-            )
-            .toList(),
-      );
+      final apiResponse = BaseApiResponse.fromJson(responseMap, (json) {
+        // Force the factory mapping parser to evaluate the root layout directly
+        return TaskInstancesResponse.fromJson(responseMap, responseMap);
+      });
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
       return ApiResult.failure(

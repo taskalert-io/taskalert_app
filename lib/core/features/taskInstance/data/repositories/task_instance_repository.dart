@@ -5,9 +5,7 @@ import '../../../../network/base_api_response.dart';
 import '../models/task_instance_model.dart';
 
 abstract class TaskInstanceRepository {
-  Future<ApiResult<BaseApiResponse<List<TaskInstancesResponse>>>>
-  getAllInstances();
-
+  Future<ApiResult<BaseApiResponse<TaskInstancesResponse>>> getAllInstances();
   Future<ApiResult<BaseApiResponse<TaskInstanceModel>>> getInstanceById({
     required String instanceId,
   });

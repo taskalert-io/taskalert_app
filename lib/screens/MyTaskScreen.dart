@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:taskalert_app/core/features/taskInstance/controllers/task_instance_controller.dart';
+import 'package:taskalert_app/core/features/taskInstance/data/models/task_instance_counts_model.dart';
+import 'package:taskalert_app/core/features/taskInstance/data/models/task_instance_model.dart';
 import 'package:taskalert_app/core/features/tasks/controllers/task_controller.dart';
 import 'package:taskalert_app/core/features/tasks/data/models/task_model.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
@@ -157,9 +160,10 @@ class MyTaskScreenState extends State<MyTaskScreen> {
   String? _todoError;
   List<TodoItem> _todoItems = [];
 
-  late final TaskController taskController;
+  late final TaskInstanceController taskController;
 
   List<Map<String, dynamic>> tasks = [];
+  List<Map<String, dynamic>> taskCounts = [];
 
   @override
   void initState() {
@@ -167,33 +171,47 @@ class MyTaskScreenState extends State<MyTaskScreen> {
     _fetchTabCounts();
     _fetchTodoItems();
 
-    taskController = sl<TaskController>();
+    taskController = sl<TaskInstanceController>();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await taskController.handleGetAllTasks(assigned: 'to_me');
+      await taskController.handleGetAllInstances();
 
       if (mounted) {
         setState(() {
-          tasks = taskController.tasks.map<Map<String, dynamic>>((
-            TaskModel task,
+          tasks = taskController.instances.map<Map<String, dynamic>>((
+            TaskInstanceModel task,
           ) {
             return {
               "id": task.id,
               "title": task.title,
               "description": task.description,
               "taskType": task.taskType,
-              "status": task.completionStatus,
+              "status": task.status,
               "prioprity": task.priority,
-              "reportingDate": task.reportingDate,
+              "reportingDate": task.scheduledDate,
               "reportingTime":
-                  "${task.reportingTime?.time} ${task.reportingTime?.period}",
+                  "${task.scheduledTime?.time} ${task.scheduledTime?.period}",
 
               // Add any other specific model properties you need here
             };
           }).toList();
+
+          // taskCounts = taskController.instanceCounts?.map((
+          //   TaskInstanceCountsModel instanceCounts,
+          // ) {
+          //   return {
+          //     "today": instanceCounts.today,
+          //     "tomorrow": instanceCounts.tomorrow,
+          //     "thisWeek": instanceCounts.thisWeek,
+          //     "nextWeek": instanceCounts.nextWeek,
+
+          //     // Add any other specific model properties you need here
+          //   };
+          // }).toList();
         });
 
         print(tasks);
+        print(taskCounts);
       }
     });
   }
