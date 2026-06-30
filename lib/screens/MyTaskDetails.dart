@@ -292,9 +292,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       final payload = _buildModel().toJson();
       debugPrint('API payload: $payload'); // remove in production
 
-      // TODO: replace with real API call
-      // await yourApiService.patch('/tasks/${widget.taskId}', payload);
-
       await Future.delayed(const Duration(milliseconds: 300)); // simulated
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

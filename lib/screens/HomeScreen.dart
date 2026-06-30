@@ -44,21 +44,19 @@ class HomeScreenState extends State<HomeScreen> {
   ///    or after storage clear, where pending_account_type was never set
   Future<void> _checkAndShowOrgDialog() async {
     final pendingAccountType = await secureStorage.read(
-      key: 'pending_account_type',
+      key: 'user_requires_organization',
     );
-    final accountType = await secureStorage.read(key: 'account_type');
-    final orgSetupDone = await secureStorage.read(key: 'org_setup_done');
+    // final accountType = await secureStorage.read(key: 'account_type');
+    // final orgSetupDone = await secureStorage.read(key: 'org_setup_done');
 
     // ✅ Show dialog if EITHER:
     // - pending_account_type is 'organization' (sign-up flow / sign-in flag)
     // - OR account_type is 'organization' AND org setup is not done yet
-    final shouldShow =
-        (pendingAccountType == 'organization') ||
-        (accountType == 'organization' && orgSetupDone == null);
+    final shouldShow = (pendingAccountType == 'true');
 
     if (shouldShow && mounted) {
       // ✅ Clean up pending flag before showing dialog
-      await secureStorage.delete(key: 'pending_account_type');
+      // await secureStorage.delete(key: 'pending_account_type');
 
       await showDialog(
         context: context,
