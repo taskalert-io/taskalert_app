@@ -103,6 +103,8 @@ class OrganizationController extends ChangeNotifier {
           (result as Success).data as BaseApiResponse<OrganizationModel>;
       _successMessage = apiResponse.message;
 
+      print(_successMessage);
+
       if (apiResponse.data != null) {
         _organizations.insert(0, apiResponse.data!); // Optimistically prepend
       }
@@ -110,6 +112,8 @@ class OrganizationController extends ChangeNotifier {
       return true;
     } else if (result is Failure) {
       _errorMessage = (result as Failure).exception.userMessage;
+      print(_errorMessage);
+
       notifyListeners();
       return false;
     }

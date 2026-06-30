@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../../network/api_result.dart';
 import '../../../../network/base_api_response.dart';
 import '../../../../network/http_service.dart';
@@ -8,6 +9,7 @@ import 'organization_repository.dart';
 
 class OrganizationRepositoryImpl implements OrganizationRepository {
   final HttpService _httpService;
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   OrganizationRepositoryImpl(this._httpService);
 
@@ -46,7 +48,15 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
         (json) => OrganizationModel.fromJson(json as Map<String, dynamic>),
       );
 
-      if (apiResponse.success) return ApiResult.success(apiResponse);
+      if (apiResponse.success && apiResponse.data != null) {
+        await _secureStorage.write(
+          key: 'user_requires_organization',
+          value: 'false',
+        );
+        return ApiResult.success(apiResponse);
+      }
+
+      // if (apiResponse.success) return ApiResult.success(apiResponse);
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
