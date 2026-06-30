@@ -1,0 +1,153 @@
+import '../../../../network/api_result.dart';
+import '../../../../network/base_api_response.dart';
+import '../../../../network/http_service.dart';
+import 'package:taskalert_app/core/errors/network_exceptions.dart';
+import '../models/task_instance_model.dart';
+import 'task_instance_repository.dart';
+
+class TaskInstanceRepositoryImpl implements TaskInstanceRepository {
+  final HttpService _httpService;
+
+  TaskInstanceRepositoryImpl(this._httpService);
+
+  /// 1. GET: Fetch all task instances for the logged-in user
+  @override
+  Future<ApiResult<BaseApiResponse<List<TaskInstanceModel>>>>
+  getAllInstances() async {
+    try {
+      final responseData = await _httpService.get('/tasks/instances');
+
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData as Map<String, dynamic>,
+        (dataJson) {
+          if (dataJson is List) {
+            return dataJson
+                .map(
+                  (item) =>
+                      TaskInstanceModel.fromJson(item as Map<String, dynamic>),
+                )
+                .toList();
+          }
+          return <TaskInstanceModel>[];
+        },
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    }
+  }
+
+  /// 2. GET: Fetch specific task instance metrics details
+  @override
+  Future<ApiResult<BaseApiResponse<TaskInstanceModel>>> getInstanceById({
+    required String instanceId,
+  }) async {
+    try {
+      final responseData = await _httpService.get(
+        '/tasks/instances/$instanceId',
+      );
+
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData as Map<String, dynamic>,
+        (json) => TaskInstanceModel.fromJson(json as Map<String, dynamic>),
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    }
+  }
+
+  /// 3. PUT: Full Configuration Instance Update (Requires Task ID & Instance ID)
+  @override
+  Future<ApiResult<BaseApiResponse<TaskInstanceModel>>>
+  updateInstanceConfiguration({
+    required String taskId,
+    required String instanceId,
+    required String status,
+    required String priority,
+    required List<String> assigneeIds,
+    required Map<String, String> scheduledTime,
+    required String scope,
+  }) async {
+    try {
+      final Map<String, dynamic> body = {
+        "status": status,
+        "priority": priority,
+        "assignees": assigneeIds,
+        "scheduledTime": scheduledTime,
+        "scope": scope,
+      };
+
+      final responseData = await _httpService.put(
+        '/tasks/$taskId/instances/$instanceId',
+        body: body,
+      );
+
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData as Map<String, dynamic>,
+        (json) => TaskInstanceModel.fromJson(json as Map<String, dynamic>),
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    }
+  }
+
+  /// 4. PUT: Partial metadata patch updates for standalone instances
+  @override
+  Future<ApiResult<BaseApiResponse<TaskInstanceModel>>>
+  updateInstanceStatusPriorityAssignees({
+    required String instanceId,
+    String? status,
+    String? priority,
+    List<String>? assigneeIds,
+  }) async {
+    try {
+      final Map<String, dynamic> body = {};
+      if (status != null && status.isNotEmpty) body['status'] = status;
+      if (priority != null && priority.isNotEmpty) body['priority'] = priority;
+      if (assigneeIds != null) body['assignees'] = assigneeIds;
+
+      final responseData = await _httpService.put(
+        '/tasks/instance/update/$instanceId',
+        body: body,
+      );
+
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData as Map<String, dynamic>,
+        (json) => TaskInstanceModel.fromJson(json as Map<String, dynamic>),
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    }
+  }
+}

@@ -1,0 +1,173 @@
+import 'package:flutter/material.dart';
+import 'package:taskalert_app/core/network/api_result.dart';
+import 'package:taskalert_app/core/network/base_api_response.dart';
+import 'package:taskalert_app/core/features/pagination/models/pagination_model.dart';
+import '../data/models/task_instance_model.dart';
+import '../data/repositories/task_instance_repository.dart';
+
+class TaskInstanceController extends ChangeNotifier {
+  final TaskInstanceRepository _repository;
+
+  TaskInstanceController(this._repository);
+
+  bool _isLoading = false;
+  bool get isLoading => _isLoading;
+
+  String? _errorMessage;
+  String? get errorMessage => _errorMessage;
+
+  String? _successMessage;
+  String? get successMessage => _successMessage;
+
+  List<TaskInstanceModel> _instances = [];
+  List<TaskInstanceModel> get instances => _instances;
+
+  TaskInstanceModel? _selectedInstance;
+  TaskInstanceModel? get selectedInstance => _selectedInstance;
+
+  PaginationModel? _pagination;
+  PaginationModel? get pagination => _pagination;
+
+  void clearMessages() {
+    _errorMessage = null;
+    _successMessage = null;
+    notifyListeners();
+  }
+
+  /// 1. Fetch All Instances
+  Future<void> handleGetAllInstances() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    final result = await _repository.getAllInstances();
+    _isLoading = false;
+
+    if (result is Success) {
+      final apiResponse =
+          (result as Success).data as BaseApiResponse<List<TaskInstanceModel>>;
+      _instances = apiResponse.data ?? [];
+      _pagination = apiResponse.pagination;
+    } else if (result is Failure) {
+      _errorMessage = (result as Failure).exception.userMessage;
+    }
+    notifyListeners();
+  }
+
+  /// 2. Fetch Instance Details
+  Future<void> handleGetInstanceById({required String instanceId}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    final result = await _repository.getInstanceById(instanceId: instanceId);
+    _isLoading = false;
+
+    if (result is Success) {
+      final apiResponse =
+          (result as Success).data as BaseApiResponse<TaskInstanceModel>;
+      _selectedInstance = apiResponse.data;
+    } else if (result is Failure) {
+      _errorMessage = (result as Failure).exception.userMessage;
+    }
+    notifyListeners();
+  }
+
+  /// 3. Update Full Configuration Instance
+  Future<bool> handleUpdateInstanceConfiguration({
+    required String taskId,
+    required String instanceId,
+    required String status,
+    required String priority,
+    required List<String> assigneeIds,
+    required String time,
+    required String period,
+    required String scope,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _successMessage = null;
+    notifyListeners();
+
+    final result = await _repository.updateInstanceConfiguration(
+      taskId: taskId,
+      instanceId: instanceId,
+      status: status,
+      priority: priority,
+      assigneeIds: assigneeIds,
+      scheduledTime: {"time": time, "period": period},
+      scope: scope,
+    );
+
+    _isLoading = false;
+
+    if (result is Success) {
+      final apiResponse =
+          (result as Success).data as BaseApiResponse<TaskInstanceModel>;
+      _successMessage = apiResponse.message;
+
+      // Sync data inside local state tracking collections
+      final index = _instances.indexWhere(
+        (element) => element.id == instanceId,
+      );
+      if (index != -1 && apiResponse.data != null) {
+        _instances[index] = apiResponse.data!;
+      }
+      if (_selectedInstance?.id == instanceId) {
+        _selectedInstance = apiResponse.data;
+      }
+      notifyListeners();
+      return true;
+    } else if (result is Failure) {
+      _errorMessage = (result as Failure).exception.userMessage;
+      notifyListeners();
+      return false;
+    }
+    return false;
+  }
+
+  /// 4. Partial Updates for Status, Priority, and Assignees
+  Future<bool> handleUpdateInstanceStatusPriorityAssignees({
+    required String instanceId,
+    String? status,
+    String? priority,
+    List<String>? assigneeIds,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _successMessage = null;
+    notifyListeners();
+
+    final result = await _repository.updateInstanceStatusPriorityAssignees(
+      instanceId: instanceId,
+      status: status,
+      priority: priority,
+      assigneeIds: assigneeIds,
+    );
+
+    _isLoading = false;
+
+    if (result is Success) {
+      final apiResponse =
+          (result as Success).data as BaseApiResponse<TaskInstanceModel>;
+      _successMessage = apiResponse.message;
+
+      final index = _instances.indexWhere(
+        (element) => element.id == instanceId,
+      );
+      if (index != -1 && apiResponse.data != null) {
+        _instances[index] = apiResponse.data!;
+      }
+      if (_selectedInstance?.id == instanceId) {
+        _selectedInstance = apiResponse.data;
+      }
+      notifyListeners();
+      return true;
+    } else if (result is Failure) {
+      _errorMessage = (result as Failure).exception.userMessage;
+      notifyListeners();
+      return false;
+    }
+    return false;
+  }
+}

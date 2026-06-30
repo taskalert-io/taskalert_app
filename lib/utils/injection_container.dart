@@ -12,6 +12,9 @@ import 'package:taskalert_app/core/features/employees/data/repositories/employee
 import 'package:taskalert_app/core/features/organization/controllers/organization_controller.dart';
 import 'package:taskalert_app/core/features/organization/data/repositories/organization_repository.dart';
 import 'package:taskalert_app/core/features/organization/data/repositories/organization_repository_impl.dart';
+import 'package:taskalert_app/core/features/taskInstance/controllers/task_instance_controller.dart';
+import 'package:taskalert_app/core/features/taskInstance/data/repositories/task_instance_repository.dart';
+import 'package:taskalert_app/core/features/taskInstance/data/repositories/task_instance_repository_impl.dart';
 import 'package:taskalert_app/core/features/tasks/controllers/task_controller.dart';
 import 'package:taskalert_app/core/features/tasks/data/repositories/task_repository.dart';
 import 'package:taskalert_app/core/features/tasks/data/repositories/task_repository_impl.dart';
@@ -59,6 +62,13 @@ Future<void> init() async {
     () => TaskRepositoryImpl(sl<HttpService>()),
   );
   sl.registerFactory(() => TaskController(sl<TaskRepository>()));
+
+  sl.registerLazySingleton<TaskInstanceRepository>(
+    () => TaskInstanceRepositoryImpl(sl<HttpService>()),
+  );
+  sl.registerFactory(
+    () => TaskInstanceController(sl<TaskInstanceRepository>()),
+  );
 
   sl.registerLazySingleton<OrganizationRepository>(
     () => OrganizationRepositoryImpl(
