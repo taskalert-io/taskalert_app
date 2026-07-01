@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import 'package:taskalert_app/core/features/taskInstance/controllers/task_instance_controller.dart';
+import 'package:taskalert_app/core/features/taskInstance/data/models/task_instance_model.dart';
 import 'package:taskalert_app/screens/CreateOneTimeScreen.dart';
+import 'package:taskalert_app/utils/injection_container.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
@@ -23,13 +27,52 @@ class HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
 
+  late final TaskInstanceController taskController;
+  String startDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+  String endDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+  List<Map<String, dynamic>> tasks = [];
+
   @override
   void initState() {
     super.initState();
     // ✅ After HomeScreen is fully built and visible on screen,
     // check if we need to show the OrganizationSetupDialog.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    taskController = sl<TaskInstanceController>();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       _checkAndShowOrgDialog();
+
+      await taskController.handleGetAllInstances(
+        assigned: 'to_me',
+        status: 'todo',
+        // order: '',
+        // sortBy: '',
+        startDate: startDate,
+        endDate: endDate,
+      );
+
+      final mappedTasks = taskController.instances.map<Map<String, dynamic>>((
+        TaskInstanceModel task,
+      ) {
+        return {
+          "id": task.id,
+          "title": task.title,
+          "description": task.description,
+          "taskType": task.taskType,
+          "status": task.status,
+          "priority": task.priority,
+          "reportingDate": task.scheduledDate,
+          "reportingTime":
+              "${task.scheduledTime?.time} ${task.scheduledTime?.period}",
+
+          "createdBy":
+              "${task.createdBy?.firstName} ${task.createdBy?.lastName}",
+        };
+      }).toList();
+
+      setState(() {
+        tasks = mappedTasks;
+      });
     });
   }
 
@@ -362,211 +405,238 @@ class HomeScreenState extends State<HomeScreen> {
                               ),
                               child: Column(
                                 children: [
-                                  GestureDetector(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              TaskDetailScreen(
-                                                userId: widget.userId,
-                                                taskId: '1',
+                                  for (final task in tasks) ...[
+                                    GestureDetector(
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                TaskDetailScreen(
+                                                  userId: widget.userId,
+                                                  taskId: task["id"],
+                                                ),
+                                          ),
+                                        );
+                                      },
+                                      child: _buildTodoItem(
+                                        image: "",
+                                        title: task["title"],
+                                        status:
+                                            task["status"][0].toUpperCase() +
+                                            task["status"].substring(1),
+                                        statusColor: task["status"] == "todo"
+                                            ? Colors.red
+                                            : (task["status"] == "In progress"
+                                                  ? Colors.orange
+                                                  : Colors.green),
+                                        requestedBy:
+                                            "Assigned by ${task["createdBy"]}",
+                                        priority:
+                                            task["priority"][0].toUpperCase() +
+                                            task["priority"].substring(1),
+                                        priorityColor:
+                                            task["priority"].toLowerCase() ==
+                                                "high"
+                                            ? Colors.red
+                                            : Colors.green,
+                                        scheduledDate: DateFormat('yyyy-MM-dd')
+                                            .format(
+                                              DateTime.parse(
+                                                task['reportingDate']
+                                                        ?.toString() ??
+                                                    '',
                                               ),
-                                        ),
-                                      );
-                                    },
-                                    child: _buildTodoItem(
-                                      image: "https://i.pravatar.cc/150?img=12",
-                                      title: "Retail Market",
-                                      status: "Pending",
-                                      statusColor: Colors.red,
-                                      requestedBy: "Assign to Guadalupe Miró",
-                                      priority: "Low",
-                                      priorityColor: Colors.green,
+                                            ),
+                                        scheduledTime:
+                                            task['reportingTime']?.toString() ??
+                                            '',
+                                      ),
                                     ),
-                                  ),
-                                  SizedBox(height: 14.h),
-                                  Divider(color: Colors.grey.shade200),
-                                  SizedBox(height: 14.h),
-                                  GestureDetector(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              TaskDetailScreen(
-                                                userId: widget.userId,
-                                                taskId: '2',
-                                              ),
-                                        ),
-                                      );
-                                    },
-                                    child: _buildTodoItem(
-                                      image: "https://i.pravatar.cc/150?img=18",
-                                      title: "Yearly Food Service",
-                                      status: "In progress",
-                                      statusColor: Colors.orange,
-                                      requestedBy: "Requested by John Kyte",
-                                      priority: "High",
-                                      priorityColor: Colors.red,
-                                    ),
-                                  ),
-                                  SizedBox(height: 14.h),
-                                  Divider(color: Colors.grey.shade200),
-                                  SizedBox(height: 14.h),
-                                  GestureDetector(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              TaskDetailScreen(
-                                                userId: widget.userId,
-                                                taskId: '3',
-                                              ),
-                                        ),
-                                      );
-                                    },
-                                    child: _buildTodoItem(
-                                      image: "https://i.pravatar.cc/150?img=22",
-                                      title: "Manufacture PM",
-                                      status: "Done",
-                                      statusColor: Colors.green,
-                                      requestedBy:
-                                          "Requested by Guadalupe Miró",
-                                      priority: "Low",
-                                      priorityColor: Colors.green,
-                                    ),
-                                  ),
+                                    SizedBox(height: 14.h),
+                                    Divider(color: Colors.grey.shade200),
+                                  ],
+
+                                  // SizedBox(height: 14.h),
+                                  // GestureDetector(
+                                  //   onTap: () {
+                                  //     Navigator.push(
+                                  //       context,
+                                  //       MaterialPageRoute(
+                                  //         builder: (context) =>
+                                  //             TaskDetailScreen(
+                                  //               userId: widget.userId,
+                                  //               taskId: '2',
+                                  //             ),
+                                  //       ),
+                                  //     );
+                                  //   },
+                                  //   child: _buildTodoItem(
+                                  //     image: "https://i.pravatar.cc/150?img=18",
+                                  //     title: "Yearly Food Service",
+                                  //     status: "In progress",
+                                  //     statusColor: Colors.orange,
+                                  //     requestedBy: "Requested by John Kyte",
+                                  //     priority: "High",
+                                  //     priorityColor: Colors.red,
+                                  //   ),
+                                  // ),
+                                  // SizedBox(height: 14.h),
+                                  // Divider(color: Colors.grey.shade200),
+                                  // SizedBox(height: 14.h),
+                                  // GestureDetector(
+                                  //   onTap: () {
+                                  //     Navigator.push(
+                                  //       context,
+                                  //       MaterialPageRoute(
+                                  //         builder: (context) =>
+                                  //             TaskDetailScreen(
+                                  //               userId: widget.userId,
+                                  //               taskId: '3',
+                                  //             ),
+                                  //       ),
+                                  //     );
+                                  //   },
+                                  //   child: _buildTodoItem(
+                                  //     image: "https://i.pravatar.cc/150?img=22",
+                                  //     title: "Manufacture PM",
+                                  //     status: "Done",
+                                  //     statusColor: Colors.green,
+                                  //     requestedBy:
+                                  //         "Requested by Guadalupe Miró",
+                                  //     priority: "Low",
+                                  //     priorityColor: Colors.green,
+                                  //   ),
+                                  // ),
                                 ],
                               ),
                             ),
 
-                            /// PAGE 2
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: Column(
-                                children: [
-                                  GestureDetector(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              TaskDetailScreen(
-                                                userId: widget.userId,
-                                                taskId: '4',
-                                              ),
-                                        ),
-                                      );
-                                    },
-                                    child: _buildTodoItem(
-                                      image: "https://i.pravatar.cc/150?img=30",
-                                      title: "Office Cleaning",
-                                      status: "Pending",
-                                      statusColor: Colors.red,
-                                      requestedBy: "Requested by Alex",
-                                      priority: "Low",
-                                      priorityColor: Colors.green,
-                                    ),
-                                  ),
-                                  SizedBox(height: 14.h),
-                                  Divider(color: Colors.grey.shade200),
-                                  SizedBox(height: 14.h),
-                                  GestureDetector(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              TaskDetailScreen(
-                                                userId: widget.userId,
-                                                taskId: '5',
-                                              ),
-                                        ),
-                                      );
-                                    },
-                                    child: _buildTodoItem(
-                                      image: "https://i.pravatar.cc/150?img=35",
-                                      title: "Electrical Repair",
-                                      status: "In progress",
-                                      statusColor: Colors.orange,
-                                      requestedBy: "Requested by Smith",
-                                      priority: "High",
-                                      priorityColor: Colors.red,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            // /// PAGE 2
+                            // Padding(
+                            //   padding: const EdgeInsets.symmetric(
+                            //     horizontal: 16,
+                            //   ),
+                            //   child: Column(
+                            //     children: [
+                            //       GestureDetector(
+                            //         onTap: () {
+                            //           Navigator.push(
+                            //             context,
+                            //             MaterialPageRoute(
+                            //               builder: (context) =>
+                            //                   TaskDetailScreen(
+                            //                     userId: widget.userId,
+                            //                     taskId: '4',
+                            //                   ),
+                            //             ),
+                            //           );
+                            //         },
+                            //         child: _buildTodoItem(
+                            //           image: "https://i.pravatar.cc/150?img=30",
+                            //           title: "Office Cleaning",
+                            //           status: "Pending",
+                            //           statusColor: Colors.red,
+                            //           requestedBy: "Requested by Alex",
+                            //           priority: "Low",
+                            //           priorityColor: Colors.green,
+                            //         ),
+                            //       ),
+                            //       SizedBox(height: 14.h),
+                            //       Divider(color: Colors.grey.shade200),
+                            //       SizedBox(height: 14.h),
+                            //       GestureDetector(
+                            //         onTap: () {
+                            //           Navigator.push(
+                            //             context,
+                            //             MaterialPageRoute(
+                            //               builder: (context) =>
+                            //                   TaskDetailScreen(
+                            //                     userId: widget.userId,
+                            //                     taskId: '5',
+                            //                   ),
+                            //             ),
+                            //           );
+                            //         },
+                            //         child: _buildTodoItem(
+                            //           image: "https://i.pravatar.cc/150?img=35",
+                            //           title: "Electrical Repair",
+                            //           status: "In progress",
+                            //           statusColor: Colors.orange,
+                            //           requestedBy: "Requested by Smith",
+                            //           priority: "High",
+                            //           priorityColor: Colors.red,
+                            //         ),
+                            //       ),
+                            //     ],
+                            //   ),
+                            // ),
 
-                            /// PAGE 3
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: Column(
-                                children: [
-                                  GestureDetector(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              TaskDetailScreen(
-                                                userId: widget.userId,
-                                                taskId: '6',
-                                              ),
-                                        ),
-                                      );
-                                    },
-                                    child: _buildTodoItem(
-                                      image: "https://i.pravatar.cc/150?img=40",
-                                      title: "Water Supply",
-                                      status: "Done",
-                                      statusColor: Colors.green,
-                                      requestedBy: "Requested by Jacob",
-                                      priority: "Low",
-                                      priorityColor: Colors.green,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            // /// PAGE 3
+                            // Padding(
+                            //   padding: const EdgeInsets.symmetric(
+                            //     horizontal: 16,
+                            //   ),
+                            //   child: Column(
+                            //     children: [
+                            //       GestureDetector(
+                            //         onTap: () {
+                            //           Navigator.push(
+                            //             context,
+                            //             MaterialPageRoute(
+                            //               builder: (context) =>
+                            //                   TaskDetailScreen(
+                            //                     userId: widget.userId,
+                            //                     taskId: '6',
+                            //                   ),
+                            //             ),
+                            //           );
+                            //         },
+                            //         child: _buildTodoItem(
+                            //           image: "https://i.pravatar.cc/150?img=40",
+                            //           title: "Water Supply",
+                            //           status: "Done",
+                            //           statusColor: Colors.green,
+                            //           requestedBy: "Requested by Jacob",
+                            //           priority: "Low",
+                            //           priorityColor: Colors.green,
+                            //         ),
+                            //       ),
+                            //     ],
+                            //   ),
+                            // ),
                           ],
                         ),
                       ),
 
                       /// DOTS
-                      ValueListenableBuilder<int>(
-                        valueListenable: todoCurrentPageNotifier,
-                        builder: (context, todoCurrentPage, child) {
-                          return Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: List.generate(
-                              3,
-                              (index) => GestureDetector(
-                                onTap: () {
-                                  _todoController.animateToPage(
-                                    index,
-                                    duration: const Duration(milliseconds: 300),
-                                    curve: Curves.easeInOut,
-                                  );
-                                  todoCurrentPageNotifier.value = index;
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 3,
-                                  ),
-                                  child: _dot(todoCurrentPage == index),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                      // ValueListenableBuilder<int>(
+                      //   valueListenable: todoCurrentPageNotifier,
+                      //   builder: (context, todoCurrentPage, child) {
+                      //     return Row(
+                      //       mainAxisAlignment: MainAxisAlignment.center,
+                      //       children: List.generate(
+                      //         3,
+                      //         (index) => GestureDetector(
+                      //           onTap: () {
+                      //             _todoController.animateToPage(
+                      //               index,
+                      //               duration: const Duration(milliseconds: 300),
+                      //               curve: Curves.easeInOut,
+                      //             );
+                      //             todoCurrentPageNotifier.value = index;
+                      //           },
+                      //           child: Padding(
+                      //             padding: const EdgeInsets.symmetric(
+                      //               horizontal: 3,
+                      //             ),
+                      //             child: _dot(todoCurrentPage == index),
+                      //           ),
+                      //         ),
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
                     ],
                   ),
                 ),
@@ -1038,6 +1108,8 @@ class HomeScreenState extends State<HomeScreen> {
     required Color statusColor,
     required String requestedBy,
     required String priority,
+    required String scheduledDate,
+    required String scheduledTime,
     required Color priorityColor,
   }) {
     return Row(
@@ -1128,7 +1200,7 @@ class HomeScreenState extends State<HomeScreen> {
                   ),
                   SizedBox(width: 4.w),
                   Text(
-                    "12.05.2026",
+                    scheduledDate,
                     style: GoogleFonts.inter(
                       fontSize: 12.sp,
                       color: Color(0xFF324054),
@@ -1138,7 +1210,7 @@ class HomeScreenState extends State<HomeScreen> {
                   Icon(Icons.access_time, size: 14.r, color: Color(0xFF324054)),
                   SizedBox(width: 4.w),
                   Text(
-                    "09:30 AM",
+                    scheduledTime,
                     style: GoogleFonts.inter(
                       fontSize: 12.sp,
                       color: Color(0xFF324054),
