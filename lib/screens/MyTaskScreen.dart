@@ -164,6 +164,12 @@ class MyTaskScreenState extends State<MyTaskScreen> {
   Map<String, dynamic> taskCounts = {};
   Map<String, dynamic> categorizedTasks = {};
 
+  String sortBy = 'scheduledDate';
+  String order = 'asc';
+
+  String startDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+  String endDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
   @override
   void initState() {
     super.initState();
@@ -172,80 +178,84 @@ class MyTaskScreenState extends State<MyTaskScreen> {
     taskController = sl<TaskInstanceController>();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      // final startDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      // final endDate = startDate;
+      loadTasks('to_me', order, sortBy, startDate, endDate);
+    });
+  }
 
-      await taskController.handleGetAllInstances(
-        assigned: 'to_me',
-        order: 'asc',
-        // startDate: startDate,
-        // endDate: endDate,
+  Future<void> loadTasks(assigned, order, sortBy, startDate, endDate) async {
+    await taskController.handleGetAllInstances(
+      assigned: assigned,
+      order: order,
+      sortBy: sortBy,
+      startDate: startDate,
+      endDate: endDate,
+    );
+
+    if (!mounted) return;
+
+    final mappedTasks = taskController.instances.map<Map<String, dynamic>>((
+      TaskInstanceModel task,
+    ) {
+      return {
+        "id": task.id,
+        "title": task.title,
+        "description": task.description,
+        "taskType": task.taskType,
+        "status": task.status,
+        "priority": task.priority,
+        "reportingDate": task.scheduledDate,
+        "reportingTime":
+            "${task.scheduledTime?.time} ${task.scheduledTime?.period}",
+
+        "createdBy": "${task.createdBy?.firstName} ${task.createdBy?.lastName}",
+      };
+    }).toList();
+
+    final groupedTasks = <String, Map<String, dynamic>>{};
+
+    for (final task in mappedTasks) {
+      final status = task['status']?.toString() ?? 'Unknown';
+
+      groupedTasks.putIfAbsent(
+        status,
+        () => {'count': 0, 'tasks': <Map<String, dynamic>>[]},
       );
 
-      if (mounted) {
-        setState(() {
-          tasks = taskController.instances.map<Map<String, dynamic>>((
-            TaskInstanceModel task,
-          ) {
-            return {
-              "id": task.id,
-              "title": task.title,
-              "description": task.description,
-              "taskType": task.taskType,
-              "status": task.status,
-              "prioprity": task.priority,
-              "reportingDate": task.scheduledDate,
-              "reportingTime":
-                  "${task.scheduledTime?.time} ${task.scheduledTime?.period}",
+      groupedTasks[status]!['tasks'].add(task);
+      groupedTasks[status]!['count']++;
+    }
 
-              // Add any other specific model properties you need here
-            };
-          }).toList();
+    setState(() {
+      tasks = mappedTasks;
+      categorizedTasks = groupedTasks;
 
-          for (final task in tasks) {
-            final status = task['status']?.toString() ?? 'Unknown';
+      taskCounts['today'] = taskController.instanceCounts?.today ?? 0;
+      taskCounts['tomorrow'] = taskController.instanceCounts?.tomorrow ?? 0;
+      taskCounts['thisWeek'] = taskController.instanceCounts?.thisWeek ?? 0;
+      taskCounts['nextWeek'] = taskController.instanceCounts?.nextWeek ?? 0;
 
-            categorizedTasks.putIfAbsent(
-              status,
-              () => {'count': 0, 'tasks': <Map<String, dynamic>>[]},
-            );
+      _tabs = [
+        {'label': 'Today', 'key': 'today', 'count': taskCounts['today']},
+        {
+          'label': 'Next Day',
+          'key': 'next_day',
+          'count': taskCounts['tomorrow'],
+        },
 
-            categorizedTasks[status]!['tasks'].add(task);
-            categorizedTasks[status]!['count']++;
-          }
-          print(categorizedTasks);
-
-          taskCounts['today'] = taskController.instanceCounts!.today;
-          taskCounts['tomorrow'] = taskController.instanceCounts!.tomorrow;
-          taskCounts['thisWeek'] = taskController.instanceCounts!.thisWeek;
-          taskCounts['nextWeek'] = taskController.instanceCounts!.nextWeek;
-
-          _tabs = [
-            {'label': 'Today', 'key': 'today', 'count': taskCounts['today']},
-            {
-              'label': 'Next Day',
-              'key': 'next_day',
-              'count': taskCounts['tomorrow'],
-            },
-            {
-              'label': 'This Week',
-              'key': 'this_week',
-              'count': taskCounts['thisWeek'],
-            },
-            {
-              'label': 'Next Week',
-              'key': 'next_week',
-              'count': taskCounts['nextWeek'],
-            },
-          ];
-        });
-
-        _fetchTodoItems();
-
-        // print(tasks);
-        // print(taskCounts);
-      }
+        {
+          'label': 'This Week',
+          'key': 'this_week',
+          'count': taskCounts['thisWeek'],
+        },
+        {
+          'label': 'Next Week',
+          'key': 'next_week',
+          'count': taskCounts['nextWeek'],
+        },
+      ];
     });
+
+    _fetchTodoItems();
   }
 
   @override
@@ -276,13 +286,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
     });
 
     try {
-      print('fetcjhing tofdo');
-      // final tabKey = _tabs[_selectedTab]['key'] as String;
-      // final items = await _api.getTodoItems(range: tabKey, sort: selectedSort);
-      // _todoItems = items;
-
-      // Placeholder sample data (remove once the real API is wired up):
-
       final List<TodoItem> todoItems = [];
 
       categorizedTasks.forEach((status, data) {
@@ -290,33 +293,35 @@ class MyTaskScreenState extends State<MyTaskScreen> {
             List<Map<String, dynamic>>.from(data['tasks']);
 
         for (final task in tasks) {
-          if (task['status'] == 'todo') {
-            todoItems.add(
-              // TodoItem(
-              //   id: task['id']?.toString() ?? '',
-              //   image: task['image'] ?? '',
-              //   title: task['title'] ?? '',
-              //   status: status,
-              //   requestedBy: task['requestedBy'] ?? '',
-              //   priority: task['priority'] ?? '',
-              //   date: task['reportingDate']?.toString() ?? '',
-              //   time: task['reportingTime']?.toString() ?? '',
-              // ),
-              TodoItem(
-                id: task['id']?.toString() ?? '',
-                title: task['title'] ?? '',
+          // if (task['status'] == 'todo') {
 
-                image: "",
-                status: 'Pending',
-                requestedBy: "Assign to Guadalupe Miró",
-                priority: "Low",
-                date: DateFormat('yyyy-MM-dd').format(
-                  DateTime.parse(task['reportingDate']?.toString() ?? ''),
-                ),
-                time: task['reportingTime']?.toString() ?? '',
-              ),
-            );
+          var taskStatus = task['status'];
+          if (taskStatus == 'completed') {
+            taskStatus = 'Done';
+          } else if (taskStatus == 'inProgress') {
+            taskStatus = 'In Progress';
+          } else {
+            taskStatus = 'Pending';
           }
+
+          todoItems.add(
+            TodoItem(
+              id: task['id']?.toString() ?? '',
+              title: task['title'] ?? '',
+
+              image: "",
+              status: taskStatus,
+              requestedBy: "Assigned by ${task['createdBy']}",
+              priority:
+                  task['priority'][0].toUpperCase() +
+                  task['priority'].substring(1),
+              date: DateFormat(
+                'yyyy-MM-dd',
+              ).format(DateTime.parse(task['reportingDate']?.toString() ?? '')),
+              time: task['reportingTime']?.toString() ?? '',
+            ),
+          );
+          // }
         }
       });
 
@@ -526,6 +531,8 @@ class MyTaskScreenState extends State<MyTaskScreen> {
     required VoidCallback onToggleExpand,
   }) {
     final items = _itemsForSection(sectionKey);
+
+    print(items);
 
     return Container(
       margin: EdgeInsets.only(left: 15.w, right: 15.w, bottom: 15.h),
@@ -975,7 +982,63 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                         onTap: () {
                           if (_selectedTab == i) return;
                           setState(() => _selectedTab = i);
-                          _fetchTodoItems();
+                          print(_tabs[i]["label"]);
+
+                          final now = DateTime.now();
+                          final formatter = DateFormat('yyyy-MM-dd');
+
+                          DateTime startDateVal;
+                          DateTime endDateVal;
+
+                          switch (_tabs[i]["label"]) {
+                            case 'Today':
+                              startDateVal = now;
+                              endDateVal = now;
+                              break;
+
+                            case 'Next Day':
+                              startDateVal = now.add(const Duration(days: 1));
+                              endDateVal = startDateVal;
+                              break;
+
+                            case 'This Week':
+                              startDateVal = now;
+
+                              // End of current week (Sunday)
+                              endDateVal = now.add(
+                                Duration(days: 7 - now.weekday),
+                              );
+                              break;
+
+                            case 'Next Week':
+                              // Start of next week (Monday)
+                              startDateVal = now.add(
+                                Duration(days: 8 - now.weekday),
+                              );
+
+                              // End of next week (Sunday)
+                              endDateVal = startDateVal.add(
+                                const Duration(days: 6),
+                              );
+                              break;
+
+                            default:
+                              startDateVal = now;
+                              endDateVal = now;
+                          }
+
+                          // startDate = formatter.format(startDate);
+                          // endDate = formatter.format(endDate);
+
+                          startDate = DateFormat(
+                            'yyyy-MM-dd',
+                          ).format(startDateVal);
+
+                          endDate = DateFormat('yyyy-MM-dd').format(endDateVal);
+
+                          loadTasks('to_me', order, sortBy, startDate, endDate);
+
+                          // _fetchTodoItems();
                         },
                         child: _buildTab(
                           _tabs[i]['label'] as String,
@@ -1011,7 +1074,27 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                         setState(() {
                           selectedSort = value;
                         });
-                        _fetchTodoItems();
+
+                        if (selectedSort == 'Schedule Date (ASC)') {
+                          sortBy = 'scheduledDate';
+                          order = 'asc';
+                        }
+                        if (selectedSort == 'Schedule Date (DSC)') {
+                          sortBy = 'scheduledDate';
+                          order = 'desc';
+                        }
+                        if (selectedSort == 'Priority(ASC)') {
+                          sortBy = 'priority';
+                          order = 'asc';
+                        }
+                        if (selectedSort == 'Priority(DSC)') {
+                          sortBy = 'priority';
+                          order = 'desc';
+                        }
+
+                        loadTasks('to_me', order, sortBy, startDate, endDate);
+
+                        // _fetchTodoItems();
                       },
                       itemBuilder: (context) => [
                         const PopupMenuItem(
