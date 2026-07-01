@@ -141,7 +141,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
   int _selectedTab = 0;
 
   // ── Tab data: label + key (for API mapping) + count ────────────────────────
-  final List<Map<String, dynamic>> _tabs = [
+  List<Map<String, dynamic>> _tabs = [
     {'label': 'Today', 'key': 'today', 'count': 0},
     {'label': 'Next Day', 'key': 'next_day', 'count': 0},
     {'label': 'This Week', 'key': 'this_week', 'count': 0},
@@ -163,7 +163,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
   late final TaskInstanceController taskController;
 
   List<Map<String, dynamic>> tasks = [];
-  List<Map<String, dynamic>> taskCounts = [];
+  Map<String, dynamic> taskCounts = {};
 
   @override
   void initState() {
@@ -195,6 +195,32 @@ class MyTaskScreenState extends State<MyTaskScreen> {
               // Add any other specific model properties you need here
             };
           }).toList();
+
+          taskCounts['today'] = taskController.instanceCounts!.today;
+          taskCounts['tomorrow'] = taskController.instanceCounts!.tomorrow;
+          taskCounts['thisWeek'] = taskController.instanceCounts!.thisWeek;
+          taskCounts['nextWeek'] = taskController.instanceCounts!.nextWeek;
+
+          _tabs = [
+            {'label': 'Today', 'key': 'today', 'count': taskCounts['today']},
+            {
+              'label': 'Next Day',
+              'key': 'next_day',
+              'count': taskCounts['tomorrow'],
+            },
+            {
+              'label': 'This Week',
+              'key': 'this_week',
+              'count': taskCounts['thisWeek'],
+            },
+            {
+              'label': 'Next Week',
+              'key': 'next_week',
+              'count': taskCounts['nextWeek'],
+            },
+          ];
+
+          print(taskCounts);
 
           // taskCounts = taskController.instanceCounts?.map((
           //   TaskInstanceCountsModel instanceCounts,
