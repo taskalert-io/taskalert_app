@@ -5,7 +5,16 @@ import '../../../../network/base_api_response.dart';
 import '../models/task_instance_model.dart';
 
 abstract class TaskInstanceRepository {
-  Future<ApiResult<BaseApiResponse<TaskInstancesResponse>>> getAllInstances();
+  Future<ApiResult<BaseApiResponse<TaskInstancesResponse>>> getAllInstances({
+    String? date,
+    String? startDate,
+    String? endDate,
+    bool? expand,
+    String? assigned,
+    String? status,
+    String? sortBy,
+    String? order,
+  });
   Future<ApiResult<BaseApiResponse<TaskInstanceModel>>> getInstanceById({
     required String instanceId,
   });

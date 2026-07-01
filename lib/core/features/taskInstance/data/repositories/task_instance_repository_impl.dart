@@ -14,10 +14,31 @@ class TaskInstanceRepositoryImpl implements TaskInstanceRepository {
 
   /// 1. GET: Fetch all task instances for the logged-in user
   @override
-  Future<ApiResult<BaseApiResponse<TaskInstancesResponse>>>
-  getAllInstances() async {
+  Future<ApiResult<BaseApiResponse<TaskInstancesResponse>>> getAllInstances({
+    String? date,
+    String? startDate,
+    String? endDate,
+    bool? expand,
+    String? assigned,
+    String? status,
+    String? sortBy,
+    String? order,
+  }) async {
     try {
-      final responseData = await _httpService.get('/tasks/instances');
+      final Map<String, dynamic> queryParameters = {};
+      if (date != null) queryParameters['date'] = date;
+      if (startDate != null) queryParameters['startDate'] = startDate;
+      if (endDate != null) queryParameters['endDate'] = endDate;
+      if (expand != null) queryParameters['expand'] = expand;
+      if (assigned != null) queryParameters['assigned'] = assigned;
+      if (status != null) queryParameters['status'] = status;
+      if (sortBy != null) queryParameters['sortBy'] = sortBy;
+      if (order != null) queryParameters['order'] = order;
+
+      final responseData = await _httpService.get(
+        '/tasks/instances',
+        queryParams: queryParameters,
+      );
       final responseMap = responseData as Map<String, dynamic>;
 
       final apiResponse = BaseApiResponse.fromJson(responseMap, (json) {

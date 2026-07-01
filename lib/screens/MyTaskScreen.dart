@@ -1,14 +1,12 @@
 import 'dart:convert';
+import 'package:intl/intl.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:taskalert_app/core/features/taskInstance/controllers/task_instance_controller.dart';
-import 'package:taskalert_app/core/features/taskInstance/data/models/task_instance_counts_model.dart';
 import 'package:taskalert_app/core/features/taskInstance/data/models/task_instance_model.dart';
-import 'package:taskalert_app/core/features/tasks/controllers/task_controller.dart';
-import 'package:taskalert_app/core/features/tasks/data/models/task_model.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
 
 import '../components/CustomAppBar.dart';
@@ -164,17 +162,25 @@ class MyTaskScreenState extends State<MyTaskScreen> {
 
   List<Map<String, dynamic>> tasks = [];
   Map<String, dynamic> taskCounts = {};
+  Map<String, dynamic> categorizedTasks = {};
 
   @override
   void initState() {
     super.initState();
     _fetchTabCounts();
-    _fetchTodoItems();
 
     taskController = sl<TaskInstanceController>();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await taskController.handleGetAllInstances();
+      // final startDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      // final endDate = startDate;
+
+      await taskController.handleGetAllInstances(
+        assigned: 'to_me',
+        order: 'asc',
+        // startDate: startDate,
+        // endDate: endDate,
+      );
 
       if (mounted) {
         setState(() {
@@ -195,6 +201,19 @@ class MyTaskScreenState extends State<MyTaskScreen> {
               // Add any other specific model properties you need here
             };
           }).toList();
+
+          for (final task in tasks) {
+            final status = task['status']?.toString() ?? 'Unknown';
+
+            categorizedTasks.putIfAbsent(
+              status,
+              () => {'count': 0, 'tasks': <Map<String, dynamic>>[]},
+            );
+
+            categorizedTasks[status]!['tasks'].add(task);
+            categorizedTasks[status]!['count']++;
+          }
+          print(categorizedTasks);
 
           taskCounts['today'] = taskController.instanceCounts!.today;
           taskCounts['tomorrow'] = taskController.instanceCounts!.tomorrow;
@@ -219,25 +238,12 @@ class MyTaskScreenState extends State<MyTaskScreen> {
               'count': taskCounts['nextWeek'],
             },
           ];
-
-          print(taskCounts);
-
-          // taskCounts = taskController.instanceCounts?.map((
-          //   TaskInstanceCountsModel instanceCounts,
-          // ) {
-          //   return {
-          //     "today": instanceCounts.today,
-          //     "tomorrow": instanceCounts.tomorrow,
-          //     "thisWeek": instanceCounts.thisWeek,
-          //     "nextWeek": instanceCounts.nextWeek,
-
-          //     // Add any other specific model properties you need here
-          //   };
-          // }).toList();
         });
 
-        print(tasks);
-        print(taskCounts);
+        _fetchTodoItems();
+
+        // print(tasks);
+        // print(taskCounts);
       }
     });
   }
@@ -270,74 +276,139 @@ class MyTaskScreenState extends State<MyTaskScreen> {
     });
 
     try {
+      print('fetcjhing tofdo');
       // final tabKey = _tabs[_selectedTab]['key'] as String;
       // final items = await _api.getTodoItems(range: tabKey, sort: selectedSort);
       // _todoItems = items;
 
       // Placeholder sample data (remove once the real API is wired up):
-      _todoItems = [
-        TodoItem(
-          id: '1',
-          image: "https://i.pravatar.cc/150?img=12",
-          title: "Retail Market",
-          status: "Pending",
-          requestedBy: "Assign to Guadalupe Miró",
-          priority: "Low",
-          date: "12.05.2026",
-          time: "09:30 AM",
-        ),
-        TodoItem(
-          id: '2',
-          image: "https://i.pravatar.cc/150?img=18",
-          title: "Yearly Food Service",
-          status: "In progress",
-          requestedBy: "Requested by John Kyte",
-          priority: "High",
-          date: "12.05.2026",
-          time: "09:30 AM",
-        ),
-        TodoItem(
-          id: '3',
-          image: "https://i.pravatar.cc/150?img=22",
-          title: "Manufacture PM",
-          status: "Done",
-          requestedBy: "Requested by Guadalupe Miró",
-          priority: "Low",
-          date: "12.05.2026",
-          time: "09:30 AM",
-        ),
-        TodoItem(
-          id: '4',
-          image: "https://i.pravatar.cc/150?img=30",
-          title: "Office Cleaning",
-          status: "Pending",
-          requestedBy: "Requested by Alex",
-          priority: "Low",
-          date: "12.05.2026",
-          time: "09:30 AM",
-        ),
-        TodoItem(
-          id: '5',
-          image: "https://i.pravatar.cc/150?img=35",
-          title: "Electrical Repair",
-          status: "In progress",
-          requestedBy: "Requested by Smith",
-          priority: "High",
-          date: "12.05.2026",
-          time: "09:30 AM",
-        ),
-        TodoItem(
-          id: '6',
-          image: "https://i.pravatar.cc/150?img=40",
-          title: "Water Supply",
-          status: "Done",
-          requestedBy: "Requested by Jacob",
-          priority: "Low",
-          date: "12.05.2026",
-          time: "09:30 AM",
-        ),
-      ];
+
+      final List<TodoItem> todoItems = [];
+
+      categorizedTasks.forEach((status, data) {
+        final List<Map<String, dynamic>> tasks =
+            List<Map<String, dynamic>>.from(data['tasks']);
+
+        for (final task in tasks) {
+          if (task['status'] == 'todo') {
+            todoItems.add(
+              // TodoItem(
+              //   id: task['id']?.toString() ?? '',
+              //   image: task['image'] ?? '',
+              //   title: task['title'] ?? '',
+              //   status: status,
+              //   requestedBy: task['requestedBy'] ?? '',
+              //   priority: task['priority'] ?? '',
+              //   date: task['reportingDate']?.toString() ?? '',
+              //   time: task['reportingTime']?.toString() ?? '',
+              // ),
+              TodoItem(
+                id: task['id']?.toString() ?? '',
+                title: task['title'] ?? '',
+
+                image: "",
+                status: 'Pending',
+                requestedBy: "Assign to Guadalupe Miró",
+                priority: "Low",
+                date: DateFormat('yyyy-MM-dd').format(
+                  DateTime.parse(task['reportingDate']?.toString() ?? ''),
+                ),
+                time: task['reportingTime']?.toString() ?? '',
+              ),
+            );
+          }
+        }
+      });
+
+      _todoItems = todoItems;
+
+      print('todos: $_todoItems');
+      // categorizedTasks;
+
+      // _todoItems = categorizedTasks.entries.expand((entry) {
+      //   final status = entry.key;
+      //   final tasks = List<Map<String, dynamic>>.from(entry.value['tasks']);
+
+      //   return tasks.map(
+      //     (task) => TodoItem(
+      //       id: task['id']?.toString() ?? '',
+      //       image: task['image'] ?? '',
+      //       title: task['title'] ?? '',
+      //       status: status,
+      //       requestedBy: task['requestedBy'] ?? '',
+      //       priority: task['priority'] ?? '',
+      //       date: task['reportingDate']?.toString() ?? '',
+      //       time: task['reportingTime']?.toString() ?? '',
+      //     ),
+      //   );
+      // }).toList();
+
+      // print(_todoItems);
+
+      // _todoItems = [
+      //   TodoItem(
+      //     id: '1',
+      //     image: "https://i.pravatar.cc/150?img=12",
+      //     title: "Retail Market",
+      //     status: "Pending",
+      //     requestedBy: "Assign to Guadalupe Miró",
+      //     priority: "Low",
+      //     date: "12.05.2026",
+      //     time: "09:30 AM",
+      //   ),
+      //   TodoItem(
+      //     id: '2',
+      //     image: "https://i.pravatar.cc/150?img=18",
+      //     title: "Yearly Food Service",
+      //     status: "In progress",
+      //     requestedBy: "Requested by John Kyte",
+      //     priority: "High",
+      //     date: "12.05.2026",
+      //     time: "09:30 AM",
+      //   ),
+      //   TodoItem(
+      //     id: '3',
+      //     image: "https://i.pravatar.cc/150?img=22",
+      //     title: "Manufacture PM",
+      //     status: "Done",
+      //     requestedBy: "Requested by Guadalupe Miró",
+      //     priority: "Low",
+      //     date: "12.05.2026",
+      //     time: "09:30 AM",
+      //   ),
+      //   TodoItem(
+      //     id: '4',
+      //     image: "https://i.pravatar.cc/150?img=30",
+      //     title: "Office Cleaning",
+      //     status: "Pending",
+      //     requestedBy: "Requested by Alex",
+      //     priority: "Low",
+      //     date: "12.05.2026",
+      //     time: "09:30 AM",
+      //   ),
+      //   TodoItem(
+      //     id: '5',
+      //     image: "https://i.pravatar.cc/150?img=35",
+      //     title: "Electrical Repair",
+      //     status: "In progress",
+      //     requestedBy: "Requested by Smith",
+      //     priority: "High",
+      //     date: "12.05.2026",
+      //     time: "09:30 AM",
+      //   ),
+      //   TodoItem(
+      //     id: '6',
+      //     image: "https://i.pravatar.cc/150?img=40",
+      //     title: "Water Supply",
+      //     status: "Done",
+      //     requestedBy: "Requested by Jacob",
+      //     priority: "Low",
+      //     date: "12.05.2026",
+      //     time: "09:30 AM",
+      //   ),
+      // ];
     } catch (e) {
+      print(e);
       _todoError = 'Something went wrong';
     } finally {
       if (mounted) {
@@ -375,6 +446,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
   List<TodoItem> _itemsForSection(String sectionKey) {
     return _todoItems.where((item) {
       final status = item.status.toLowerCase();
+
       switch (sectionKey) {
         case 'in_progress':
           return status == 'in progress';

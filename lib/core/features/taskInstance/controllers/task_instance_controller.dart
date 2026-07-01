@@ -40,12 +40,30 @@ class TaskInstanceController extends ChangeNotifier {
   }
 
   /// 1. Fetch All Instances
-  Future<void> handleGetAllInstances() async {
+  Future<void> handleGetAllInstances({
+    String? date,
+    String? startDate,
+    String? endDate,
+    bool? expand,
+    String? assigned,
+    String? status,
+    String? sortBy,
+    String? order,
+  }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
-    final result = await _repository.getAllInstances();
+    final result = await _repository.getAllInstances(
+      date: date,
+      startDate: startDate,
+      endDate: endDate,
+      expand: expand,
+      assigned: assigned,
+      status: status,
+      sortBy: sortBy,
+      order: order,
+    );
     _isLoading = false;
 
     if (result is Success) {
@@ -54,9 +72,11 @@ class TaskInstanceController extends ChangeNotifier {
 
       // Clean, type-safe assignment extracted directly from our custom wrapper
       _instances = apiResponse.data?.instances ?? [];
-      _instanceCounts = apiResponse.data?.counts;
 
+      _instanceCounts = apiResponse.data?.counts;
       _pagination = apiResponse.pagination;
+
+      print(_instances.length);
     } else if (result is Failure) {
       _errorMessage = (result as Failure).exception.userMessage;
     }
