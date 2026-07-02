@@ -96,6 +96,8 @@ class TaskInstanceController extends ChangeNotifier {
       final apiResponse =
           (result as Success).data as BaseApiResponse<TaskInstanceModel>;
       _selectedInstance = apiResponse.data;
+
+      print('Selected Instance: ${_selectedInstance?.title}');
     } else if (result is Failure) {
       _errorMessage = (result as Failure).exception.userMessage;
     }

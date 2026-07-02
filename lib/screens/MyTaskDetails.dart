@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:taskalert_app/core/features/taskInstance/controllers/task_instance_controller.dart';
+import 'package:taskalert_app/utils/injection_container.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
@@ -237,14 +239,43 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   // Lifecycle
   // ═══════════════════════════════════════════════════════════════════════════
 
+  late final TaskInstanceController taskController;
+
   @override
   void initState() {
     super.initState();
-    _titleCtrl = TextEditingController(text: _title);
-    _descCtrl = TextEditingController(text: _description);
+    // _titleCtrl = TextEditingController(text: _title);
+    // _descCtrl = TextEditingController(text: _description);
+
+    taskController = sl<TaskInstanceController>();
+
+    print(widget.userId);
+    print(widget.taskId);
 
     if (widget.taskId != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _fetchTask());
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        // loadTasks('to_me', order, sortBy, startDate, endDate);
+
+        await taskController.handleGetInstanceById(instanceId: widget.taskId!);
+
+        if (mounted) {
+          setState(() {
+            _title = taskController.selectedInstance?.title ?? '';
+            _description = taskController.selectedInstance?.description ?? '';
+
+            _titleCtrl = TextEditingController(text: _title);
+            _descCtrl = TextEditingController(text: _description);
+            // _assignTo = taskController.selectedInstance?.assigneeName ?? '';
+          });
+          print('Task title : $_title');
+          print('Task desc : $_description');
+        }
+      });
+      //   WidgetsBinding.instance.addPostFrameCallback((_, void async) => async {
+      //      await taskController.handleGetInstanceById(
+      //       instanceId : widget.taskId
+      // );
+      //   });
     }
   }
 

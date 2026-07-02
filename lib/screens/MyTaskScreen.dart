@@ -198,6 +198,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
     ) {
       return {
         "id": task.id,
+        "instanceId": task.instanceId,
         "title": task.title,
         "description": task.description,
         "taskType": task.taskType,
@@ -295,6 +296,8 @@ class MyTaskScreenState extends State<MyTaskScreen> {
         for (final task in tasks) {
           // if (task['status'] == 'todo') {
 
+          print('task : ${task}');
+
           var taskStatus = task['status'];
           if (taskStatus == 'completed') {
             taskStatus = 'Done';
@@ -306,7 +309,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
 
           todoItems.add(
             TodoItem(
-              id: task['id']?.toString() ?? '',
+              id: task['instanceId']?.toString() ?? '',
               title: task['title'] ?? '',
 
               image: "",
