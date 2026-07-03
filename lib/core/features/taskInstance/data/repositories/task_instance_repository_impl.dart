@@ -91,11 +91,11 @@ class TaskInstanceRepositoryImpl implements TaskInstanceRepository {
   updateInstanceConfiguration({
     required String taskId,
     required String instanceId,
-    required String status,
-    required String priority,
-    required List<String> assigneeIds,
-    required Map<String, String> scheduledTime,
-    required String scope,
+    String? status,
+    String? priority,
+    List<String>? assigneeIds,
+    Map<String, String>? scheduledTime,
+    String? scope,
   }) async {
     try {
       final Map<String, dynamic> body = {

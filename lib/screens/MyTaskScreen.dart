@@ -330,7 +330,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
 
       _todoItems = todoItems;
 
-      print('todos: $_todoItems');
+      // print('todos: $_todoItems');
       // categorizedTasks;
 
       // _todoItems = categorizedTasks.entries.expand((entry) {
@@ -416,7 +416,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
       //   ),
       // ];
     } catch (e) {
-      print(e);
+      // print(e);
       _todoError = 'Something went wrong';
     } finally {
       if (mounted) {
@@ -535,7 +535,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
   }) {
     final items = _itemsForSection(sectionKey);
 
-    print(items);
+    // print(items);
 
     return Container(
       margin: EdgeInsets.only(left: 15.w, right: 15.w, bottom: 15.h),
@@ -985,7 +985,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                         onTap: () {
                           if (_selectedTab == i) return;
                           setState(() => _selectedTab = i);
-                          print(_tabs[i]["label"]);
+                          // print(_tabs[i]["label"]);
 
                           final now = DateTime.now();
                           final formatter = DateFormat('yyyy-MM-dd');

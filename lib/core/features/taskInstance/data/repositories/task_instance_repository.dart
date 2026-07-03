@@ -23,12 +23,11 @@ abstract class TaskInstanceRepository {
   updateInstanceConfiguration({
     required String taskId,
     required String instanceId,
-    required String status,
-    required String priority,
-    required List<String> assigneeIds,
-    required Map<String, String>
-    scheduledTime, // e.g., {"time": "12:00", "period": "PM"}
-    required String scope,
+    String? status,
+    String? priority,
+    List<String>? assigneeIds,
+    Map<String, String>? scheduledTime,
+    String? scope,
   });
 
   Future<ApiResult<BaseApiResponse<TaskInstanceModel>>>

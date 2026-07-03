@@ -241,21 +241,18 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   late final TaskInstanceController taskController;
 
+  // @override
   @override
   void initState() {
     super.initState();
-    // _titleCtrl = TextEditingController(text: _title);
-    // _descCtrl = TextEditingController(text: _description);
+
+    _titleCtrl = TextEditingController(text: _title);
+    _descCtrl = TextEditingController(text: _description);
 
     taskController = sl<TaskInstanceController>();
 
-    print(widget.userId);
-    print(widget.taskId);
-
     if (widget.taskId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
-        // loadTasks('to_me', order, sortBy, startDate, endDate);
-
         await taskController.handleGetInstanceById(instanceId: widget.taskId!);
 
         if (mounted) {
@@ -263,19 +260,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             _title = taskController.selectedInstance?.title ?? '';
             _description = taskController.selectedInstance?.description ?? '';
 
-            _titleCtrl = TextEditingController(text: _title);
-            _descCtrl = TextEditingController(text: _description);
+            _titleCtrl.text = _title;
+            _descCtrl.text = _description;
             // _assignTo = taskController.selectedInstance?.assigneeName ?? '';
           });
-          print('Task title : $_title');
-          print('Task desc : $_description');
         }
       });
-      //   WidgetsBinding.instance.addPostFrameCallback((_, void async) => async {
-      //      await taskController.handleGetInstanceById(
-      //       instanceId : widget.taskId
-      // );
-      //   });
     }
   }
 
@@ -293,27 +283,27 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /// GET task detail from API and apply to UI state.
-  Future<void> _fetchTask() async {
-    setState(() {
-      _isLoading = true;
-      _errorMsg = null;
-    });
-    try {
-      // TODO: replace with real API call
-      // final response = await yourApiService.get('/tasks/${widget.taskId}');
-      // _applyModel(TaskDetail.fromJson(response.data));
+  // Future<void> _fetchTask() async {
+  //   setState(() {
+  //     _isLoading = true;
+  //     _errorMsg = null;
+  //   });
+  //   try {
+  //     // TODO: replace with real API call
+  //     // final response = await yourApiService.get('/tasks/${widget.taskId}');
+  //     // _applyModel(TaskDetail.fromJson(response.data));
 
-      // ── Simulated API response (remove when wired) ──
-      await Future.delayed(const Duration(milliseconds: 300));
-      // ───────────────────────────────────────────────
-    } catch (e) {
-      if (mounted) setState(() => _errorMsg = e.toString());
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
+  //     // ── Simulated API response (remove when wired) ──
+  //     await Future.delayed(const Duration(milliseconds: 300));
+  //     // ───────────────────────────────────────────────
+  //   } catch (e) {
+  //     if (mounted) setState(() => _errorMsg = e.toString());
+  //   } finally {
+  //     if (mounted) setState(() => _isLoading = false);
+  //   }
+  // }
 
-  /// PATCH/PUT current state back to API.
+  // /// PATCH/PUT current state back to API.
   Future<void> _saveTask() async {
     setState(() {
       _isSaving = true;

@@ -1,5 +1,89 @@
 import '../../../tasks/data/models/task_model.dart'; // Reuse ReportingUserModel, TaskTime, CreatedByModel
 
+class ProofSubmissionModel {
+  final DateTime? submittedAt;
+  final List<ProofFileModel> files;
+  final String note;
+  final List<String> proofTypes;
+  final String? aiValidationResult;
+
+  ProofSubmissionModel({
+    this.submittedAt,
+    required this.files,
+    required this.note,
+    required this.proofTypes,
+    this.aiValidationResult,
+  });
+
+  factory ProofSubmissionModel.fromJson(Map<String, dynamic> json) {
+    // Handle inner MongoDB style date: {"submittedAt": {"$date": "..."}}
+    final dateMap = json['submittedAt'];
+    DateTime? parsedDate;
+    if (dateMap is Map && dateMap.containsKey('\$date')) {
+      parsedDate = DateTime.tryParse(dateMap['\$date'] ?? '');
+    } else if (dateMap is String) {
+      parsedDate = DateTime.tryParse(dateMap);
+    }
+
+    return ProofSubmissionModel(
+      submittedAt: parsedDate,
+      files: json['files'] != null
+          ? (json['files'] as List)
+                .map((x) => ProofFileModel.fromJson(x as Map<String, dynamic>))
+                .toList()
+          : [],
+      note: json['note'] ?? '',
+      proofTypes: json['proofTypes'] != null
+          ? List<String>.from(json['proofTypes'])
+          : [],
+      aiValidationResult: json['aiValidationResult']?.toString(),
+    );
+  }
+}
+
+class ProofFileModel {
+  final String id;
+  final String fileType;
+  final TaskFile? file; // Reuses your existing TaskFile sub-model 🚀
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  ProofFileModel({
+    required this.id,
+    required this.fileType,
+    this.file,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  factory ProofFileModel.fromJson(Map<String, dynamic> json) {
+    // Handle nested $oid string layout safely if present
+    final idData = json['_id'];
+    final parsedId = (idData is Map && idData.containsKey('\$oid'))
+        ? idData['\$oid'].toString()
+        : (idData ?? '').toString();
+
+    DateTime? parseMongoDate(dynamic dateData) {
+      if (dateData is Map && dateData.containsKey('\$date')) {
+        return DateTime.tryParse(dateData['\$date'] ?? '');
+      } else if (dateData is String) {
+        return DateTime.tryParse(dateData);
+      }
+      return null;
+    }
+
+    return ProofFileModel(
+      id: parsedId,
+      fileType: json['fileType'] ?? '',
+      file: json['file'] != null
+          ? TaskFile.fromJson(json['file'] as Map<String, dynamic>)
+          : null,
+      createdAt: parseMongoDate(json['createdAt']),
+      updatedAt: parseMongoDate(json['updatedAt']),
+    );
+  }
+}
+
 class TaskInstanceModel {
   final String id;
   final String taskDocId;
@@ -20,7 +104,9 @@ class TaskInstanceModel {
   final String? parentInstance;
   final CreatedByModel? completedBy;
   final DateTime? completedAt;
-  final String? proofSubmission;
+  // final String? proofSubmission;
+  final ProofSubmissionModel?
+  proofSubmission; // 🌟 Updated from String? to ProofSubmissionModel?
   final CreatedByModel? reviewedBy;
   final DateTime? reviewedAt;
   final String? reviewNote;
@@ -120,7 +206,12 @@ class TaskInstanceModel {
       completedAt: json['completedAt'] != null
           ? DateTime.tryParse(json['completedAt'])
           : null,
-      proofSubmission: json['proofSubmission'],
+      // proofSubmission: json['proofSubmission'],
+      proofSubmission: json['proofSubmission'] != null
+          ? ProofSubmissionModel.fromJson(
+              json['proofSubmission'] as Map<String, dynamic>,
+            )
+          : null,
       reviewedBy: json['reviewedBy'] != null
           ? CreatedByModel.fromJson(json['reviewedBy'] as Map<String, dynamic>)
           : null,
