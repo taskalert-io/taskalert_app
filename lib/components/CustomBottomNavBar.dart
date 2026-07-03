@@ -9,6 +9,7 @@ import '../screens/MyTaskScreen.dart';
 import '../screens/HomeScreen.dart';
 import '../screens/MoreScreen.dart';
 import '../screens/NotificationScreen.dart';
+import '../screens/NotificationStart.dart';
 
 class CustomBottomNavBar extends StatefulWidget {
   final int selectedIndex;
@@ -105,7 +106,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
                     break;
 
                   case 2:
-                    screen = NotificationSetting(userId: '');
+                    screen = NotificationStart(userId: '');
                     break;
 
                   case 3:
