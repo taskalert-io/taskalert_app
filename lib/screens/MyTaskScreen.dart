@@ -795,6 +795,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                     builder: (context) => TaskDetailScreen(
                       userId: widget.userId,
                       taskId: items[i].id ?? '',
+                      taskAssignedToUser: true,
                     ),
                   ),
                 );

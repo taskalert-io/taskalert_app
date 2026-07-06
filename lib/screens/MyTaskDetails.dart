@@ -102,8 +102,15 @@ class TaskDetail {
 class TaskDetailScreen extends StatefulWidget {
   final String userId;
   final String? taskId; // pass null for create, an id for edit/view
+  final bool?
+  taskAssignedToUser; // optional flag to indicate if the task is assigned to the user
 
-  const TaskDetailScreen({super.key, required this.userId, this.taskId});
+  const TaskDetailScreen({
+    super.key,
+    required this.userId,
+    this.taskId,
+    this.taskAssignedToUser,
+  });
 
   @override
   State<TaskDetailScreen> createState() => _TaskDetailScreenState();
@@ -139,6 +146,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   // ── Loading / error state ──────────────────────────────────────────────────
   bool _isLoading = false;
   bool _isSaving = false;
+  bool _isReadOnly = false; // New flag to control read-only state
   String? _errorMsg;
 
   // ── UI-only toggle visibility flags ───────────────────────────────────────
@@ -150,6 +158,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   bool _assignDateEnabled = false;
   bool _assignTimeEnabled = false;
   bool _selectDurationEnabled = false;
+  // Read-only flags for text fields (TextEditingController has no readOnly)
+  bool _titleReadOnly = false;
+  bool _descReadOnly = false;
 
   // ── Calendar navigation state ──────────────────────────────────────────────
   int _calendarMonth = DateTime.now().month;
@@ -263,6 +274,39 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             _titleCtrl.text = _title;
             _descCtrl.text = _description;
             // _assignTo = taskController.selectedInstance?.assigneeName ?? '';
+            if (widget.taskAssignedToUser == true) {
+              print(
+                'Task is assigned to the user. Disabling editing for certain fields.',
+              );
+              // If the task is assigned to the user, disable editing for certain fields
+              if (widget.taskAssignedToUser == true) {
+                // If the task is assigned to the user, disable editing for certain fields
+                _isReadOnly = true;
+                // _titleReadOnly = true;
+                // _descReadOnly = true;
+                // _assignDateEnabled = false;
+                // _assignTimeEnabled = false;
+                // _selectDurationEnabled = false;
+                // _priority = _priority;
+                // _assignTo = _assignTo;
+                // _reportTo = _reportTo;
+                // _durationHours = _durationHours;
+                // _timeZone = _timeZone;
+              } else {
+                // Allow editing for all fields
+                _isReadOnly = false;
+                // _titleReadOnly = false;
+                // _descReadOnly = false;
+                // _assignDateEnabled = true;
+                // _assignTimeEnabled = true;
+                // _selectDurationEnabled = true;
+                // _priority = '';
+                _assignTo = '';
+                _reportTo = '';
+                _durationHours = 0;
+                _timeZone = '';
+              }
+            }
           });
         }
       });
@@ -1535,81 +1579,119 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Task info card
-                          _buildInfoCard(),
-                          SizedBox(height: 16.h),
-
-                          // Date & Time card
-                          _sectionLabel('Date & Time'),
-                          _card(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 14.w,
-                              vertical: 2.h,
-                            ),
+                          // 🔒 LOCKED SECTION STARTS HERE
+                          AbsorbPointer(
+                            absorbing: _isSaving || _isReadOnly,
                             child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Assign Date toggle
-                                _toggleRow(
-                                  label: 'Assign Date',
-                                  sub: _selectedDateLabel,
-                                  value: _assignDateEnabled,
-                                  onTap: () => setState(() {
-                                    _assignDateEnabled = !_assignDateEnabled;
-                                    _showCalendar = _assignDateEnabled;
-                                    if (_assignDateEnabled) {
-                                      _assignTimeEnabled = false;
-                                      _showTimePicker = false;
-                                    }
-                                  }),
-                                ),
-                                if (_showCalendar) ...[
-                                  SizedBox(height: 6.h),
-                                  _buildCalendar(),
-                                  SizedBox(height: 8.h),
-                                ],
-                                _divider(),
+                                // Task info card
+                                _buildInfoCard(),
+                                SizedBox(height: 16.h),
 
-                                // Assign Time toggle
-                                _toggleRow(
-                                  label: 'Assign Time',
-                                  sub: _formattedTime,
-                                  value: _assignTimeEnabled,
-                                  onTap: () => setState(() {
-                                    _assignTimeEnabled = !_assignTimeEnabled;
-                                    _showTimePicker = _assignTimeEnabled;
-                                    if (_assignTimeEnabled) {
-                                      _assignDateEnabled = false;
-                                      _showCalendar = false;
-                                    }
-                                  }),
-                                ),
-                                if (_showTimePicker) ...[
-                                  SizedBox(height: 6.h),
-                                  _buildTimePicker(),
-                                  SizedBox(height: 8.h),
-                                ],
-                                _divider(),
+                                // Date & Time card
+                                _sectionLabel('Date & Time'),
+                                _card(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 14.w,
+                                    vertical: 2.h,
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      // Assign Date toggle
+                                      _toggleRow(
+                                        label: 'Assign Date',
+                                        sub: _selectedDateLabel,
+                                        value: _assignDateEnabled,
+                                        onTap: () => setState(() {
+                                          _assignDateEnabled =
+                                              !_assignDateEnabled;
+                                          _showCalendar = _assignDateEnabled;
+                                          if (_assignDateEnabled) {
+                                            _assignTimeEnabled = false;
+                                            _showTimePicker = false;
+                                          }
+                                        }),
+                                      ),
+                                      if (_showCalendar) ...[
+                                        SizedBox(height: 6.h),
+                                        _buildCalendar(),
+                                        SizedBox(height: 8.h),
+                                      ],
+                                      _divider(),
 
-                                // Time Zone
-                                _dropdownField(
-                                  label: 'Time Zone',
-                                  value: _timeZone,
-                                  valueColor: _labelColor,
-                                  onTap: () => _showSearchableSheet(
-                                    title: 'Time Zone',
-                                    items: _timeZoneItems,
-                                    selected: _timeZone,
-                                    onSelect: (v) =>
-                                        setState(() => _timeZone = v),
+                                      // Assign Time toggle
+                                      _toggleRow(
+                                        label: 'Assign Time',
+                                        sub: _formattedTime,
+                                        value: _assignTimeEnabled,
+                                        onTap: () => setState(() {
+                                          _assignTimeEnabled =
+                                              !_assignTimeEnabled;
+                                          _showTimePicker = _assignTimeEnabled;
+                                          if (_assignTimeEnabled) {
+                                            _assignDateEnabled = false;
+                                            _showCalendar = false;
+                                          }
+                                        }),
+                                      ),
+                                      if (_showTimePicker) ...[
+                                        SizedBox(height: 6.h),
+                                        _buildTimePicker(),
+                                        SizedBox(height: 8.h),
+                                      ],
+                                      _divider(),
+
+                                      // Time Zone
+                                      _dropdownField(
+                                        label: 'Time Zone',
+                                        value: _timeZone,
+                                        valueColor: _labelColor,
+                                        onTap: () => _showSearchableSheet(
+                                          title: 'Time Zone',
+                                          items: _timeZoneItems,
+                                          selected: _timeZone,
+                                          onSelect: (v) =>
+                                              setState(() => _timeZone = v),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(height: 16.h),
+
+                                // Action card (Priority Only)
+                                _sectionLabel('Action'),
+                                _card(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 14.w,
+                                    vertical: 2.h,
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      _dropdownField(
+                                        label: 'Priority',
+                                        value: _priority,
+                                        valueColor: const Color(0xFF4CAF50),
+                                        onTap: () => _showSearchableSheet(
+                                          title: 'Priority',
+                                          items: _priorityItems,
+                                          selected: _priority,
+                                          onSelect: (v) =>
+                                              setState(() => _priority = v),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
                             ),
                           ),
+
+                          // 🔓 LOCKED SECTION ENDS HERE
                           SizedBox(height: 16.h),
 
-                          // Action card
-                          _sectionLabel('Action'),
+                          // 🔓 UNLOCKED ACTION CARD (Status Only)
                           _card(
                             padding: EdgeInsets.symmetric(
                               horizontal: 14.w,
@@ -1617,19 +1699,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             ),
                             child: Column(
                               children: [
-                                _dropdownField(
-                                  label: 'Priority',
-                                  value: _priority,
-                                  valueColor: const Color(0xFF4CAF50),
-                                  onTap: () => _showSearchableSheet(
-                                    title: 'Priority',
-                                    items: _priorityItems,
-                                    selected: _priority,
-                                    onSelect: (v) =>
-                                        setState(() => _priority = v),
-                                  ),
-                                ),
-                                _divider(),
                                 _dropdownField(
                                   label: 'Status',
                                   value: _status,
@@ -1645,10 +1714,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                               ],
                             ),
                           ),
+
                           SizedBox(height: 24.h),
 
-                          // Save button — Ink wraps the gradient so the button never
-                          // changes size or color on tap; only the ripple is visible.
+                          // 🔓 UNLOCKED SAVE BUTTON
                           Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
@@ -1682,22 +1751,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                               ),
                                               duration: Duration(seconds: 3),
                                             ),
-                                            // SnackBar(
-                                            //   content: Text(
-                                            //     'You are not authorized to update this task',
-                                            //     style: GoogleFonts.inter(
-                                            //       color: Colors.white,
-                                            //       fontSize: 13.sp,
-                                            //     ),
-                                            //   ),
-                                            //   backgroundColor: _greyOff,
-                                            //   behavior:
-                                            //       SnackBarBehavior.floating,
-                                            //   shape: RoundedRectangleBorder(
-                                            //     borderRadius:
-                                            //         BorderRadius.circular(8.r),
-                                            //   ),
-                                            // ),
                                           );
                                         }
                                       },
@@ -1736,6 +1789,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                               ),
                             ],
                           ),
+
                           SizedBox(height: 24.h),
                         ],
                       ),
@@ -1744,6 +1798,317 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 ],
               ),
             ),
+
+      // GestureDetector(
+      //     behavior: HitTestBehavior.opaque,
+      //     onTap: () => FocusScope.of(context).unfocus(),
+      //     child: Column(
+      //       crossAxisAlignment: CrossAxisAlignment.start,
+      //       children: [
+      //         // Title bar
+      //         Padding(
+      //           padding: EdgeInsets.fromLTRB(15.w, 10.h, 15.w, 16.h),
+      //           child: Stack(
+      //             alignment: Alignment.center,
+      //             children: [
+      //               Center(
+      //                 child: Text(
+      //                   'Task Details',
+      //                   style: GoogleFonts.inter(
+      //                     fontSize: 15.sp,
+      //                     fontWeight: FontWeight.w700,
+      //                     color: _primaryColor,
+      //                   ),
+      //                 ),
+      //               ),
+      //               Align(
+      //                 alignment: Alignment.centerLeft,
+      //                 child: InkWell(
+      //                   onTap: () => Navigator.pop(context),
+      //                   child: Icon(
+      //                     Icons.arrow_back,
+      //                     size: 20.r,
+      //                     color: const Color(0xFF1D1B20),
+      //                   ),
+      //                 ),
+      //               ),
+      //               Align(
+      //                 alignment: Alignment.centerRight,
+      //                 child: InkWell(
+      //                   onTap: () => Navigator.pop(context),
+      //                   child: Icon(
+      //                     Icons.close,
+      //                     size: 20.r,
+      //                     color: _textColor,
+      //                   ),
+      //                 ),
+      //               ),
+      //             ],
+      //           ),
+      //         ),
+
+      //         // Error banner
+      //         if (_errorMsg != null)
+      //           Container(
+      //             width: double.infinity,
+      //             margin: EdgeInsets.symmetric(horizontal: 15.w),
+      //             padding: EdgeInsets.all(10.w),
+      //             decoration: BoxDecoration(
+      //               color: Colors.red.shade50,
+      //               borderRadius: BorderRadius.circular(8.r),
+      //               border: Border.all(color: Colors.red.shade200),
+      //             ),
+      //             child: Text(
+      //               _errorMsg!,
+      //               style: GoogleFonts.inter(
+      //                 fontSize: 12.sp,
+      //                 color: Colors.red.shade700,
+      //               ),
+      //             ),
+      //           ),
+
+      //         // Scrollable body
+      //         Expanded(
+      //           child: AbsorbPointer(
+      //             absorbing: _isSaving || _isReadOnly,
+
+      //             child: SingleChildScrollView(
+      //               keyboardDismissBehavior:
+      //                   ScrollViewKeyboardDismissBehavior.onDrag,
+      //               padding: EdgeInsets.only(
+      //                 left: 15.w,
+      //                 right: 15.w,
+      //                 bottom:
+      //                     MediaQuery.of(context).viewInsets.bottom + 24.h,
+      //               ),
+      //               child: Column(
+      //                 crossAxisAlignment: CrossAxisAlignment.start,
+      //                 children: [
+      //                   // Task info card
+      //                   _buildInfoCard(),
+      //                   SizedBox(height: 16.h),
+
+      //                   // Date & Time card
+      //                   _sectionLabel('Date & Time'),
+      //                   _card(
+      //                     padding: EdgeInsets.symmetric(
+      //                       horizontal: 14.w,
+      //                       vertical: 2.h,
+      //                     ),
+      //                     child: Column(
+      //                       children: [
+      //                         // Assign Date toggle
+      //                         _toggleRow(
+      //                           label: 'Assign Date',
+      //                           sub: _selectedDateLabel,
+      //                           value: _assignDateEnabled,
+      //                           onTap: () => setState(() {
+      //                             _assignDateEnabled = !_assignDateEnabled;
+      //                             _showCalendar = _assignDateEnabled;
+      //                             if (_assignDateEnabled) {
+      //                               _assignTimeEnabled = false;
+      //                               _showTimePicker = false;
+      //                             }
+      //                           }),
+      //                         ),
+      //                         if (_showCalendar) ...[
+      //                           SizedBox(height: 6.h),
+      //                           _buildCalendar(),
+      //                           SizedBox(height: 8.h),
+      //                         ],
+      //                         _divider(),
+
+      //                         // Assign Time toggle
+      //                         _toggleRow(
+      //                           label: 'Assign Time',
+      //                           sub: _formattedTime,
+      //                           value: _assignTimeEnabled,
+      //                           onTap: () => setState(() {
+      //                             _assignTimeEnabled = !_assignTimeEnabled;
+      //                             _showTimePicker = _assignTimeEnabled;
+      //                             if (_assignTimeEnabled) {
+      //                               _assignDateEnabled = false;
+      //                               _showCalendar = false;
+      //                             }
+      //                           }),
+      //                         ),
+      //                         if (_showTimePicker) ...[
+      //                           SizedBox(height: 6.h),
+      //                           _buildTimePicker(),
+      //                           SizedBox(height: 8.h),
+      //                         ],
+      //                         _divider(),
+
+      //                         // Time Zone
+      //                         _dropdownField(
+      //                           label: 'Time Zone',
+      //                           value: _timeZone,
+      //                           valueColor: _labelColor,
+      //                           onTap: () => _showSearchableSheet(
+      //                             title: 'Time Zone',
+      //                             items: _timeZoneItems,
+      //                             selected: _timeZone,
+      //                             onSelect: (v) =>
+      //                                 setState(() => _timeZone = v),
+      //                           ),
+      //                         ),
+      //                       ],
+      //                     ),
+      //                   ),
+      //                   SizedBox(height: 16.h),
+
+      //                   // Action card
+      //                   _sectionLabel('Action'),
+      //                   _card(
+      //                     padding: EdgeInsets.symmetric(
+      //                       horizontal: 14.w,
+      //                       vertical: 2.h,
+      //                     ),
+      //                     child: Column(
+      //                       children: [
+      //                         _dropdownField(
+      //                           label: 'Priority',
+      //                           value: _priority,
+      //                           valueColor: const Color(0xFF4CAF50),
+      //                           onTap: () => _showSearchableSheet(
+      //                             title: 'Priority',
+      //                             items: _priorityItems,
+      //                             selected: _priority,
+      //                             onSelect: (v) =>
+      //                                 setState(() => _priority = v),
+      //                           ),
+      //                         ),
+      //                         _divider(),
+      //                         _dropdownField(
+      //                           label: 'Status',
+      //                           value: _status,
+      //                           valueColor: const Color(0xFFE57373),
+      //                           onTap: () => _showSearchableSheet(
+      //                             title: 'Status',
+      //                             items: _statusItems,
+      //                             selected: _status,
+      //                             onSelect: (v) =>
+      //                                 setState(() => _status = v),
+      //                           ),
+      //                         ),
+      //                       ],
+      //                     ),
+      //                   ),
+      //                   SizedBox(height: 24.h),
+
+      //                   // Save button — Ink wraps the gradient so the button never
+      //                   // changes size or color on tap; only the ripple is visible.
+      //                   Row(
+      //                     mainAxisAlignment: MainAxisAlignment.end,
+      //                     children: [
+      //                       ClipRRect(
+      //                         borderRadius: BorderRadius.circular(8.r),
+      //                         child: Container(
+      //                           height: 40.h,
+      //                           constraints: BoxConstraints(
+      //                             minWidth: 120.w,
+      //                           ),
+      //                           decoration: const BoxDecoration(
+      //                             gradient: LinearGradient(
+      //                               colors: [
+      //                                 Color(0xFFD96CFF),
+      //                                 Color(0xFF5CE1E6),
+      //                               ],
+      //                             ),
+      //                           ),
+      //                           child: Material(
+      //                             color: Colors.transparent,
+      //                             child: InkWell(
+      //                               onTap: () async {
+      //                                 if (!_isSaving &&
+      //                                     await userTaskPermission) {
+      //                                   _saveTask();
+      //                                 } else {
+      //                                   ScaffoldMessenger.of(
+      //                                     context,
+      //                                   ).showSnackBar(
+      //                                     SnackBar(
+      //                                       content: Text(
+      //                                         'You are not authorized to edit tasks.',
+      //                                       ),
+      //                                       duration: Duration(seconds: 3),
+      //                                     ),
+      //                                     // SnackBar(
+      //                                     //   content: Text(
+      //                                     //     'You are not authorized to update this task',
+      //                                     //     style: GoogleFonts.inter(
+      //                                     //       color: Colors.white,
+      //                                     //       fontSize: 13.sp,
+      //                                     //     ),
+      //                                     //   ),
+      //                                     //   backgroundColor: _greyOff,
+      //                                     //   behavior:
+      //                                     //       SnackBarBehavior.floating,
+      //                                     //   shape: RoundedRectangleBorder(
+      //                                     //     borderRadius:
+      //                                     //         BorderRadius.circular(8.r),
+      //                                     //   ),
+      //                                     // ),
+      //                                   );
+      //                                 }
+      //                               },
+      //                               splashColor: Colors.white.withOpacity(
+      //                                 0.15,
+      //                               ),
+      //                               highlightColor: Colors.transparent,
+      //                               child: Padding(
+      //                                 padding: EdgeInsets.symmetric(
+      //                                   horizontal: 24.w,
+      //                                 ),
+      //                                 child: Center(
+      //                                   child: _isSaving
+      //                                       ? SizedBox(
+      //                                           width: 16.w,
+      //                                           height: 16.h,
+      //                                           child:
+      //                                               const CircularProgressIndicator(
+      //                                                 strokeWidth: 2,
+      //                                                 color: Colors.white,
+      //                                               ),
+      //                                         )
+      //                                       : Text(
+      //                                           'Save Changes',
+      //                                           style: GoogleFonts.inter(
+      //                                             fontSize: 12.sp,
+      //                                             fontWeight:
+      //                                                 FontWeight.w600,
+      //                                             color: Colors.white,
+      //                                           ),
+      //                                         ),
+      //                                 ),
+      //                               ),
+      //                             ),
+      //                           ),
+      //                         ),
+      //                       ),
+      //                     ],
+      //                   ),
+
+      //                   SizedBox(height: 24.h),
+
+      //                 ],
+      //               ),
+      //             ),
+
+      //             // child:
+      //           ),
+      //         ),
+      //       ],
+      //     ),
+      //   ),
+
+      // AbsorbPointer(
+      //     absorbing:
+      //         _isSaving ||
+      //         _isReadOnly, // Disable interactions if saving or read-only
+      //     child:
+
+      //   ),
       bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 1),
     );
   }
