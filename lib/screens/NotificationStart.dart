@@ -42,11 +42,17 @@ import '../components/CustomDrawer.dart';
 //  • A single 60s ticker repaints just the relative-time labels instead of
 //    the whole state re-fetching, so "3 minutes ago" -> "4 minutes ago"
 //    stays live without extra network calls.
-//  • NEW: notifications that need a decision (e.g. an edit-access request)
-//    can carry `requiresAction: true` and render an Approve / Deny action
-//    row. Approving marks the notification read and clears the action
-//    state; denying removes it from the list. Both are optimistic with
-//    rollback on failure, same pattern as `_handleMarkAllAsRead`.
+//  • Notifications that need a decision (e.g. an edit-access request) can
+//    carry `requiresAction: true` and render an Approve / Deny action row.
+//    Approving marks the notification read and clears the action state;
+//    denying removes it from the list. Both are optimistic with rollback
+//    on failure, same pattern as `_handleToggleMarkAllAsRead`.
+//  • NEW: `ApiNotificationRepository` now goes through a small `_ApiClient`
+//    that handles the stuff every real backend integration ends up needing
+//    on day one — Authorization headers, timeouts, retry-on-GET, and typed
+//    exceptions per status code (401/403/404/5xx) with the server's own
+//    error message surfaced when it sends one. Nothing about the screen's
+//    public API changed, so this is a drop-in.
 //
 // EXPECTED API CONTRACT (adjust `ApiNotificationRepository` to match your actual
 // backend — this is the shape the fromJson() factories below assume):
@@ -85,7 +91,13 @@ import '../components/CustomDrawer.dart';
 //   "meta": { "page": 1, "pageSize": 20, "hasMore": true }
 // }
 //
+// On error, the server may optionally send a body like:
+//   { "message": "..." }              or
+//   { "error": { "message": "..." } }
+// `_ApiClient` will surface that message instead of a generic one.
+//
 // POST {baseUrl}/users/{userId}/notifications/read-all
+// POST {baseUrl}/users/{userId}/notifications/unread-all
 // POST {baseUrl}/users/{userId}/notifications/{id}/read
 // POST {baseUrl}/users/{userId}/notifications/{id}/approve
 // POST {baseUrl}/users/{userId}/notifications/{id}/deny
@@ -160,10 +172,9 @@ class NotifActivityLine {
   final String? subActionText;
   final IconData? subIcon;
 
-  /// Real timestamp from the API. Display text is derived from this at
-  /// render time (see [RelativeTime.format]) rather than stored as a
-  /// pre-baked string, so it never goes stale.
-  final DateTime timestamp;
+  final DateTime timestamp; // time for boldName/actionText line
+  final DateTime? subTimestamp; // time for subActionText line
+  final String? metaLabel;
 
   const NotifActivityLine({
     required this.person,
@@ -173,6 +184,8 @@ class NotifActivityLine {
     this.subActionText,
     this.subIcon,
     required this.timestamp,
+    this.subTimestamp,
+    this.metaLabel,
   });
 
   factory NotifActivityLine.fromJson(Map<String, dynamic> json) {
@@ -188,6 +201,10 @@ class NotifActivityLine {
       timestamp:
           DateTime.tryParse(json['timestamp'] as String? ?? '')?.toLocal() ??
           DateTime.now(),
+      subTimestamp: json['subTimestamp'] != null
+          ? DateTime.tryParse(json['subTimestamp'] as String)?.toLocal()
+          : null,
+      metaLabel: json['metaLabel'] as String?,
     );
   }
 }
@@ -220,8 +237,8 @@ class NotifCardData {
   final bool hasPromo;
   final LinkPreviewData? linkPreview;
 
-  /// NEW: when true, the card renders an Approve / Deny action row (e.g.
-  /// for access requests). Cleared automatically once approved.
+  /// When true, the card renders an Approve / Deny action row (e.g. for
+  /// access requests). Cleared automatically once approved.
   final bool requiresAction;
 
   const NotifCardData({
@@ -237,7 +254,7 @@ class NotifCardData {
     required this.lines,
     this.hasPromo = false,
     this.linkPreview,
-    this.requiresAction = false, // NEW
+    this.requiresAction = false,
   });
 
   factory NotifCardData.fromJson(Map<String, dynamic> json) {
@@ -263,7 +280,7 @@ class NotifCardData {
       linkPreview: linkPreviewJson != null
           ? LinkPreviewData.fromJson(linkPreviewJson)
           : null,
-      requiresAction: (json['requiresAction'] as bool?) ?? false, // NEW
+      requiresAction: (json['requiresAction'] as bool?) ?? false,
     );
   }
 
@@ -281,7 +298,7 @@ class NotifCardData {
       lines: lines,
       hasPromo: hasPromo,
       linkPreview: linkPreview,
-      requiresAction: requiresAction ?? this.requiresAction, // NEW
+      requiresAction: requiresAction ?? this.requiresAction,
     );
   }
 }
@@ -298,7 +315,11 @@ class RelativeTime {
     if (diff.inMinutes < 60) {
       return '${diff.inMinutes} minute${diff.inMinutes == 1 ? '' : 's'} ago';
     }
-    if (diff.inHours < 24 && _isSameDay(now, dt)) {
+    // Purely elapsed-time based — a timestamp 20 hours old always reads
+    // "20 hours ago", regardless of whether that span happens to cross
+    // midnight. A calendar-day check here was silently swapping this to
+    // "yesterday at 7:57 PM" for anyone testing in the evening/morning.
+    if (diff.inHours < 24) {
       return '${diff.inHours} hour${diff.inHours == 1 ? '' : 's'} ago';
     }
     final yesterday = now.subtract(const Duration(days: 1));
@@ -347,11 +368,59 @@ class RelativeTime {
 // When a real backend exists, drop in `ApiNotificationRepository` — the
 // screen doesn't change at all, since both implement the same interface.
 
+// ── Typed API errors ────────────────────────────────────────────────────
+//
+// A plain `NotificationApiException(String)` is fine for a mock, but it's
+// the wrong shape once a real backend is involved: callers routinely need
+// to branch on *what* went wrong (log the user out on 401, show a
+// "not found, it may have already been handled" toast on 404, offer a
+// retry on 5xx/timeout) rather than pattern-match a message string. These
+// map 1:1 onto the status codes any REST backend will actually return.
+
 class NotificationApiException implements Exception {
   final String message;
-  NotificationApiException(this.message);
+  final int? statusCode;
+  NotificationApiException(this.message, {this.statusCode});
   @override
   String toString() => message;
+}
+
+class NetworkUnavailableException extends NotificationApiException {
+  NetworkUnavailableException()
+    : super('Could not reach the server. Check your connection and try again.');
+}
+
+class RequestTimeoutException extends NotificationApiException {
+  RequestTimeoutException() : super('The request timed out. Please try again.');
+}
+
+class UnauthorizedException extends NotificationApiException {
+  UnauthorizedException([String? message])
+    : super(
+        message ?? 'Your session has expired. Please sign in again.',
+        statusCode: 401,
+      );
+}
+
+class ForbiddenException extends NotificationApiException {
+  ForbiddenException([String? message])
+    : super(
+        message ?? "You don't have permission to do that.",
+        statusCode: 403,
+      );
+}
+
+class NotFoundException extends NotificationApiException {
+  NotFoundException([String? message])
+    : super(message ?? 'That notification no longer exists.', statusCode: 404);
+}
+
+class ServerException extends NotificationApiException {
+  ServerException(int statusCode, [String? message])
+    : super(
+        message ?? 'Something went wrong on our end. Please try again.',
+        statusCode: statusCode,
+      );
 }
 
 class NotificationPage {
@@ -370,33 +439,163 @@ abstract class NotificationRepository {
 
   Future<void> markAllAsRead({required String userId});
 
+  /// Reverses [markAllAsRead] — needed so the "Mark all as read" master
+  /// control can be a real toggle (checked -> unchecked marks everything
+  /// unread again) instead of a one-way action.
+  Future<void> markAllAsUnread({required String userId});
+
   Future<void> markAsRead({
     required String userId,
     required String notificationId,
   });
 
-  /// NEW: approve an action-required notification (e.g. an edit-access
+  /// Approve an action-required notification (e.g. an edit-access
   /// request). Implementations should mark it read server-side too.
   Future<void> approve({
     required String userId,
     required String notificationId,
   });
 
-  /// NEW: deny an action-required notification.
+  /// Deny an action-required notification.
   Future<void> deny({required String userId, required String notificationId});
 
   void dispose() {}
 }
 
-/// Real backend implementation — wire this up once an API exists.
-/// Nothing else in the screen needs to change: just construct
-/// `NotificationStart(repository: ApiNotificationRepository(baseUrl: ...))`.
-class ApiNotificationRepository implements NotificationRepository {
-  ApiNotificationRepository({required this.baseUrl, http.Client? client})
-    : _client = client ?? http.Client();
+/// Thin HTTP layer that every endpoint in [ApiNotificationRepository] goes
+/// through, so auth headers, timeouts, retries, and error-mapping live in
+/// exactly one place instead of being copy-pasted per method — which is
+/// the usual place integrations rot once a real backend's edge cases show
+/// up (expired tokens, flaky connections, 500s with a body worth reading).
+class _ApiClient {
+  _ApiClient({
+    required this.baseUrl,
+    required http.Client client,
+    this.getAuthToken,
+    this.timeout = const Duration(seconds: 15),
+    this.maxGetRetries = 1,
+  }) : _client = client;
 
   final String baseUrl;
   final http.Client _client;
+
+  /// Called fresh before every request, so a token refreshed elsewhere in
+  /// the app is always picked up without this repository knowing anything
+  /// about how auth works.
+  final Future<String?> Function()? getAuthToken;
+
+  final Duration timeout;
+
+  /// Only idempotent GETs are retried; POSTs (approve/deny/mark-read) are
+  /// not, so a flaky connection can't cause a mutation to fire twice.
+  final int maxGetRetries;
+
+  Future<Map<String, String>> _headers() async {
+    final headers = <String, String>{
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    };
+    final token = await getAuthToken?.call();
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    return headers;
+  }
+
+  Future<Map<String, dynamic>?> get(Uri uri) =>
+      _send((headers) => _client.get(uri, headers: headers), retryable: true);
+
+  Future<Map<String, dynamic>?> post(Uri uri) =>
+      _send((headers) => _client.post(uri, headers: headers));
+
+  Future<Map<String, dynamic>?> _send(
+    Future<http.Response> Function(Map<String, String> headers) call, {
+    bool retryable = false,
+  }) async {
+    final headers = await _headers();
+    var attempt = 0;
+    final maxAttempts = retryable ? maxGetRetries + 1 : 1;
+
+    while (true) {
+      attempt++;
+      try {
+        final response = await call(headers).timeout(timeout);
+        return _decode(response);
+      } on TimeoutException {
+        if (attempt < maxAttempts) continue;
+        throw RequestTimeoutException();
+      } on NotificationApiException {
+        rethrow;
+      } catch (_) {
+        if (attempt < maxAttempts) continue;
+        throw NetworkUnavailableException();
+      }
+    }
+  }
+
+  Map<String, dynamic>? _decode(http.Response response) {
+    final code = response.statusCode;
+    if (code == 401) throw UnauthorizedException(_serverMessage(response));
+    if (code == 403) throw ForbiddenException(_serverMessage(response));
+    if (code == 404) throw NotFoundException(_serverMessage(response));
+    if (code >= 500) throw ServerException(code, _serverMessage(response));
+    if (code >= 400) {
+      throw NotificationApiException(
+        _serverMessage(response) ?? 'Request failed ($code).',
+        statusCode: code,
+      );
+    }
+    if (response.body.isEmpty) return null;
+    final decoded = jsonDecode(response.body);
+    return decoded is Map<String, dynamic> ? decoded : null;
+  }
+
+  /// Servers commonly send `{ "message": "..." }` or
+  /// `{ "error": { "message": "..." } }` on failure — surface that instead
+  /// of a generic string whenever it's present.
+  String? _serverMessage(http.Response response) {
+    try {
+      final body = jsonDecode(response.body);
+      if (body is Map<String, dynamic>) {
+        final message = body['message'];
+        if (message is String && message.isNotEmpty) return message;
+        final error = body['error'];
+        if (error is Map<String, dynamic>) {
+          final errorMessage = error['message'];
+          if (errorMessage is String && errorMessage.isNotEmpty) {
+            return errorMessage;
+          }
+        }
+      }
+    } catch (_) {
+      // Non-JSON or empty error body — fall back to the generic message.
+    }
+    return null;
+  }
+
+  void dispose() => _client.close();
+}
+
+/// Real backend implementation — wire this up once an API exists.
+/// Nothing else in the screen needs to change: just construct
+/// `NotificationStart(repository: ApiNotificationRepository(baseUrl: ...))`.
+///
+/// [getAuthToken] is optional and called before every request; wire it to
+/// your existing auth/session layer (e.g. `() => authStore.currentToken`)
+/// so token refreshes are picked up automatically without touching this
+/// class again.
+class ApiNotificationRepository implements NotificationRepository {
+  ApiNotificationRepository({
+    required String baseUrl,
+    http.Client? client,
+    Future<String?> Function()? getAuthToken,
+  }) : _api = _ApiClient(
+         baseUrl: baseUrl,
+         client: client ?? http.Client(),
+         getAuthToken: getAuthToken,
+       );
+
+  final _ApiClient _api;
 
   @override
   Future<NotificationPage> fetchNotifications({
@@ -405,31 +604,16 @@ class ApiNotificationRepository implements NotificationRepository {
     int pageSize = 20,
     bool onlyUnread = false,
   }) async {
-    final uri = Uri.parse('$baseUrl/users/$userId/notifications').replace(
-      queryParameters: {
-        'page': '$page',
-        'pageSize': '$pageSize',
-        if (onlyUnread) 'status': 'unread',
-      },
-    );
-    late final http.Response response;
-    try {
-      response = await _client
-          .get(uri, headers: const {'Accept': 'application/json'})
-          .timeout(const Duration(seconds: 15));
-    } catch (_) {
-      throw NotificationApiException(
-        'Could not reach the server. Check your connection and try again.',
-      );
-    }
+    final uri = Uri.parse('${_api.baseUrl}/users/$userId/notifications')
+        .replace(
+          queryParameters: {
+            'page': '$page',
+            'pageSize': '$pageSize',
+            if (onlyUnread) 'status': 'unread',
+          },
+        );
 
-    if (response.statusCode != 200) {
-      throw NotificationApiException(
-        'Failed to load notifications (${response.statusCode}).',
-      );
-    }
-
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final body = await _api.get(uri) ?? const {};
     final data = (body['data'] as List<dynamic>? ?? const []);
     final meta = (body['meta'] as Map<String, dynamic>?) ?? const {};
     return NotificationPage(
@@ -441,66 +625,45 @@ class ApiNotificationRepository implements NotificationRepository {
   }
 
   @override
-  Future<void> markAllAsRead({required String userId}) async {
-    final uri = Uri.parse('$baseUrl/users/$userId/notifications/read-all');
-    final response = await _client
-        .post(uri)
-        .timeout(const Duration(seconds: 15));
-    if (response.statusCode >= 400) {
-      throw NotificationApiException('Failed to mark all as read.');
-    }
-  }
+  Future<void> markAllAsRead({required String userId}) => _api.post(
+    Uri.parse('${_api.baseUrl}/users/$userId/notifications/read-all'),
+  );
+
+  @override
+  Future<void> markAllAsUnread({required String userId}) => _api.post(
+    Uri.parse('${_api.baseUrl}/users/$userId/notifications/unread-all'),
+  );
 
   @override
   Future<void> markAsRead({
     required String userId,
     required String notificationId,
-  }) async {
-    final uri = Uri.parse(
-      '$baseUrl/users/$userId/notifications/$notificationId/read',
-    );
-    final response = await _client
-        .post(uri)
-        .timeout(const Duration(seconds: 15));
-    if (response.statusCode >= 400) {
-      throw NotificationApiException('Failed to update notification.');
-    }
-  }
+  }) => _api.post(
+    Uri.parse(
+      '${_api.baseUrl}/users/$userId/notifications/$notificationId/read',
+    ),
+  );
 
   @override
   Future<void> approve({
     required String userId,
     required String notificationId,
-  }) async {
-    final uri = Uri.parse(
-      '$baseUrl/users/$userId/notifications/$notificationId/approve',
-    );
-    final response = await _client
-        .post(uri)
-        .timeout(const Duration(seconds: 15));
-    if (response.statusCode >= 400) {
-      throw NotificationApiException('Failed to approve request.');
-    }
-  }
+  }) => _api.post(
+    Uri.parse(
+      '${_api.baseUrl}/users/$userId/notifications/$notificationId/approve',
+    ),
+  );
 
   @override
-  Future<void> deny({
-    required String userId,
-    required String notificationId,
-  }) async {
-    final uri = Uri.parse(
-      '$baseUrl/users/$userId/notifications/$notificationId/deny',
-    );
-    final response = await _client
-        .post(uri)
-        .timeout(const Duration(seconds: 15));
-    if (response.statusCode >= 400) {
-      throw NotificationApiException('Failed to deny request.');
-    }
-  }
+  Future<void> deny({required String userId, required String notificationId}) =>
+      _api.post(
+        Uri.parse(
+          '${_api.baseUrl}/users/$userId/notifications/$notificationId/deny',
+        ),
+      );
 
   @override
-  void dispose() => _client.close();
+  void dispose() => _api.dispose();
 }
 
 /// In-memory stand-in used until a real backend exists. Same interface,
@@ -557,6 +720,9 @@ class MockNotificationRepository implements NotificationRepository {
             subIcon: Icons.access_time,
             subActionText: 'Added a due date of Jul 27 at 6:00 PM',
             timestamp: now.subtract(const Duration(days: 1, hours: 4)),
+            subTimestamp: now.subtract(
+              const Duration(days: 1, hours: 3, minutes: 59),
+            ),
           ),
         ],
       ),
@@ -568,7 +734,7 @@ class MockNotificationRepository implements NotificationRepository {
         badgeBold: 'Collaboration Board: ',
         badgeNormal: "Team's",
         hasPromo: true,
-        requiresAction: true, // NEW — shows Approve / Deny row
+        requiresAction: true,
         lines: [
           NotifActivityLine(
             person: const NotifPerson(
@@ -579,6 +745,7 @@ class MockNotificationRepository implements NotificationRepository {
             boldName: 'Lucy Livingstone',
             actionText: 'has requested to edit the file Zendoor Illustration',
             timestamp: now.subtract(const Duration(hours: 20)),
+            metaLabel: "Event's Team",
           ),
         ],
         linkPreview: const LinkPreviewData(
@@ -617,6 +784,14 @@ class MockNotificationRepository implements NotificationRepository {
     await Future.delayed(const Duration(milliseconds: 200));
     for (var i = 0; i < _seed.length; i++) {
       _seed[i] = _seed[i].copyWith(status: NotifStatus.read);
+    }
+  }
+
+  @override
+  Future<void> markAllAsUnread({required String userId}) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    for (var i = 0; i < _seed.length; i++) {
+      _seed[i] = _seed[i].copyWith(status: NotifStatus.unread);
     }
   }
 
@@ -697,29 +872,27 @@ class _NotificationStartState extends State<NotificationStart> {
   bool _markingAllAsRead = false;
   String? _selectedCardId;
 
-  /// NEW: ids currently mid-flight on an approve/deny call, so the row can
-  /// show a spinner and ignore repeat taps.
+  /// Ids currently mid-flight on an approve/deny call, so the row can show
+  /// a spinner and ignore repeat taps.
   final Set<String> _actionInFlight = {};
 
-  Timer? _relativeTimeTicker;
+  // The 60s "3 minutes ago" -> "4 minutes ago" refresh now lives inside
+  // _NotificationListView itself (below), not here. That confines the
+  // once-a-minute rebuild to the list, so the app bar, drawer, bottom nav,
+  // and the mark-all-as-read/toggle row above the list are never touched
+  // by a tick that has nothing to do with them.
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
     _loadInitial();
-    // Repaints just the relative-time labels every 60s so "3 minutes ago"
-    // stays accurate without re-hitting the network.
-    _relativeTimeTicker = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (mounted) setState(() {});
-    });
   }
 
   @override
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
-    _relativeTimeTicker?.cancel();
     if (widget.repository == null) _repository.dispose();
     super.dispose();
   }
@@ -797,20 +970,29 @@ class _NotificationStartState extends State<NotificationStart> {
     }
   }
 
-  Future<void> _handleMarkAllAsRead() async {
+  /// Toggles the whole list between read and unread. If everything is
+  /// already read, tapping the master radio marks everything unread again
+  /// — and vice versa — so "checked" and "unchecked" are both reachable
+  /// states rather than the radio only ever moving one direction.
+  Future<void> _handleToggleMarkAllAsRead() async {
     if (_markingAllAsRead) return;
+    final markingAsRead = !_allRead;
     setState(() => _markingAllAsRead = true);
     // Optimistic update so the UI feels instant.
     final previous = List<NotifCardData>.from(_notifications);
     setState(() {
       for (var i = 0; i < _notifications.length; i++) {
         _notifications[i] = _notifications[i].copyWith(
-          status: NotifStatus.read,
+          status: markingAsRead ? NotifStatus.read : NotifStatus.unread,
         );
       }
     });
     try {
-      await _repository.markAllAsRead(userId: widget.userId);
+      if (markingAsRead) {
+        await _repository.markAllAsRead(userId: widget.userId);
+      } else {
+        await _repository.markAllAsUnread(userId: widget.userId);
+      }
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -819,8 +1001,12 @@ class _NotificationStartState extends State<NotificationStart> {
             ..addAll(previous);
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not mark all as read. Try again.'),
+          SnackBar(
+            content: Text(
+              markingAsRead
+                  ? 'Could not mark all as read. Try again.'
+                  : 'Could not mark all as unread. Try again.',
+            ),
           ),
         );
       }
@@ -829,9 +1015,9 @@ class _NotificationStartState extends State<NotificationStart> {
     }
   }
 
-  /// NEW: approve an action-required notification. Optimistically marks it
-  /// read and clears `requiresAction`; rolls back and shows a snackbar on
-  /// failure.
+  /// Approve an action-required notification. Optimistically marks it read
+  /// and clears `requiresAction`; shows a confirmation snackbar on success,
+  /// or rolls back and shows an error snackbar on failure.
   Future<void> _handleApprove(String id) async {
     if (_actionInFlight.contains(id)) return;
     final i = _notifications.indexWhere((n) => n.id == id);
@@ -847,6 +1033,11 @@ class _NotificationStartState extends State<NotificationStart> {
     });
     try {
       await _repository.approve(userId: widget.userId, notificationId: id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Request approved.')),
+        );
+      }
     } catch (_) {
       if (mounted) {
         final j = _notifications.indexWhere((n) => n.id == id);
@@ -862,8 +1053,9 @@ class _NotificationStartState extends State<NotificationStart> {
     }
   }
 
-  /// NEW: deny an action-required notification. Optimistically removes it
-  /// from the list; restores it in place on failure.
+  /// Deny an action-required notification. Optimistically removes it from
+  /// the list; shows a confirmation snackbar on success, or restores it in
+  /// place and shows an error snackbar on failure.
   Future<void> _handleDeny(String id) async {
     if (_actionInFlight.contains(id)) return;
     final i = _notifications.indexWhere((n) => n.id == id);
@@ -881,6 +1073,11 @@ class _NotificationStartState extends State<NotificationStart> {
     });
     try {
       await _repository.deny(userId: widget.userId, notificationId: id);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Request denied.')));
+      }
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -906,6 +1103,14 @@ class _NotificationStartState extends State<NotificationStart> {
         .where((n) => n.status == NotifStatus.unread)
         .toList(growable: false);
   }
+
+  /// True once every notification is read. Drives both the master
+  /// "Mark all as read" radio and, per the requirement that every card's
+  /// own radio circle light up together with it, each individual
+  /// [NotifCard]'s radio too.
+  bool get _allRead =>
+      _notifications.isNotEmpty &&
+      _notifications.every((n) => n.status == NotifStatus.read);
 
   // ── UI ─────────────────────────────────────────────────────────────
 
@@ -960,10 +1165,8 @@ class _NotificationStartState extends State<NotificationStart> {
             )
           else
             RadioSelector(
-              selected:
-                  _notifications.isNotEmpty &&
-                  _notifications.every((n) => n.status == NotifStatus.read),
-              onTap: _handleMarkAllAsRead,
+              selected: _allRead,
+              onTap: _handleToggleMarkAllAsRead,
               colors: c,
             ),
           SizedBox(width: 8.w),
@@ -1011,43 +1214,19 @@ class _NotificationStartState extends State<NotificationStart> {
       case _LoadState.empty:
         return _EmptyState(colors: c);
       case _LoadState.loaded:
-        final items = _visibleNotifications;
-        return RefreshIndicator(
-          color: c.primaryColor,
+        return _NotificationListView(
+          items: _visibleNotifications,
+          hasMore: _hasMore,
+          isLoadingMore: _isLoadingMore,
+          selectedId: _selectedCardId,
+          actionInFlight: _actionInFlight,
+          allRead: _allRead,
+          colors: c,
+          scrollController: _scrollController,
           onRefresh: _loadInitial,
-          child: ListView.separated(
-            controller: _scrollController,
-            padding: EdgeInsets.fromLTRB(15.w, 0, 15.w, 20.h),
-            physics: const AlwaysScrollableScrollPhysics(),
-            itemCount: items.length + (_hasMore ? 1 : 0),
-            separatorBuilder: (_, __) => SizedBox(height: 14.h),
-            itemBuilder: (context, index) {
-              if (index >= items.length) {
-                return Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16.h),
-                  child: Center(
-                    child: _isLoadingMore
-                        ? CircularProgressIndicator(color: c.primaryColor)
-                        : const SizedBox.shrink(),
-                  ),
-                );
-              }
-              final data = items[index];
-              return RepaintBoundary(
-                key: ValueKey(data.id),
-                child: NotifCard(
-                  data: data,
-                  isSelected: _selectedCardId == data.id,
-                  onSelect: () => _selectCard(data.id),
-                  colors: c,
-                  // NEW
-                  isActionInFlight: _actionInFlight.contains(data.id),
-                  onApprove: () => _handleApprove(data.id),
-                  onDeny: () => _handleDeny(data.id),
-                ),
-              );
-            },
-          ),
+          onSelect: _selectCard,
+          onApprove: _handleApprove,
+          onDeny: _handleDeny,
         );
     }
   }
@@ -1082,6 +1261,121 @@ class _NotificationStartState extends State<NotificationStart> {
   }
 }
 
+/// Owns the actual scrolling list, isolated from [_NotificationStartState]
+/// for one reason: the once-a-minute "3 minutes ago" -> "4 minutes ago"
+/// refresh. That tick only needs to touch the visible card labels — it has
+/// no business rebuilding the app bar, drawer, bottom nav, or the toggle
+/// row above the list. Keeping its own `Timer` here means `setState` on
+/// tick only re-runs this widget's `build`, not the whole screen's.
+///
+/// Beyond that scoping, a few `ListView` knobs are tuned for a feed that's
+/// already RepaintBoundary'd per item:
+///  - `addRepaintBoundaries: false` — each item wraps itself in its own
+///    `RepaintBoundary` keyed by id already, so the framework doesn't need
+///    to add a second one per item.
+///  - `addAutomaticKeepAlives: false` — cards don't hold state that needs
+///    preserving when scrolled offscreen, so keeping them alive just wastes
+///    memory on a long/paginated feed.
+///  - `cacheExtent` — pre-builds a bit past the visible viewport so fast
+///    scrolls and the infinite-scroll trigger don't show a blank flash.
+class _NotificationListView extends StatefulWidget {
+  final List<NotifCardData> items;
+  final bool hasMore;
+  final bool isLoadingMore;
+  final String? selectedId;
+  final Set<String> actionInFlight;
+  final bool allRead;
+  final ThemeConst colors;
+  final ScrollController scrollController;
+  final Future<void> Function() onRefresh;
+  final void Function(String id) onSelect;
+  final void Function(String id) onApprove;
+  final void Function(String id) onDeny;
+
+  const _NotificationListView({
+    required this.items,
+    required this.hasMore,
+    required this.isLoadingMore,
+    required this.selectedId,
+    required this.actionInFlight,
+    required this.allRead,
+    required this.colors,
+    required this.scrollController,
+    required this.onRefresh,
+    required this.onSelect,
+    required this.onApprove,
+    required this.onDeny,
+  });
+
+  @override
+  State<_NotificationListView> createState() => _NotificationListViewState();
+}
+
+class _NotificationListViewState extends State<_NotificationListView> {
+  Timer? _relativeTimeTicker;
+
+  @override
+  void initState() {
+    super.initState();
+    _relativeTimeTicker = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _relativeTimeTicker?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.colors;
+    final items = widget.items;
+    return RefreshIndicator(
+      color: c.primaryColor,
+      onRefresh: widget.onRefresh,
+      child: ListView.separated(
+        controller: widget.scrollController,
+        padding: EdgeInsets.fromLTRB(15.w, 0, 15.w, 20.h),
+        physics: const AlwaysScrollableScrollPhysics(),
+        cacheExtent: 800,
+        addAutomaticKeepAlives: false,
+        addRepaintBoundaries: false,
+        addSemanticIndexes: false,
+        itemCount: items.length + (widget.hasMore ? 1 : 0),
+        separatorBuilder: (_, __) => SizedBox(height: 14.h),
+        itemBuilder: (context, index) {
+          if (index >= items.length) {
+            return Padding(
+              padding: EdgeInsets.symmetric(vertical: 16.h),
+              child: Center(
+                child: widget.isLoadingMore
+                    ? CircularProgressIndicator(color: c.primaryColor)
+                    : const SizedBox.shrink(),
+              ),
+            );
+          }
+          final data = items[index];
+          return RepaintBoundary(
+            key: ValueKey(data.id),
+            child: NotifCard(
+              data: data,
+              isSelected: widget.selectedId == data.id,
+              onSelect: () => widget.onSelect(data.id),
+              colors: c,
+              isActionInFlight: widget.actionInFlight.contains(data.id),
+              onApprove: () => widget.onApprove(data.id),
+              onDeny: () => widget.onDeny(data.id),
+              forceRadioActive: widget.allRead,
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
 // ── Shared color palette, kept in one immutable object so child widgets
 // can take it as a plain constructor arg instead of reaching into State ──
 
@@ -1099,6 +1393,11 @@ class ThemeConst {
   final Color darkCardSubBg;
   final Color zendoorPurple;
 
+  /// Box background for cards with `highlighted: true` (e.g. ntf_2) —
+  /// distinct from the plain white default box (e.g. ntf_1). Cleared back
+  /// to the default once every notification is marked read.
+  final Color highlightBoxBg;
+
   const ThemeConst({
     this.primaryColor = const Color(0xFF0A0258),
     this.textColor = const Color(0xFF6C7278),
@@ -1112,6 +1411,7 @@ class ThemeConst {
     this.darkCardBg = const Color(0xFF15104A),
     this.darkCardSubBg = const Color(0xFF1E1962),
     this.zendoorPurple = const Color(0xFF4F3FA8),
+    this.highlightBoxBg = const Color(0xFFF3F1FC),
   });
 
   static const ThemeConst of_ = ThemeConst();
@@ -1201,8 +1501,8 @@ class RadioSelector extends StatelessWidget {
   }
 }
 
-/// NEW: gradient "Approve" / outlined "Deny" pill pair shown on
-/// action-required notifications (e.g. edit-access requests).
+/// Gradient "Approve" / outlined "Deny" pill pair shown on action-required
+/// notifications (e.g. edit-access requests).
 class ApproveDenyButtons extends StatelessWidget {
   final VoidCallback onApprove;
   final VoidCallback onDeny;
@@ -1264,7 +1564,7 @@ class ApproveDenyButtons extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.fromLTRB(14.w, 0, 14.w, 12.h),
       child: Row(
-        mainAxisSize: MainAxisSize.min, // NEW: row only as wide as its children
+        mainAxisSize: MainAxisSize.min, // row only as wide as its children
         children: [
           buttonWidth != null
               ? SizedBox(width: buttonWidth!.w, child: approveBtn)
@@ -1366,12 +1666,21 @@ class Avatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final url = person.avatarUrl;
     if (url == null || url.isEmpty) return _initials();
+    // Avatars render at a fixed 28.r, but source images from an API are
+    // routinely 100-800px+. Without a cache size hint, every decode costs
+    // whatever the source resolution is, on every card, every scroll pass.
+    // Capping the decode target at ~3x the render size (covers up to a
+    // 3x device pixel ratio) keeps memory and CPU proportional to what's
+    // actually on screen instead of to whatever the backend happens to send.
+    final cacheSize = (28.r * 3).round();
     return ClipOval(
       child: CachedNetworkImage(
         imageUrl: url,
         width: 28.r,
         height: 28.r,
         fit: BoxFit.cover,
+        memCacheWidth: cacheSize,
+        memCacheHeight: cacheSize,
         fadeInDuration: const Duration(milliseconds: 150),
         placeholder: (context, _) => _initials(),
         errorWidget: (context, _, __) => _initials(),
@@ -1614,7 +1923,11 @@ class ActivityLineWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final timeText = RelativeTime.format(line.timestamp);
+    final actionTimeText = RelativeTime.format(line.timestamp);
+    final subTimeText = line.subTimestamp != null
+        ? RelativeTime.format(line.subTimestamp!)
+        : null;
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
       child: Row(
@@ -1626,65 +1939,169 @@ class ActivityLineWidget extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                RichText(
-                  text: TextSpan(
-                    children: [
-                      TextSpan(
-                        text: line.boldName,
-                        style: GoogleFonts.inter(
-                          fontSize: 12.5.sp,
-                          fontWeight: FontWeight.w700,
-                          color: colors.labelColor,
-                        ),
-                      ),
-                      if (line.actionText != null)
-                        TextSpan(
-                          text: '  ${line.actionText}',
-                          style: GoogleFonts.inter(
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w400,
-                            color: colors.textColor,
-                          ),
-                        ),
-                    ],
+                Text(
+                  line.boldName,
+                  style: GoogleFonts.inter(
+                    fontSize: 12.5.sp,
+                    fontWeight: FontWeight.w700,
+                    color: colors.labelColor,
                   ),
                 ),
-                if (line.subActionText != null)
+
+                if (line.actionText != null)
                   Padding(
                     padding: EdgeInsets.only(top: 6.h),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          line.subIcon ?? Icons.access_time,
-                          size: 13.r,
-                          color: colors.textColor,
-                        ),
-                        SizedBox(width: 5.w),
+                        if (line.leadingIcon != null) ...[
+                          Container(
+                            width: 18.r,
+                            height: 18.r,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: colors.dividerColor,
+                            ),
+                            child: Icon(
+                              line.leadingIcon,
+                              size: 11.r,
+                              color: colors.textColor,
+                            ),
+                          ),
+                          SizedBox(width: 6.w),
+                        ],
                         Expanded(
-                          child: Text(
-                            line.subActionText!,
-                            style: GoogleFonts.inter(
-                              fontSize: 12.sp,
-                              fontWeight: FontWeight.w400,
-                              color: colors.labelColor,
+                          child: RichText(
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: line.actionText,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w500,
+                                    color: colors.labelColor,
+                                  ),
+                                ),
+                                // Only append the time here when there's
+                                // no metaLabel row below to show it —
+                                // otherwise it duplicates (and the extra
+                                // words push "hours ago" onto its own
+                                // wrapped line).
+                                if (line.metaLabel == null)
+                                  TextSpan(
+                                    text: '  $actionTimeText',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 11.sp,
+                                      fontWeight: FontWeight.w400,
+                                      color: colors.textColor,
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                Padding(
-                  padding: EdgeInsets.only(top: 2.h),
-                  child: Text(
-                    timeText,
-                    style: GoogleFonts.inter(
-                      fontSize: 10.5.sp,
-                      fontWeight: FontWeight.w400,
-                      color: colors.textColor,
+                if (line.metaLabel != null)
+                  Padding(
+                    padding: EdgeInsets.only(top: 8.h),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.sell,
+                          size: 15.r,
+                          color: const Color(0xFFD6249F),
+                        ),
+                        SizedBox(width: 8.w),
+                        Expanded(
+                          child: RichText(
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: actionTimeText,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11.5.sp,
+                                    fontWeight: FontWeight.w400,
+                                    color: colors.textColor,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: '  |  ',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11.5.sp,
+                                    fontWeight: FontWeight.w400,
+                                    color: colors.dividerColor,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: line.metaLabel,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11.5.sp,
+                                    fontWeight: FontWeight.w400,
+                                    color: colors.textColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
+                if (line.subActionText != null)
+                  Padding(
+                    padding: EdgeInsets.only(top: 8.h),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 18.r,
+                          height: 18.r,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: colors.dividerColor,
+                          ),
+                          child: Icon(
+                            line.subIcon ?? Icons.access_time,
+                            size: 11.r,
+                            color: colors.textColor,
+                          ),
+                        ),
+                        SizedBox(width: 6.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                line.subActionText!,
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: colors.labelColor,
+                                ),
+                              ),
+                              if (subTimeText != null)
+                                Padding(
+                                  padding: EdgeInsets.only(top: 2.h),
+                                  child: Text(
+                                    subTimeText,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 10.5.sp,
+                                      fontWeight: FontWeight.w400,
+                                      color: colors.textColor,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
@@ -1700,16 +2117,21 @@ class ActivityLineWidget extends StatelessWidget {
 /// stable `id` (from the API) rather than a list index, so selection stays
 /// correct across pagination/refresh.
 ///
-/// NEW: when `data.requiresAction` is true, renders an Approve / Deny row
+/// When `data.requiresAction` is true, renders an Approve / Deny row
 /// beneath the activity lines / promo box and above the link preview.
 class NotifCard extends StatelessWidget {
   final NotifCardData data;
   final bool isSelected;
   final VoidCallback onSelect;
   final ThemeConst colors;
-  final bool isActionInFlight; // NEW
-  final VoidCallback? onApprove; // NEW
-  final VoidCallback? onDeny; // NEW
+  final bool isActionInFlight;
+  final VoidCallback? onApprove;
+  final VoidCallback? onDeny;
+
+  /// When true, this card's own radio circle shows checked regardless of
+  /// [isSelected] — driven by "Mark all as read" being active for the
+  /// whole list, so every card's radio lights up together with it.
+  final bool forceRadioActive;
 
   const NotifCard({
     super.key,
@@ -1720,6 +2142,7 @@ class NotifCard extends StatelessWidget {
     this.isActionInFlight = false,
     this.onApprove,
     this.onDeny,
+    this.forceRadioActive = false,
   });
 
   Widget _badgeText(String bold, String normal, {Color? color}) {
@@ -1786,7 +2209,11 @@ class NotifCard extends StatelessWidget {
             ],
           ),
         ),
-        RadioSelector(selected: isSelected, onTap: onSelect, colors: colors),
+        RadioSelector(
+          selected: isSelected || forceRadioActive,
+          onTap: onSelect,
+          colors: colors,
+        ),
       ],
     );
   }
@@ -1798,10 +2225,16 @@ class NotifCard extends StatelessWidget {
         (data.subBadgeNormal != null && data.subBadgeNormal!.isNotEmpty);
     final hasBadge = data.badgeBold.isNotEmpty || data.badgeNormal.isNotEmpty;
 
+    // ntf_1 is "active" (dark header + border) whenever it's the tapped
+    // card. Checking "Mark all as read" should make every other card
+    // (ntf_2, ntf_3) go active the same way — not just light up its radio
+    // circle — so the whole list visually matches ntf_1 once all are read.
+    final active = isSelected || forceRadioActive;
+
     final body = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (isSelected)
+        if (active)
           Container(
             width: double.infinity,
             padding: EdgeInsets.fromLTRB(14.w, 12.h, 14.w, 12.h),
@@ -1819,8 +2252,8 @@ class NotifCard extends StatelessWidget {
             padding: EdgeInsets.fromLTRB(14.w, 12.h, 14.w, 0),
             child: _header(dark: false),
           ),
-        if (isSelected) SizedBox(height: 0) else SizedBox(height: 6.h),
-        if (isSelected && hasSubBadge)
+        if (active) SizedBox(height: 0) else SizedBox(height: 6.h),
+        if (active && hasSubBadge)
           Container(
             width: double.infinity,
             color: colors.darkCardSubBg,
@@ -1855,8 +2288,7 @@ class NotifCard extends StatelessWidget {
         if (data.hasPromo) ZendoorPromoBox(colors: colors),
         if (data.linkPreview != null)
           LinkPreview(data: data.linkPreview!, colors: colors),
-        if (isSelected) SizedBox(height: 4.h),
-        // NEW: Approve / Deny action row for notifications awaiting a decision.
+        if (active) SizedBox(height: 4.h),
         if (data.requiresAction && onApprove != null && onDeny != null)
           ApproveDenyButtons(
             onApprove: onApprove!,
@@ -1864,16 +2296,23 @@ class NotifCard extends StatelessWidget {
             isLoading: isActionInFlight,
             colors: colors,
             buttonWidth:
-            90, // control button width here — remove/null to auto-size
+                90, // control button width here — remove/null to auto-size
           ),
       ],
     );
 
+    // ntf_1's plain white box is the default. A card with
+    // `highlighted: true` (e.g. ntf_2) gets a distinct tinted box — but
+    // once every notification is marked read (forceRadioActive), all
+    // boxes fall back to that same default, ntf_1-style white regardless
+    // of their own highlighted flag.
+    final useHighlightBg = data.highlighted && !forceRadioActive;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: useHighlightBg ? colors.highlightBoxBg : Colors.white,
         borderRadius: BorderRadius.circular(10.r),
-        border: isSelected
+        border: active
             ? Border.all(color: colors.primaryColor, width: 1.4)
             : null,
         boxShadow: [
