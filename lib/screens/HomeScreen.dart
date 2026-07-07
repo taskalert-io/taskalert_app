@@ -414,7 +414,8 @@ class HomeScreenState extends State<HomeScreen> {
                                             builder: (context) =>
                                                 TaskDetailScreen(
                                                   userId: widget.userId,
-                                                  taskId: task["id"],
+                                                  mainTaskId: task["id"],
+                                                  taskId: task["instanceId"],
                                                 ),
                                           ),
                                         );

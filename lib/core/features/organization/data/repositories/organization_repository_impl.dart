@@ -36,11 +36,11 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
         );
       }
 
-      final formData = FormData.fromMap(map);
+      // final formData = FormData.fromMap(map);
 
       final responseData = await _httpService.post(
-        '/organizations',
-        body: formData,
+        '/auth/create-organization',
+        body: map,
       );
 
       final apiResponse = BaseApiResponse.fromJson(

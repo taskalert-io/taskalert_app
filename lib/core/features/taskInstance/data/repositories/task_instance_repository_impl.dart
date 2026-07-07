@@ -133,6 +133,7 @@ class TaskInstanceRepositoryImpl implements TaskInstanceRepository {
   Future<ApiResult<BaseApiResponse<TaskInstanceModel>>>
   updateInstanceStatusPriorityAssignees({
     required String instanceId,
+    required String taskId,
     String? status,
     String? priority,
     List<String>? assigneeIds,

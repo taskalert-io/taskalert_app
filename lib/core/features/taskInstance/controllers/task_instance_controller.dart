@@ -109,10 +109,10 @@ class TaskInstanceController extends ChangeNotifier {
     required String taskId,
     required String instanceId,
     required String status,
-    required String priority,
-    required List<String> assigneeIds,
-    required String time,
-    required String period,
+    String? priority,
+    List<String>? assigneeIds,
+    String? time,
+    String? period,
     required String scope,
   }) async {
     _isLoading = true;
@@ -126,7 +126,7 @@ class TaskInstanceController extends ChangeNotifier {
       status: status,
       priority: priority,
       assigneeIds: assigneeIds,
-      scheduledTime: {"time": time, "period": period},
+      scheduledTime: {"time": ?time, "period": ?period},
       scope: scope,
     );
 
@@ -159,6 +159,7 @@ class TaskInstanceController extends ChangeNotifier {
 
   /// 4. Partial Updates for Status, Priority, and Assignees
   Future<bool> handleUpdateInstanceStatusPriorityAssignees({
+    required String taskId,
     required String instanceId,
     String? status,
     String? priority,
@@ -170,6 +171,7 @@ class TaskInstanceController extends ChangeNotifier {
     notifyListeners();
 
     final result = await _repository.updateInstanceStatusPriorityAssignees(
+      taskId: taskId,
       instanceId: instanceId,
       status: status,
       priority: priority,

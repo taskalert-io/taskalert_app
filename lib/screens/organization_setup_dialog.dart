@@ -436,6 +436,7 @@ class _OrganizationSetupDialogState extends State<OrganizationSetupDialog> {
                                                     .trim(),
                                               );
                                       if (isOrgSet) {
+                                        print('Organization setup successful');
                                         if (_organizationController
                                                 .successMessage !=
                                             null) {

@@ -29,6 +29,7 @@ class TaskApiConfig {
 // ── Model ────────────────────────────────────────────────────────────────
 class TodoItem {
   final String? id;
+  final String? mainTaskId;
   final String image;
   final String title;
   final String status; // Pending | In progress | Done
@@ -39,6 +40,7 @@ class TodoItem {
 
   TodoItem({
     this.id,
+    this.mainTaskId,
     this.image = '',
     this.title = '',
     this.status = '',
@@ -51,6 +53,7 @@ class TodoItem {
   factory TodoItem.fromJson(Map<String, dynamic> json) {
     return TodoItem(
       id: json['id']?.toString(),
+      mainTaskId: json['mainTaskId']?.toString(),
       image: json['image'] ?? '',
       title: json['title'] ?? '',
       status: json['status'] ?? '',
@@ -209,6 +212,8 @@ class MyTaskScreenState extends State<MyTaskScreen> {
             "${task.scheduledTime?.time} ${task.scheduledTime?.period}",
 
         "createdBy": "${task.createdBy?.firstName} ${task.createdBy?.lastName}",
+        // "mainTaskId": task.mainTaskId?.toString(),
+        // "mainTaskId": task.mainTaskId?.toString(),
       };
     }).toList();
 
@@ -310,6 +315,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
           todoItems.add(
             TodoItem(
               id: task['instanceId']?.toString() ?? '',
+              mainTaskId: task['id']?.toString() ?? '',
               title: task['title'] ?? '',
 
               image: "",
@@ -329,92 +335,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
       });
 
       _todoItems = todoItems;
-
-      // print('todos: $_todoItems');
-      // categorizedTasks;
-
-      // _todoItems = categorizedTasks.entries.expand((entry) {
-      //   final status = entry.key;
-      //   final tasks = List<Map<String, dynamic>>.from(entry.value['tasks']);
-
-      //   return tasks.map(
-      //     (task) => TodoItem(
-      //       id: task['id']?.toString() ?? '',
-      //       image: task['image'] ?? '',
-      //       title: task['title'] ?? '',
-      //       status: status,
-      //       requestedBy: task['requestedBy'] ?? '',
-      //       priority: task['priority'] ?? '',
-      //       date: task['reportingDate']?.toString() ?? '',
-      //       time: task['reportingTime']?.toString() ?? '',
-      //     ),
-      //   );
-      // }).toList();
-
-      // print(_todoItems);
-
-      // _todoItems = [
-      //   TodoItem(
-      //     id: '1',
-      //     image: "https://i.pravatar.cc/150?img=12",
-      //     title: "Retail Market",
-      //     status: "Pending",
-      //     requestedBy: "Assign to Guadalupe Miró",
-      //     priority: "Low",
-      //     date: "12.05.2026",
-      //     time: "09:30 AM",
-      //   ),
-      //   TodoItem(
-      //     id: '2',
-      //     image: "https://i.pravatar.cc/150?img=18",
-      //     title: "Yearly Food Service",
-      //     status: "In progress",
-      //     requestedBy: "Requested by John Kyte",
-      //     priority: "High",
-      //     date: "12.05.2026",
-      //     time: "09:30 AM",
-      //   ),
-      //   TodoItem(
-      //     id: '3',
-      //     image: "https://i.pravatar.cc/150?img=22",
-      //     title: "Manufacture PM",
-      //     status: "Done",
-      //     requestedBy: "Requested by Guadalupe Miró",
-      //     priority: "Low",
-      //     date: "12.05.2026",
-      //     time: "09:30 AM",
-      //   ),
-      //   TodoItem(
-      //     id: '4',
-      //     image: "https://i.pravatar.cc/150?img=30",
-      //     title: "Office Cleaning",
-      //     status: "Pending",
-      //     requestedBy: "Requested by Alex",
-      //     priority: "Low",
-      //     date: "12.05.2026",
-      //     time: "09:30 AM",
-      //   ),
-      //   TodoItem(
-      //     id: '5',
-      //     image: "https://i.pravatar.cc/150?img=35",
-      //     title: "Electrical Repair",
-      //     status: "In progress",
-      //     requestedBy: "Requested by Smith",
-      //     priority: "High",
-      //     date: "12.05.2026",
-      //     time: "09:30 AM",
-      //   ),
-      //   TodoItem(
-      //     id: '6',
-      //     image: "https://i.pravatar.cc/150?img=40",
-      //     title: "Water Supply",
-      //     status: "Done",
-      //     requestedBy: "Requested by Jacob",
-      //     priority: "Low",
-      //     date: "12.05.2026",
-      //     time: "09:30 AM",
-      //   ),
-      // ];
     } catch (e) {
       // print(e);
       _todoError = 'Something went wrong';
@@ -795,6 +715,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                     builder: (context) => TaskDetailScreen(
                       userId: widget.userId,
                       taskId: items[i].id ?? '',
+                      mainTaskId: items[i].mainTaskId ?? '',
                       taskAssignedToUser: true,
                     ),
                   ),

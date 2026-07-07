@@ -32,6 +32,7 @@ abstract class TaskInstanceRepository {
 
   Future<ApiResult<BaseApiResponse<TaskInstanceModel>>>
   updateInstanceStatusPriorityAssignees({
+    required String taskId,
     required String instanceId,
     String? status,
     String? priority,

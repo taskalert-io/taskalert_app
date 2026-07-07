@@ -102,12 +102,14 @@ class TaskDetail {
 class TaskDetailScreen extends StatefulWidget {
   final String userId;
   final String? taskId; // pass null for create, an id for edit/view
+  final String? mainTaskId; // optional main task ID for context
   final bool?
   taskAssignedToUser; // optional flag to indicate if the task is assigned to the user
 
   const TaskDetailScreen({
     super.key,
     required this.userId,
+    required this.mainTaskId,
     this.taskId,
     this.taskAssignedToUser,
   });
@@ -250,7 +252,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   // Lifecycle
   // ═══════════════════════════════════════════════════════════════════════════
 
-  late final TaskInstanceController taskController;
+  // late final TaskInstanceController taskController;
+  TaskInstanceController taskController = sl<TaskInstanceController>();
 
   // @override
   @override
@@ -260,7 +263,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     _titleCtrl = TextEditingController(text: _title);
     _descCtrl = TextEditingController(text: _description);
 
-    taskController = sl<TaskInstanceController>();
+    // taskController = sl<TaskInstanceController>();
 
     if (widget.taskId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -1708,7 +1711,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                     items: _statusItems,
                                     selected: _status,
                                     onSelect: (v) =>
-                                        setState(() => _status = v),
+                                        print('Selected status: $v'),
+                                    // setState(() => _status = v),
                                   ),
                                 ),
                               ],
@@ -1740,7 +1744,41 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                       onTap: () async {
                                         if (!_isSaving &&
                                             await userTaskPermission) {
-                                          _saveTask();
+                                          print(_status);
+                                          String statusAfterUpdate = 'todo';
+
+                                          if (_status == 'Pending') {
+                                            statusAfterUpdate = 'todo';
+                                          } else if (_status == 'In Progress') {
+                                            statusAfterUpdate = 'inProgress';
+                                          } else if (_status == 'Completed') {
+                                            statusAfterUpdate = 'completed';
+                                          }
+
+                                          print(
+                                            'Status after update: $statusAfterUpdate',
+                                          );
+                                          // await taskController
+                                          //     .handleUpdateInstanceConfiguration(
+                                          //       taskId: widget.mainTaskId ?? '',
+                                          //       instanceId: widget.taskId ?? '',
+                                          //       status: statusAfterUpdate,
+                                          //       scope: 'single', // optional
+                                          //       // priority: _priority,
+                                          //       // assigneeIds: _assignToItems
+                                          //       //     .where(
+                                          //       //       (e) => e['id'] == _assignTo,
+                                          //       //     )
+                                          //       //     .map((e) => e['id'] as String)
+                                          //       // .toList(),
+                                          //       // scheduledTime: {
+                                          //       //   'date': _selectedDateLabel,
+                                          //       //   'time': _formattedTime,
+                                          //       //   'timezone': _timeZone,
+                                          //       // },
+                                          //     );
+
+                                          // _saveTask();
                                         } else {
                                           ScaffoldMessenger.of(
                                             context,
@@ -1799,316 +1837,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               ),
             ),
 
-      // GestureDetector(
-      //     behavior: HitTestBehavior.opaque,
-      //     onTap: () => FocusScope.of(context).unfocus(),
-      //     child: Column(
-      //       crossAxisAlignment: CrossAxisAlignment.start,
-      //       children: [
-      //         // Title bar
-      //         Padding(
-      //           padding: EdgeInsets.fromLTRB(15.w, 10.h, 15.w, 16.h),
-      //           child: Stack(
-      //             alignment: Alignment.center,
-      //             children: [
-      //               Center(
-      //                 child: Text(
-      //                   'Task Details',
-      //                   style: GoogleFonts.inter(
-      //                     fontSize: 15.sp,
-      //                     fontWeight: FontWeight.w700,
-      //                     color: _primaryColor,
-      //                   ),
-      //                 ),
-      //               ),
-      //               Align(
-      //                 alignment: Alignment.centerLeft,
-      //                 child: InkWell(
-      //                   onTap: () => Navigator.pop(context),
-      //                   child: Icon(
-      //                     Icons.arrow_back,
-      //                     size: 20.r,
-      //                     color: const Color(0xFF1D1B20),
-      //                   ),
-      //                 ),
-      //               ),
-      //               Align(
-      //                 alignment: Alignment.centerRight,
-      //                 child: InkWell(
-      //                   onTap: () => Navigator.pop(context),
-      //                   child: Icon(
-      //                     Icons.close,
-      //                     size: 20.r,
-      //                     color: _textColor,
-      //                   ),
-      //                 ),
-      //               ),
-      //             ],
-      //           ),
-      //         ),
-
-      //         // Error banner
-      //         if (_errorMsg != null)
-      //           Container(
-      //             width: double.infinity,
-      //             margin: EdgeInsets.symmetric(horizontal: 15.w),
-      //             padding: EdgeInsets.all(10.w),
-      //             decoration: BoxDecoration(
-      //               color: Colors.red.shade50,
-      //               borderRadius: BorderRadius.circular(8.r),
-      //               border: Border.all(color: Colors.red.shade200),
-      //             ),
-      //             child: Text(
-      //               _errorMsg!,
-      //               style: GoogleFonts.inter(
-      //                 fontSize: 12.sp,
-      //                 color: Colors.red.shade700,
-      //               ),
-      //             ),
-      //           ),
-
-      //         // Scrollable body
-      //         Expanded(
-      //           child: AbsorbPointer(
-      //             absorbing: _isSaving || _isReadOnly,
-
-      //             child: SingleChildScrollView(
-      //               keyboardDismissBehavior:
-      //                   ScrollViewKeyboardDismissBehavior.onDrag,
-      //               padding: EdgeInsets.only(
-      //                 left: 15.w,
-      //                 right: 15.w,
-      //                 bottom:
-      //                     MediaQuery.of(context).viewInsets.bottom + 24.h,
-      //               ),
-      //               child: Column(
-      //                 crossAxisAlignment: CrossAxisAlignment.start,
-      //                 children: [
-      //                   // Task info card
-      //                   _buildInfoCard(),
-      //                   SizedBox(height: 16.h),
-
-      //                   // Date & Time card
-      //                   _sectionLabel('Date & Time'),
-      //                   _card(
-      //                     padding: EdgeInsets.symmetric(
-      //                       horizontal: 14.w,
-      //                       vertical: 2.h,
-      //                     ),
-      //                     child: Column(
-      //                       children: [
-      //                         // Assign Date toggle
-      //                         _toggleRow(
-      //                           label: 'Assign Date',
-      //                           sub: _selectedDateLabel,
-      //                           value: _assignDateEnabled,
-      //                           onTap: () => setState(() {
-      //                             _assignDateEnabled = !_assignDateEnabled;
-      //                             _showCalendar = _assignDateEnabled;
-      //                             if (_assignDateEnabled) {
-      //                               _assignTimeEnabled = false;
-      //                               _showTimePicker = false;
-      //                             }
-      //                           }),
-      //                         ),
-      //                         if (_showCalendar) ...[
-      //                           SizedBox(height: 6.h),
-      //                           _buildCalendar(),
-      //                           SizedBox(height: 8.h),
-      //                         ],
-      //                         _divider(),
-
-      //                         // Assign Time toggle
-      //                         _toggleRow(
-      //                           label: 'Assign Time',
-      //                           sub: _formattedTime,
-      //                           value: _assignTimeEnabled,
-      //                           onTap: () => setState(() {
-      //                             _assignTimeEnabled = !_assignTimeEnabled;
-      //                             _showTimePicker = _assignTimeEnabled;
-      //                             if (_assignTimeEnabled) {
-      //                               _assignDateEnabled = false;
-      //                               _showCalendar = false;
-      //                             }
-      //                           }),
-      //                         ),
-      //                         if (_showTimePicker) ...[
-      //                           SizedBox(height: 6.h),
-      //                           _buildTimePicker(),
-      //                           SizedBox(height: 8.h),
-      //                         ],
-      //                         _divider(),
-
-      //                         // Time Zone
-      //                         _dropdownField(
-      //                           label: 'Time Zone',
-      //                           value: _timeZone,
-      //                           valueColor: _labelColor,
-      //                           onTap: () => _showSearchableSheet(
-      //                             title: 'Time Zone',
-      //                             items: _timeZoneItems,
-      //                             selected: _timeZone,
-      //                             onSelect: (v) =>
-      //                                 setState(() => _timeZone = v),
-      //                           ),
-      //                         ),
-      //                       ],
-      //                     ),
-      //                   ),
-      //                   SizedBox(height: 16.h),
-
-      //                   // Action card
-      //                   _sectionLabel('Action'),
-      //                   _card(
-      //                     padding: EdgeInsets.symmetric(
-      //                       horizontal: 14.w,
-      //                       vertical: 2.h,
-      //                     ),
-      //                     child: Column(
-      //                       children: [
-      //                         _dropdownField(
-      //                           label: 'Priority',
-      //                           value: _priority,
-      //                           valueColor: const Color(0xFF4CAF50),
-      //                           onTap: () => _showSearchableSheet(
-      //                             title: 'Priority',
-      //                             items: _priorityItems,
-      //                             selected: _priority,
-      //                             onSelect: (v) =>
-      //                                 setState(() => _priority = v),
-      //                           ),
-      //                         ),
-      //                         _divider(),
-      //                         _dropdownField(
-      //                           label: 'Status',
-      //                           value: _status,
-      //                           valueColor: const Color(0xFFE57373),
-      //                           onTap: () => _showSearchableSheet(
-      //                             title: 'Status',
-      //                             items: _statusItems,
-      //                             selected: _status,
-      //                             onSelect: (v) =>
-      //                                 setState(() => _status = v),
-      //                           ),
-      //                         ),
-      //                       ],
-      //                     ),
-      //                   ),
-      //                   SizedBox(height: 24.h),
-
-      //                   // Save button — Ink wraps the gradient so the button never
-      //                   // changes size or color on tap; only the ripple is visible.
-      //                   Row(
-      //                     mainAxisAlignment: MainAxisAlignment.end,
-      //                     children: [
-      //                       ClipRRect(
-      //                         borderRadius: BorderRadius.circular(8.r),
-      //                         child: Container(
-      //                           height: 40.h,
-      //                           constraints: BoxConstraints(
-      //                             minWidth: 120.w,
-      //                           ),
-      //                           decoration: const BoxDecoration(
-      //                             gradient: LinearGradient(
-      //                               colors: [
-      //                                 Color(0xFFD96CFF),
-      //                                 Color(0xFF5CE1E6),
-      //                               ],
-      //                             ),
-      //                           ),
-      //                           child: Material(
-      //                             color: Colors.transparent,
-      //                             child: InkWell(
-      //                               onTap: () async {
-      //                                 if (!_isSaving &&
-      //                                     await userTaskPermission) {
-      //                                   _saveTask();
-      //                                 } else {
-      //                                   ScaffoldMessenger.of(
-      //                                     context,
-      //                                   ).showSnackBar(
-      //                                     SnackBar(
-      //                                       content: Text(
-      //                                         'You are not authorized to edit tasks.',
-      //                                       ),
-      //                                       duration: Duration(seconds: 3),
-      //                                     ),
-      //                                     // SnackBar(
-      //                                     //   content: Text(
-      //                                     //     'You are not authorized to update this task',
-      //                                     //     style: GoogleFonts.inter(
-      //                                     //       color: Colors.white,
-      //                                     //       fontSize: 13.sp,
-      //                                     //     ),
-      //                                     //   ),
-      //                                     //   backgroundColor: _greyOff,
-      //                                     //   behavior:
-      //                                     //       SnackBarBehavior.floating,
-      //                                     //   shape: RoundedRectangleBorder(
-      //                                     //     borderRadius:
-      //                                     //         BorderRadius.circular(8.r),
-      //                                     //   ),
-      //                                     // ),
-      //                                   );
-      //                                 }
-      //                               },
-      //                               splashColor: Colors.white.withOpacity(
-      //                                 0.15,
-      //                               ),
-      //                               highlightColor: Colors.transparent,
-      //                               child: Padding(
-      //                                 padding: EdgeInsets.symmetric(
-      //                                   horizontal: 24.w,
-      //                                 ),
-      //                                 child: Center(
-      //                                   child: _isSaving
-      //                                       ? SizedBox(
-      //                                           width: 16.w,
-      //                                           height: 16.h,
-      //                                           child:
-      //                                               const CircularProgressIndicator(
-      //                                                 strokeWidth: 2,
-      //                                                 color: Colors.white,
-      //                                               ),
-      //                                         )
-      //                                       : Text(
-      //                                           'Save Changes',
-      //                                           style: GoogleFonts.inter(
-      //                                             fontSize: 12.sp,
-      //                                             fontWeight:
-      //                                                 FontWeight.w600,
-      //                                             color: Colors.white,
-      //                                           ),
-      //                                         ),
-      //                                 ),
-      //                               ),
-      //                             ),
-      //                           ),
-      //                         ),
-      //                       ),
-      //                     ],
-      //                   ),
-
-      //                   SizedBox(height: 24.h),
-
-      //                 ],
-      //               ),
-      //             ),
-
-      //             // child:
-      //           ),
-      //         ),
-      //       ],
-      //     ),
-      //   ),
-
-      // AbsorbPointer(
-      //     absorbing:
-      //         _isSaving ||
-      //         _isReadOnly, // Disable interactions if saving or read-only
-      //     child:
-
-      //   ),
       bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 1),
     );
   }
