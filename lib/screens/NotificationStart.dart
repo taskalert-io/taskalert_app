@@ -1334,7 +1334,7 @@ class _NotificationStartState extends State<NotificationStart> {
   void _openNotificationSettings(ThemeConst c) {
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.15),
+      barrierColor: Colors.black.withOpacity(0.5),
       builder: (_) => NotificationSettingsPopup(
         colors: c,
         initialFrequency: _notifyFrequency,
