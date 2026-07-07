@@ -277,7 +277,7 @@ class MoreScreenState extends State<MoreScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (_) =>
-                                NotificationStart(userId: widget.userId),
+                                NotificationSetting(userId: widget.userId),
                           ),
                         ),
                       ),
