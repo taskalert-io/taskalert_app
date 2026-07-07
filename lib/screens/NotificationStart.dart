@@ -11,51 +11,39 @@ import 'package:url_launcher/url_launcher.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
+import 'NotificationScreen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────
 // NotificationStart
 //
 // API-ready notification feed screen.
 //
-// WHAT CHANGED vs. the static version:
-//  • date / timestamp / avatarUrl are no longer hardcoded strings — they're
-//    real `DateTime`s and URLs that flow through a `NotificationRepository`
-//    interface. "yesterday at 7:57 PM" / "20 hours ago" style strings are
-//    now *computed* from the timestamp at render time, so they stay correct
-//    as time passes and don't need to match whatever the API happened to
-//    send.
-//  • No URL is required right now. The screen depends only on the abstract
-//    `NotificationRepository`. It defaults to `MockNotificationRepository`
-//    (in-memory, simulated latency, no network) so everything — loading
-//    states, pagination, mark-as-read, relative time — already works and
-//    is demoable today. When a backend exists, pass
-//    `NotificationStart(repository: ApiNotificationRepository(baseUrl: ...))`
-//    and nothing else in this file changes.
-//  • Added loading / error / empty states + pull-to-refresh + infinite
-//    scroll pagination, which any real API-backed list needs.
-//  • Avatars use CachedNetworkImage (disk+memory cache, dedup, no refetch
-//    on rebuild) instead of Image.network.
-//  • Card/row widgets were pulled out into small `StatelessWidget`s keyed
-//    by id, instead of instance methods on the State — Flutter can skip
-//    rebuilding/repainting subtrees that haven't changed, which matters
-//    once this list is backed by a real (potentially long, paginated) feed.
-//  • A single 60s ticker repaints just the relative-time labels instead of
-//    the whole state re-fetching, so "3 minutes ago" -> "4 minutes ago"
-//    stays live without extra network calls.
-//  • Notifications that need a decision (e.g. an edit-access request) can
-//    carry `requiresAction: true` and render an Approve / Deny action row.
-//    Approving marks the notification read and clears the action state;
-//    denying removes it from the list. Both are optimistic with rollback
-//    on failure, same pattern as `_handleToggleMarkAllAsRead`.
-//  • NEW: `ApiNotificationRepository` now goes through a small `_ApiClient`
-//    that handles the stuff every real backend integration ends up needing
-//    on day one — Authorization headers, timeouts, retry-on-GET, and typed
-//    exceptions per status code (401/403/404/5xx) with the server's own
-//    error message surfaced when it sends one. Nothing about the screen's
-//    public API changed, so this is a drop-in.
+// WHAT CHANGED vs. the previous revision:
+//  • Added `isDefaultActive` to `NotifCardData` — a server-driven flag that
+//    decides which card opens selected/active when the screen first loads.
+//    This replaces the old behavior of just picking whichever card happened
+//    to be first in the list, which is fragile once real API data (with
+//    its own ordering / pagination) is involved. The user can still tap
+//    any other card to change the active one — `isDefaultActive` only
+//    decides the *initial* state, exactly once, on first load.
+//  • `status` (unread/read) and `isDefaultActive` (selected on open) are
+//    fully independent fields. A card can be the default-active card and
+//    still be `read` (so it disappears when "Only show unread" is on),
+//    or be `unread` and not be the default-active card. Selecting a card
+//    in the UI does NOT change its `status` — see the note at the bottom
+//    of this file if you want tapping a card to also mark it read.
+//  • Seed data: `ntf_1` is `status: NotifStatus.read` and
+//    `isDefaultActive: true` (opens active by default, but is filtered out
+//    when "Only show unread" is on). `ntf_2` and `ntf_3` are `unread` and
+//    not default-active (plain cards on open, but visible when the unread
+//    filter is on).
+//  • Added `NotificationSettingsPopup` — the "⋮" icon in the title row now
+//    opens a settings dialog (Never / Periodically / Instantly frequency,
+//    a desktop-notifications toggle, and an "All notification settings"
+//    row) instead of doing nothing. See `_titleRow` for the wiring.
 //
-// EXPECTED API CONTRACT (adjust `ApiNotificationRepository` to match your actual
-// backend — this is the shape the fromJson() factories below assume):
+// EXPECTED API CONTRACT (adjust `ApiNotificationRepository` to match your
+// actual backend — this is the shape the fromJson() factories below assume):
 //
 // GET {baseUrl}/users/{userId}/notifications?page=1&pageSize=20
 // {
@@ -66,6 +54,7 @@ import '../components/CustomDrawer.dart';
 //       "date": "2026-08-10T00:00:00Z",
 //       "status": "unread" | "read" | "none",
 //       "highlighted": false,
+//       "isDefaultActive": true,
 //       "badge": { "bold": "Company Overview: ", "normal": "Priorities" },
 //       "subBadge": { "bold": null, "normal": null },
 //       "requiresAction": false,
@@ -241,6 +230,13 @@ class NotifCardData {
   /// access requests). Cleared automatically once approved.
   final bool requiresAction;
 
+  /// Server-driven flag: true means this card should be selected/active
+  /// when the screen first loads. Independent of `status` — a card can be
+  /// `read` and still be the default-active card, or `unread` and not be.
+  /// The user can still tap any other card afterward to change selection;
+  /// this only decides the initial state on load.
+  final bool isDefaultActive;
+
   const NotifCardData({
     required this.id,
     required this.title,
@@ -255,6 +251,7 @@ class NotifCardData {
     this.hasPromo = false,
     this.linkPreview,
     this.requiresAction = false,
+    this.isDefaultActive = false,
   });
 
   factory NotifCardData.fromJson(Map<String, dynamic> json) {
@@ -281,6 +278,7 @@ class NotifCardData {
           ? LinkPreviewData.fromJson(linkPreviewJson)
           : null,
       requiresAction: (json['requiresAction'] as bool?) ?? false,
+      isDefaultActive: (json['isDefaultActive'] as bool?) ?? false,
     );
   }
 
@@ -299,6 +297,7 @@ class NotifCardData {
       hasPromo: hasPromo,
       linkPreview: linkPreview,
       requiresAction: requiresAction ?? this.requiresAction,
+      isDefaultActive: isDefaultActive,
     );
   }
 }
@@ -669,8 +668,13 @@ class ApiNotificationRepository implements NotificationRepository {
 /// In-memory stand-in used until a real backend exists. Same interface,
 /// same pagination/read/error shape as `ApiNotificationRepository`, so
 /// swapping it out later is a one-line change and won't touch the screen.
-/// Seeded with data equivalent to the original static screen, but with
-/// live `DateTime`s instead of pre-baked strings.
+///
+/// Seed data:
+///  - `ntf_1` is `status: NotifStatus.read` and `isDefaultActive: true` —
+///    it opens as the selected/active card, but is filtered out when
+///    "Only show unread" is toggled on (since it's read).
+///  - `ntf_2` and `ntf_3` are `unread` and not default-active — plain
+///    cards on open, but remain visible when the unread filter is on.
 class MockNotificationRepository implements NotificationRepository {
   final List<NotifCardData> _seed = () {
     final now = DateTime.now();
@@ -679,7 +683,8 @@ class MockNotificationRepository implements NotificationRepository {
         id: 'ntf_1',
         title: 'Test new messaging for SMB market',
         date: DateTime(now.year, now.month, now.day),
-        status: NotifStatus.unread,
+        status: NotifStatus.read,
+        isDefaultActive: true,
         badgeBold: 'Company Overview: ',
         badgeNormal: 'Priorities',
         lines: [
@@ -701,7 +706,8 @@ class MockNotificationRepository implements NotificationRepository {
         id: 'ntf_2',
         title: 'Sign up for:',
         date: DateTime(now.year, now.month, now.day),
-        status: NotifStatus.read,
+        status: NotifStatus.unread,
+        isDefaultActive: false,
         highlighted: true,
         badgeBold: 'New Hire Onboarding: ',
         badgeNormal: 'On First Day - First Week',
@@ -731,6 +737,7 @@ class MockNotificationRepository implements NotificationRepository {
         title: "Event's Team",
         date: DateTime(now.year, now.month, now.day),
         status: NotifStatus.unread,
+        isDefaultActive: false,
         badgeBold: 'Collaboration Board: ',
         badgeNormal: "Team's",
         hasPromo: true,
@@ -833,6 +840,212 @@ class MockNotificationRepository implements NotificationRepository {
   void dispose() {}
 }
 
+// ── Notification settings popup ────────────────────────────────────────
+//
+// Opened from the "⋮" icon in the title row. Purely a settings dialog for
+// how/when notifications are delivered (Never / Periodically / Instantly),
+// a desktop-notifications toggle, and a link out to a fuller settings
+// screen. It doesn't touch the feed's own state — callbacks are provided
+// so the caller can persist changes (repository call, local prefs, etc.)
+// without this widget needing to know how that works.
+
+enum NotificationFrequency { never, periodically, instantly }
+
+class NotificationSettingsPopup extends StatefulWidget {
+  final ThemeConst colors;
+  final NotificationFrequency initialFrequency;
+  final bool initialDesktopEnabled;
+  final ValueChanged<NotificationFrequency>? onFrequencyChanged;
+  final ValueChanged<bool>? onDesktopToggle;
+  final VoidCallback? onAllSettingsTap;
+
+  const NotificationSettingsPopup({
+    super.key,
+    required this.colors,
+    this.initialFrequency = NotificationFrequency.periodically,
+    this.initialDesktopEnabled = true,
+    this.onFrequencyChanged,
+    this.onDesktopToggle,
+    this.onAllSettingsTap,
+  });
+
+  @override
+  State<NotificationSettingsPopup> createState() =>
+      _NotificationSettingsPopupState();
+}
+
+class _NotificationSettingsPopupState extends State<NotificationSettingsPopup> {
+  late NotificationFrequency _frequency;
+  late bool _desktopEnabled;
+
+  @override
+  void initState() {
+    super.initState();
+    _frequency = widget.initialFrequency;
+    _desktopEnabled = widget.initialDesktopEnabled;
+  }
+
+  Widget _radioOption(String label, NotificationFrequency value) {
+    final c = widget.colors;
+    final selected = _frequency == value;
+    return InkWell(
+      onTap: () {
+        setState(() => _frequency = value);
+        widget.onFrequencyChanged?.call(value);
+      },
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 8.h),
+        child: Row(
+          children: [
+            Container(
+              width: 18.r,
+              height: 18.r,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: selected ? c.primaryColor : c.primaryColor,
+                  width: 1.6,
+                ),
+              ),
+              child: selected
+                  ? Center(
+                      child: Container(
+                        width: 9.r,
+                        height: 9.r,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: c.primaryColor,
+                        ),
+                      ),
+                    )
+                  : null,
+            ),
+            SizedBox(width: 10.w),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w500,
+                color: c.labelColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.colors;
+    return Dialog(
+      backgroundColor: Colors.white,
+      insetPadding: EdgeInsets.symmetric(horizontal: 24.w),
+      alignment: Alignment.center,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(18.w, 16.h, 18.w, 16.h),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Notifications settings',
+                    style: GoogleFonts.inter(
+                      fontSize: 15.sp,
+                      fontWeight: FontWeight.w700,
+                      color: c.primaryColor,
+                    ),
+                  ),
+                ),
+                InkWell(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Icon(Icons.close, size: 20.r, color: c.textColor),
+                ),
+              ],
+            ),
+            SizedBox(height: 12.h),
+            _radioOption('Never', NotificationFrequency.never),
+            _radioOption('Periodically', NotificationFrequency.periodically),
+            _radioOption('Instantly', NotificationFrequency.instantly),
+            SizedBox(height: 8.h),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Allow push notifications',
+                    style: GoogleFonts.inter(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w500,
+                      color: c.labelColor,
+                    ),
+                  ),
+                ),
+                ToggleSwitch(
+                  value: _desktopEnabled,
+                  activeColor: Colors.green,
+                  colors: c,
+                  onTap: () {
+                    setState(() => _desktopEnabled = !_desktopEnabled);
+                    widget.onDesktopToggle?.call(_desktopEnabled);
+                  },
+                ),
+              ],
+            ),
+            SizedBox(height: 12.h),
+            Divider(height: 1, color: c.dividerColor),
+            SizedBox(height: 12.h),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'All notification settings',
+                    style: GoogleFonts.inter(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w700,
+                      color: c.labelColor,
+                    ),
+                  ),
+                ),
+                InkWell(
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const NotificationSetting(userId: '',),
+                      ),
+                    );
+                    // widget.onAllSettingsTap?.call();
+                  },
+                  borderRadius: BorderRadius.circular(30.r),
+                  child: Container(
+                    width: 30.r,
+                    height: 30.r,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: c.highlightBoxBg,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.arrow_forward,
+                      size: 16.r,
+                      color: c.primaryColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ── Screen ───────────────────────────────────────────────────────────────
 
 enum _LoadState { loading, loaded, error, empty }
@@ -876,6 +1089,13 @@ class _NotificationStartState extends State<NotificationStart> {
   /// a spinner and ignore repeat taps.
   final Set<String> _actionInFlight = {};
 
+  // Notification delivery settings (frequency + desktop toggle), shown in
+  // `NotificationSettingsPopup`. Kept here so the choice survives while the
+  // screen is alive; wire `_handleFrequencyChanged` / `_handleDesktopToggle`
+  // to a repository/prefs call if this needs to persist across sessions.
+  NotificationFrequency _notifyFrequency = NotificationFrequency.periodically;
+  bool _desktopNotificationsEnabled = true;
+
   // The 60s "3 minutes ago" -> "4 minutes ago" refresh now lives inside
   // _NotificationListView itself (below), not here. That confines the
   // once-a-minute rebuild to the list, so the app bar, drawer, bottom nav,
@@ -907,6 +1127,17 @@ class _NotificationStartState extends State<NotificationStart> {
     }
   }
 
+  /// Picks which card should be selected by default: the one the API
+  /// flagged with `isDefaultActive: true`, if any. Falls back to the
+  /// first item in the list only if nothing was flagged, so old data
+  /// without the flag still behaves reasonably.
+  String? _pickDefaultSelection(List<NotifCardData> items) {
+    for (final n in items) {
+      if (n.isDefaultActive) return n.id;
+    }
+    return items.isNotEmpty ? items.first.id : null;
+  }
+
   Future<void> _loadInitial() async {
     setState(() {
       _loadState = _LoadState.loading;
@@ -929,11 +1160,11 @@ class _NotificationStartState extends State<NotificationStart> {
         _loadState = _notifications.isEmpty
             ? _LoadState.empty
             : _LoadState.loaded;
-        // Keep the previous selection only if that card still exists.
+        // Keep the previous selection only if that card still exists in
+        // the (possibly filtered) list; otherwise fall back to whichever
+        // card the API flagged as the default-active one.
         if (!_notifications.any((n) => n.id == _selectedCardId)) {
-          _selectedCardId = _notifications.isNotEmpty
-              ? _notifications.first.id
-              : null;
+          _selectedCardId = _pickDefaultSelection(_notifications);
         }
       });
     } catch (e) {
@@ -1034,9 +1265,9 @@ class _NotificationStartState extends State<NotificationStart> {
     try {
       await _repository.approve(userId: widget.userId, notificationId: id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Request approved.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Request approved.')));
       }
     } catch (_) {
       if (mounted) {
@@ -1066,9 +1297,7 @@ class _NotificationStartState extends State<NotificationStart> {
       _actionInFlight.add(id);
       _notifications.removeAt(i);
       if (_selectedCardId == id) {
-        _selectedCardId = _notifications.isNotEmpty
-            ? _notifications.first.id
-            : null;
+        _selectedCardId = _pickDefaultSelection(_notifications);
       }
     });
     try {
@@ -1095,6 +1324,32 @@ class _NotificationStartState extends State<NotificationStart> {
 
   void _selectCard(String id) {
     setState(() => _selectedCardId = _selectedCardId == id ? null : id);
+  }
+
+  /// Opens the "⋮" settings popup. Current frequency/desktop-toggle values
+  /// are passed in as initial state; on change, they're written back here
+  /// so the next time the popup opens it reflects the latest choice. Swap
+  /// the bodies of these two handlers for a repository/prefs call if the
+  /// choice needs to persist beyond this screen's lifetime.
+  void _openNotificationSettings(ThemeConst c) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.15),
+      builder: (_) => NotificationSettingsPopup(
+        colors: c,
+        initialFrequency: _notifyFrequency,
+        initialDesktopEnabled: _desktopNotificationsEnabled,
+        onFrequencyChanged: (freq) {
+          setState(() => _notifyFrequency = freq);
+        },
+        onDesktopToggle: (enabled) {
+          setState(() => _desktopNotificationsEnabled = enabled);
+        },
+        onAllSettingsTap: () {
+          // TODO: navigate to the full notification settings screen.
+        },
+      ),
+    );
   }
 
   List<NotifCardData> get _visibleNotifications {
@@ -1140,7 +1395,7 @@ class _NotificationStartState extends State<NotificationStart> {
           Align(
             alignment: Alignment.centerRight,
             child: InkWell(
-              onTap: () {},
+              onTap: () => _openNotificationSettings(c),
               child: Icon(Icons.more_vert, size: 20.r, color: c.primaryColor),
             ),
           ),
@@ -1214,6 +1469,20 @@ class _NotificationStartState extends State<NotificationStart> {
       case _LoadState.empty:
         return _EmptyState(colors: c);
       case _LoadState.loaded:
+        // The server/master list isn't empty, but the *filtered* view can
+        // still end up with nothing to show — e.g. "Only show unread" is on
+        // and "Mark all as read" just flipped every card to read. That used
+        // to fall straight into `_NotificationListView` with zero items,
+        // which rendered a totally blank body instead of telling the user
+        // why there's nothing here.
+        if (_visibleNotifications.isEmpty) {
+          return _EmptyState(
+            colors: c,
+            message: _onlyShowUnread
+                ? 'No unread notifications to show.'
+                : "You're all caught up",
+          );
+        }
         return _NotificationListView(
           items: _visibleNotifications,
           hasMore: _hasMore,
@@ -1425,15 +1694,23 @@ class ToggleSwitch extends StatelessWidget {
   final VoidCallback onTap;
   final ThemeConst colors;
 
+  /// Color used for the track border + thumb when [value] is true.
+  /// Defaults to [ThemeConst.greenColor] (the "Only show unread" toggle's
+  /// look); pass [ThemeConst.primaryColor] or similar for a purple/indigo
+  /// toggle like the one in the notification settings popup.
+  final Color? activeColor;
+
   const ToggleSwitch({
     super.key,
     required this.value,
     required this.onTap,
     required this.colors,
+    this.activeColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    final onColor = activeColor ?? colors.greenColor;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -1445,7 +1722,7 @@ class ToggleSwitch extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(30.r),
           border: Border.all(
-            color: value ? colors.greenColor : colors.toggleOffColor,
+            color: value ? onColor : colors.toggleOffColor,
             width: 1.2,
           ),
         ),
@@ -1457,7 +1734,7 @@ class ToggleSwitch extends StatelessWidget {
             height: 14.h,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: value ? colors.greenColor : colors.toggleOffColor,
+              color: value ? onColor : colors.toggleOffColor,
             ),
           ),
         ),
@@ -1741,7 +2018,11 @@ class _ErrorState extends StatelessWidget {
 
 class _EmptyState extends StatelessWidget {
   final ThemeConst colors;
-  const _EmptyState({required this.colors});
+  final String message;
+  const _EmptyState({
+    required this.colors,
+    this.message = "You're all caught up",
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1752,7 +2033,7 @@ class _EmptyState extends StatelessWidget {
           Icon(Icons.notifications_none, size: 36.r, color: colors.textColor),
           SizedBox(height: 10.h),
           Text(
-            "You're all caught up",
+            message,
             style: GoogleFonts.inter(fontSize: 13.sp, color: colors.textColor),
           ),
         ],
@@ -2225,10 +2506,10 @@ class NotifCard extends StatelessWidget {
         (data.subBadgeNormal != null && data.subBadgeNormal!.isNotEmpty);
     final hasBadge = data.badgeBold.isNotEmpty || data.badgeNormal.isNotEmpty;
 
-    // ntf_1 is "active" (dark header + border) whenever it's the tapped
-    // card. Checking "Mark all as read" should make every other card
-    // (ntf_2, ntf_3) go active the same way — not just light up its radio
-    // circle — so the whole list visually matches ntf_1 once all are read.
+    // A card is "active" (dark header + border) whenever it's the
+    // currently selected card. Checking "Mark all as read" makes every
+    // card go active the same way — not just light up its radio circle —
+    // so the whole list visually matches once all are read.
     final active = isSelected || forceRadioActive;
 
     final body = Column(
@@ -2301,11 +2582,10 @@ class NotifCard extends StatelessWidget {
       ],
     );
 
-    // ntf_1's plain white box is the default. A card with
-    // `highlighted: true` (e.g. ntf_2) gets a distinct tinted box — but
-    // once every notification is marked read (forceRadioActive), all
-    // boxes fall back to that same default, ntf_1-style white regardless
-    // of their own highlighted flag.
+    // The plain white box is the default. A card with `highlighted: true`
+    // gets a distinct tinted box — but once every notification is marked
+    // read (forceRadioActive), all boxes fall back to that same default
+    // white, regardless of their own highlighted flag.
     final useHighlightBg = data.highlighted && !forceRadioActive;
 
     return Container(
