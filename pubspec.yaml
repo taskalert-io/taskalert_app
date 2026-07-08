@@ -27,6 +27,7 @@ dependencies:
   dio: ^5.9.2
   file_picker: ^10.1.9
   url_launcher: ^6.3.2
+  cached_network_image: ^3.4.1
 
 
 dev_dependencies:
