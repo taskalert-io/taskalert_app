@@ -4,7 +4,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:taskalert_app/core/features/auth/controllers/login_controller.dart';
 import 'package:taskalert_app/screens/DashboardPage.dart';
+import 'package:taskalert_app/screens/DepartmentListScreen.dart';
 import 'package:taskalert_app/screens/HomeScreen.dart';
+import 'package:taskalert_app/screens/LocationListScreen.dart';
 import 'package:taskalert_app/screens/SignInScreen.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
 
@@ -298,6 +300,18 @@ class _CustomDrawerState extends State<CustomDrawer> {
                 ),
 
                 buildDrawerItem(title: "Category", icon: Icons.layers_outlined),
+
+                buildDrawerItem(
+                  title: "Department",
+                  icon: Icons.layers,
+                  destinationScreen: DepartmentListScreen(userId: ''),
+                ),
+
+                buildDrawerItem(
+                  title: "Location",
+                  icon: Icons.location_on,
+                  destinationScreen: LocationListScreen(userId: ''),
+                ),
 
                 buildDrawerItem(
                   title: "Settings",

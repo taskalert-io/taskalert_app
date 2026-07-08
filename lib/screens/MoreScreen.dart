@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:taskalert_app/core/features/auth/controllers/login_controller.dart';
+import 'package:taskalert_app/screens/NotificationStart.dart';
 import 'package:taskalert_app/screens/ProfileSetting.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
 import 'package:url_launcher/url_launcher.dart';
