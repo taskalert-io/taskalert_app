@@ -1,11 +1,12 @@
 import 'dart:convert';
+import 'package:intl/intl.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:taskalert_app/core/features/tasks/controllers/task_controller.dart';
-import 'package:taskalert_app/core/features/tasks/data/models/task_model.dart';
+import 'package:taskalert_app/core/features/taskInstance/controllers/task_instance_controller.dart';
+import 'package:taskalert_app/core/features/taskInstance/data/models/task_instance_model.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
 
 import '../components/CustomAppBar.dart';
@@ -28,6 +29,7 @@ class TaskApiConfig {
 // ── Model ────────────────────────────────────────────────────────────────
 class TodoItem {
   final String? id;
+  final String? mainTaskId;
   final String image;
   final String title;
   final String status; // Pending | In progress | Done
@@ -38,6 +40,7 @@ class TodoItem {
 
   TodoItem({
     this.id,
+    this.mainTaskId,
     this.image = '',
     this.title = '',
     this.status = '',
@@ -50,6 +53,7 @@ class TodoItem {
   factory TodoItem.fromJson(Map<String, dynamic> json) {
     return TodoItem(
       id: json['id']?.toString(),
+      mainTaskId: json['mainTaskId']?.toString(),
       image: json['image'] ?? '',
       title: json['title'] ?? '',
       status: json['status'] ?? '',
@@ -138,7 +142,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
   int _selectedTab = 0;
 
   // ── Tab data: label + key (for API mapping) + count ────────────────────────
-  final List<Map<String, dynamic>> _tabs = [
+  List<Map<String, dynamic>> _tabs = [
     {'label': 'Today', 'key': 'today', 'count': 0},
     {'label': 'Next Day', 'key': 'next_day', 'count': 0},
     {'label': 'This Week', 'key': 'this_week', 'count': 0},
@@ -157,45 +161,107 @@ class MyTaskScreenState extends State<MyTaskScreen> {
   String? _todoError;
   List<TodoItem> _todoItems = [];
 
-  late final TaskController taskController;
+  late final TaskInstanceController taskController;
 
   List<Map<String, dynamic>> tasks = [];
+  Map<String, dynamic> taskCounts = {};
+  Map<String, dynamic> categorizedTasks = {};
+
+  String sortBy = 'scheduledDate';
+  String order = 'asc';
+
+  String startDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+  String endDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
   @override
   void initState() {
     super.initState();
     _fetchTabCounts();
-    _fetchTodoItems();
 
-    taskController = sl<TaskController>();
+    taskController = sl<TaskInstanceController>();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await taskController.handleGetAllTasks(assigned: 'to_me');
-
-      if (mounted) {
-        setState(() {
-          tasks = taskController.tasks.map<Map<String, dynamic>>((
-            TaskModel task,
-          ) {
-            return {
-              "id": task.id,
-              "title": task.title,
-              "description": task.description,
-              "taskType": task.taskType,
-              "status": task.completionStatus,
-              "prioprity": task.priority,
-              "reportingDate": task.reportingDate,
-              "reportingTime":
-                  "${task.reportingTime?.time} ${task.reportingTime?.period}",
-
-              // Add any other specific model properties you need here
-            };
-          }).toList();
-        });
-
-        print(tasks);
-      }
+      loadTasks('to_me', order, sortBy, startDate, endDate);
     });
+  }
+
+  Future<void> loadTasks(assigned, order, sortBy, startDate, endDate) async {
+    await taskController.handleGetAllInstances(
+      assigned: assigned,
+      order: order,
+      sortBy: sortBy,
+      startDate: startDate,
+      endDate: endDate,
+    );
+
+    if (!mounted) return;
+
+    final mappedTasks = taskController.instances.map<Map<String, dynamic>>((
+      TaskInstanceModel task,
+    ) {
+      return {
+        "id": task.id,
+        "instanceId": task.instanceId,
+        "title": task.title,
+        "description": task.description,
+        "taskType": task.taskType,
+        "status": task.status,
+        "priority": task.priority,
+        "reportingDate": task.scheduledDate,
+        "reportingTime":
+            "${task.scheduledTime?.time} ${task.scheduledTime?.period}",
+
+        "createdBy": "${task.createdBy?.firstName} ${task.createdBy?.lastName}",
+        // "mainTaskId": task.mainTaskId?.toString(),
+        // "mainTaskId": task.mainTaskId?.toString(),
+      };
+    }).toList();
+
+    final groupedTasks = <String, Map<String, dynamic>>{};
+
+    for (final task in mappedTasks) {
+      final status = task['status']?.toString() ?? 'Unknown';
+
+      groupedTasks.putIfAbsent(
+        status,
+        () => {'count': 0, 'tasks': <Map<String, dynamic>>[]},
+      );
+
+      groupedTasks[status]!['tasks'].add(task);
+      groupedTasks[status]!['count']++;
+    }
+
+    setState(() {
+      tasks = mappedTasks;
+      categorizedTasks = groupedTasks;
+
+      taskCounts['today'] = taskController.instanceCounts?.today ?? 0;
+      taskCounts['tomorrow'] = taskController.instanceCounts?.tomorrow ?? 0;
+      taskCounts['thisWeek'] = taskController.instanceCounts?.thisWeek ?? 0;
+      taskCounts['nextWeek'] = taskController.instanceCounts?.nextWeek ?? 0;
+
+      _tabs = [
+        {'label': 'Today', 'key': 'today', 'count': taskCounts['today']},
+        {
+          'label': 'Next Day',
+          'key': 'next_day',
+          'count': taskCounts['tomorrow'],
+        },
+
+        {
+          'label': 'This Week',
+          'key': 'this_week',
+          'count': taskCounts['thisWeek'],
+        },
+        {
+          'label': 'Next Week',
+          'key': 'next_week',
+          'count': taskCounts['nextWeek'],
+        },
+      ];
+    });
+
+    _fetchTodoItems();
   }
 
   @override
@@ -226,74 +292,51 @@ class MyTaskScreenState extends State<MyTaskScreen> {
     });
 
     try {
-      // final tabKey = _tabs[_selectedTab]['key'] as String;
-      // final items = await _api.getTodoItems(range: tabKey, sort: selectedSort);
-      // _todoItems = items;
+      final List<TodoItem> todoItems = [];
 
-      // Placeholder sample data (remove once the real API is wired up):
-      _todoItems = [
-        TodoItem(
-          id: '1',
-          image: "https://i.pravatar.cc/150?img=12",
-          title: "Retail Market",
-          status: "Pending",
-          requestedBy: "Assign to Guadalupe Miró",
-          priority: "Low",
-          date: "12.05.2026",
-          time: "09:30 AM",
-        ),
-        TodoItem(
-          id: '2',
-          image: "https://i.pravatar.cc/150?img=18",
-          title: "Yearly Food Service",
-          status: "In progress",
-          requestedBy: "Requested by John Kyte",
-          priority: "High",
-          date: "12.05.2026",
-          time: "09:30 AM",
-        ),
-        TodoItem(
-          id: '3',
-          image: "https://i.pravatar.cc/150?img=22",
-          title: "Manufacture PM",
-          status: "Done",
-          requestedBy: "Requested by Guadalupe Miró",
-          priority: "Low",
-          date: "12.05.2026",
-          time: "09:30 AM",
-        ),
-        TodoItem(
-          id: '4',
-          image: "https://i.pravatar.cc/150?img=30",
-          title: "Office Cleaning",
-          status: "Pending",
-          requestedBy: "Requested by Alex",
-          priority: "Low",
-          date: "12.05.2026",
-          time: "09:30 AM",
-        ),
-        TodoItem(
-          id: '5',
-          image: "https://i.pravatar.cc/150?img=35",
-          title: "Electrical Repair",
-          status: "In progress",
-          requestedBy: "Requested by Smith",
-          priority: "High",
-          date: "12.05.2026",
-          time: "09:30 AM",
-        ),
-        TodoItem(
-          id: '6',
-          image: "https://i.pravatar.cc/150?img=40",
-          title: "Water Supply",
-          status: "Done",
-          requestedBy: "Requested by Jacob",
-          priority: "Low",
-          date: "12.05.2026",
-          time: "09:30 AM",
-        ),
-      ];
+      categorizedTasks.forEach((status, data) {
+        final List<Map<String, dynamic>> tasks =
+            List<Map<String, dynamic>>.from(data['tasks']);
+
+        for (final task in tasks) {
+          // if (task['status'] == 'todo') {
+
+          print('task : ${task}');
+
+          var taskStatus = task['status'];
+          if (taskStatus == 'completed') {
+            taskStatus = 'Done';
+          } else if (taskStatus == 'inProgress') {
+            taskStatus = 'In Progress';
+          } else {
+            taskStatus = 'Pending';
+          }
+
+          todoItems.add(
+            TodoItem(
+              id: task['instanceId']?.toString() ?? '',
+              mainTaskId: task['id']?.toString() ?? '',
+              title: task['title'] ?? '',
+
+              image: "",
+              status: taskStatus,
+              requestedBy: "Assigned by ${task['createdBy']}",
+              priority:
+                  task['priority'][0].toUpperCase() +
+                  task['priority'].substring(1),
+              date: DateFormat(
+                'yyyy-MM-dd',
+              ).format(DateTime.parse(task['reportingDate']?.toString() ?? '')),
+              time: task['reportingTime']?.toString() ?? '',
+            ),
+          );
+          // }
+        }
+      });
+
+      _todoItems = todoItems;
     } catch (e) {
+      // print(e);
       _todoError = 'Something went wrong';
     } finally {
       if (mounted) {
@@ -331,6 +374,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
   List<TodoItem> _itemsForSection(String sectionKey) {
     return _todoItems.where((item) {
       final status = item.status.toLowerCase();
+
       switch (sectionKey) {
         case 'in_progress':
           return status == 'in progress';
@@ -410,6 +454,8 @@ class MyTaskScreenState extends State<MyTaskScreen> {
     required VoidCallback onToggleExpand,
   }) {
     final items = _itemsForSection(sectionKey);
+
+    // print(items);
 
     return Container(
       margin: EdgeInsets.only(left: 15.w, right: 15.w, bottom: 15.h),
@@ -669,6 +715,8 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                     builder: (context) => TaskDetailScreen(
                       userId: widget.userId,
                       taskId: items[i].id ?? '',
+                      mainTaskId: items[i].mainTaskId ?? '',
+                      taskAssignedToUser: true,
                     ),
                   ),
                 );
@@ -859,7 +907,63 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                         onTap: () {
                           if (_selectedTab == i) return;
                           setState(() => _selectedTab = i);
-                          _fetchTodoItems();
+                          // print(_tabs[i]["label"]);
+
+                          final now = DateTime.now();
+                          final formatter = DateFormat('yyyy-MM-dd');
+
+                          DateTime startDateVal;
+                          DateTime endDateVal;
+
+                          switch (_tabs[i]["label"]) {
+                            case 'Today':
+                              startDateVal = now;
+                              endDateVal = now;
+                              break;
+
+                            case 'Next Day':
+                              startDateVal = now.add(const Duration(days: 1));
+                              endDateVal = startDateVal;
+                              break;
+
+                            case 'This Week':
+                              startDateVal = now;
+
+                              // End of current week (Sunday)
+                              endDateVal = now.add(
+                                Duration(days: 7 - now.weekday),
+                              );
+                              break;
+
+                            case 'Next Week':
+                              // Start of next week (Monday)
+                              startDateVal = now.add(
+                                Duration(days: 8 - now.weekday),
+                              );
+
+                              // End of next week (Sunday)
+                              endDateVal = startDateVal.add(
+                                const Duration(days: 6),
+                              );
+                              break;
+
+                            default:
+                              startDateVal = now;
+                              endDateVal = now;
+                          }
+
+                          // startDate = formatter.format(startDate);
+                          // endDate = formatter.format(endDate);
+
+                          startDate = DateFormat(
+                            'yyyy-MM-dd',
+                          ).format(startDateVal);
+
+                          endDate = DateFormat('yyyy-MM-dd').format(endDateVal);
+
+                          loadTasks('to_me', order, sortBy, startDate, endDate);
+
+                          // _fetchTodoItems();
                         },
                         child: _buildTab(
                           _tabs[i]['label'] as String,
@@ -895,7 +999,27 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                         setState(() {
                           selectedSort = value;
                         });
-                        _fetchTodoItems();
+
+                        if (selectedSort == 'Schedule Date (ASC)') {
+                          sortBy = 'scheduledDate';
+                          order = 'asc';
+                        }
+                        if (selectedSort == 'Schedule Date (DSC)') {
+                          sortBy = 'scheduledDate';
+                          order = 'desc';
+                        }
+                        if (selectedSort == 'Priority(ASC)') {
+                          sortBy = 'priority';
+                          order = 'asc';
+                        }
+                        if (selectedSort == 'Priority(DSC)') {
+                          sortBy = 'priority';
+                          order = 'desc';
+                        }
+
+                        loadTasks('to_me', order, sortBy, startDate, endDate);
+
+                        // _fetchTodoItems();
                       },
                       itemBuilder: (context) => [
                         const PopupMenuItem(

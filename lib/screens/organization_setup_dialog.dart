@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:taskalert_app/core/features/organization/controllers/organization_controller.dart';
+import 'package:taskalert_app/utils/injection_container.dart';
 
 // TODO: Replace this import with your actual SignInScreen import path
 import 'SignInScreen.dart';
@@ -27,6 +29,8 @@ class _OrganizationSetupDialogState extends State<OrganizationSetupDialog> {
   // Before first submit: no errors shown.
   // After first submit: errors show and clear in real-time as user fixes them.
   bool _autoValidate = false;
+
+  final _organizationController = sl<OrganizationController>();
 
   @override
   void dispose() {
@@ -399,7 +403,7 @@ class _OrganizationSetupDialogState extends State<OrganizationSetupDialog> {
                         // Create Organization
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: _isLoading
+                            onPressed: _organizationController.isLoading
                                 ? null
                                 : () async {
                                     // ✅ Enable real-time validation on first submit tap
@@ -418,17 +422,102 @@ class _OrganizationSetupDialogState extends State<OrganizationSetupDialog> {
 
                                     if (!mounted) return;
                                     setState(() => _isLoading = false);
-                                    // ✅ Mark org setup as done so dialog never shows again
-                                    await _secureStorage.write(
-                                      key: 'org_setup_done',
-                                      value: 'true',
-                                    );
-                                    // Only closes dialog after successful submission
-                                    Navigator.pop(context, {
-                                      'orgName': _orgNameController.text.trim(),
-                                      'phone': _phoneController.text.trim(),
-                                      'email': _emailController.text.trim(),
-                                    });
+
+                                    try {
+                                      final isOrgSet =
+                                          await _organizationController
+                                              .handleCreateOrganization(
+                                                name: _orgNameController.text
+                                                    .trim(),
+                                                phoneNumber: _phoneController
+                                                    .text
+                                                    .trim(),
+                                                email: _emailController.text
+                                                    .trim(),
+                                              );
+                                      if (isOrgSet) {
+                                        print('Organization setup successful');
+                                        if (_organizationController
+                                                .successMessage !=
+                                            null) {
+                                          Navigator.pop(context);
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                _organizationController
+                                                    .successMessage!,
+                                              ),
+                                              backgroundColor: Colors.green,
+                                            ),
+                                          );
+                                        } else if (_organizationController
+                                                .errorMessage !=
+                                            null) {
+                                          showDialog(
+                                            context: context,
+                                            barrierDismissible: false,
+                                            builder: (BuildContext context) {
+                                              return AlertDialog(
+                                                title: Text('Error'),
+                                                content: Text(
+                                                  _organizationController
+                                                      .errorMessage!,
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () {
+                                                      Navigator.of(
+                                                        context,
+                                                      ).pop();
+                                                    },
+                                                    child: Text('OK'),
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          );
+                                        }
+                                        print('organization created');
+                                        // ✅ Mark org setup as done so dialog never shows again
+                                        // await _secureStorage.write(
+                                        //   key: 'org_setup_done',
+                                        //   value: 'true',
+                                        // );
+                                        // Only closes dialog after successful submission
+                                        // Navigator.pop(context, {
+                                        //   'orgName': _orgNameController.text.trim(),
+                                        //   'phone': _phoneController.text.trim(),
+                                        //   'email': _emailController.text.trim(),
+                                        // });
+                                      } else {
+                                        showDialog(
+                                          context: context,
+                                          barrierDismissible: false,
+                                          builder: (BuildContext context) {
+                                            return AlertDialog(
+                                              title: Text('Error'),
+                                              content: Text(
+                                                _organizationController
+                                                    .errorMessage!,
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () {
+                                                    Navigator.of(context).pop();
+                                                  },
+                                                  child: Text('OK'),
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        );
+                                        // print('something wrong');
+                                      }
+                                    } catch (e) {
+                                      print('Error: $e');
+                                    }
                                   },
                             style: ElevatedButton.styleFrom(
                               padding: EdgeInsets.zero,

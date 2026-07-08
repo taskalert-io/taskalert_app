@@ -7,19 +7,11 @@ import 'package:google_fonts/google_fonts.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
-
-/// ─────────────────────────────────────────────────────────────────────────
-/// MODEL
-/// Swap this for your real DepartmentModel once wired to a
-/// DepartmentController / DepartmentRepository.
-/// ─────────────────────────────────────────────────────────────────────────
-class DepartmentModel {
-  final String id;
-  String name;
-  String? location;
-
-  DepartmentModel({required this.id, required this.name, this.location});
-}
+import '../core/features/departments/controllers/department_controller.dart';
+import '../core/features/departments/data/models/department_model.dart';
+import '../core/features/location/controllers/location_controller.dart';
+import '../core/features/location/data/models/location_model.dart';
+import '../utils/injection_container.dart';
 
 class DepartmentListScreen extends StatefulWidget {
   const DepartmentListScreen({super.key, required this.userId});
@@ -34,38 +26,38 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   static const _primaryColor = Color(0xFF0A0258);
+
+  late final DepartmentController departmentController;
+  late final LocationController locationController;
+
   // ── Autocomplete plumbing (matches LocationListScreen pattern) ──────────
   final FocusNode _searchFocusNode = FocusNode();
   final LayerLink _searchLayerLink = LayerLink();
   OverlayEntry? _suggestionsOverlay;
   List<DepartmentModel> _suggestions = [];
 
-  // ── Mock data source — replace with DepartmentController.departments ────
-  int _nextId = 6;
-  List<DepartmentModel> _departments = [
-    DepartmentModel(id: "1", name: "hghjhc"),
-    DepartmentModel(id: "2", name: "Backend"),
-    DepartmentModel(id: "3", name: "Human Resources"),
-    DepartmentModel(id: "4", name: "Sales"),
-    DepartmentModel(id: "5", name: "Development"),
-  ];
+  bool _matchesQuery(DepartmentModel d, String q) =>
+      (d.name ?? "").toLowerCase().contains(q) ||
+      (d.location?.name?.toLowerCase().contains(q) ?? false);
 
-  List<DepartmentModel> _filtered = [];
-
-  // Mock options for the Location autocomplete — replace with
-  // LocationController.locations.map((l) => l.name).toList() once wired up.
-  final List<String> _locationOptions = [
-    "Head Office",
-    "Second Office",
-    "Branch Office",
-  ];
+  List<DepartmentModel> get _filtered {
+    final q = _searchController.text.trim().toLowerCase();
+    final departments = departmentController.departments;
+    if (q.isEmpty) return departments;
+    return departments.where((d) => _matchesQuery(d, q)).toList();
+  }
 
   @override
   void initState() {
     super.initState();
-    _filtered = List.from(_departments);
+    departmentController = sl<DepartmentController>();
+    locationController = sl<LocationController>();
     _searchController.addListener(_onSearchChanged);
     _searchFocusNode.addListener(_onSearchFocusChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      departmentController.handleGetDepartments();
+      locationController.handleGetLocations();
+    });
   }
 
   @override
@@ -91,14 +83,7 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
   }
 
   void _onSearchChanged() {
-    final q = _searchController.text.trim().toLowerCase();
-    setState(() {
-      _filtered = q.isEmpty
-          ? List.from(_departments)
-          : _departments
-                .where((d) => d.name.toLowerCase().contains(q))
-                .toList();
-    });
+    setState(() {});
     _updateSuggestions(_searchController.text);
   }
 
@@ -112,8 +97,8 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
       return;
     }
 
-    _suggestions = _departments
-        .where((d) => d.name.toLowerCase().contains(q))
+    _suggestions = departmentController.departments
+        .where((d) => _matchesQuery(d, q))
         .take(6)
         .toList();
 
@@ -167,7 +152,7 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
                           SizedBox(width: 8.w),
                           Expanded(
                             child: Text(
-                              s.name,
+                              s.name ?? "",
                               style: GoogleFonts.inter(
                                 fontSize: 13.sp,
                                 fontWeight: FontWeight.w600,
@@ -197,15 +182,13 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
 
   void _selectSuggestion(DepartmentModel department) {
     _searchController.removeListener(_onSearchChanged);
-    _searchController.text = department.name;
+    _searchController.text = department.name ?? "";
     _searchController.selection = TextSelection.fromPosition(
       TextPosition(offset: _searchController.text.length),
     );
     _searchController.addListener(_onSearchChanged);
 
-    setState(() {
-      _filtered = [department];
-    });
+    setState(() {});
 
     _removeSuggestionsOverlay();
     _searchFocusNode.unfocus();
@@ -221,12 +204,16 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
     final nameCtrl = TextEditingController(text: existing?.name ?? "");
 
     // ── Location autocomplete plumbing (scoped to this dialog) ────────────
-    final locationCtrl = TextEditingController(text: existing?.location ?? "");
+    final locationCtrl = TextEditingController(
+      text: existing?.location?.name ?? "",
+    );
+    String? selectedLocationId = existing?.location?.id;
     final locationFocusNode = FocusNode();
     final LayerLink locationLayerLink = LayerLink();
     OverlayEntry? locationOverlay;
-    List<String> locationSuggestions = [];
+    List<LocationModel> locationSuggestions = [];
     bool autoValidate = false;
+    bool isSubmitting = false;
 
     // Holds the StatefulBuilder's setState so overlay item taps (which live
     // outside the builder's rebuild scope) can still trigger a rebuild.
@@ -263,54 +250,70 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
                 // taller than this, ListView scrolls internally instead of
                 // overflowing or growing the overlay indefinitely.
                 constraints: BoxConstraints(maxHeight: 240.h),
-                child: ListView.separated(
-                  padding: EdgeInsets.symmetric(vertical: 4.h),
-                  shrinkWrap: true,
-                  physics: const ClampingScrollPhysics(),
-                  itemCount: locationSuggestions.length,
-                  separatorBuilder: (_, __) =>
-                      const Divider(height: 1, color: Color(0xFFE4E7EC)),
-                  itemBuilder: (context, index) {
-                    final s = locationSuggestions[index];
-                    return InkWell(
-                      onTap: () {
-                        locationCtrl.text = s;
-                        locationCtrl.selection = TextSelection.fromPosition(
-                          TextPosition(offset: locationCtrl.text.length),
-                        );
-                        removeLocationOverlay();
-                        locationFocusNode.unfocus();
-                        dialogSetState?.call(() {});
-                      },
-                      child: Padding(
+                child: locationSuggestions.isEmpty
+                    ? Padding(
                         padding: EdgeInsets.symmetric(
                           horizontal: 12.w,
-                          vertical: 10.h,
+                          vertical: 12.h,
                         ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              CupertinoIcons.location_solid,
-                              size: 14.r,
-                              color: const Color(0xFF4338CA),
-                            ),
-                            SizedBox(width: 8.w),
-                            Expanded(
-                              child: Text(
-                                s,
-                                style: GoogleFonts.inter(
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF1D2939),
-                                ),
+                        child: Text(
+                          "No locations found",
+                          style: GoogleFonts.inter(
+                            fontSize: 12.5.sp,
+                            color: const Color(0xFF9AA0AB),
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: EdgeInsets.symmetric(vertical: 4.h),
+                        shrinkWrap: true,
+                        physics: const ClampingScrollPhysics(),
+                        itemCount: locationSuggestions.length,
+                        separatorBuilder: (_, __) =>
+                            const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                        itemBuilder: (context, index) {
+                          final s = locationSuggestions[index];
+                          return InkWell(
+                            onTap: () {
+                              locationCtrl.text = s.name;
+                              selectedLocationId = s.id;
+                              locationCtrl
+                                  .selection = TextSelection.fromPosition(
+                                TextPosition(offset: locationCtrl.text.length),
+                              );
+                              removeLocationOverlay();
+                              locationFocusNode.unfocus();
+                              dialogSetState?.call(() {});
+                            },
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12.w,
+                                vertical: 10.h,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    CupertinoIcons.location_solid,
+                                    size: 14.r,
+                                    color: const Color(0xFF4338CA),
+                                  ),
+                                  SizedBox(width: 8.w),
+                                  Expanded(
+                                    child: Text(
+                                      s.name,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF1D2939),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
               ),
             ),
           ),
@@ -326,13 +329,11 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
     ) {
       final q = query.trim().toLowerCase();
       locationSuggestions = q.isEmpty
-          ? List.from(_locationOptions)
-          : _locationOptions.where((l) => l.toLowerCase().contains(q)).toList();
+          ? List.from(locationController.locations)
+          : locationController.locations
+                .where((l) => l.name.toLowerCase().contains(q))
+                .toList();
 
-      if (locationSuggestions.isEmpty) {
-        removeLocationOverlay();
-        return;
-      }
       showLocationOverlay(overlayContext, fieldWidth);
     }
 
@@ -495,10 +496,17 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
                             fontWeight: FontWeight.w400,
                             color: const Color(0xFF344054),
                           ),
-                          validator: (v) => (v == null || v.trim().isEmpty)
-                              ? "Enter location"
-                              : null,
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) {
+                              return "Enter location";
+                            }
+                            if (selectedLocationId == null) {
+                              return "Select a location from the list";
+                            }
+                            return null;
+                          },
                           onChanged: (val) {
+                            selectedLocationId = null;
                             ss(() {});
                             updateLocationSuggestions(
                               val,
@@ -529,6 +537,7 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
                                 : GestureDetector(
                                     onTap: () {
                                       locationCtrl.clear();
+                                      selectedLocationId = null;
                                       removeLocationOverlay();
                                       ss(() {});
                                     },
@@ -602,57 +611,98 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
                           ),
                           SizedBox(width: 10.w),
                           ElevatedButton(
-                            onPressed: () {
-                              ss(() => autoValidate = true);
-                              if (!(formKey.currentState?.validate() ??
-                                  false)) {
-                                return;
-                              }
+                            onPressed: isSubmitting
+                                ? null
+                                : () async {
+                                    ss(() => autoValidate = true);
+                                    if (!(formKey.currentState?.validate() ??
+                                        false)) {
+                                      return;
+                                    }
 
-                              removeLocationOverlay();
+                                    removeLocationOverlay();
+                                    ss(() => isSubmitting = true);
 
-                              setState(() {
-                                final locationValue =
-                                    locationCtrl.text.trim().isEmpty
-                                    ? null
-                                    : locationCtrl.text.trim();
+                                    final bool success;
+                                    if (existing == null) {
+                                      success = await departmentController
+                                          .handleCreateDepartment(
+                                            name: nameCtrl.text.trim(),
+                                            location: selectedLocationId,
+                                          );
+                                    } else {
+                                      success = await departmentController
+                                          .handleUpdateDepartment(
+                                            id: existing.id ?? "",
+                                            name: nameCtrl.text.trim(),
+                                            location: selectedLocationId,
+                                          );
+                                    }
 
-                                if (existing == null) {
-                                  _departments.add(
-                                    DepartmentModel(
-                                      id: (_nextId++).toString(),
-                                      name: nameCtrl.text.trim(),
-                                      location: locationValue,
-                                    ),
-                                  );
-                                } else {
-                                  existing
-                                    ..name = nameCtrl.text.trim()
-                                    ..location = locationValue;
-                                }
-                                _onSearchChanged();
-                              });
+                                    if (!mounted) return;
+                                    ss(() => isSubmitting = false);
 
-                              Navigator.pop(ctx);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    existing == null
-                                        ? "Department created successfully!"
-                                        : "Department updated successfully!",
-                                    style: GoogleFonts.inter(
-                                      fontSize: 13.sp,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  backgroundColor: const Color(0xFF0DA99E),
-                                  behavior: SnackBarBehavior.floating,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8.r),
-                                  ),
-                                ),
-                              );
-                            },
+                                    if (success) {
+                                      Navigator.pop(ctx);
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            departmentController
+                                                    .successMessage ??
+                                                (existing == null
+                                                    ? "Department created successfully!"
+                                                    : "Department updated successfully!"),
+                                            style: GoogleFonts.inter(
+                                              fontSize: 13.sp,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          backgroundColor: const Color(
+                                            0xFF0DA99E,
+                                          ),
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              8.r,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+
+                                      // The create/update response only
+                                      // returns the location as a bare ID
+                                      // (unpopulated), so the row's location
+                                      // name would show blank until the next
+                                      // fetch. Refresh now so it reflects the
+                                      // fully populated data immediately.
+                                      departmentController
+                                          .handleGetDepartments();
+                                    } else {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            departmentController.errorMessage ??
+                                                "Something went wrong",
+                                            style: GoogleFonts.inter(
+                                              fontSize: 13.sp,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          backgroundColor: Colors.red,
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              8.r,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
                             style: ElevatedButton.styleFrom(
                               elevation: 0,
                               backgroundColor: const Color(0xFF3B82F6),
@@ -664,14 +714,25 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
                                 borderRadius: BorderRadius.circular(8.r),
                               ),
                             ),
-                            child: Text(
-                              "Confirm",
-                              style: GoogleFonts.inter(
-                                fontSize: 13.sp,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
+                            child: isSubmitting
+                                ? SizedBox(
+                                    width: 16.r,
+                                    height: 16.r,
+                                    child: const CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation(
+                                        Colors.white,
+                                      ),
+                                    ),
+                                  )
+                                : Text(
+                                    "Confirm",
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
                           ),
                         ],
                       ),
@@ -760,14 +821,19 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
     );
 
     if (shouldDelete == true) {
-      setState(() {
-        _departments.removeWhere((d) => d.id == department.id);
-        _onSearchChanged();
-      });
+      final success = await departmentController.handleDeleteDepartment(
+        id: department.id ?? "",
+      );
+
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            "Department deleted",
+            success
+                ? (departmentController.successMessage ?? "Department deleted")
+                : (departmentController.errorMessage ??
+                      "Failed to delete department"),
             style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
           ),
           backgroundColor: Colors.red,
@@ -792,225 +858,275 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
         onBackPressed: () => Navigator.pop(context),
       ),
       drawer: CustomDrawer(activeTile: "Department", onTileTap: (value) {}),
-      body: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: () => _searchFocusNode.unfocus(),
-        child: Container(
-          color: const Color(0xFFF5F7FB),
-          padding: EdgeInsets.symmetric(horizontal: 15.w, vertical: 14.h),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: InkWell(
-                      onTap: () => Navigator.pop(context),
-                      child: Icon(
-                        Icons.arrow_back,
-                        size: 20.r,
-                        color: _primaryColor,
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 8.w,),
-                  Text(
-                    "Department List",
-                    style: GoogleFonts.inter(
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF0A0258),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 14.h),
+      body: ListenableBuilder(
+        listenable: departmentController,
+        builder: (context, _) {
+          final filtered = _filtered;
+          final isInitialLoading =
+              departmentController.isLoading &&
+              departmentController.departments.isEmpty;
 
-              // Search + Add Department
-              Row(
+          return GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () => _searchFocusNode.unfocus(),
+            child: Container(
+              color: const Color(0xFFF5F7FB),
+              padding: EdgeInsets.symmetric(horizontal: 15.w, vertical: 14.h),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: CompositedTransformTarget(
-                      link: _searchLayerLink,
-                      child: TextField(
-                        controller: _searchController,
-                        focusNode: _searchFocusNode,
+                  Row(
+                    children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: InkWell(
+                          onTap: () => Navigator.pop(context),
+                          child: Icon(
+                            Icons.arrow_back,
+                            size: 20.r,
+                            color: _primaryColor,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
+                      Text(
+                        "Department List",
                         style: GoogleFonts.inter(
-                          fontSize: 12.sp,
-                          color: const Color(0xFF344054),
-                        ),
-                        decoration: InputDecoration(
-                          isDense: true,
-                          hintText: "Search departments",
-                          hintStyle: GoogleFonts.inter(
-                            fontSize: 12.sp,
-                            color: const Color(0xFFB8BEC5),
-                          ),
-                          prefixIcon: Icon(
-                            CupertinoIcons.search,
-                            size: 14.r,
-                            color: const Color(0xFF9AA0AB),
-                          ),
-                          suffixIcon: _searchController.text.isEmpty
-                              ? null
-                              : GestureDetector(
-                                  onTap: () {
-                                    _searchController.clear();
-                                    _searchFocusNode.unfocus();
-                                  },
-                                  child: Icon(
-                                    CupertinoIcons.clear_circled_solid,
-                                    size: 14.r,
-                                    color: const Color(0xFF9AA0AB),
-                                  ),
-                                ),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12.w,
-                            vertical: 12.h,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10.r),
-                            borderSide: const BorderSide(
-                              color: Color(0xFFE4E7EC),
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10.r),
-                            borderSide: const BorderSide(
-                              color: Color(0xFFE4E7EC),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10.r),
-                            borderSide: const BorderSide(
-                              color: Color(0xFF0A0258),
-                            ),
-                          ),
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF0A0258),
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                  SizedBox(width: 10.w),
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10.r),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF2FD5C8), Color(0xFFB16CFF)],
-                      ),
-                    ),
-                    child: ElevatedButton.icon(
-                      onPressed: () => _openDepartmentForm(),
-                      style: ElevatedButton.styleFrom(
-                        elevation: 0,
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 14.w,
-                          vertical: 12.h,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10.r),
-                        ),
-                      ),
-                      icon: Icon(Icons.add, size: 16.r, color: Colors.white),
-                      label: Text(
-                        "Add Department",
-                        style: GoogleFonts.inter(
-                          fontSize: 12.5.sp,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 16.h),
+                  SizedBox(height: 14.h),
 
-              // List — flat, striped rows on a white card (matches reference)
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16.r),
-                  ),
-                  padding: EdgeInsets.symmetric(vertical: 8.h),
-                  child: _filtered.isEmpty
-                      ? Center(
-                          child: Text(
-                            "No departments found",
+                  // Search + Add Department
+                  Row(
+                    children: [
+                      Expanded(
+                        child: CompositedTransformTarget(
+                          link: _searchLayerLink,
+                          child: TextField(
+                            controller: _searchController,
+                            focusNode: _searchFocusNode,
                             style: GoogleFonts.inter(
                               fontSize: 12.sp,
-                              color: const Color(0xFF9AA0AB),
+                              color: const Color(0xFF344054),
                             ),
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 8.w,
-                            vertical: 4.h,
-                          ),
-                          itemCount: _filtered.length,
-                          itemBuilder: (context, index) {
-                            final department = _filtered[index];
-                            final isEven = index % 2 == 0;
-
-                            return Container(
-                              margin: EdgeInsets.only(bottom: 6.h),
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 14.w,
-                                vertical: 12.h,
+                            decoration: InputDecoration(
+                              isDense: true,
+                              hintText: "Search departments",
+                              hintStyle: GoogleFonts.inter(
+                                fontSize: 12.sp,
+                                color: const Color(0xFFB8BEC5),
                               ),
-                              decoration: BoxDecoration(
-                                color: isEven
-                                    ? const Color(0xFFF5F7FB)
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(10.r),
+                              prefixIcon: Icon(
+                                CupertinoIcons.search,
+                                size: 14.r,
+                                color: const Color(0xFF9AA0AB),
                               ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      department.name,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 13.5.sp,
-                                        fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF1D2939),
+                              suffixIcon: _searchController.text.isEmpty
+                                  ? null
+                                  : GestureDetector(
+                                      onTap: () {
+                                        _searchController.clear();
+                                        _searchFocusNode.unfocus();
+                                      },
+                                      child: Icon(
+                                        CupertinoIcons.clear_circled_solid,
+                                        size: 14.r,
+                                        color: const Color(0xFF9AA0AB),
                                       ),
                                     ),
-                                  ),
-                                  GestureDetector(
-                                    onTap: () => _openDepartmentForm(
-                                      existing: department,
-                                    ),
-                                    child: Icon(
-                                      CupertinoIcons.pencil,
-                                      size: 16.r,
-                                      color: const Color(0xFF344054),
-                                    ),
-                                  ),
-                                  SizedBox(width: 16.w),
-                                  GestureDetector(
-                                    onTap: () => _confirmDelete(department),
-                                    child: Icon(
-                                      CupertinoIcons.delete,
-                                      size: 16.r,
-                                      color: Colors.red,
-                                    ),
-                                  ),
-                                ],
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12.w,
+                                vertical: 12.h,
                               ),
-                            );
-                          },
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10.r),
+                                borderSide: const BorderSide(
+                                  color: Color(0xFFE4E7EC),
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10.r),
+                                borderSide: const BorderSide(
+                                  color: Color(0xFFE4E7EC),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10.r),
+                                borderSide: const BorderSide(
+                                  color: Color(0xFF0A0258),
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                ),
+                      ),
+                      SizedBox(width: 10.w),
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10.r),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF2FD5C8), Color(0xFFB16CFF)],
+                          ),
+                        ),
+                        child: ElevatedButton.icon(
+                          onPressed: () => _openDepartmentForm(),
+                          style: ElevatedButton.styleFrom(
+                            elevation: 0,
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 14.w,
+                              vertical: 12.h,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10.r),
+                            ),
+                          ),
+                          icon: Icon(
+                            Icons.add,
+                            size: 16.r,
+                            color: Colors.white,
+                          ),
+                          label: Text(
+                            "Add Department",
+                            style: GoogleFonts.inter(
+                              fontSize: 12.5.sp,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 16.h),
+
+                  // List — flat, striped rows on a white card (matches reference)
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16.r),
+                      ),
+                      padding: EdgeInsets.symmetric(vertical: 8.h),
+                      child: isInitialLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : filtered.isEmpty
+                          ? Center(
+                              child: Text(
+                                "No departments found",
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.sp,
+                                  color: const Color(0xFF9AA0AB),
+                                ),
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 8.w,
+                                vertical: 4.h,
+                              ),
+                              itemCount: filtered.length,
+                              itemBuilder: (context, index) {
+                                final department = filtered[index];
+                                final isEven = index % 2 == 0;
+
+                                return Container(
+                                  margin: EdgeInsets.only(bottom: 6.h),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 14.w,
+                                    vertical: 12.h,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isEven
+                                        ? const Color(0xFFF5F7FB)
+                                        : Colors.white,
+                                    borderRadius: BorderRadius.circular(10.r),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              department.name ?? "",
+                                              style: GoogleFonts.inter(
+                                                fontSize: 13.5.sp,
+                                                fontWeight: FontWeight.w600,
+                                                color: const Color(0xFF1D2939),
+                                              ),
+                                            ),
+                                            if (department.location?.name !=
+                                                null) ...[
+                                              SizedBox(height: 4.h),
+                                              Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    CupertinoIcons
+                                                        .location_solid,
+                                                    size: 11.r,
+                                                    color: const Color(
+                                                      0xFF9AA0AB,
+                                                    ),
+                                                  ),
+                                                  SizedBox(width: 4.w),
+                                                  Text(
+                                                    department.location?.name ??
+                                                        "",
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 11.5.sp,
+                                                      color: const Color(
+                                                        0xFF667085,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      GestureDetector(
+                                        onTap: () => _openDepartmentForm(
+                                          existing: department,
+                                        ),
+                                        child: Icon(
+                                          CupertinoIcons.pencil,
+                                          size: 16.r,
+                                          color: const Color(0xFF344054),
+                                        ),
+                                      ),
+                                      SizedBox(width: 16.w),
+                                      GestureDetector(
+                                        onTap: () => _confirmDelete(department),
+                                        child: Icon(
+                                          CupertinoIcons.delete,
+                                          size: 16.r,
+                                          color: Colors.red,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
       bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 0),
     );

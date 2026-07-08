@@ -138,6 +138,10 @@ class AuthRepositoryImpl implements AuthRepository {
             key: 'user_avatar_thumbnail',
             value: user.thumbnailAvatarUrl ?? '',
           );
+          await _secureStorage.write(
+            key: 'user_requires_organization',
+            value: user.requiresOrganization.toString(),
+          );
         }
         return ApiResult.success(apiResponse);
       }
@@ -270,6 +274,11 @@ class AuthRepositoryImpl implements AuthRepository {
           await _secureStorage.write(
             key: 'user_avatar_thumbnail',
             value: user.thumbnailAvatarUrl ?? '',
+          );
+
+          await _secureStorage.write(
+            key: 'user_requires_organization',
+            value: user.requiresOrganization.toString(),
           );
         }
         return ApiResult.success(apiResponse);

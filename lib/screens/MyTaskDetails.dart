@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:taskalert_app/core/features/taskInstance/controllers/task_instance_controller.dart';
+import 'package:taskalert_app/utils/injection_container.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
@@ -100,8 +102,17 @@ class TaskDetail {
 class TaskDetailScreen extends StatefulWidget {
   final String userId;
   final String? taskId; // pass null for create, an id for edit/view
+  final String? mainTaskId; // optional main task ID for context
+  final bool?
+  taskAssignedToUser; // optional flag to indicate if the task is assigned to the user
 
-  const TaskDetailScreen({super.key, required this.userId, this.taskId});
+  const TaskDetailScreen({
+    super.key,
+    required this.userId,
+    required this.mainTaskId,
+    this.taskId,
+    this.taskAssignedToUser,
+  });
 
   @override
   State<TaskDetailScreen> createState() => _TaskDetailScreenState();
@@ -137,6 +148,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   // ── Loading / error state ──────────────────────────────────────────────────
   bool _isLoading = false;
   bool _isSaving = false;
+  bool _isReadOnly = false; // New flag to control read-only state
   String? _errorMsg;
 
   // ── UI-only toggle visibility flags ───────────────────────────────────────
@@ -148,6 +160,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   bool _assignDateEnabled = false;
   bool _assignTimeEnabled = false;
   bool _selectDurationEnabled = false;
+  // Read-only flags for text fields (TextEditingController has no readOnly)
+  bool _titleReadOnly = false;
+  bool _descReadOnly = false;
 
   // ── Calendar navigation state ──────────────────────────────────────────────
   int _calendarMonth = DateTime.now().month;
@@ -237,14 +252,67 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   // Lifecycle
   // ═══════════════════════════════════════════════════════════════════════════
 
+  // late final TaskInstanceController taskController;
+  TaskInstanceController taskController = sl<TaskInstanceController>();
+
+  // @override
   @override
   void initState() {
     super.initState();
+
     _titleCtrl = TextEditingController(text: _title);
     _descCtrl = TextEditingController(text: _description);
 
+    // taskController = sl<TaskInstanceController>();
+
     if (widget.taskId != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _fetchTask());
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await taskController.handleGetInstanceById(instanceId: widget.taskId!);
+
+        if (mounted) {
+          setState(() {
+            _title = taskController.selectedInstance?.title ?? '';
+            _description = taskController.selectedInstance?.description ?? '';
+
+            _titleCtrl.text = _title;
+            _descCtrl.text = _description;
+            // _assignTo = taskController.selectedInstance?.assigneeName ?? '';
+            if (widget.taskAssignedToUser == true) {
+              print(
+                'Task is assigned to the user. Disabling editing for certain fields.',
+              );
+              // If the task is assigned to the user, disable editing for certain fields
+              if (widget.taskAssignedToUser == true) {
+                // If the task is assigned to the user, disable editing for certain fields
+                _isReadOnly = true;
+                // _titleReadOnly = true;
+                // _descReadOnly = true;
+                // _assignDateEnabled = false;
+                // _assignTimeEnabled = false;
+                // _selectDurationEnabled = false;
+                // _priority = _priority;
+                // _assignTo = _assignTo;
+                // _reportTo = _reportTo;
+                // _durationHours = _durationHours;
+                // _timeZone = _timeZone;
+              } else {
+                // Allow editing for all fields
+                _isReadOnly = false;
+                // _titleReadOnly = false;
+                // _descReadOnly = false;
+                // _assignDateEnabled = true;
+                // _assignTimeEnabled = true;
+                // _selectDurationEnabled = true;
+                // _priority = '';
+                _assignTo = '';
+                _reportTo = '';
+                _durationHours = 0;
+                _timeZone = '';
+              }
+            }
+          });
+        }
+      });
     }
   }
 
@@ -262,27 +330,27 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /// GET task detail from API and apply to UI state.
-  Future<void> _fetchTask() async {
-    setState(() {
-      _isLoading = true;
-      _errorMsg = null;
-    });
-    try {
-      // TODO: replace with real API call
-      // final response = await yourApiService.get('/tasks/${widget.taskId}');
-      // _applyModel(TaskDetail.fromJson(response.data));
+  // Future<void> _fetchTask() async {
+  //   setState(() {
+  //     _isLoading = true;
+  //     _errorMsg = null;
+  //   });
+  //   try {
+  //     // TODO: replace with real API call
+  //     // final response = await yourApiService.get('/tasks/${widget.taskId}');
+  //     // _applyModel(TaskDetail.fromJson(response.data));
 
-      // ── Simulated API response (remove when wired) ──
-      await Future.delayed(const Duration(milliseconds: 300));
-      // ───────────────────────────────────────────────
-    } catch (e) {
-      if (mounted) setState(() => _errorMsg = e.toString());
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
+  //     // ── Simulated API response (remove when wired) ──
+  //     await Future.delayed(const Duration(milliseconds: 300));
+  //     // ───────────────────────────────────────────────
+  //   } catch (e) {
+  //     if (mounted) setState(() => _errorMsg = e.toString());
+  //   } finally {
+  //     if (mounted) setState(() => _isLoading = false);
+  //   }
+  // }
 
-  /// PATCH/PUT current state back to API.
+  // /// PATCH/PUT current state back to API.
   Future<void> _saveTask() async {
     setState(() {
       _isSaving = true;
@@ -291,9 +359,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     try {
       final payload = _buildModel().toJson();
       debugPrint('API payload: $payload'); // remove in production
-
-      // TODO: replace with real API call
-      // await yourApiService.patch('/tasks/${widget.taskId}', payload);
 
       await Future.delayed(const Duration(milliseconds: 300)); // simulated
       if (mounted) {
@@ -1517,81 +1582,119 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Task info card
-                          _buildInfoCard(),
-                          SizedBox(height: 16.h),
-
-                          // Date & Time card
-                          _sectionLabel('Date & Time'),
-                          _card(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 14.w,
-                              vertical: 2.h,
-                            ),
+                          // 🔒 LOCKED SECTION STARTS HERE
+                          AbsorbPointer(
+                            absorbing: _isSaving || _isReadOnly,
                             child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Assign Date toggle
-                                _toggleRow(
-                                  label: 'Assign Date',
-                                  sub: _selectedDateLabel,
-                                  value: _assignDateEnabled,
-                                  onTap: () => setState(() {
-                                    _assignDateEnabled = !_assignDateEnabled;
-                                    _showCalendar = _assignDateEnabled;
-                                    if (_assignDateEnabled) {
-                                      _assignTimeEnabled = false;
-                                      _showTimePicker = false;
-                                    }
-                                  }),
-                                ),
-                                if (_showCalendar) ...[
-                                  SizedBox(height: 6.h),
-                                  _buildCalendar(),
-                                  SizedBox(height: 8.h),
-                                ],
-                                _divider(),
+                                // Task info card
+                                _buildInfoCard(),
+                                SizedBox(height: 16.h),
 
-                                // Assign Time toggle
-                                _toggleRow(
-                                  label: 'Assign Time',
-                                  sub: _formattedTime,
-                                  value: _assignTimeEnabled,
-                                  onTap: () => setState(() {
-                                    _assignTimeEnabled = !_assignTimeEnabled;
-                                    _showTimePicker = _assignTimeEnabled;
-                                    if (_assignTimeEnabled) {
-                                      _assignDateEnabled = false;
-                                      _showCalendar = false;
-                                    }
-                                  }),
-                                ),
-                                if (_showTimePicker) ...[
-                                  SizedBox(height: 6.h),
-                                  _buildTimePicker(),
-                                  SizedBox(height: 8.h),
-                                ],
-                                _divider(),
+                                // Date & Time card
+                                _sectionLabel('Date & Time'),
+                                _card(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 14.w,
+                                    vertical: 2.h,
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      // Assign Date toggle
+                                      _toggleRow(
+                                        label: 'Assign Date',
+                                        sub: _selectedDateLabel,
+                                        value: _assignDateEnabled,
+                                        onTap: () => setState(() {
+                                          _assignDateEnabled =
+                                              !_assignDateEnabled;
+                                          _showCalendar = _assignDateEnabled;
+                                          if (_assignDateEnabled) {
+                                            _assignTimeEnabled = false;
+                                            _showTimePicker = false;
+                                          }
+                                        }),
+                                      ),
+                                      if (_showCalendar) ...[
+                                        SizedBox(height: 6.h),
+                                        _buildCalendar(),
+                                        SizedBox(height: 8.h),
+                                      ],
+                                      _divider(),
 
-                                // Time Zone
-                                _dropdownField(
-                                  label: 'Time Zone',
-                                  value: _timeZone,
-                                  valueColor: _labelColor,
-                                  onTap: () => _showSearchableSheet(
-                                    title: 'Time Zone',
-                                    items: _timeZoneItems,
-                                    selected: _timeZone,
-                                    onSelect: (v) =>
-                                        setState(() => _timeZone = v),
+                                      // Assign Time toggle
+                                      _toggleRow(
+                                        label: 'Assign Time',
+                                        sub: _formattedTime,
+                                        value: _assignTimeEnabled,
+                                        onTap: () => setState(() {
+                                          _assignTimeEnabled =
+                                              !_assignTimeEnabled;
+                                          _showTimePicker = _assignTimeEnabled;
+                                          if (_assignTimeEnabled) {
+                                            _assignDateEnabled = false;
+                                            _showCalendar = false;
+                                          }
+                                        }),
+                                      ),
+                                      if (_showTimePicker) ...[
+                                        SizedBox(height: 6.h),
+                                        _buildTimePicker(),
+                                        SizedBox(height: 8.h),
+                                      ],
+                                      _divider(),
+
+                                      // Time Zone
+                                      _dropdownField(
+                                        label: 'Time Zone',
+                                        value: _timeZone,
+                                        valueColor: _labelColor,
+                                        onTap: () => _showSearchableSheet(
+                                          title: 'Time Zone',
+                                          items: _timeZoneItems,
+                                          selected: _timeZone,
+                                          onSelect: (v) =>
+                                              setState(() => _timeZone = v),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(height: 16.h),
+
+                                // Action card (Priority Only)
+                                _sectionLabel('Action'),
+                                _card(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 14.w,
+                                    vertical: 2.h,
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      _dropdownField(
+                                        label: 'Priority',
+                                        value: _priority,
+                                        valueColor: const Color(0xFF4CAF50),
+                                        onTap: () => _showSearchableSheet(
+                                          title: 'Priority',
+                                          items: _priorityItems,
+                                          selected: _priority,
+                                          onSelect: (v) =>
+                                              setState(() => _priority = v),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
                             ),
                           ),
+
+                          // 🔓 LOCKED SECTION ENDS HERE
                           SizedBox(height: 16.h),
 
-                          // Action card
-                          _sectionLabel('Action'),
+                          // 🔓 UNLOCKED ACTION CARD (Status Only)
                           _card(
                             padding: EdgeInsets.symmetric(
                               horizontal: 14.w,
@@ -1599,19 +1702,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             ),
                             child: Column(
                               children: [
-                                _dropdownField(
-                                  label: 'Priority',
-                                  value: _priority,
-                                  valueColor: const Color(0xFF4CAF50),
-                                  onTap: () => _showSearchableSheet(
-                                    title: 'Priority',
-                                    items: _priorityItems,
-                                    selected: _priority,
-                                    onSelect: (v) =>
-                                        setState(() => _priority = v),
-                                  ),
-                                ),
-                                _divider(),
                                 _dropdownField(
                                   label: 'Status',
                                   value: _status,
@@ -1621,16 +1711,17 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                     items: _statusItems,
                                     selected: _status,
                                     onSelect: (v) =>
-                                        setState(() => _status = v),
+                                        print('Selected status: $v'),
+                                    // setState(() => _status = v),
                                   ),
                                 ),
                               ],
                             ),
                           ),
+
                           SizedBox(height: 24.h),
 
-                          // Save button — Ink wraps the gradient so the button never
-                          // changes size or color on tap; only the ripple is visible.
+                          // 🔓 UNLOCKED SAVE BUTTON
                           Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
@@ -1653,7 +1744,41 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                       onTap: () async {
                                         if (!_isSaving &&
                                             await userTaskPermission) {
-                                          _saveTask();
+                                          print(_status);
+                                          String statusAfterUpdate = 'todo';
+
+                                          if (_status == 'Pending') {
+                                            statusAfterUpdate = 'todo';
+                                          } else if (_status == 'In Progress') {
+                                            statusAfterUpdate = 'inProgress';
+                                          } else if (_status == 'Completed') {
+                                            statusAfterUpdate = 'completed';
+                                          }
+
+                                          print(
+                                            'Status after update: $statusAfterUpdate',
+                                          );
+                                          // await taskController
+                                          //     .handleUpdateInstanceConfiguration(
+                                          //       taskId: widget.mainTaskId ?? '',
+                                          //       instanceId: widget.taskId ?? '',
+                                          //       status: statusAfterUpdate,
+                                          //       scope: 'single', // optional
+                                          //       // priority: _priority,
+                                          //       // assigneeIds: _assignToItems
+                                          //       //     .where(
+                                          //       //       (e) => e['id'] == _assignTo,
+                                          //       //     )
+                                          //       //     .map((e) => e['id'] as String)
+                                          //       // .toList(),
+                                          //       // scheduledTime: {
+                                          //       //   'date': _selectedDateLabel,
+                                          //       //   'time': _formattedTime,
+                                          //       //   'timezone': _timeZone,
+                                          //       // },
+                                          //     );
+
+                                          // _saveTask();
                                         } else {
                                           ScaffoldMessenger.of(
                                             context,
@@ -1664,22 +1789,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                               ),
                                               duration: Duration(seconds: 3),
                                             ),
-                                            // SnackBar(
-                                            //   content: Text(
-                                            //     'You are not authorized to update this task',
-                                            //     style: GoogleFonts.inter(
-                                            //       color: Colors.white,
-                                            //       fontSize: 13.sp,
-                                            //     ),
-                                            //   ),
-                                            //   backgroundColor: _greyOff,
-                                            //   behavior:
-                                            //       SnackBarBehavior.floating,
-                                            //   shape: RoundedRectangleBorder(
-                                            //     borderRadius:
-                                            //         BorderRadius.circular(8.r),
-                                            //   ),
-                                            // ),
                                           );
                                         }
                                       },
@@ -1718,6 +1827,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                               ),
                             ],
                           ),
+
                           SizedBox(height: 24.h),
                         ],
                       ),
@@ -1726,6 +1836,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 ],
               ),
             ),
+
       bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 1),
     );
   }

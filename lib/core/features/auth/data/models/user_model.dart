@@ -12,6 +12,7 @@ class UserModel {
   final String? accountType;
   final bool? taskPermission;
   final String? taskType;
+  final bool? requiresOrganization;
 
   UserModel({
     required this.id,
@@ -27,6 +28,7 @@ class UserModel {
     this.accountType,
     this.taskPermission,
     this.taskType,
+    this.requiresOrganization,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -50,6 +52,7 @@ class UserModel {
       accountType: (userMap['accountType'] ?? '').toString(),
       taskPermission: userMap['taskPermission'],
       taskType: (userMap['taskType'] ?? '').toString(),
+      requiresOrganization: userMap['requiresOrganization'] ?? false,
 
       // Dig cleanly into your multi-variant image object keys
       originalAvatarUrl: imageMap?['originalUrl']?.toString(),

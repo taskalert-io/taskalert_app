@@ -21,7 +21,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.taskalert_app"
-        minSdk = 23 // 2. Changed from 'flutter.minSdkVersion' to 23
+        minSdk = flutter.minSdkVersion // 2. Changed from 'flutter.minSdkVersion' to 23
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
