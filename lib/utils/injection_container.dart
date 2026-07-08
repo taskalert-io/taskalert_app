@@ -9,6 +9,7 @@ import 'package:taskalert_app/core/features/departments/data/repositories/depart
 import 'package:taskalert_app/core/features/employees/controllers/employee_controller.dart';
 import 'package:taskalert_app/core/features/employees/data/repositories/employee_repository.dart';
 import 'package:taskalert_app/core/features/employees/data/repositories/employee_respository_impl.dart';
+import 'package:taskalert_app/core/features/location/controllers/location_controller.dart';
 import 'package:taskalert_app/core/features/location/data/repositories/location_repository.dart';
 import 'package:taskalert_app/core/features/location/data/repositories/location_repository_impl.dart';
 import 'package:taskalert_app/core/features/organization/controllers/organization_controller.dart';
