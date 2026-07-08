@@ -22,6 +22,17 @@ import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
 
+class LocationOptionModel {
+  final String id;
+  final String name;
+  final String city;
+  LocationOptionModel({
+    required this.id,
+    required this.name,
+    required this.city,
+  });
+}
+
 class CreateRepetitiveScreen extends StatefulWidget {
   const CreateRepetitiveScreen({super.key, required this.userId});
   final String userId;
@@ -44,6 +55,27 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
   String? _reportingToError;
   String? _assignToError;
   String? _weekdayError;
+
+  // ── Location (autocomplete search, mirrors LocationListScreen) ────────────
+  final TextEditingController locationSearchController =
+      TextEditingController();
+  final FocusNode locationFocusNode = FocusNode();
+  final LayerLink locationLayerLink = LayerLink();
+  OverlayEntry? _locationSuggestionsOverlay;
+  List<LocationOptionModel> _locationSuggestions = [];
+  LocationOptionModel? selectedLocation;
+  String? _locationError;
+  final GlobalKey _locationFieldKey = GlobalKey();
+
+  // Mock — swap for LocationController.locations once wired up
+  final List<LocationOptionModel> _mockLocations = [
+    LocationOptionModel(id: "1", name: "Second Office", city: "Kolkata"),
+    LocationOptionModel(id: "2", name: "Head Office", city: "Kolkata"),
+  ];
+
+  // ── New Department (searchable multi-select, scoped to selected Location) ─
+  List<DepartmentModel> selectedNewDepartments = [];
+  String? _newDepartmentError;
 
   // ── Cross-field date error ───────────────────────────────────────────────
   String? _dueDateError;
@@ -877,6 +909,10 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
         "${now.year}";
     dueTimeController.text = "";
 
+    // Location autocomplete listeners
+    locationSearchController.addListener(_onLocationSearchChanged);
+    locationFocusNode.addListener(_onLocationFocusChanged);
+
     departmentController = sl<DepartmentController>();
     employeeController = sl<EmployeeController>();
     taskController = sl<TaskController>();
@@ -902,6 +938,13 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     dayFocus.dispose();
     monthFocus.dispose();
     yearFocus.dispose();
+
+    locationSearchController.removeListener(_onLocationSearchChanged);
+    locationSearchController.dispose();
+    locationFocusNode.removeListener(_onLocationFocusChanged);
+    locationFocusNode.dispose();
+    _removeLocationSuggestionsOverlay();
+
     super.dispose();
   }
 
@@ -1091,6 +1134,10 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       final Map<String, dynamic> formData = {
         "taskType": taskType,
         "title": titleNameController.text.trim(),
+        "location": selectedLocation?.id,
+        "newDepartments": jsonEncode(
+          selectedNewDepartments.map((d) => d.id).toList(),
+        ),
         "department": selectedDepartment?.id,
         "priority": selectedPriority.toLowerCase(),
         "assignees": jsonEncode(selectedAssignees),
@@ -1211,6 +1258,159 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
     //   ),
     // );
+  }
+
+  // ── LOCATION AUTOCOMPLETE ────────────────────────────────────────────────
+  double _measuredLocationFieldWidth() {
+    final box =
+        _locationFieldKey.currentContext?.findRenderObject() as RenderBox?;
+    return box?.size.width ?? (MediaQuery.of(context).size.width - 62.w);
+  }
+
+  void _onLocationFocusChanged() {
+    if (locationFocusNode.hasFocus) {
+      _updateLocationSuggestions(locationSearchController.text);
+    } else {
+      // Small delay so a tap on a suggestion registers before we tear the
+      // overlay down (otherwise the overlay disappears first and the tap
+      // never lands).
+      Future.delayed(const Duration(milliseconds: 150), () {
+        if (mounted && !locationFocusNode.hasFocus) {
+          _removeLocationSuggestionsOverlay();
+        }
+      });
+    }
+  }
+
+  void _onLocationSearchChanged() {
+    _updateLocationSuggestions(locationSearchController.text);
+    if (locationSearchController.text.trim().isEmpty &&
+        selectedLocation != null) {
+      setState(() {
+        selectedLocation = null;
+        selectedNewDepartments = [];
+      });
+    }
+  }
+
+  void _updateLocationSuggestions(String query) {
+    final q = query.trim().toLowerCase();
+    _locationSuggestions = q.isEmpty
+        ? List.from(_mockLocations)
+        : _mockLocations
+              .where(
+                (l) =>
+                    l.name.toLowerCase().contains(q) ||
+                    l.city.toLowerCase().contains(q),
+              )
+              .toList();
+
+    if (_locationSuggestions.isEmpty || !locationFocusNode.hasFocus) {
+      _removeLocationSuggestionsOverlay();
+      return;
+    }
+    _showLocationSuggestionsOverlay();
+  }
+
+  void _showLocationSuggestionsOverlay() {
+    _removeLocationSuggestionsOverlay();
+    final overlay = Overlay.of(context);
+    final fieldWidth = _measuredLocationFieldWidth();
+    _locationSuggestionsOverlay = OverlayEntry(
+      builder: (context) => Positioned(
+        width: fieldWidth,
+        child: CompositedTransformFollower(
+          link: locationLayerLink,
+          showWhenUnlinked: false,
+          offset: Offset(0, 46.h),
+          child: Material(
+            elevation: 6,
+            borderRadius: BorderRadius.circular(10.r),
+            color: Colors.white,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: 240.h),
+              child: ListView.separated(
+                padding: EdgeInsets.symmetric(vertical: 4.h),
+                shrinkWrap: true,
+                itemCount: _locationSuggestions.length,
+                separatorBuilder: (_, __) =>
+                    const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                itemBuilder: (context, index) {
+                  final loc = _locationSuggestions[index];
+                  return InkWell(
+                    onTap: () => _selectLocationSuggestion(loc),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 10.h,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            CupertinoIcons.location_solid,
+                            size: 14.r,
+                            color: const Color(0xFF4338CA),
+                          ),
+                          SizedBox(width: 8.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  loc.name,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF1D2939),
+                                  ),
+                                ),
+                                Text(
+                                  loc.city,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11.sp,
+                                    color: const Color(0xFF667085),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    overlay.insert(_locationSuggestionsOverlay!);
+  }
+
+  void _removeLocationSuggestionsOverlay() {
+    _locationSuggestionsOverlay?.remove();
+    _locationSuggestionsOverlay = null;
+  }
+
+  void _selectLocationSuggestion(LocationOptionModel location) {
+    locationSearchController.removeListener(_onLocationSearchChanged);
+    locationSearchController.text = location.name;
+    locationSearchController.selection = TextSelection.fromPosition(
+      TextPosition(offset: locationSearchController.text.length),
+    );
+    locationSearchController.addListener(_onLocationSearchChanged);
+
+    setState(() {
+      selectedLocation = location;
+      _locationError = null;
+      // Selecting a new location invalidates whatever "New Department(s)"
+      // were already picked, since they're scoped to the location.
+      selectedNewDepartments = [];
+    });
+
+    _removeLocationSuggestionsOverlay();
+    locationFocusNode.unfocus();
   }
 
   // ── FILE PICKER ────────────────────────────────────────────────────────────
@@ -1583,6 +1783,226 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                       ? "Enter title"
                                       : null,
                                 ),
+
+                                SizedBox(height: 8.h),
+
+                                // Location — autocomplete search
+                                _buildLabel("Location"),
+                                SizedBox(height: 3.h),
+                                CompositedTransformTarget(
+                                  link: locationLayerLink,
+                                  child: TextFormField(
+                                    key: _locationFieldKey,
+                                    controller: locationSearchController,
+                                    focusNode: locationFocusNode,
+                                    onTap: () => _updateLocationSuggestions(
+                                      locationSearchController.text,
+                                    ),
+                                    validator: (v) =>
+                                        (v == null || v.trim().isEmpty)
+                                        ? "Select a location"
+                                        : null,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12.sp,
+                                      fontWeight: FontWeight.w400,
+                                      color: const Color(0xFF6C7278),
+                                    ),
+                                    decoration: InputDecoration(
+                                      isDense: true,
+                                      hintText: "Search location...",
+                                      hintStyle: GoogleFonts.inter(
+                                        fontSize: 12.sp,
+                                        color: const Color(0xFFB8BEC5),
+                                      ),
+                                      errorStyle: TextStyle(fontSize: 10.sp),
+                                      prefixIcon: Icon(
+                                        CupertinoIcons.location_solid,
+                                        size: 16.r,
+                                        color: const Color(0xFF4338CA),
+                                      ),
+                                      suffixIcon:
+                                          locationSearchController.text.isEmpty
+                                          ? null
+                                          : GestureDetector(
+                                              onTap: () {
+                                                locationSearchController
+                                                    .clear();
+                                                setState(() {
+                                                  selectedLocation = null;
+                                                  selectedNewDepartments = [];
+                                                });
+                                                _removeLocationSuggestionsOverlay();
+                                              },
+                                              child: Icon(
+                                                CupertinoIcons
+                                                    .clear_circled_solid,
+                                                size: 14.r,
+                                                color: const Color(0xFF9AA0AB),
+                                              ),
+                                            ),
+                                      filled: true,
+                                      fillColor: const Color(0xFFF9FAFC),
+                                      contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 10.w,
+                                        vertical: 10.h,
+                                      ),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          8.r,
+                                        ),
+                                        borderSide: const BorderSide(
+                                          color: Color(0xFFD9DEE5),
+                                        ),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          8.r,
+                                        ),
+                                        borderSide: const BorderSide(
+                                          color: Color(0xFFD9DEE5),
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          8.r,
+                                        ),
+                                        borderSide: const BorderSide(
+                                          color: Color(0xFF0A0258),
+                                        ),
+                                      ),
+                                      errorBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          8.r,
+                                        ),
+                                        borderSide: const BorderSide(
+                                          color: Colors.red,
+                                        ),
+                                      ),
+                                      focusedErrorBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          8.r,
+                                        ),
+                                        borderSide: const BorderSide(
+                                          color: Colors.red,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                if (_locationError != null)
+                                  Padding(
+                                    padding: EdgeInsets.only(
+                                      top: 4.h,
+                                      left: 4.w,
+                                    ),
+                                    child: Text(
+                                      _locationError!,
+                                      style: GoogleFonts.inter(
+                                        color: Colors.red,
+                                        fontSize: 10.sp,
+                                      ),
+                                    ),
+                                  ),
+
+                                SizedBox(height: 8.h),
+
+                                // New Department — searchable multi-select, scoped to Location
+                                _buildLabel("New Department"),
+                                SizedBox(height: 3.h),
+                                IgnorePointer(
+                                  ignoring: selectedLocation == null,
+                                  child: Opacity(
+                                    opacity: selectedLocation == null ? 0.5 : 1,
+                                    child: GestureDetector(
+                                      onTap: () =>
+                                          _showNewDepartmentBottomSheet(
+                                            context,
+                                          ),
+                                      child: Container(
+                                        width: double.infinity,
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 10.w,
+                                          vertical: 10.h,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF9FAFC),
+                                          borderRadius: BorderRadius.circular(
+                                            8.r,
+                                          ),
+                                          border: Border.all(
+                                            color: _newDepartmentError != null
+                                                ? Colors.red
+                                                : const Color(0xFFD9DEE5),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child:
+                                                  selectedNewDepartments.isEmpty
+                                                  ? Text(
+                                                      "Select department(s)...",
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 12.sp,
+                                                        color: const Color(
+                                                          0xFFB8BEC5,
+                                                        ),
+                                                      ),
+                                                    )
+                                                  : Wrap(
+                                                      spacing: 6.w,
+                                                      runSpacing: 6.h,
+                                                      children:
+                                                          selectedNewDepartments
+                                                              .map(
+                                                                (dept) =>
+                                                                    _newDepartmentChip(
+                                                                      dept,
+                                                                    ),
+                                                              )
+                                                              .toList(),
+                                                    ),
+                                            ),
+                                            SizedBox(width: 6.w),
+                                            Icon(
+                                              CupertinoIcons.chevron_down,
+                                              size: 14.r,
+                                              color: const Color(0xFF4338CA),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                if (selectedLocation == null)
+                                  Padding(
+                                    padding: EdgeInsets.only(
+                                      top: 4.h,
+                                      left: 4.w,
+                                    ),
+                                    child: Text(
+                                      "Select a location first",
+                                      style: GoogleFonts.inter(
+                                        color: const Color(0xFF9AA0AB),
+                                        fontSize: 10.sp,
+                                      ),
+                                    ),
+                                  ),
+                                if (_newDepartmentError != null)
+                                  Padding(
+                                    padding: EdgeInsets.only(
+                                      top: 4.h,
+                                      left: 4.w,
+                                    ),
+                                    child: Text(
+                                      _newDepartmentError!,
+                                      style: GoogleFonts.inter(
+                                        color: Colors.red,
+                                        fontSize: 10.sp,
+                                      ),
+                                    ),
+                                  ),
 
                                 SizedBox(height: 8.h),
 
@@ -4607,6 +5027,369 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
   //     ),
   //   );
   // }
+
+  // ── New Department multi-select bottom sheet ───────────────────────────────
+
+  void _showNewDepartmentBottomSheet(BuildContext context) {
+    final departmentController = sl<DepartmentController>();
+    departmentController.handleGetDepartments(search: "");
+
+    List<DepartmentModel> tempSelected = List.from(selectedNewDepartments);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, ss) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.12),
+                  blurRadius: 10.r,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  margin: EdgeInsets.only(top: 10.h),
+                  width: 36.w,
+                  height: 4.h,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD9DEE5),
+                    borderRadius: BorderRadius.circular(4.r),
+                  ),
+                ),
+
+                Padding(
+                  padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Select Department(s)",
+                            style: GoogleFonts.inter(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF0A0258),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => Navigator.pop(ctx),
+                            child: Icon(
+                              Icons.close,
+                              size: 20.r,
+                              color: const Color(0xFF6C7278),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (tempSelected.isNotEmpty) ...[
+                        SizedBox(height: 4.h),
+                        Text(
+                          "${tempSelected.length} selected",
+                          style: GoogleFonts.inter(
+                            fontSize: 11.sp,
+                            color: const Color(0xFF4338CA),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      SizedBox(height: 10.h),
+
+                      // Search field — filters via the controller, same as
+                      // the single-select Department sheet.
+                      TextField(
+                        autofocus: false,
+                        onChanged: (val) {
+                          departmentController.handleGetDepartments(
+                            search: val.trim(),
+                          );
+                        },
+                        style: GoogleFonts.inter(
+                          fontSize: 12.sp,
+                          color: const Color(0xFF344054),
+                        ),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          hintText: "Search department...",
+                          hintStyle: GoogleFonts.inter(
+                            fontSize: 12.sp,
+                            color: const Color(0xFFB8BEC5),
+                          ),
+                          prefixIcon: Icon(
+                            CupertinoIcons.search,
+                            size: 16.r,
+                            color: const Color(0xFF4338CA),
+                          ),
+                          filled: true,
+                          fillColor: const Color(0xFFF9FAFC),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 10.w,
+                            vertical: 10.h,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFD9DEE5),
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFD9DEE5),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF0A0258),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 8.h),
+                    ],
+                  ),
+                ),
+
+                // Dynamic department list, re-renders on controller notify
+                Flexible(
+                  child: ListenableBuilder(
+                    listenable: departmentController,
+                    builder: (context, child) {
+                      if (departmentController.isLoading) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      final departments = departmentController.departments;
+                      if (departments.isEmpty) {
+                        return Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24.h),
+                          child: Center(
+                            child: Text(
+                              "No departments found",
+                              style: GoogleFonts.inter(
+                                fontSize: 12.sp,
+                                color: const Color(0xFF9AA0AB),
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                      return ListView.separated(
+                        shrinkWrap: true,
+                        padding: EdgeInsets.symmetric(horizontal: 16.w),
+                        itemCount: departments.length,
+                        separatorBuilder: (_, __) =>
+                            const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                        itemBuilder: (_, i) {
+                          final dept = departments[i];
+                          final isChecked = tempSelected.any(
+                            (d) => d.id == dept.id,
+                          );
+
+                          return InkWell(
+                            borderRadius: BorderRadius.circular(8.r),
+                            onTap: () => ss(() {
+                              if (isChecked) {
+                                tempSelected.removeWhere(
+                                  (d) => d.id == dept.id,
+                                );
+                              } else {
+                                tempSelected.add(dept);
+                              }
+                            }),
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(vertical: 10.h),
+                              child: Row(
+                                children: [
+                                  SizedBox(width: 10.w),
+                                  Expanded(
+                                    child: Text(
+                                      dept.name ?? "",
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13.sp,
+                                        fontWeight: isChecked
+                                            ? FontWeight.w600
+                                            : FontWeight.w400,
+                                        color: const Color(0xFF1D2939),
+                                      ),
+                                    ),
+                                  ),
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    width: 20.w,
+                                    height: 20.h,
+                                    decoration: BoxDecoration(
+                                      color: isChecked
+                                          ? const Color(0xFF0A0258)
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(5.r),
+                                      border: Border.all(
+                                        color: isChecked
+                                            ? const Color(0xFF0A0258)
+                                            : const Color(0xFFD9DEE5),
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: isChecked
+                                        ? Icon(
+                                            Icons.check,
+                                            size: 13.r,
+                                            color: Colors.white,
+                                          )
+                                        : null,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+
+                // Action buttons
+                SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 16.h),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => ss(() => tempSelected.clear()),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFFD9DEE5)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.r),
+                              ),
+                              padding: EdgeInsets.symmetric(vertical: 10.h),
+                            ),
+                            child: Text(
+                              "Clear All",
+                              style: GoogleFonts.inter(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFF667085),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 10.w),
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8.r),
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF0A0258), Color(0xFF4338CA)],
+                              ),
+                            ),
+                            child: ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  selectedNewDepartments = List.from(
+                                    tempSelected,
+                                  );
+                                  if (selectedNewDepartments.isNotEmpty) {
+                                    _newDepartmentError = null;
+                                  }
+                                });
+                                Navigator.pop(ctx);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                elevation: 0,
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                padding: EdgeInsets.symmetric(vertical: 10.h),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8.r),
+                                ),
+                              ),
+                              child: Text(
+                                tempSelected.isEmpty
+                                    ? "Confirm"
+                                    : "Confirm (${tempSelected.length})",
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _newDepartmentChip(DepartmentModel dept) => Container(
+    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+    decoration: BoxDecoration(
+      color: const Color(0xFFEEF0FF),
+      borderRadius: BorderRadius.circular(20.r),
+      border: Border.all(color: const Color(0xFF4338CA)),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          CupertinoIcons.square_grid_2x2,
+          size: 11.r,
+          color: const Color(0xFF4338CA),
+        ),
+        SizedBox(width: 4.w),
+        Text(
+          dept.name ?? "",
+          style: GoogleFonts.inter(
+            fontSize: 11.sp,
+            color: const Color(0xFF0A0258),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        SizedBox(width: 4.w),
+        GestureDetector(
+          onTap: () => setState(() {
+            selectedNewDepartments.removeWhere((d) => d.id == dept.id);
+            if (selectedNewDepartments.isEmpty) {
+              _newDepartmentError = "Please select at least one department";
+            }
+          }),
+          child: Icon(Icons.close, size: 11.r, color: const Color(0xFF4338CA)),
+        ),
+      ],
+    ),
+  );
 
   void _showAssignToBottomSheet(
     BuildContext context,
