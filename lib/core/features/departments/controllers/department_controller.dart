@@ -57,13 +57,19 @@ class DepartmentController extends ChangeNotifier {
   }
 
   /// 2. POST: Create Department
-  Future<bool> handleCreateDepartment({required String name}) async {
+  Future<bool> handleCreateDepartment({
+    required String name,
+    String? location,
+  }) async {
     _isLoading = true;
     _errorMessage = null;
     _successMessage = null;
     notifyListeners();
 
-    final result = await _departmentRepository.createDepartment(name: name);
+    final result = await _departmentRepository.createDepartment(
+      name: name,
+      location: location,
+    );
     _isLoading = false;
 
     if (result is Success) {
@@ -89,6 +95,7 @@ class DepartmentController extends ChangeNotifier {
   Future<bool> handleUpdateDepartment({
     required String id,
     required String name,
+    String? location,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -98,6 +105,7 @@ class DepartmentController extends ChangeNotifier {
     final result = await _departmentRepository.updateDepartment(
       id: id,
       name: name,
+      location: location,
     );
     _isLoading = false;
 

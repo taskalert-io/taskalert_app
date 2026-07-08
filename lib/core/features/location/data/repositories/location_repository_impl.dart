@@ -1,96 +1,39 @@
+import '../../../../network/api_result.dart';
+import '../../../../network/base_api_response.dart';
+import '../../../../network/http_service.dart';
 import 'package:taskalert_app/core/errors/network_exceptions.dart';
-import 'package:taskalert_app/core/features/departments/data/repositories/department_repository.dart';
-import 'package:taskalert_app/core/network/api_result.dart';
-import 'package:taskalert_app/core/network/base_api_response.dart';
-import 'package:taskalert_app/core/network/http_service.dart';
-import '../models/department_model.dart';
+import '../models/location_model.dart';
+import 'location_repository.dart';
 
-class DepartmentRepositoryImpl implements DepartmentRepository {
+class LocationRepositoryImpl implements LocationRepository {
   final HttpService _httpService;
 
-  DepartmentRepositoryImpl(this._httpService);
+  LocationRepositoryImpl(this._httpService);
 
-  /// 1. POST: Create a new department
+  /// 1. GET: Fetch all locations
   @override
-  Future<ApiResult<BaseApiResponse<DepartmentModel>>> createDepartment({
-    required String name,
-    String? location,
-  }) async {
+  Future<ApiResult<BaseApiResponse<List<LocationModel>>>> getLocations() async {
     try {
-      final responseData = await _httpService.post(
-        '/departments',
-        body: {'name': name, if (location != null) 'location': location},
-      );
-
-      final apiResponse = BaseApiResponse.fromJson(
-        responseData,
-        (json) => DepartmentModel.fromJson(json),
-      );
-
-      if (apiResponse.success) return ApiResult.success(apiResponse);
-
-      _handleErrorEnvelope(apiResponse);
-      return ApiResult.failure(
-        NetworkException(
-          errorType: NetworkErrorType.unknown,
-          userMessage: apiResponse.message,
-        ),
-      );
-    } on NetworkException catch (e) {
-      return ApiResult.failure(e);
-    } catch (e) {
-      // Guards against unexpected response shapes (e.g. a ref field the
-      // backend populates differently than expected) so a parsing bug
-      // surfaces as a normal failure instead of an uncaught exception
-      // that leaves the controller's loading state stuck forever.
-      return ApiResult.failure(
-        NetworkException(
-          errorType: NetworkErrorType.unknown,
-          userMessage: 'Something went wrong while processing the response.',
-        ),
-      );
-    }
-  }
-
-  /// 2. GET: Fetch all departments
-  /// 2. GET: Fetch all departments
-  @override
-  Future<ApiResult<BaseApiResponse<List<DepartmentModel>>>> getDepartments({
-    String? search,
-  }) async {
-    try {
-      final Map<String, dynamic> queryParameters = {};
-      if (search != null && search.isNotEmpty) {
-        queryParameters['search'] = search;
-        // Optional: Limit results for search queries
-      }
-      queryParameters['limit'] = 100;
-
-      // Note: Make sure your HttpService uses 'queryParams' or 'queryParameters' matching its parameter name
-      final responseData = await _httpService.get(
-        '/departments',
-        queryParams: queryParameters,
-      );
+      final responseData = await _httpService.get('/locations');
 
       final apiResponse = BaseApiResponse.fromJson(
         responseData as Map<String, dynamic>,
         (dataJson) {
-          // dataJson is now safely recognized as dynamic, so we can check and map it
           if (dataJson is List) {
             return dataJson
                 .map(
                   (item) =>
-                      DepartmentModel.fromJson(item as Map<String, dynamic>),
+                      LocationModel.fromJson(item as Map<String, dynamic>),
                 )
                 .toList();
           }
-          return <DepartmentModel>[]; // Fallback to an empty typed collection
+          return <LocationModel>[];
         },
       );
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      _handleErrorEnvelope(apiResponse);
+      print("\u274c Location API Operation Failed Error Message: ${apiResponse.message}");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -104,6 +47,7 @@ class DepartmentRepositoryImpl implements DepartmentRepository {
       // backend populates differently than expected) so a parsing bug
       // surfaces as a normal failure instead of an uncaught exception
       // that leaves the controller's loading state stuck forever.
+      print("\u274c Location API Operation Failed: $e");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -113,27 +57,140 @@ class DepartmentRepositoryImpl implements DepartmentRepository {
     }
   }
 
-  /// 3. PUT: Update an existing department by Object ID
+  /// 2. GET: Fetch a single location by its Unique ID
   @override
-  Future<ApiResult<BaseApiResponse<DepartmentModel>>> updateDepartment({
-    required String id,
+  Future<ApiResult<BaseApiResponse<LocationModel>>> getLocationById({
+    required String locationId,
+  }) async {
+    try {
+      final responseData = await _httpService.get('/locations/$locationId');
+
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData as Map<String, dynamic>,
+        (json) => LocationModel.fromJson(json as Map<String, dynamic>),
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+
+      print("\u274c Location API Operation Failed Error Message: ${apiResponse.message}");
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    } catch (e) {
+      // Guards against unexpected response shapes (e.g. a ref field the
+      // backend populates differently than expected) so a parsing bug
+      // surfaces as a normal failure instead of an uncaught exception
+      // that leaves the controller's loading state stuck forever.
+      print("\u274c Location API Operation Failed: $e");
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
+    }
+  }
+
+  /// 3. POST: Create a new location entry
+  @override
+  Future<ApiResult<BaseApiResponse<LocationModel>>> createLocation({
     required String name,
-    String? location,
+    required String phoneNumber,
+    required String street,
+    required String city,
+    required String state,
+    required String pinCode,
+    required String country,
   }) async {
     try {
+      final Map<String, dynamic> body = {
+        "name": name,
+        "phoneNumber": phoneNumber,
+        "address": {
+          "street": street,
+          "city": city,
+          "state": state,
+          "pinCode": pinCode,
+          "country": country,
+        },
+      };
+
+      final responseData = await _httpService.post('/locations', body: body);
+
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData as Map<String, dynamic>,
+        (json) => LocationModel.fromJson(json as Map<String, dynamic>),
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+
+      print("\u274c Location API Operation Failed Error Message: ${apiResponse.message}");
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    } catch (e) {
+      // Guards against unexpected response shapes (e.g. a ref field the
+      // backend populates differently than expected) so a parsing bug
+      // surfaces as a normal failure instead of an uncaught exception
+      // that leaves the controller's loading state stuck forever.
+      print("\u274c Location API Operation Failed: $e");
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
+    }
+  }
+
+  /// 4. PUT: Update an existing location record config
+  @override
+  Future<ApiResult<BaseApiResponse<LocationModel>>> updateLocation({
+    required String locationId,
+    required String name,
+    required String phoneNumber,
+    required String street,
+    required String city,
+    required String state,
+    required String pinCode,
+    required String country,
+  }) async {
+    try {
+      final Map<String, dynamic> body = {
+        "name": name,
+        "phoneNumber": phoneNumber,
+        "address": {
+          "street": street,
+          "city": city,
+          "state": state,
+          "pinCode": pinCode,
+          "country": country,
+        },
+      };
+
       final responseData = await _httpService.put(
-        '/departments/$id',
-        body: {'name': name, if (location != null) 'location': location},
+        '/locations/$locationId',
+        body: body,
       );
 
       final apiResponse = BaseApiResponse.fromJson(
-        responseData,
-        (json) => DepartmentModel.fromJson(json),
+        responseData as Map<String, dynamic>,
+        (json) => LocationModel.fromJson(json as Map<String, dynamic>),
       );
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      _handleErrorEnvelope(apiResponse);
+      print("\u274c Location API Operation Failed Error Message: ${apiResponse.message}");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -147,6 +204,7 @@ class DepartmentRepositoryImpl implements DepartmentRepository {
       // backend populates differently than expected) so a parsing bug
       // surfaces as a normal failure instead of an uncaught exception
       // that leaves the controller's loading state stuck forever.
+      print("\u274c Location API Operation Failed: $e");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -156,23 +214,22 @@ class DepartmentRepositoryImpl implements DepartmentRepository {
     }
   }
 
-  /// 4. DELETE: Permanently or soft-remove a department by Object ID
+  /// 5. DELETE: Remove an existing location mapping record
   @override
-  Future<ApiResult<BaseApiResponse<dynamic>>> deleteDepartment({
-    required String id,
+  Future<ApiResult<BaseApiResponse<dynamic>>> deleteLocation({
+    required String locationId,
   }) async {
     try {
-      final responseData = await _httpService.delete('/departments/$id');
+      final responseData = await _httpService.delete('/locations/$locationId');
 
       final apiResponse = BaseApiResponse.fromJson(
-        responseData,
-        (json) =>
-            json, // Returning raw json wrapper payload on complete erase confirmations
+        responseData as Map<String, dynamic>,
+        (json) => json, // Maps dynamic variant body seamlessly
       );
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      _handleErrorEnvelope(apiResponse);
+      print("\u274c Location API Operation Failed Error Message: ${apiResponse.message}");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -186,6 +243,7 @@ class DepartmentRepositoryImpl implements DepartmentRepository {
       // backend populates differently than expected) so a parsing bug
       // surfaces as a normal failure instead of an uncaught exception
       // that leaves the controller's loading state stuck forever.
+      print("\u274c Location API Operation Failed: $e");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -193,94 +251,5 @@ class DepartmentRepositoryImpl implements DepartmentRepository {
         ),
       );
     }
-  }
-
-  /// 5. GET: Fetch structural suggestions list based on text pattern matching
-  @override
-  Future<ApiResult<BaseApiResponse<List<DepartmentModel>>>>
-  getDepartmentSuggestions({required String query}) async {
-    try {
-      final responseData = await _httpService.get(
-        '/departments/search',
-        queryParams: {'search': query},
-      );
-
-      final apiResponse = BaseApiResponse.fromJson(
-        responseData,
-        (json) => (json as List)
-            .map(
-              (item) => DepartmentModel.fromJson(item as Map<String, dynamic>),
-            )
-            .toList(),
-      );
-
-      if (apiResponse.success) return ApiResult.success(apiResponse);
-
-      _handleErrorEnvelope(apiResponse);
-      return ApiResult.failure(
-        NetworkException(
-          errorType: NetworkErrorType.unknown,
-          userMessage: apiResponse.message,
-        ),
-      );
-    } on NetworkException catch (e) {
-      return ApiResult.failure(e);
-    } catch (e) {
-      // Guards against unexpected response shapes (e.g. a ref field the
-      // backend populates differently than expected) so a parsing bug
-      // surfaces as a normal failure instead of an uncaught exception
-      // that leaves the controller's loading state stuck forever.
-      return ApiResult.failure(
-        NetworkException(
-          errorType: NetworkErrorType.unknown,
-          userMessage: 'Something went wrong while processing the response.',
-        ),
-      );
-    }
-  }
-
-  /// 6. GET: Fetch one target department payload exclusively via its individual ID link
-  @override
-  Future<ApiResult<BaseApiResponse<DepartmentModel>>> getDepartmentById({
-    required String id,
-  }) async {
-    try {
-      final responseData = await _httpService.get('/departments/$id');
-
-      final apiResponse = BaseApiResponse.fromJson(
-        responseData,
-        (json) => DepartmentModel.fromJson(json),
-      );
-
-      if (apiResponse.success) return ApiResult.success(apiResponse);
-
-      _handleErrorEnvelope(apiResponse);
-      return ApiResult.failure(
-        NetworkException(
-          errorType: NetworkErrorType.unknown,
-          userMessage: apiResponse.message,
-        ),
-      );
-    } on NetworkException catch (e) {
-      return ApiResult.failure(e);
-    } catch (e) {
-      // Guards against unexpected response shapes (e.g. a ref field the
-      // backend populates differently than expected) so a parsing bug
-      // surfaces as a normal failure instead of an uncaught exception
-      // that leaves the controller's loading state stuck forever.
-      return ApiResult.failure(
-        NetworkException(
-          errorType: NetworkErrorType.unknown,
-          userMessage: 'Something went wrong while processing the response.',
-        ),
-      );
-    }
-  }
-
-  /// Centralized system response error logger fallback
-  void _handleErrorEnvelope(BaseApiResponse<dynamic> response) {
-    print(
-      "❌ Department API Operation Failed Error Message: ${response.message}",
-    );
   }
 }
