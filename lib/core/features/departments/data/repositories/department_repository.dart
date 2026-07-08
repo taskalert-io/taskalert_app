@@ -6,6 +6,7 @@ import 'package:taskalert_app/core/network/base_api_response.dart';
 abstract class DepartmentRepository {
   Future<ApiResult<BaseApiResponse<DepartmentModel>>> createDepartment({
     required String name,
+    String? location,
   });
   Future<ApiResult<BaseApiResponse<List<DepartmentModel>>>> getDepartments({
     String? search,
@@ -13,6 +14,7 @@ abstract class DepartmentRepository {
   Future<ApiResult<BaseApiResponse<DepartmentModel>>> updateDepartment({
     required String id,
     required String name,
+    String? location,
   });
   Future<ApiResult<BaseApiResponse<dynamic>>> deleteDepartment({
     required String id,
