@@ -33,6 +33,7 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _searchController = TextEditingController();
 
+  static const _primaryColor = Color(0xFF0A0258);
   // ── Autocomplete plumbing (matches LocationListScreen pattern) ──────────
   final FocusNode _searchFocusNode = FocusNode();
   final LayerLink _searchLayerLink = LayerLink();
@@ -787,6 +788,7 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
       appBar: CustomAppBar(
         scaffoldKey: _scaffoldKey,
         userId: widget.userId,
+        showLeading: true,
         onBackPressed: () => Navigator.pop(context),
       ),
       drawer: CustomDrawer(activeTile: "Department", onTileTap: (value) {}),
@@ -799,13 +801,29 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "Department List",
-                style: GoogleFonts.inter(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF0A0258),
-                ),
+              Row(
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: InkWell(
+                      onTap: () => Navigator.pop(context),
+                      child: Icon(
+                        Icons.arrow_back,
+                        size: 20.r,
+                        color: _primaryColor,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8.w,),
+                  Text(
+                    "Department List",
+                    style: GoogleFonts.inter(
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF0A0258),
+                    ),
+                  ),
+                ],
               ),
               SizedBox(height: 14.h),
 

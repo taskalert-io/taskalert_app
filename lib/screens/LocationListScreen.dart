@@ -48,6 +48,7 @@ class _LocationListScreenState extends State<LocationListScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _searchController = TextEditingController();
 
+  static const _primaryColor = Color(0xFF0A0258);
   // ── Autocomplete plumbing ────────────────────────────────────────────────
   final FocusNode _searchFocusNode = FocusNode();
   final LayerLink _searchLayerLink = LayerLink();
@@ -729,6 +730,7 @@ class _LocationListScreenState extends State<LocationListScreen> {
       appBar: CustomAppBar(
         scaffoldKey: _scaffoldKey,
         userId: widget.userId,
+        showLeading: true,
         onBackPressed: () => Navigator.pop(context),
       ),
       drawer: CustomDrawer(activeTile: "Location", onTileTap: (value) {}),
@@ -741,13 +743,29 @@ class _LocationListScreenState extends State<LocationListScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "Location List",
-                style: GoogleFonts.inter(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF0A0258),
-                ),
+              Row(
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: InkWell(
+                      onTap: () => Navigator.pop(context),
+                      child: Icon(
+                        Icons.arrow_back,
+                        size: 20.r,
+                        color: _primaryColor,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8.w,),
+                  Text(
+                    "Location List",
+                    style: GoogleFonts.inter(
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF0A0258),
+                    ),
+                  ),
+                ],
               ),
               SizedBox(height: 14.h),
 
