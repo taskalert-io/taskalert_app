@@ -697,8 +697,12 @@ class MockNotificationRepository implements NotificationRepository {
             boldName: 'Brian Cervino',
             leadingIcon: Icons.access_time,
             subActionText: 'Added a due date of Aug 10 at 6:00 PM',
+
             subIcon: Icons.access_time,
             timestamp: now.subtract(const Duration(days: 1, hours: 2)),
+            subTimestamp: now.subtract(
+              const Duration(days: 1, hours: 3, minutes: 59),
+            ),
           ),
         ],
       ),
@@ -1016,7 +1020,7 @@ class _NotificationSettingsPopupState extends State<NotificationSettingsPopup> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const NotificationSetting(userId: '',),
+                        builder: (_) => const NotificationSetting(userId: ''),
                       ),
                     );
                     // widget.onAllSettingsTap?.call();
