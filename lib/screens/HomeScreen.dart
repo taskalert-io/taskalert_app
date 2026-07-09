@@ -72,6 +72,8 @@ class HomeScreenState extends State<HomeScreen> {
 
       setState(() {
         tasks = mappedTasks;
+
+        print("Mapped Tasks: $tasks");
       });
     });
   }
