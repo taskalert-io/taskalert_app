@@ -96,7 +96,7 @@ class TaskInstanceModel {
   final String priority;
   final String status;
   final String taskId;
-  final String department;
+  final List<String> department;
   final String organization;
   final List<ReportingUserModel>
   assignees; // 🌟 Updated from String to Model to match list payload safely
@@ -184,7 +184,9 @@ class TaskInstanceModel {
       priority: json['priority'] ?? '',
       status: json['status'] ?? '',
       taskId: json['taskId'] ?? '',
-      department: json['department'] ?? '',
+      department: json['department'] != null
+          ? List<String>.from(json['department'])
+          : [],
       organization: json['organization'] ?? '',
       assignees: json['assignees'] != null
           ? (json['assignees'] as List).map((x) {
