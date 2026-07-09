@@ -61,6 +61,12 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
     super.initState();
     _loginController.addListener(_onControllerChanged);
     startTimer();
+
+    // Dev/test backends echo the generated OTP back in the response —
+    // auto-fill it so the user doesn't have to type it in manually.
+    _fillOtp(
+      widget.isSignUpFlow ? _signupController.otp : _loginController.otp,
+    );
   }
 
   @override
@@ -75,6 +81,14 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   void _onControllerChanged() {
     if (mounted) setState(() {});
+  }
+
+  void _fillOtp(String? otp) {
+    if (otp == null || otp.length != otpControllers.length) return;
+    for (int i = 0; i < otpControllers.length; i++) {
+      otpControllers[i].text = otp[i];
+    }
+    setState(() {});
   }
 
   int secondsRemaining = 60;
@@ -599,6 +613,11 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                           ),
                                         );
                                         startTimer();
+                                        _fillOtp(
+                                          widget.isSignUpFlow
+                                              ? _signupController.otp
+                                              : _loginController.otp,
+                                        );
                                       } else if (_loginController
                                                   .errorMessage !=
                                               null ||

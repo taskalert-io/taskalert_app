@@ -25,11 +25,17 @@ class LoginController extends ChangeNotifier {
   ProfileModel? _profile;
   ProfileModel? get profile => _profile;
 
+  // ✅ Dev/test backends echo the generated OTP back in the response so the
+  // UI can auto-fill it instead of requiring the user to check SMS/email.
+  String? _otp;
+  String? get otp => _otp;
+
   /// Calls the repository and returns true if the OTP was successfully dispatched
   Future<bool> handlePhoneSignIn({required String phoneNumber}) async {
     _isLoading = true;
     _errorMessage = null;
     _successMessage = null;
+    _otp = null;
     notifyListeners();
 
     // 1. Fire the request through our decoupled repository contract
@@ -44,9 +50,10 @@ class LoginController extends ChangeNotifier {
     if (result is Success) {
       _currentPhoneNumber = phoneNumber; // Cache the identifier locally
       final apiResponse = (result as Success).data;
-      _successMessage =
-          apiResponse.message + apiResponse.data['otp'] ??
-          'OTP sent successfully to $phoneNumber';
+      _otp = apiResponse.data['otp']?.toString();
+      _successMessage = _otp != null
+          ? '${apiResponse.message} Your OTP is: $_otp'
+          : apiResponse.message ?? 'OTP sent successfully to $phoneNumber';
       notifyListeners();
       return true; // Tells the UI it's safe to push the OTP verification screen
     } else if (result is Failure) {
@@ -118,9 +125,9 @@ class LoginController extends ChangeNotifier {
     if (result is Success) {
       final apiResponse = (result as Success).data;
       // _successMessage = apiResponse.message;
-      final otp = apiResponse.data['otp'];
-      if (otp != null) {
-        _successMessage = " Your new OTP is: $otp";
+      _otp = apiResponse.data['otp']?.toString();
+      if (_otp != null) {
+        _successMessage = " Your new OTP is: $_otp";
       } else {
         _successMessage = " OTP resent successfully to ${_currentPhoneNumber!}";
       }
