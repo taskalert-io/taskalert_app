@@ -15,23 +15,14 @@ import 'package:taskalert_app/core/features/departments/controllers/department_c
 import 'package:taskalert_app/core/features/departments/data/models/department_model.dart';
 import 'package:taskalert_app/core/features/employees/controllers/employee_controller.dart';
 import 'package:taskalert_app/core/features/employees/data/models/employee_model.dart';
+import 'package:taskalert_app/core/features/location/controllers/location_controller.dart';
+import 'package:taskalert_app/core/features/location/data/models/location_model.dart';
 import 'package:taskalert_app/core/features/tasks/controllers/task_controller.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
 
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
-
-class LocationOptionModel {
-  final String id;
-  final String name;
-  final String city;
-  LocationOptionModel({
-    required this.id,
-    required this.name,
-    required this.city,
-  });
-}
 
 class CreateRepetitiveScreen extends StatefulWidget {
   const CreateRepetitiveScreen({super.key, required this.userId});
@@ -62,16 +53,10 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
   final FocusNode locationFocusNode = FocusNode();
   final LayerLink locationLayerLink = LayerLink();
   OverlayEntry? _locationSuggestionsOverlay;
-  List<LocationOptionModel> _locationSuggestions = [];
-  LocationOptionModel? selectedLocation;
+  List<LocationModel> _locationSuggestions = [];
+  LocationModel? selectedLocation;
   String? _locationError;
   final GlobalKey _locationFieldKey = GlobalKey();
-
-  // Mock — swap for LocationController.locations once wired up
-  final List<LocationOptionModel> _mockLocations = [
-    LocationOptionModel(id: "1", name: "Second Office", city: "Kolkata"),
-    LocationOptionModel(id: "2", name: "Head Office", city: "Kolkata"),
-  ];
 
   // ── New Department (searchable multi-select, scoped to selected Location) ─
   List<DepartmentModel> selectedNewDepartments = [];
@@ -894,6 +879,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
   late final DepartmentController departmentController;
   late final EmployeeController employeeController;
   late final TaskController taskController;
+  late final LocationController locationController;
 
   // ─────────────────────────────────────────────────────────────────────────
   @override
@@ -916,10 +902,13 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     departmentController = sl<DepartmentController>();
     employeeController = sl<EmployeeController>();
     taskController = sl<TaskController>();
+    locationController = sl<LocationController>();
+    locationController.addListener(_onLocationsChanged);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       departmentController.handleGetDepartments();
       employeeController.handleGetEmployees();
+      locationController.handleGetLocations();
     });
   }
 
@@ -943,6 +932,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     locationSearchController.dispose();
     locationFocusNode.removeListener(_onLocationFocusChanged);
     locationFocusNode.dispose();
+    locationController.removeListener(_onLocationsChanged);
     _removeLocationSuggestionsOverlay();
 
     super.dispose();
@@ -1293,15 +1283,21 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     }
   }
 
+  void _onLocationsChanged() {
+    if (!mounted) return;
+    _updateLocationSuggestions(locationSearchController.text);
+  }
+
   void _updateLocationSuggestions(String query) {
     final q = query.trim().toLowerCase();
+    final allLocations = locationController.locations;
     _locationSuggestions = q.isEmpty
-        ? List.from(_mockLocations)
-        : _mockLocations
+        ? List.from(allLocations)
+        : allLocations
               .where(
                 (l) =>
                     l.name.toLowerCase().contains(q) ||
-                    l.city.toLowerCase().contains(q),
+                    (l.address?.city.toLowerCase().contains(q) ?? false),
               )
               .toList();
 
@@ -1365,7 +1361,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                   ),
                                 ),
                                 Text(
-                                  loc.city,
+                                  loc.address?.city ?? '',
                                   style: GoogleFonts.inter(
                                     fontSize: 11.sp,
                                     color: const Color(0xFF667085),
@@ -1393,7 +1389,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     _locationSuggestionsOverlay = null;
   }
 
-  void _selectLocationSuggestion(LocationOptionModel location) {
+  void _selectLocationSuggestion(LocationModel location) {
     locationSearchController.removeListener(_onLocationSearchChanged);
     locationSearchController.text = location.name;
     locationSearchController.selection = TextSelection.fromPosition(
@@ -5181,7 +5177,11 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                           child: Center(child: CircularProgressIndicator()),
                         );
                       }
-                      final departments = departmentController.departments;
+                      final departments = departmentController.departments
+                          .where(
+                            (d) => d.location?.id == selectedLocation?.id,
+                          )
+                          .toList();
                       if (departments.isEmpty) {
                         return Padding(
                           padding: EdgeInsets.symmetric(vertical: 24.h),
