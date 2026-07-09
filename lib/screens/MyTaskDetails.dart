@@ -103,15 +103,12 @@ class TaskDetailScreen extends StatefulWidget {
   final String userId;
   final String? taskId; // pass null for create, an id for edit/view
   final String? mainTaskId; // optional main task ID for context
-  final bool?
-  taskAssignedToUser; // optional flag to indicate if the task is assigned to the user
 
   const TaskDetailScreen({
     super.key,
     required this.userId,
     required this.mainTaskId,
     this.taskId,
-    this.taskAssignedToUser,
   });
 
   @override
@@ -268,6 +265,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     if (widget.taskId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         await taskController.handleGetInstanceById(instanceId: widget.taskId!);
+        final currentUserId = await secureStorage.read(key: 'user_id');
 
         if (mounted) {
           final instance = taskController.selectedInstance;
@@ -309,39 +307,15 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               }
             }
 
-            if (widget.taskAssignedToUser == true) {
-              print(
-                'Task is assigned to the user. Disabling editing for certain fields.',
-              );
-              // If the task is assigned to the user, disable editing for certain fields
-              if (widget.taskAssignedToUser == true) {
-                // If the task is assigned to the user, disable editing for certain fields
-                _isReadOnly = true;
-                // _titleReadOnly = true;
-                // _descReadOnly = true;
-                // _assignDateEnabled = false;
-                // _assignTimeEnabled = false;
-                // _selectDurationEnabled = false;
-                // _priority = _priority;
-                // _assignTo = _assignTo;
-                // _reportTo = _reportTo;
-                // _durationHours = _durationHours;
-                // _timeZone = _timeZone;
-              } else {
-                // Allow editing for all fields
-                _isReadOnly = false;
-                // _titleReadOnly = false;
-                // _descReadOnly = false;
-                // _assignDateEnabled = true;
-                // _assignTimeEnabled = true;
-                // _selectDurationEnabled = true;
-                // _priority = '';
-                _assignTo = '';
-                _reportTo = '';
-                _durationHours = 0;
-                _timeZone = '';
-              }
-            }
+            // Full edit access only when the current user is the one who
+            // created/assigned this task; assignees who merely received it
+            // may only update its status (see the unlocked Status card
+            // below, which sits outside the AbsorbPointer this flag gates).
+            final isCreatedByCurrentUser =
+                currentUserId != null &&
+                currentUserId.isNotEmpty &&
+                instance?.createdBy?.id == currentUserId;
+            _isReadOnly = !isCreatedByCurrentUser;
           });
         }
       });

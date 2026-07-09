@@ -729,7 +729,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                       userId: widget.userId,
                       taskId: items[i].id ?? '',
                       mainTaskId: items[i].mainTaskId ?? '',
-                      taskAssignedToUser: true,
                     ),
                   ),
                 );
