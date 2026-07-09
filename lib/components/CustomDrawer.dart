@@ -290,8 +290,9 @@ class _CustomDrawerState extends State<CustomDrawer> {
                 buildDrawerItem(title: "User", icon: Icons.person_outline),
 
                 buildDrawerItem(
-                  title: "Attendance",
-                  icon: Icons.calendar_month_outlined,
+                  title: "Employees",
+                  icon: Icons.supervised_user_circle_outlined,
+                  destinationScreen: LocationListScreen(userId: ''),
                 ),
 
                 buildDrawerItem(
