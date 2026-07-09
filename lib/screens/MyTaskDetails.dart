@@ -270,13 +270,45 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         await taskController.handleGetInstanceById(instanceId: widget.taskId!);
 
         if (mounted) {
+          final instance = taskController.selectedInstance;
           setState(() {
-            _title = taskController.selectedInstance?.title ?? '';
-            _description = taskController.selectedInstance?.description ?? '';
+            _title = instance?.title ?? '';
+            _description = instance?.description ?? '';
 
             _titleCtrl.text = _title;
             _descCtrl.text = _description;
-            // _assignTo = taskController.selectedInstance?.assigneeName ?? '';
+
+            _priority = _titleCase(instance?.priority ?? _priority);
+            _status = _statusLabel(instance?.status ?? '');
+
+            _assignTo = instance != null && instance.assignees.isNotEmpty
+                ? instance.assignees.map((a) => a.fullName).join(', ')
+                : 'Unassigned';
+            _reportTo =
+                (instance?.createdBy?.fullName.isNotEmpty ?? false)
+                ? instance!.createdBy!.fullName
+                : 'Unknown';
+
+            final scheduledDate = instance?.scheduledDate;
+            if (scheduledDate != null) {
+              _calendarYear = scheduledDate.year;
+              _calendarMonth = scheduledDate.month;
+              _selectedDay = scheduledDate.day;
+              _assignDateEnabled = true;
+            }
+
+            final scheduledTime = instance?.scheduledTime;
+            if (scheduledTime != null && scheduledTime.time.isNotEmpty) {
+              final parts = scheduledTime.time.split(':');
+              if (parts.length == 2) {
+                final h = int.tryParse(parts[0]) ?? _hour;
+                _hour = h == 0 ? 12 : h;
+                _minute = int.tryParse(parts[1]) ?? _minute;
+                _isAM = scheduledTime.period.toUpperCase() != 'PM';
+                _assignTimeEnabled = true;
+              }
+            }
+
             if (widget.taskAssignedToUser == true) {
               print(
                 'Task is assigned to the user. Disabling editing for certain fields.',
@@ -313,6 +345,22 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           });
         }
       });
+    }
+  }
+
+  String _titleCase(String s) =>
+      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'todo':
+        return 'Pending';
+      case 'inProgress':
+        return 'In Progress';
+      case 'completed':
+        return 'Completed';
+      default:
+        return _titleCase(status);
     }
   }
 

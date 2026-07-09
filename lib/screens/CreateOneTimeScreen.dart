@@ -609,10 +609,9 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
           "title": titleNameController.text.trim(),
           "description": descriptionController.text.trim(),
           "location": selectedLocation?.id,
-          "department": selectedNewDepartments
-              .map((d) => d.id)
-              .whereType<String>()
-              .toList(),
+          "department": jsonEncode(
+            selectedNewDepartments.map((d) => d.id).whereType<String>().toList(),
+          ),
           "priority": selectedPriority.toLowerCase(),
           "reportingDate": assignSelectedDate != null
               ? "${assignSelectedDate!.year}-"

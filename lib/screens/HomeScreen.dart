@@ -56,6 +56,7 @@ class HomeScreenState extends State<HomeScreen> {
       ) {
         return {
           "id": task.id,
+          "instanceId": task.instanceId,
           "title": task.title,
           "description": task.description,
           "taskType": task.taskType,

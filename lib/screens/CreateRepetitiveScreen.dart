@@ -1109,10 +1109,9 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
         "taskType": taskType,
         "title": titleNameController.text.trim(),
         "location": selectedLocation?.id,
-        "department": selectedNewDepartments
-            .map((d) => d.id)
-            .whereType<String>()
-            .toList(),
+        "department": jsonEncode(
+          selectedNewDepartments.map((d) => d.id).whereType<String>().toList(),
+        ),
         "priority": selectedPriority.toLowerCase(),
         "assignees": jsonEncode(selectedAssignees),
         "reportingTo": jsonEncode(selectedReportingList),
@@ -1158,7 +1157,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       //print(formData);
 
       if (isProofEnabled) {
-        formData['proofTypes'] = selectedProofTypes;
+        formData['proofTypes'] = jsonEncode(selectedProofTypes);
         formData["aiValidationEnabled"] = selectedProofRadioType == "Yes"
             ? true
             : false;
