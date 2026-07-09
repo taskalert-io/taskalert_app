@@ -423,11 +423,6 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     );
   }
 
-  // ── Department (searchable single-select) ─────────────────────────────────
-  String? _departmentError;
-
-  DepartmentModel? selectedDepartment;
-
   List<String> selectedAssignees = [];
 
   String selectedPriority = "High";
@@ -458,7 +453,6 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
   final FocusNode monthFocus = FocusNode();
   final FocusNode yearFocus = FocusNode();
 
-  late final DepartmentController departmentController;
   late final EmployeeController employeeController;
   late final TaskController taskController;
   late final LocationController locationController;
@@ -484,16 +478,12 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     locationSearchController.addListener(_onLocationSearchChanged);
     locationFocusNode.addListener(_onLocationFocusChanged);
 
-    // get departments for dropdown
-
-    departmentController = sl<DepartmentController>();
     employeeController = sl<EmployeeController>();
     taskController = sl<TaskController>();
     locationController = sl<LocationController>();
     locationController.addListener(_onLocationsChanged);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      departmentController.handleGetDepartments();
       employeeController.handleGetEmployees();
       locationController.handleGetLocations();
     });
@@ -536,11 +526,13 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
       setState(() => _locationError = null);
     }
 
-    if (selectedDepartment == null) {
-      setState(() => _departmentError = "Please select department");
+    if (selectedNewDepartments.isEmpty) {
+      setState(
+        () => _newDepartmentError = "Please select at least one department",
+      );
       valid = false;
     } else {
-      setState(() => _departmentError = null);
+      setState(() => _newDepartmentError = null);
     }
 
     // Reporting To
@@ -617,10 +609,10 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
           "title": titleNameController.text.trim(),
           "description": descriptionController.text.trim(),
           "location": selectedLocation?.id,
-          "department": selectedDepartment?.id,
-          "newDepartments": jsonEncode(
-            selectedNewDepartments.map((d) => d.id).toList(),
-          ),
+          "department": selectedNewDepartments
+              .map((d) => d.id)
+              .whereType<String>()
+              .toList(),
           "priority": selectedPriority.toLowerCase(),
           "reportingDate": assignSelectedDate != null
               ? "${assignSelectedDate!.year}-"
@@ -1002,7 +994,6 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
 
     // 2. Check dropdown selections / object entities
     if (selectedLocation != null) return true;
-    if (selectedDepartment != null) return true;
     if (selectedNewDepartments.isNotEmpty) return true;
 
     // Assuming "Low" or "Medium" is your default selectedPriority fallback,
@@ -1307,7 +1298,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                 // New Department — searchable multi-select,
                                 // scoped to whichever Location is selected
                                 // above. Locked until a Location is chosen.
-                                _buildLabel("New Department"),
+                                _buildLabel("Department"),
                                 SizedBox(height: 3.h),
                                 IgnorePointer(
                                   ignoring: selectedLocation == null,
@@ -1405,56 +1396,6 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
 
                                 SizedBox(height: 8.h),
 
-                                // Department — searchable single-select
-                                _buildLabel("Department"),
-                                SizedBox(height: 3.h),
-
-                                _buildSearchableDropdownField(
-                                  // If a department is selected, display its real name, otherwise display your placeholder hint
-                                  value:
-                                      selectedDepartment?.name ??
-                                      "Select Department",
-                                  hint: "Select Department",
-
-                                  onTap: () => _showSearchableBottomSheet(
-                                    context: context,
-                                    title: "Select Department",
-                                    selectedValue: selectedDepartment,
-                                    onSelected:
-                                        (DepartmentModel departmentModel) {
-                                          setState(() {
-                                            selectedDepartment =
-                                                departmentModel;
-                                            _departmentError = null;
-
-                                            // print(selectedDepartment);
-
-                                            // employeeController
-                                            //     .handleGetEmployees(
-                                            //       department:
-                                            //           selectedDepartment?.id,
-                                            //     );
-                                          });
-                                        },
-                                  ),
-                                  errorText: _departmentError,
-                                ),
-
-                                if (_departmentError != null)
-                                  Padding(
-                                    padding: EdgeInsets.only(
-                                      top: 4.h,
-                                      left: 4.w,
-                                    ),
-                                    child: Text(
-                                      _departmentError!,
-                                      style: GoogleFonts.inter(
-                                        color: Colors.red,
-                                        fontSize: 10.sp,
-                                      ),
-                                    ),
-                                  ),
-
                                 // Remove the code block that displays the error message on screen load
                                 SizedBox(height: 8.h),
 
@@ -1476,13 +1417,9 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
 
                                 GestureDetector(
                                   onTap: () {
-                                    final activeEmployees = employeeController
-                                        .employees
-                                        .toList();
-
                                     _showAssignToBottomSheet(
                                       context,
-                                      activeEmployees,
+                                      _employeesForSelectedDepartments(),
                                     );
                                   },
                                   child: Container(
@@ -1521,7 +1458,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                                   ) {
                                                     // Match selected IDs back to names for display chips
                                                     final emp = employeeController
-                                                        .employees
+                                                        .allEmployees
                                                         .firstWhere(
                                                           (e) => e.id == id,
                                                           orElse: () =>
@@ -2496,163 +2433,6 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     ),
   );
 
-  // ── Searchable single-select field ─────────────────────────────────────────
-
-  Widget _buildSearchableDropdownField({
-    required String value,
-    required String hint,
-    required VoidCallback onTap,
-    String? errorText,
-  }) {
-    final isPlaceholder =
-        value == hint ||
-        value == "Select User" ||
-        value == "Select Users" ||
-        value == "Select Department";
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF9FAFC),
-          borderRadius: BorderRadius.circular(8.r),
-          border: Border.all(
-            color: errorText != null ? Colors.red : const Color(0xFFD9DEE5),
-          ),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                value,
-                style: GoogleFonts.inter(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w400,
-                  color: isPlaceholder
-                      ? const Color(0xFFB8BEC5)
-                      : const Color(0xFF6C7278),
-                ),
-              ),
-            ),
-            Icon(
-              CupertinoIcons.chevron_down,
-              size: 11.r,
-              color: const Color(0xFF6C7278),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showSearchableBottomSheet({
-    required BuildContext context,
-    required String title,
-    required DepartmentModel? selectedValue,
-    required Function(DepartmentModel) onSelected,
-  }) {
-    // Grab the factory instance straight out of your service locator container
-    final departmentController = sl<DepartmentController>();
-    departmentController.handleGetDepartments(search: "");
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-      builder: (context) {
-        // Use ListenableBuilder (built straight into Flutter) to re-render when the controller notifies
-        return ListenableBuilder(
-          listenable: departmentController,
-          builder: (context, child) {
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.75,
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        title,
-                        style: GoogleFonts.inter(
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 10.h),
-                  TextField(
-                    onChanged: (value) {
-                      departmentController.handleGetDepartments(
-                        search: value.trim(),
-                      );
-                    },
-                    decoration: InputDecoration(
-                      hintText: "Search...",
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 16.h),
-                  Expanded(
-                    child: departmentController.isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : departmentController.departments.isEmpty
-                        ? const Center(child: Text("No departments found"))
-                        : ListView.builder(
-                            itemCount: departmentController.departments.length,
-                            itemBuilder: (context, index) {
-                              final department =
-                                  departmentController.departments[index];
-                              final isSelected =
-                                  department.id == selectedValue?.id;
-
-                              return ListTile(
-                                title: Text(
-                                  department.name ?? "",
-                                  style: GoogleFonts.inter(
-                                    fontWeight: isSelected
-                                        ? FontWeight.w600
-                                        : FontWeight.w400,
-                                  ),
-                                ),
-                                trailing: isSelected
-                                    ? const Icon(
-                                        Icons.check,
-                                        color: Colors.blue,
-                                      )
-                                    : null,
-                                onTap: () {
-                                  onSelected(department);
-                                  Navigator.pop(context);
-
-                                  // print(department.name);
-                                  employeeController.handleGetEmployees(
-                                    department: department.name,
-                                  );
-                                },
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
   // ── New Department multi-select bottom sheet ───────────────────────────────
 
   void _showNewDepartmentBottomSheet(BuildContext context) {
@@ -2807,9 +2587,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                         );
                       }
                       final departments = departmentController.departments
-                          .where(
-                            (d) => d.location?.id == selectedLocation?.id,
-                          )
+                          .where((d) => d.location?.id == selectedLocation?.id)
                           .toList();
                       if (departments.isEmpty) {
                         return Padding(
@@ -2939,11 +2717,25 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                             child: ElevatedButton(
                               onPressed: () {
                                 setState(() {
+                                  final oldIds = selectedNewDepartments
+                                      .map((d) => d.id)
+                                      .toSet();
+                                  final newIds = tempSelected
+                                      .map((d) => d.id)
+                                      .toSet();
+                                  final departmentsChanged =
+                                      oldIds.length != newIds.length ||
+                                      !oldIds.containsAll(newIds);
                                   selectedNewDepartments = List.from(
                                     tempSelected,
                                   );
                                   if (selectedNewDepartments.isNotEmpty) {
                                     _newDepartmentError = null;
+                                  }
+                                  // Previously selected assignees may not
+                                  // belong to the newly chosen department(s).
+                                  if (departmentsChanged) {
+                                    selectedAssignees = [];
                                   }
                                 });
                                 Navigator.pop(ctx);
@@ -3021,6 +2813,19 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
   );
 
   // ── Assign To multi-select bottom sheet ────────────────────────────────────
+
+  /// Employees belonging to any of the currently selected "New Department"
+  /// entries — the Assign To dropdown is scoped to this list.
+  List<EmployeeModel> _employeesForSelectedDepartments() {
+    if (selectedNewDepartments.isEmpty) return [];
+    final departmentNames = selectedNewDepartments
+        .map((d) => d.name)
+        .whereType<String>()
+        .toSet();
+    return employeeController.allEmployees
+        .where((e) => departmentNames.contains(e.department))
+        .toList();
+  }
 
   void _showAssignToBottomSheet(
     BuildContext context,
