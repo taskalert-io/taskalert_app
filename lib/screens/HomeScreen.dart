@@ -1119,7 +1119,13 @@ class HomeScreenState extends State<HomeScreen> {
         /// PROFILE IMAGE
         Stack(
           children: [
-            CircleAvatar(radius: 18.r, backgroundImage: NetworkImage(image)),
+            CircleAvatar(
+              radius: 18.r,
+              backgroundImage: image.isNotEmpty
+                  ? NetworkImage(image)
+                  : const AssetImage("assets/images/profile.png")
+                        as ImageProvider,
+            ),
             Positioned(
               right: 0,
               top: 0,

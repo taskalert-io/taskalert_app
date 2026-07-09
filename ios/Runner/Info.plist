@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+    <string>We need camera access to take a profile photo.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>We need photo library access to select a profile photo.</string>
 </dict>
 </plist>
