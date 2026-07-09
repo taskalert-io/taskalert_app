@@ -2011,7 +2011,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
             },
           ),
         ),
-        bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 0),
+        bottomNavigationBar: const CustomBottomNavBar(selectedIndex: -1),
       ),
     );
   }

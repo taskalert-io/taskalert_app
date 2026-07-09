@@ -1128,7 +1128,7 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
           );
         },
       ),
-      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 0),
+      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: -1),
     );
   }
 }

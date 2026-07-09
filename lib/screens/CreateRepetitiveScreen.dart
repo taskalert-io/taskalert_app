@@ -3575,7 +3575,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
             },
           ),
         ),
-        bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 0),
+        bottomNavigationBar: const CustomBottomNavBar(selectedIndex: -1),
       ),
     );
   }
