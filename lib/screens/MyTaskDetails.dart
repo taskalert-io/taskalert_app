@@ -263,6 +263,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     // taskController = sl<TaskInstanceController>();
 
     if (widget.taskId != null) {
+      // Show a loader instead of the placeholder/mock field values while
+      // the real instance data is being fetched.
+      _isLoading = true;
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         await taskController.handleGetInstanceById(instanceId: widget.taskId!);
         final currentUserId = await secureStorage.read(key: 'user_id');
@@ -316,6 +319,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 currentUserId.isNotEmpty &&
                 instance?.createdBy?.id == currentUserId;
             _isReadOnly = !isCreatedByCurrentUser;
+
+            _isLoading = false;
           });
         }
       });
