@@ -1664,7 +1664,7 @@ class ProfileSettingState extends State<ProfileSetting> {
         showLeading: true,
         onBackPressed: () => Navigator.pop(context),
       ),
-      drawer: CustomDrawer(activeTile: "Home", onTileTap: (value) {}),
+      drawer: CustomDrawer(activeTile: "User", onTileTap: (value) {}),
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => FocusScope.of(context).unfocus(),
