@@ -1,11 +1,14 @@
 // ignore_for_file: use_build_context_synchronously
 import 'dart:io';
 import 'dart:math' as math;
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:taskalert_app/core/features/employees/controllers/employee_controller.dart';
 import 'package:taskalert_app/core/features/taskInstance/controllers/task_instance_controller.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
 import '../components/CustomAppBar.dart';
