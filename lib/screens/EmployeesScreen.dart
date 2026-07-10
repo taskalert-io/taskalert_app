@@ -1751,7 +1751,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
           );
         },
       ),
-      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 0),
+      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: -1),
     );
   }
 

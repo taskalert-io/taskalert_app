@@ -1513,32 +1513,55 @@ class HomeScreenState extends State<HomeScreen> {
               SizedBox(height: 10.h),
 
               /// DATE TIME PRIORITY
+              // The date/time group is Expanded (fills remaining width after
+              // the fixed-size priority chip, same job `Spacer()` used to do)
+              // with each Text wrapped in Flexible + ellipsis, so a long
+              // date/time string truncates instead of overflowing the Row —
+              // this was previously unconstrained and could overflow.
               Row(
                 children: [
-                  Icon(
-                    Icons.calendar_today_outlined,
-                    size: 14.r,
-                    color: Color(0xFF324054),
-                  ),
-                  SizedBox(width: 4.w),
-                  Text(
-                    scheduledDate,
-                    style: GoogleFonts.inter(
-                      fontSize: 12.sp,
-                      color: Color(0xFF324054),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          size: 14.r,
+                          color: Color(0xFF324054),
+                        ),
+                        SizedBox(width: 4.w),
+                        Flexible(
+                          child: Text(
+                            scheduledDate,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            style: GoogleFonts.inter(
+                              fontSize: 12.sp,
+                              color: Color(0xFF324054),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 14.w),
+                        Icon(
+                          Icons.access_time,
+                          size: 14.r,
+                          color: Color(0xFF324054),
+                        ),
+                        SizedBox(width: 4.w),
+                        Flexible(
+                          child: Text(
+                            scheduledTime,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            style: GoogleFonts.inter(
+                              fontSize: 12.sp,
+                              color: Color(0xFF324054),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  SizedBox(width: 14.w),
-                  Icon(Icons.access_time, size: 14.r, color: Color(0xFF324054)),
-                  SizedBox(width: 4.w),
-                  Text(
-                    scheduledTime,
-                    style: GoogleFonts.inter(
-                      fontSize: 12.sp,
-                      color: Color(0xFF324054),
-                    ),
-                  ),
-                  const Spacer(),
+                  SizedBox(width: 8.w),
                   Container(
                     height: 7.h,
                     width: 7.w,

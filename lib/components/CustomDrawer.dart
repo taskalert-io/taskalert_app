@@ -304,13 +304,6 @@ class _CustomDrawerState extends State<CustomDrawer> {
                 ),
 
                 buildDrawerItem(
-                  title: "Work Space",
-                  icon: Icons.dashboard_outlined,
-                ),
-
-                buildDrawerItem(title: "Work Flow", icon: Icons.show_chart),
-
-                buildDrawerItem(
                   title: "User",
                   icon: Icons.person_outline,
                   destinationScreen: ProfileSetting(userId: ''),
@@ -321,13 +314,6 @@ class _CustomDrawerState extends State<CustomDrawer> {
                   icon: Icons.supervised_user_circle_outlined,
                   destinationScreen: EmployeesScreen(userId: ''),
                 ),
-
-                buildDrawerItem(
-                  title: "Reporting",
-                  icon: Icons.receipt_long_outlined,
-                ),
-
-                buildDrawerItem(title: "Category", icon: Icons.layers_outlined),
 
                 buildDrawerItem(
                   title: "Department",

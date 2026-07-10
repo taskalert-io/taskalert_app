@@ -851,31 +851,21 @@ class MyTaskScreenState extends State<MyTaskScreen> {
               SizedBox(height: 10.h),
 
               /// DATE TIME PRIORITY
+              // Each chip is a direct Wrap child (not nested inside one more
+              // Row) so the Wrap can actually do its job — dropping a chip
+              // to a new line when the three of them together don't fit the
+              // available width, instead of a single min-sized Row forcing
+              // all three to their natural width and overflowing.
               Wrap(
+                spacing: 12.w,
+                runSpacing: 6.h,
                 children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (item.date.isNotEmpty)
-                        _buildInfoChip(
-                          Icons.calendar_today_outlined,
-                          item.date,
-                        ),
-
-                      if (item.date.isNotEmpty && item.time.isNotEmpty)
-                        SizedBox(width: 12.w),
-
-                      if (item.time.isNotEmpty)
-                        _buildInfoChip(Icons.access_time, item.time),
-
-                      if ((item.date.isNotEmpty || item.time.isNotEmpty) &&
-                          item.priority.isNotEmpty)
-                        SizedBox(width: 12.w),
-
-                      if (item.priority.isNotEmpty)
-                        _buildPriorityChip(item.priority),
-                    ],
-                  ),
+                  if (item.date.isNotEmpty)
+                    _buildInfoChip(Icons.calendar_today_outlined, item.date),
+                  if (item.time.isNotEmpty)
+                    _buildInfoChip(Icons.access_time, item.time),
+                  if (item.priority.isNotEmpty)
+                    _buildPriorityChip(item.priority),
                 ],
               ),
             ],

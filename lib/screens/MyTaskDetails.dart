@@ -2286,7 +2286,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               ),
             ),
 
-      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 1),
+      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: -1),
     );
   }
 }
