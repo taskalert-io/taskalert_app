@@ -35,6 +35,29 @@
 // forced into a SizedBox were causing "RenderFlex overflowed" errors any
 // time padding/fonts/content didn't match the hardcoded math exactly. Cards
 // use Wrap/Expanded/ConstrainedBox instead, so they can't overflow.
+//
+// ── OVERLAY VIEWPORT-CLAMPING FIX ───────────────────────────────────────
+// All suggestion-dropdown overlays (search suggestions, Organization /
+// Location / Job Role searchable fields, Department searchable field, and
+// the Location field inside the "Add Department" dialog) previously used a
+// hardcoded `offset` + `maxHeight` when following their anchor field via
+// CompositedTransformFollower. That works fine when the field sits near the
+// top of the screen, but once the field is lower down (e.g. "Department" in
+// a tall bottom sheet), the fixed 260.h/220.h/240.h dropdown box can extend
+// past the bottom of the visible viewport and get clipped by the on-screen
+// nav bar / system gesture bar, as seen in the "Add Department" / "hghjhc" /
+// "Backend" screenshot.
+//
+// Fix: `_overlayPlacement()` below measures the anchor field's global
+// position and the real usable screen height (accounting for the keyboard
+// via viewInsets.bottom and the system nav/gesture bar via
+// viewPadding.bottom), then:
+//   - shrinks maxHeight to whatever room is actually left below the field,
+//   - and if there isn't enough room below (less than a sensible minimum)
+//     but there IS more room above, flips the dropdown to open upward
+//     instead, anchored just above the field.
+// Every overlay-showing call site below now asks `_overlayPlacement()` for
+// its offset/maxHeight/direction instead of hardcoding them.
 // ─────────────────────────────────────────────────────────────────────────
 
 import 'dart:io';
@@ -56,6 +79,86 @@ import '../core/features/location/controllers/location_controller.dart';
 import '../core/features/location/data/models/location_model.dart';
 import '../utils/injection_container.dart';
 import 'NotificationStart.dart';
+
+// ── Shared overlay-placement helper ─────────────────────────────────────
+//
+// Computes where a CompositedTransformFollower-based suggestion overlay
+// should sit relative to its anchor field, clamped to the real usable
+// screen space. Used by every dropdown/autocomplete overlay in this file
+// so none of them can ever render past the bottom of the visible screen.
+class _OverlayPlacement {
+  const _OverlayPlacement({
+    required this.dy,
+    required this.maxHeight,
+    required this.showAbove,
+  });
+
+  /// Vertical offset (in logical px) to pass to
+  /// `CompositedTransformFollower(offset: Offset(0, dy))`.
+  /// Positive = below the field, negative = above the field.
+  final double dy;
+
+  /// Height the overlay's ConstrainedBox should be capped at.
+  final double maxHeight;
+
+  /// Whether the dropdown had to flip upward due to lack of room below.
+  final bool showAbove;
+}
+
+_OverlayPlacement _overlayPlacement({
+  required BuildContext context,
+  required GlobalKey fieldKey,
+  double preferredMaxHeight = 260,
+  double minUsableHeight = 120,
+  double gap = 6,
+  double bottomMargin = 12,
+}) {
+  final preferred = preferredMaxHeight.h;
+  final minUsable = minUsableHeight.h;
+  final gapPx = gap.h;
+  final marginPx = bottomMargin.h;
+
+  final box = fieldKey.currentContext?.findRenderObject() as RenderBox?;
+  final mq = MediaQuery.of(context);
+
+  if (box == null || !box.attached) {
+    // Can't measure yet — fall back to the old fixed behaviour.
+    return _OverlayPlacement(dy: gapPx, maxHeight: preferred, showAbove: false);
+  }
+
+  final fieldHeight = box.size.height;
+  final fieldTopGlobal = box.localToGlobal(Offset.zero).dy;
+  final fieldBottomGlobal = fieldTopGlobal + fieldHeight;
+
+  // Real bottom edge of usable space: screen height minus the keyboard
+  // (viewInsets) and minus the system nav/gesture bar (viewPadding), which
+  // is what was clipping the dropdown in the screenshot.
+  final usableBottom =
+      mq.size.height - mq.viewInsets.bottom - mq.viewPadding.bottom - marginPx;
+  final usableTop = mq.viewPadding.top + marginPx;
+
+  final spaceBelow = usableBottom - fieldBottomGlobal - gapPx;
+  final spaceAbove = fieldTopGlobal - usableTop - gapPx;
+
+  final belowFits = spaceBelow >= minUsable;
+  final aboveIsBigger = spaceAbove > spaceBelow;
+
+  if (belowFits || !aboveIsBigger) {
+    final maxH = spaceBelow.clamp(minUsable, preferred);
+    return _OverlayPlacement(
+      dy: fieldHeight + gapPx,
+      maxHeight: maxH,
+      showAbove: false,
+    );
+  } else {
+    final maxH = spaceAbove.clamp(minUsable, preferred);
+    return _OverlayPlacement(
+      dy: -(maxH + gapPx),
+      maxHeight: maxH,
+      showAbove: true,
+    );
+  }
+}
 
 class EmployeesScreen extends StatefulWidget {
   const EmployeesScreen({super.key, required this.userId});
@@ -159,9 +262,9 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     _suggestions = q.isEmpty
         ? employeeController.allEmployees.take(6).toList()
         : employeeController.allEmployees
-        .where((e) => _matchesQuery(e, q))
-        .take(6)
-        .toList();
+              .where((e) => _matchesQuery(e, q))
+              .take(6)
+              .toList();
 
     if (!_searchFocusNode.hasFocus) {
       _removeSuggestionsOverlay();
@@ -176,9 +279,14 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
     final overlay = Overlay.of(context);
     final box =
-    _searchFieldKey.currentContext?.findRenderObject() as RenderBox?;
+        _searchFieldKey.currentContext?.findRenderObject() as RenderBox?;
     final width = box?.size.width ?? 240.w;
-    final height = box?.size.height ?? 40.h;
+
+    final placement = _overlayPlacement(
+      context: context,
+      fieldKey: _searchFieldKey,
+      preferredMaxHeight: 260,
+    );
 
     _suggestionsOverlay = OverlayEntry(
       builder: (context) => Positioned(
@@ -186,81 +294,86 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         child: CompositedTransformFollower(
           link: _searchLayerLink,
           showWhenUnlinked: false,
-          offset: Offset(0, height + 6.h),
-          child: Material(
-            elevation: 6,
-            borderRadius: BorderRadius.circular(10.r),
-            color: Colors.white,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: 260.h),
-              child: _suggestions.isEmpty
-                  ? Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: 12.w,
-                  vertical: 14.h,
-                ),
-                child: Text(
-                  "No data found",
-                  style: GoogleFonts.inter(
-                    fontSize: 12.5.sp,
-                    color: const Color(0xFF9AA0AB),
-                  ),
-                ),
-              )
-                  : ListView.separated(
-                padding: EdgeInsets.symmetric(vertical: 4.h),
-                shrinkWrap: true,
-                itemCount: _suggestions.length,
-                separatorBuilder: (_, __) =>
-                const Divider(height: 1, color: Color(0xFFE4E7EC)),
-                itemBuilder: (context, index) {
-                  final s = _suggestions[index];
-                  final name = "${s.firstName ?? ''} ${s.lastName ?? ''}"
-                      .trim();
-                  return InkWell(
-                    onTap: () => _selectSuggestion(s),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 12.w,
-                        vertical: 8.h,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            CupertinoIcons.person_fill,
-                            size: 14.r,
-                            color: const Color(0xFF4338CA),
+          offset: Offset(0, placement.dy),
+          child: Align(
+            alignment: placement.showAbove
+                ? Alignment.bottomLeft
+                : Alignment.topLeft,
+            child: Material(
+              elevation: 6,
+              borderRadius: BorderRadius.circular(10.r),
+              color: Colors.white,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: placement.maxHeight),
+                child: _suggestions.isEmpty
+                    ? Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 14.h,
+                        ),
+                        child: Text(
+                          "No data found",
+                          style: GoogleFonts.inter(
+                            fontSize: 12.5.sp,
+                            color: const Color(0xFF9AA0AB),
                           ),
-                          SizedBox(width: 8.w),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment:
-                              CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  name.isEmpty ? "(No name)" : name,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13.sp,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF1D2939),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: EdgeInsets.symmetric(vertical: 4.h),
+                        shrinkWrap: true,
+                        itemCount: _suggestions.length,
+                        separatorBuilder: (_, __) =>
+                            const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                        itemBuilder: (context, index) {
+                          final s = _suggestions[index];
+                          final name =
+                              "${s.firstName ?? ''} ${s.lastName ?? ''}".trim();
+                          return InkWell(
+                            onTap: () => _selectSuggestion(s),
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12.w,
+                                vertical: 8.h,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    CupertinoIcons.person_fill,
+                                    size: 14.r,
+                                    color: const Color(0xFF4338CA),
                                   ),
-                                ),
-                                Text(
-                                  "${s.jobRole ?? '-'} • ${s.email ?? ''}",
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11.sp,
-                                    color: const Color(0xFF667085),
+                                  SizedBox(width: 8.w),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          name.isEmpty ? "(No name)" : name,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13.sp,
+                                            fontWeight: FontWeight.w600,
+                                            color: const Color(0xFF1D2939),
+                                          ),
+                                        ),
+                                        Text(
+                                          "${s.jobRole ?? '-'} • ${s.email ?? ''}",
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11.sp,
+                                            color: const Color(0xFF667085),
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          );
+                        },
                       ),
-                    ),
-                  );
-                },
               ),
             ),
           ),
@@ -295,8 +408,8 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
   bool _matchesQuery(EmployeeModel e, String q) =>
       (e.firstName ?? '').toLowerCase().contains(q) ||
-          (e.lastName ?? '').toLowerCase().contains(q) ||
-          (e.email ?? '').toLowerCase().contains(q);
+      (e.lastName ?? '').toLowerCase().contains(q) ||
+      (e.email ?? '').toLowerCase().contains(q);
 
   List<EmployeeModel> get _filtered {
     final q = _searchController.text.trim().toLowerCase();
@@ -428,7 +541,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                 controller: firstNameCtrl,
                                 hint: "First Name",
                                 validator: (v) =>
-                                (v == null || v.trim().isEmpty)
+                                    (v == null || v.trim().isEmpty)
                                     ? "Enter first name"
                                     : null,
                               ),
@@ -441,7 +554,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                 controller: lastNameCtrl,
                                 hint: "Last Name",
                                 validator: (v) =>
-                                (v == null || v.trim().isEmpty)
+                                    (v == null || v.trim().isEmpty)
                                     ? "Enter last name"
                                     : null,
                               ),
@@ -639,10 +752,10 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                         groupValue: selectedPermissionLevel,
                                         activeColor: const Color(0xFF0A0258),
                                         materialTapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
+                                            MaterialTapTargetSize.shrinkWrap,
                                         visualDensity: VisualDensity.compact,
                                         onChanged: (v) => ss(
-                                              () => selectedPermissionLevel =
+                                          () => selectedPermissionLevel =
                                               v ?? level,
                                         ),
                                       ),
@@ -684,111 +797,113 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                 onPressed: isSubmitting
                                     ? null
                                     : () async {
-                                  ss(() => autoValidate = true);
-                                  if (!(formKey.currentState
-                                      ?.validate() ??
-                                      false)) {
-                                    return;
-                                  }
+                                        ss(() => autoValidate = true);
+                                        if (!(formKey.currentState
+                                                ?.validate() ??
+                                            false)) {
+                                          return;
+                                        }
 
-                                  ss(() => isSubmitting = true);
+                                        ss(() => isSubmitting = true);
 
-                                  final bool success;
-                                  if (existing == null) {
-                                    success = await employeeController
-                                        .handleCreateEmployee(
-                                      firstName: firstNameCtrl.text
-                                          .trim(),
-                                      lastName: lastNameCtrl.text
-                                          .trim(),
-                                      jobRole: selectedJobRole ?? '',
-                                      email: emailCtrl.text.trim(),
-                                      phoneNumber: phoneCtrl.text
-                                          .trim(),
-                                      department: selectedDepartment,
-                                      imageFilePath: selectedImageFile?.path,
-                                      // TODO: add these params to
-                                      // EmployeeController /
-                                      // EmployeeModel once ready:
-                                      // organization: selectedOrganization,
-                                      // gender: selectedGender,
-                                      // location: selectedLocation,
-                                      // dateOfBirth: "$dobDayCtrl/$dobMonthCtrl/$dobYearCtrl",
-                                      // taskPermission: taskPermission,
-                                    );
-                                  } else {
-                                    success = await employeeController
-                                        .handleUpdateEmployee(
-                                      id: existing.id ?? '',
-                                      firstName: firstNameCtrl.text
-                                          .trim(),
-                                      lastName: lastNameCtrl.text
-                                          .trim(),
-                                      jobRole: selectedJobRole ?? '',
-                                      email: emailCtrl.text.trim(),
-                                      phoneNumber: phoneCtrl.text
-                                          .trim(),
-                                      department: selectedDepartment,
-                                      imageFilePath: selectedImageFile?.path,
-                                    );
-                                  }
+                                        final bool success;
+                                        if (existing == null) {
+                                          success = await employeeController
+                                              .handleCreateEmployee(
+                                                firstName: firstNameCtrl.text
+                                                    .trim(),
+                                                lastName: lastNameCtrl.text
+                                                    .trim(),
+                                                jobRole: selectedJobRole ?? '',
+                                                email: emailCtrl.text.trim(),
+                                                phoneNumber: phoneCtrl.text
+                                                    .trim(),
+                                                department: selectedDepartment,
+                                                imageFilePath:
+                                                    selectedImageFile?.path,
+                                                // TODO: add these params to
+                                                // EmployeeController /
+                                                // EmployeeModel once ready:
+                                                // organization: selectedOrganization,
+                                                // gender: selectedGender,
+                                                // location: selectedLocation,
+                                                // dateOfBirth: "$dobDayCtrl/$dobMonthCtrl/$dobYearCtrl",
+                                                // taskPermission: taskPermission,
+                                              );
+                                        } else {
+                                          success = await employeeController
+                                              .handleUpdateEmployee(
+                                                id: existing.id ?? '',
+                                                firstName: firstNameCtrl.text
+                                                    .trim(),
+                                                lastName: lastNameCtrl.text
+                                                    .trim(),
+                                                jobRole: selectedJobRole ?? '',
+                                                email: emailCtrl.text.trim(),
+                                                phoneNumber: phoneCtrl.text
+                                                    .trim(),
+                                                department: selectedDepartment,
+                                                imageFilePath:
+                                                    selectedImageFile?.path,
+                                              );
+                                        }
 
-                                  if (!mounted) return;
-                                  ss(() => isSubmitting = false);
+                                        if (!mounted) return;
+                                        ss(() => isSubmitting = false);
 
-                                  if (success) {
-                                    Navigator.pop(ctx);
-                                    ScaffoldMessenger.of(
-                                      context,
-                                    ).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          employeeController
-                                              .successMessage ??
-                                              (existing == null
-                                                  ? "User created successfully!"
-                                                  : "User updated successfully!"),
-                                          style: GoogleFonts.inter(
-                                            fontSize: 13.sp,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                        backgroundColor: const Color(
-                                          0xFF0DA99E,
-                                        ),
-                                        behavior:
-                                        SnackBarBehavior.floating,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                          BorderRadius.circular(8.r),
-                                        ),
-                                      ),
-                                    );
-                                  } else {
-                                    ScaffoldMessenger.of(
-                                      context,
-                                    ).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          employeeController
-                                              .errorMessage ??
-                                              "Something went wrong",
-                                          style: GoogleFonts.inter(
-                                            fontSize: 13.sp,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                        backgroundColor: Colors.red,
-                                        behavior:
-                                        SnackBarBehavior.floating,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                          BorderRadius.circular(8.r),
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                },
+                                        if (success) {
+                                          Navigator.pop(ctx);
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                employeeController
+                                                        .successMessage ??
+                                                    (existing == null
+                                                        ? "User created successfully!"
+                                                        : "User updated successfully!"),
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 13.sp,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                              backgroundColor: const Color(
+                                                0xFF0DA99E,
+                                              ),
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8.r),
+                                              ),
+                                            ),
+                                          );
+                                        } else {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                employeeController
+                                                        .errorMessage ??
+                                                    "Something went wrong",
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 13.sp,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                              backgroundColor: Colors.red,
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8.r),
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      },
                                 style: ElevatedButton.styleFrom(
                                   elevation: 0,
                                   backgroundColor: Colors.transparent,
@@ -803,25 +918,25 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                 ),
                                 child: isSubmitting
                                     ? SizedBox(
-                                  width: 16.r,
-                                  height: 16.r,
-                                  child: const CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation(
-                                      Colors.white,
-                                    ),
-                                  ),
-                                )
+                                        width: 16.r,
+                                        height: 16.r,
+                                        child: const CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation(
+                                            Colors.white,
+                                          ),
+                                        ),
+                                      )
                                     : Text(
-                                  existing == null
-                                      ? "Create User"
-                                      : "Save Changes",
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13.sp,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                ),
+                                        existing == null
+                                            ? "Create User"
+                                            : "Save Changes",
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13.sp,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                      ),
                               ),
                             ),
                           ],
@@ -860,11 +975,11 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
             ),
             children: required
                 ? const [
-              TextSpan(
-                text: " *",
-                style: TextStyle(color: Colors.red),
-              ),
-            ]
+                    TextSpan(
+                      text: " *",
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ]
                 : null,
           ),
         ),
@@ -944,11 +1059,11 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
             ),
             children: required
                 ? const [
-              TextSpan(
-                text: " *",
-                style: TextStyle(color: Colors.red),
-              ),
-            ]
+                    TextSpan(
+                      text: " *",
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ]
                 : null,
           ),
         ),
@@ -996,10 +1111,10 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
           items: items
               .map(
                 (e) => DropdownMenuItem<String>(
-              value: e,
-              child: Text(e, overflow: TextOverflow.ellipsis),
-            ),
-          )
+                  value: e,
+                  child: Text(e, overflow: TextOverflow.ellipsis),
+                ),
+              )
               .toList(),
           onChanged: onChanged,
         ),
@@ -1128,24 +1243,24 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                     ),
                     child: imageFile == null
                         ? Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.add,
-                          size: 16.r,
-                          color: const Color(0xFF6C7278),
-                        ),
-                        SizedBox(height: 2.h),
-                        Text(
-                          "Upload",
-                          style: GoogleFonts.inter(
-                            fontSize: 10.sp,
-                            color: const Color(0xFF6C7278),
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    )
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.add,
+                                size: 16.r,
+                                color: const Color(0xFF6C7278),
+                              ),
+                              SizedBox(height: 2.h),
+                              Text(
+                                "Upload",
+                                style: GoogleFonts.inter(
+                                  fontSize: 10.sp,
+                                  color: const Color(0xFF6C7278),
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          )
                         : Image.file(imageFile, fit: BoxFit.cover),
                   ),
                   if (imageFile != null && onRemove != null)
@@ -1372,7 +1487,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
           final filtered = _filtered;
           final isInitialLoading =
               employeeController.isLoading &&
-                  employeeController.allEmployees.isEmpty;
+              employeeController.allEmployees.isEmpty;
 
           return GestureDetector(
             behavior: HitTestBehavior.translucent,
@@ -1440,16 +1555,16 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                               suffixIcon: _searchController.text.isEmpty
                                   ? null
                                   : GestureDetector(
-                                onTap: () {
-                                  _searchController.clear();
-                                  _updateSuggestions('');
-                                },
-                                child: Icon(
-                                  CupertinoIcons.clear_circled_solid,
-                                  size: 14.r,
-                                  color: const Color(0xFF9AA0AB),
-                                ),
-                              ),
+                                      onTap: () {
+                                        _searchController.clear();
+                                        _updateSuggestions('');
+                                      },
+                                      child: Icon(
+                                        CupertinoIcons.clear_circled_solid,
+                                        size: 14.r,
+                                        color: const Color(0xFF9AA0AB),
+                                      ),
+                                    ),
                               filled: true,
                               fillColor: Colors.white,
                               contentPadding: EdgeInsets.symmetric(
@@ -1533,7 +1648,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                               value: _allSelected,
                               activeColor: const Color(0xFF0A0258),
                               materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
+                                  MaterialTapTargetSize.shrinkWrap,
                               visualDensity: VisualDensity.compact,
                               onChanged: _toggleSelectAll,
                             ),
@@ -1559,22 +1674,21 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                         ? const Center(child: CircularProgressIndicator())
                         : filtered.isEmpty
                         ? Center(
-                      child: Text(
-                        "No users found",
-                        style: GoogleFonts.inter(
-                          fontSize: 12.sp,
-                          color: const Color(0xFF9AA0AB),
-                        ),
-                      ),
-                    )
+                            child: Text(
+                              "No users found",
+                              style: GoogleFonts.inter(
+                                fontSize: 12.sp,
+                                color: const Color(0xFF9AA0AB),
+                              ),
+                            ),
+                          )
                         : ListView.separated(
-                      padding: EdgeInsets.only(bottom: 8.h),
-                      itemCount: filtered.length,
-                      separatorBuilder: (_, __) =>
-                          SizedBox(height: 10.h),
-                      itemBuilder: (context, index) =>
-                          _employeeCard(filtered[index], index),
-                    ),
+                            padding: EdgeInsets.only(bottom: 8.h),
+                            itemCount: filtered.length,
+                            separatorBuilder: (_, __) => SizedBox(height: 10.h),
+                            itemBuilder: (context, index) =>
+                                _employeeCard(filtered[index], index),
+                          ),
                   ),
                 ],
               ),
@@ -1879,9 +1993,9 @@ class _SearchableDropdownFieldState extends State<_SearchableDropdownField> {
     _suggestions = q.isEmpty
         ? widget.items.take(8).toList()
         : widget.items
-        .where((e) => e.toLowerCase().contains(q))
-        .take(8)
-        .toList();
+              .where((e) => e.toLowerCase().contains(q))
+              .take(8)
+              .toList();
 
     if (!_focusNode.hasFocus) {
       _removeOverlay();
@@ -1896,7 +2010,12 @@ class _SearchableDropdownFieldState extends State<_SearchableDropdownField> {
     final overlay = Overlay.of(context);
     final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
     final width = box?.size.width ?? 200.w;
-    final height = box?.size.height ?? 40.h;
+
+    final placement = _overlayPlacement(
+      context: context,
+      fieldKey: _fieldKey,
+      preferredMaxHeight: 220,
+    );
 
     _overlayEntry = OverlayEntry(
       builder: (context) => Positioned(
@@ -1904,67 +2023,72 @@ class _SearchableDropdownFieldState extends State<_SearchableDropdownField> {
         child: CompositedTransformFollower(
           link: _layerLink,
           showWhenUnlinked: false,
-          offset: Offset(0, height + 6.h),
-          child: Material(
-            elevation: 6,
-            borderRadius: BorderRadius.circular(10.r),
-            color: Colors.white,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: 220.h),
-              child: _suggestions.isEmpty
-                  ? Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: 12.w,
-                  vertical: 14.h,
-                ),
-                child: Text(
-                  widget.emptyLabel,
-                  style: GoogleFonts.inter(
-                    fontSize: 12.5.sp,
-                    color: const Color(0xFF9AA0AB),
-                  ),
-                ),
-              )
-                  : ListView.separated(
-                padding: EdgeInsets.symmetric(vertical: 4.h),
-                shrinkWrap: true,
-                physics: const ClampingScrollPhysics(),
-                itemCount: _suggestions.length,
-                separatorBuilder: (_, __) =>
-                const Divider(height: 1, color: Color(0xFFE4E7EC)),
-                itemBuilder: (context, index) {
-                  final s = _suggestions[index];
-                  return InkWell(
-                    onTap: () => _selectSuggestion(s),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 12.w,
-                        vertical: 10.h,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            widget.icon,
-                            size: 14.r,
-                            color: const Color(0xFF4338CA),
+          offset: Offset(0, placement.dy),
+          child: Align(
+            alignment: placement.showAbove
+                ? Alignment.bottomLeft
+                : Alignment.topLeft,
+            child: Material(
+              elevation: 6,
+              borderRadius: BorderRadius.circular(10.r),
+              color: Colors.white,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: placement.maxHeight),
+                child: _suggestions.isEmpty
+                    ? Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 14.h,
+                        ),
+                        child: Text(
+                          widget.emptyLabel,
+                          style: GoogleFonts.inter(
+                            fontSize: 12.5.sp,
+                            color: const Color(0xFF9AA0AB),
                           ),
-                          SizedBox(width: 8.w),
-                          Expanded(
-                            child: Text(
-                              s,
-                              style: GoogleFonts.inter(
-                                fontSize: 13.sp,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF1D2939),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: EdgeInsets.symmetric(vertical: 4.h),
+                        shrinkWrap: true,
+                        physics: const ClampingScrollPhysics(),
+                        itemCount: _suggestions.length,
+                        separatorBuilder: (_, __) =>
+                            const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                        itemBuilder: (context, index) {
+                          final s = _suggestions[index];
+                          return InkWell(
+                            onTap: () => _selectSuggestion(s),
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12.w,
+                                vertical: 10.h,
                               ),
-                              overflow: TextOverflow.ellipsis,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    widget.icon,
+                                    size: 14.r,
+                                    color: const Color(0xFF4338CA),
+                                  ),
+                                  SizedBox(width: 8.w),
+                                  Expanded(
+                                    child: Text(
+                                      s,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF1D2939),
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          );
+                        },
                       ),
-                    ),
-                  );
-                },
               ),
             ),
           ),
@@ -2007,11 +2131,11 @@ class _SearchableDropdownFieldState extends State<_SearchableDropdownField> {
             ),
             children: widget.required
                 ? const [
-              TextSpan(
-                text: " *",
-                style: TextStyle(color: Colors.red),
-              ),
-            ]
+                    TextSpan(
+                      text: " *",
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ]
                 : null,
           ),
         ),
@@ -2046,13 +2170,13 @@ class _SearchableDropdownFieldState extends State<_SearchableDropdownField> {
               suffixIcon: _controller.text.isEmpty
                   ? null
                   : GestureDetector(
-                onTap: _clear,
-                child: Icon(
-                  CupertinoIcons.clear_circled_solid,
-                  size: 14.r,
-                  color: const Color(0xFF9AA0AB),
-                ),
-              ),
+                      onTap: _clear,
+                      child: Icon(
+                        CupertinoIcons.clear_circled_solid,
+                        size: 14.r,
+                        color: const Color(0xFF9AA0AB),
+                      ),
+                    ),
               filled: true,
               fillColor: const Color(0xFFF9FAFC),
               contentPadding: EdgeInsets.symmetric(
@@ -2116,7 +2240,7 @@ class _DepartmentSearchableField extends StatefulWidget {
 class _DepartmentSearchableFieldState
     extends State<_DepartmentSearchableField> {
   late final DepartmentController _departmentController =
-  sl<DepartmentController>();
+      sl<DepartmentController>();
   late final LocationController _locationController = sl<LocationController>();
   late final TextEditingController _controller = TextEditingController(
     text: widget.initialValue ?? '',
@@ -2217,14 +2341,23 @@ class _DepartmentSearchableFieldState
     final overlay = Overlay.of(context);
     final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
     final width = box?.size.width ?? 200.w;
-    final height = box?.size.height ?? 40.h;
+
+    final placement = _overlayPlacement(
+      context: context,
+      fieldKey: _fieldKey,
+      preferredMaxHeight: 260,
+      // The "Add Department" row is pinned inside the box regardless of
+      // scroll, so keep a slightly larger floor than other overlays to
+      // make sure it (plus a couple of results) stays comfortably usable.
+      minUsableHeight: 160,
+    );
 
     final q = _controller.text.trim().toLowerCase();
     final results = q.isEmpty
         ? _departmentController.departments
         : _departmentController.departments
-        .where((d) => (d.name ?? '').toLowerCase().contains(q))
-        .toList();
+              .where((d) => (d.name ?? '').toLowerCase().contains(q))
+              .toList();
 
     _overlayEntry = OverlayEntry(
       builder: (context) => Positioned(
@@ -2232,114 +2365,123 @@ class _DepartmentSearchableFieldState
         child: CompositedTransformFollower(
           link: _layerLink,
           showWhenUnlinked: false,
-          offset: Offset(0, height + 6.h),
-          child: Material(
-            elevation: 6,
-            borderRadius: BorderRadius.circular(10.r),
-            color: Colors.white,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: 260.h),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  InkWell(
-                    onTap: _openAddDepartmentDialog,
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 10.w,
-                        vertical: 10.h,
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            CupertinoIcons.add_circled_solid,
-                            size: 14.r,
-                            color: const Color(0xFF0A0258),
-                          ),
-                          SizedBox(width: 6.w),
-                          Expanded(
-                            child: Text(
-                              "Add Department",
-                              style: GoogleFonts.inter(
-                                fontSize: 12.5.sp,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF0A0258),
+          offset: Offset(0, placement.dy),
+          child: Align(
+            alignment: placement.showAbove
+                ? Alignment.bottomLeft
+                : Alignment.topLeft,
+            child: Material(
+              elevation: 6,
+              borderRadius: BorderRadius.circular(10.r),
+              color: Colors.white,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: placement.maxHeight),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      onTap: _openAddDepartmentDialog,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 10.w,
+                          vertical: 10.h,
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              CupertinoIcons.add_circled_solid,
+                              size: 14.r,
+                              color: const Color(0xFF0A0258),
+                            ),
+                            SizedBox(width: 6.w),
+                            Expanded(
+                              child: Text(
+                                "Add Department",
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.5.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF0A0258),
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const Divider(height: 1, color: Color(0xFFE4E7EC)),
-                  if (_departmentController.isLoading)
-                    Padding(
-                      padding: EdgeInsets.symmetric(vertical: 14.h),
-                      child: SizedBox(
-                        width: 16.r,
-                        height: 16.r,
-                        child: const CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    )
-                  else if (results.isEmpty)
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 12.w,
-                        vertical: 14.h,
-                      ),
-                      child: Text(
-                        "No departments found",
-                        style: GoogleFonts.inter(
-                          fontSize: 12.sp,
-                          color: const Color(0xFF9AA0AB),
+                          ],
                         ),
                       ),
-                    )
-                  else
-                    Flexible(
-                      child: ListView.separated(
-                        padding: EdgeInsets.symmetric(vertical: 4.h),
-                        shrinkWrap: true,
-                        itemCount: results.length,
-                        separatorBuilder: (_, __) =>
-                        const Divider(height: 1, color: Color(0xFFE4E7EC)),
-                        itemBuilder: (context, index) {
-                          final dept = results[index];
-                          return InkWell(
-                            onTap: () => _select(dept.name ?? ''),
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 12.w,
-                                vertical: 10.h,
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    CupertinoIcons.square_grid_2x2,
-                                    size: 14.r,
-                                    color: const Color(0xFF4338CA),
-                                  ),
-                                  SizedBox(width: 8.w),
-                                  Expanded(
-                                    child: Text(
-                                      dept.name ?? '',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 13.sp,
-                                        fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF1D2939),
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
                     ),
-                ],
+                    const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                    if (_departmentController.isLoading)
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
+                        child: SizedBox(
+                          width: 16.r,
+                          height: 16.r,
+                          child: const CircularProgressIndicator(
+                            strokeWidth: 2,
+                          ),
+                        ),
+                      )
+                    else if (results.isEmpty)
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 14.h,
+                        ),
+                        child: Text(
+                          "No departments found",
+                          style: GoogleFonts.inter(
+                            fontSize: 12.sp,
+                            color: const Color(0xFF9AA0AB),
+                          ),
+                        ),
+                      )
+                    else
+                      Flexible(
+                        child: ListView.separated(
+                          padding: EdgeInsets.symmetric(vertical: 4.h),
+                          shrinkWrap: true,
+                          itemCount: results.length,
+                          separatorBuilder: (_, __) => const Divider(
+                            height: 1,
+                            color: Color(0xFFE4E7EC),
+                          ),
+                          itemBuilder: (context, index) {
+                            final dept = results[index];
+                            return InkWell(
+                              onTap: () => _select(dept.name ?? ''),
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 12.w,
+                                  vertical: 10.h,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      CupertinoIcons.square_grid_2x2,
+                                      size: 14.r,
+                                      color: const Color(0xFF4338CA),
+                                    ),
+                                    SizedBox(width: 8.w),
+                                    Expanded(
+                                      child: Text(
+                                        dept.name ?? '',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13.sp,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF1D2939),
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -2404,13 +2546,13 @@ class _DepartmentSearchableFieldState
                 suffixIcon: _controller.text.isEmpty
                     ? null
                     : GestureDetector(
-                  onTap: _clear,
-                  child: Icon(
-                    CupertinoIcons.clear_circled_solid,
-                    size: 14.r,
-                    color: const Color(0xFF9AA0AB),
-                  ),
-                ),
+                        onTap: _clear,
+                        child: Icon(
+                          CupertinoIcons.clear_circled_solid,
+                          size: 14.r,
+                          color: const Color(0xFF9AA0AB),
+                        ),
+                      ),
                 filled: true,
                 fillColor: const Color(0xFFF9FAFC),
                 contentPadding: EdgeInsets.symmetric(
@@ -2456,11 +2598,11 @@ class _DepartmentSearchableFieldState
 // Location autocomplete) so a department can be created on the fly from
 // inside the Employee form without navigating away.
 void _showAddDepartmentDialog(
-    BuildContext context, {
-      required DepartmentController departmentController,
-      required LocationController locationController,
-      required ValueChanged<DepartmentModel> onCreated,
-    }) {
+  BuildContext context, {
+  required DepartmentController departmentController,
+  required LocationController locationController,
+  required ValueChanged<DepartmentModel> onCreated,
+}) {
   locationController.handleGetLocations();
 
   final formKey = GlobalKey<FormState>();
@@ -2481,7 +2623,7 @@ void _showAddDepartmentDialog(
 
   double measuredFieldWidth() {
     final box =
-    locationFieldKey.currentContext?.findRenderObject() as RenderBox?;
+        locationFieldKey.currentContext?.findRenderObject() as RenderBox?;
     return box?.size.width ?? (420.w - 40.w);
   }
 
@@ -2493,81 +2635,94 @@ void _showAddDepartmentDialog(
   void showLocationOverlay(BuildContext overlayContext, double fieldWidth) {
     removeLocationOverlay();
     final overlay = Overlay.of(overlayContext);
+
+    final placement = _overlayPlacement(
+      context: overlayContext,
+      fieldKey: locationFieldKey,
+      preferredMaxHeight: 240,
+    );
+
     locationOverlay = OverlayEntry(
       builder: (context) => Positioned(
         width: fieldWidth,
         child: CompositedTransformFollower(
           link: locationLayerLink,
           showWhenUnlinked: false,
-          offset: Offset(0, 46.h),
-          child: Material(
-            elevation: 6,
-            borderRadius: BorderRadius.circular(10.r),
-            color: Colors.white,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: 240.h),
-              child: locationSuggestions.isEmpty
-                  ? Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: 12.w,
-                  vertical: 12.h,
-                ),
-                child: Text(
-                  "No locations found",
-                  style: GoogleFonts.inter(
-                    fontSize: 12.5.sp,
-                    color: const Color(0xFF9AA0AB),
-                  ),
-                ),
-              )
-                  : ListView.separated(
-                padding: EdgeInsets.symmetric(vertical: 4.h),
-                shrinkWrap: true,
-                physics: const ClampingScrollPhysics(),
-                itemCount: locationSuggestions.length,
-                separatorBuilder: (_, __) =>
-                const Divider(height: 1, color: Color(0xFFE4E7EC)),
-                itemBuilder: (context, index) {
-                  final s = locationSuggestions[index];
-                  return InkWell(
-                    onTap: () {
-                      locationCtrl.text = s.name;
-                      selectedLocationId = s.id;
-                      locationCtrl.selection = TextSelection.fromPosition(
-                        TextPosition(offset: locationCtrl.text.length),
-                      );
-                      removeLocationOverlay();
-                      locationFocusNode.unfocus();
-                      dialogSetState?.call(() {});
-                    },
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 12.w,
-                        vertical: 10.h,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            CupertinoIcons.location_solid,
-                            size: 14.r,
-                            color: const Color(0xFF4338CA),
+          offset: Offset(0, placement.dy),
+          child: Align(
+            alignment: placement.showAbove
+                ? Alignment.bottomLeft
+                : Alignment.topLeft,
+            child: Material(
+              elevation: 6,
+              borderRadius: BorderRadius.circular(10.r),
+              color: Colors.white,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: placement.maxHeight),
+                child: locationSuggestions.isEmpty
+                    ? Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 12.h,
+                        ),
+                        child: Text(
+                          "No locations found",
+                          style: GoogleFonts.inter(
+                            fontSize: 12.5.sp,
+                            color: const Color(0xFF9AA0AB),
                           ),
-                          SizedBox(width: 8.w),
-                          Expanded(
-                            child: Text(
-                              s.name,
-                              style: GoogleFonts.inter(
-                                fontSize: 13.sp,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF1D2939),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: EdgeInsets.symmetric(vertical: 4.h),
+                        shrinkWrap: true,
+                        physics: const ClampingScrollPhysics(),
+                        itemCount: locationSuggestions.length,
+                        separatorBuilder: (_, __) =>
+                            const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                        itemBuilder: (context, index) {
+                          final s = locationSuggestions[index];
+                          return InkWell(
+                            onTap: () {
+                              locationCtrl.text = s.name;
+                              selectedLocationId = s.id;
+                              locationCtrl
+                                  .selection = TextSelection.fromPosition(
+                                TextPosition(offset: locationCtrl.text.length),
+                              );
+                              removeLocationOverlay();
+                              locationFocusNode.unfocus();
+                              dialogSetState?.call(() {});
+                            },
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12.w,
+                                vertical: 10.h,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    CupertinoIcons.location_solid,
+                                    size: 14.r,
+                                    color: const Color(0xFF4338CA),
+                                  ),
+                                  SizedBox(width: 8.w),
+                                  Expanded(
+                                    child: Text(
+                                      s.name,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF1D2939),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
-                        ],
+                          );
+                        },
                       ),
-                    ),
-                  );
-                },
               ),
             ),
           ),
@@ -2578,16 +2733,16 @@ void _showAddDepartmentDialog(
   }
 
   void updateLocationSuggestions(
-      String query,
-      BuildContext overlayContext,
-      double fieldWidth,
-      ) {
+    String query,
+    BuildContext overlayContext,
+    double fieldWidth,
+  ) {
     final q = query.trim().toLowerCase();
     locationSuggestions = q.isEmpty
         ? List.from(locationController.locations)
         : locationController.locations
-        .where((l) => l.name.toLowerCase().contains(q))
-        .toList();
+              .where((l) => l.name.toLowerCase().contains(q))
+              .toList();
     showLocationOverlay(overlayContext, fieldWidth);
   }
 
@@ -2780,18 +2935,18 @@ void _showAddDepartmentDialog(
                           suffixIcon: locationCtrl.text.isEmpty
                               ? null
                               : GestureDetector(
-                            onTap: () {
-                              locationCtrl.clear();
-                              selectedLocationId = null;
-                              removeLocationOverlay();
-                              ss(() {});
-                            },
-                            child: Icon(
-                              CupertinoIcons.clear_circled_solid,
-                              size: 14.r,
-                              color: const Color(0xFF9AA0AB),
-                            ),
-                          ),
+                                  onTap: () {
+                                    locationCtrl.clear();
+                                    selectedLocationId = null;
+                                    removeLocationOverlay();
+                                    ss(() {});
+                                  },
+                                  child: Icon(
+                                    CupertinoIcons.clear_circled_solid,
+                                    size: 14.r,
+                                    color: const Color(0xFF9AA0AB),
+                                  ),
+                                ),
                           filled: true,
                           fillColor: Colors.white,
                           contentPadding: EdgeInsets.symmetric(
@@ -2858,53 +3013,53 @@ void _showAddDepartmentDialog(
                           onPressed: isSubmitting
                               ? null
                               : () async {
-                            ss(() => autoValidate = true);
-                            if (!(formKey.currentState?.validate() ??
-                                false)) {
-                              return;
-                            }
+                                  ss(() => autoValidate = true);
+                                  if (!(formKey.currentState?.validate() ??
+                                      false)) {
+                                    return;
+                                  }
 
-                            removeLocationOverlay();
-                            ss(() => isSubmitting = true);
+                                  removeLocationOverlay();
+                                  ss(() => isSubmitting = true);
 
-                            final success = await departmentController
-                                .handleCreateDepartment(
-                              name: nameCtrl.text.trim(),
-                              location: selectedLocationId,
-                            );
+                                  final success = await departmentController
+                                      .handleCreateDepartment(
+                                        name: nameCtrl.text.trim(),
+                                        location: selectedLocationId,
+                                      );
 
-                            ss(() => isSubmitting = false);
+                                  ss(() => isSubmitting = false);
 
-                            if (success) {
-                              Navigator.pop(ctx);
-                              onCreated(
-                                DepartmentModel(
-                                  name: nameCtrl.text.trim(),
-                                ),
-                              );
-                              departmentController.handleGetDepartments();
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    departmentController.errorMessage ??
-                                        "Something went wrong",
-                                    style: GoogleFonts.inter(
-                                      fontSize: 13.sp,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  backgroundColor: Colors.red,
-                                  behavior: SnackBarBehavior.floating,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      8.r,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }
-                          },
+                                  if (success) {
+                                    Navigator.pop(ctx);
+                                    onCreated(
+                                      DepartmentModel(
+                                        name: nameCtrl.text.trim(),
+                                      ),
+                                    );
+                                    departmentController.handleGetDepartments();
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          departmentController.errorMessage ??
+                                              "Something went wrong",
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13.sp,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        backgroundColor: Colors.red,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8.r,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
                           style: ElevatedButton.styleFrom(
                             elevation: 0,
                             backgroundColor: const Color(0xFF3B82F6),
@@ -2918,23 +3073,23 @@ void _showAddDepartmentDialog(
                           ),
                           child: isSubmitting
                               ? SizedBox(
-                            width: 16.r,
-                            height: 16.r,
-                            child: const CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation(
-                                Colors.white,
-                              ),
-                            ),
-                          )
+                                  width: 16.r,
+                                  height: 16.r,
+                                  child: const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                )
                               : Text(
-                            "Save",
-                            style: GoogleFonts.inter(
-                              fontSize: 13.sp,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
+                                  "Save",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
                         ),
                       ],
                     ),
