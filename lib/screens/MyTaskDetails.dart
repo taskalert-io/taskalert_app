@@ -1,10 +1,14 @@
 // ignore_for_file: use_build_context_synchronously
+import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+// TODO: add these to pubspec.yaml -> file_picker: ^8.x.x , image_picker: ^1.x.x
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:taskalert_app/core/features/taskInstance/controllers/task_instance_controller.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
 import '../components/CustomAppBar.dart';
@@ -174,6 +178,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   int _hour = 2;
   int _minute = 0;
   int _durationHours = 5;
+
+  // ── Upload proof state ─────────────────────────────────────────────────────
+  // Files the user has confirmed as "proof" attachments for this task.
+  final List<PlatformFile> _uploadedProofFiles = [];
 
   // ── Editable fields (all API-mapped) ──────────────────────────────────────
   String _title = 'Retail Market';
@@ -849,6 +857,601 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       ),
     );
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Upload Proof — options sheet + upload modal
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /// Button placed just above the Save Changes row.
+  Widget _buildUploadProofButton() => InkWell(
+    onTap: _showUploadProofOptions,
+    borderRadius: BorderRadius.circular(8.r),
+    child: Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(vertical: 12.h),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8.r),
+        border: Border.all(color: _primaryColor.withOpacity(0.35)),
+        boxShadow: const [
+          BoxShadow(color: _shadowColor, blurRadius: 6, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.upload_file_outlined, size: 18.r, color: _primaryColor),
+          SizedBox(width: 8.w),
+          Text(
+            _uploadedProofFiles.isEmpty
+                ? 'Upload Proof'
+                : 'Upload Proof (${_uploadedProofFiles.length})',
+            style: GoogleFonts.inter(
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w600,
+              color: _primaryColor,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  /// Bottom sheet with the two entry points: Upload File / Use Camera.
+  void _showUploadProofOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      // Let the sheet size itself to its content instead of grabbing the
+      // full-screen modal height — that empty full-height area is what was
+      // rendering as a solid black block below "Use Camera".
+      isScrollControlled: true,
+      builder: (sheetCtx) => SafeArea(
+        // Only pad the bottom (gesture bar / nav buttons) — top: false keeps
+        // the sheet hugging its content instead of the whole screen.
+        top: false,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+          ),
+          padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 16.h),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Upload Proof',
+                style: GoogleFonts.inter(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w700,
+                  color: _primaryColor,
+                ),
+              ),
+              SizedBox(height: 16.h),
+              _proofOptionTile(
+                icon: Icons.upload_file_outlined,
+                label: 'Upload File',
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  _showUploadFileModal();
+                },
+              ),
+              Divider(height: 24.h, color: _dividerColor),
+              _proofOptionTile(
+                icon: Icons.camera_alt_outlined,
+                label: 'Use Camera',
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  _captureProofWithCamera();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _proofOptionTile({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(8.r),
+    child: Padding(
+      padding: EdgeInsets.symmetric(vertical: 4.h),
+      child: Row(
+        children: [
+          Icon(icon, size: 20.r, color: _textColor),
+          SizedBox(width: 12.w),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w500,
+              color: _textColor,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  /// "Use Camera" flow — captures a single photo and adds it to the proof list.
+  Future<void> _captureProofWithCamera() async {
+    // TODO: wire captured file to your proof-upload API
+    final picker = ImagePicker();
+    final XFile? shot = await picker.pickImage(source: ImageSource.camera);
+    if (shot == null) return;
+    final size = await File(shot.path).length();
+    if (mounted) {
+      setState(() {
+        _uploadedProofFiles.add(
+          PlatformFile(name: shot.name, size: size, path: shot.path),
+        );
+      });
+    }
+  }
+
+  /// Dialog matching the "Upload Proof" design — Upload / Webcam tabs,
+  /// drop-zone with Browse, file-type hint, gradient Upload button.
+  void _showUploadFileModal() {
+    String activeTab = 'upload'; // 'upload' | 'webcam'
+    List<PlatformFile> pendingFiles = [];
+    String? pendingFilesError;
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.5),
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Dialog(
+          backgroundColor: Colors.white,
+          insetPadding: EdgeInsets.symmetric(horizontal: 20.w),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14.r),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(20.w),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Upload Proof',
+                      style: GoogleFonts.inter(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w700,
+                        color: _primaryColor,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(ctx),
+                      child: Icon(Icons.close, size: 20.r, color: _labelColor),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 12.h),
+
+                // Tabs
+                Row(
+                  children: [
+                    _uploadTab(
+                      'Upload',
+                      activeTab == 'upload',
+                      () => setModalState(() => activeTab = 'upload'),
+                    ),
+                    SizedBox(width: 24.w),
+                    _uploadTab(
+                      'Webcam',
+                      activeTab == 'webcam',
+                      () => setModalState(() => activeTab = 'webcam'),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8.h),
+                _divider(),
+                SizedBox(height: 16.h),
+
+                if (activeTab == 'upload') ...[
+                  Text(
+                    'File must be in png, jpg, jpeg, webp, gif, mp4, mov, '
+                    'avi or pdf format and upto 5 file(s) at a time.',
+                    style: GoogleFonts.inter(
+                      fontSize: 11.sp,
+                      color: _labelColor,
+                    ),
+                  ),
+                  SizedBox(height: 14.h),
+                  GestureDetector(
+                    onTap: () async {
+                      // TODO: swap for real proof-file types your API accepts
+                      final result = await FilePicker.platform.pickFiles(
+                        allowMultiple: true,
+                        type: FileType.custom,
+                        allowedExtensions: [
+                          'png',
+                          'jpg',
+                          'jpeg',
+                          'webp',
+                          'gif',
+                          'mp4',
+                          'mov',
+                          'avi',
+                          'pdf',
+                        ],
+                      );
+                      if (result != null) {
+                        setModalState(() {
+                          if (result.files.length > 5) {
+                            // Reject the whole selection rather than
+                            // silently trimming it — the person should
+                            // know why files are missing.
+                            pendingFilesError =
+                                'You can upload a maximum of 5 files at a time. Please select 5 or fewer.';
+                          } else {
+                            pendingFilesError = null;
+                            pendingFiles = result.files;
+                          }
+                        });
+                      }
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(vertical: 26.h),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF6F5FE),
+                        borderRadius: BorderRadius.circular(8.r),
+                        border: Border.all(
+                          color: _primaryColor.withOpacity(0.35),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.cloud_upload_outlined,
+                            size: 26.r,
+                            color: _labelColor,
+                          ),
+                          SizedBox(height: 8.h),
+                          RichText(
+                            textAlign: TextAlign.center,
+                            text: TextSpan(
+                              style: GoogleFonts.inter(
+                                fontSize: 12.sp,
+                                color: _labelColor,
+                              ),
+                              children: [
+                                const TextSpan(
+                                  text: 'Drag & drop your files here, or\n',
+                                ),
+                                TextSpan(
+                                  text: 'Browse',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.sp,
+                                    color: _primaryColor,
+                                    fontWeight: FontWeight.w600,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 6.h),
+                          Text(
+                            'Max 10MB per file',
+                            style: GoogleFonts.inter(
+                              fontSize: 10.sp,
+                              color: _labelColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (pendingFilesError != null) ...[
+                    SizedBox(height: 10.h),
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 10.w,
+                        vertical: 8.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(6.r),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            size: 14.r,
+                            color: Colors.red.shade700,
+                          ),
+                          SizedBox(width: 6.w),
+                          Expanded(
+                            child: Text(
+                              pendingFilesError!,
+                              style: GoogleFonts.inter(
+                                fontSize: 11.sp,
+                                color: Colors.red.shade700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  if (pendingFiles.isNotEmpty) ...[
+                    SizedBox(height: 10.h),
+                    ...pendingFiles.map(
+                      (f) => Padding(
+                        padding: EdgeInsets.symmetric(vertical: 3.h),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.insert_drive_file_outlined,
+                              size: 14.r,
+                              color: _textColor,
+                            ),
+                            SizedBox(width: 6.w),
+                            Expanded(
+                              child: Text(
+                                f.name,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11.sp,
+                                  color: _textColor,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 4.w),
+                            GestureDetector(
+                              onTap: () => _previewPickedFile(f),
+                              child: Padding(
+                                padding: EdgeInsets.all(4.w),
+                                child: Icon(
+                                  Icons.remove_red_eye_outlined,
+                                  size: 16.r,
+                                  color: _primaryColor,
+                                ),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () => setModalState(() {
+                                pendingFiles = List.from(pendingFiles)
+                                  ..remove(f);
+                                // Clearing a file always makes the current
+                                // selection valid again.
+                                pendingFilesError = null;
+                              }),
+                              child: Padding(
+                                padding: EdgeInsets.all(4.w),
+                                child: Icon(
+                                  Icons.close,
+                                  size: 16.r,
+                                  color: Colors.red.shade400,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ] else ...[
+                  // Webcam tab
+                  Container(
+                    width: double.infinity,
+                    height: 160.h,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF6F5FE),
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.videocam_outlined,
+                          size: 26.r,
+                          color: _labelColor,
+                        ),
+                        SizedBox(height: 8.h),
+                        Text(
+                          'Live webcam capture coming soon',
+                          style: GoogleFonts.inter(
+                            fontSize: 12.sp,
+                            color: _labelColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                SizedBox(height: 18.h),
+
+                // Upload button
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF2ED9C3), Color(0xFFB13BEC)],
+                    ),
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8.r),
+                      onTap: pendingFiles.isEmpty || pendingFilesError != null
+                          ? null
+                          : () {
+                              // TODO: wire to real proof-upload API call
+                              setState(
+                                () => _uploadedProofFiles.addAll(pendingFiles),
+                              );
+                              Navigator.pop(ctx);
+                            },
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                        child: Center(
+                          child: Text(
+                            'Upload',
+                            style: GoogleFonts.inter(
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w700,
+                              color:
+                                  (pendingFiles.isEmpty ||
+                                      pendingFilesError != null)
+                                  ? Colors.white.withOpacity(0.7)
+                                  : Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static const _previewableImageExts = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+
+  /// Eye-icon action — shows the picked file full-size if it's an image,
+  /// otherwise a simple file-info fallback (video/pdf preview needs a
+  /// dedicated player/viewer package, left as a TODO).
+  void _previewPickedFile(PlatformFile file) {
+    final ext = (file.extension ?? '').toLowerCase();
+    final isImage = _previewableImageExts.contains(ext);
+    final path = file.path;
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.7),
+      builder: (dialogCtx) => Dialog(
+        backgroundColor: Colors.white,
+        insetPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 40.h),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14.r),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(14.w),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      file.name,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w700,
+                        color: _primaryColor,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(dialogCtx),
+                    child: Icon(Icons.close, size: 20.r, color: _labelColor),
+                  ),
+                ],
+              ),
+              SizedBox(height: 12.h),
+              if (isImage && path != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8.r),
+                  child: Image.file(
+                    File(path),
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => _previewFallback(),
+                  ),
+                )
+              else
+                _previewFallback(
+                  // TODO: swap for a real video/PDF viewer package
+                  message: ext == 'pdf'
+                      ? 'PDF preview not available yet — file is attached.'
+                      : ext == 'mp4' || ext == 'mov' || ext == 'avi'
+                      ? 'Video preview not available yet — file is attached.'
+                      : 'Preview not available for this file type.',
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _previewFallback({String message = 'Preview not available.'}) =>
+      Container(
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(vertical: 40.h),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF6F5FE),
+          borderRadius: BorderRadius.circular(8.r),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.insert_drive_file_outlined,
+              size: 30.r,
+              color: _labelColor,
+            ),
+            SizedBox(height: 8.h),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w),
+              child: Text(
+                message,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(fontSize: 11.sp, color: _labelColor),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _uploadTab(String label, bool active, VoidCallback onTap) =>
+      GestureDetector(
+        onTap: onTap,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 13.sp,
+                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                color: active ? _primaryColor : _labelColor,
+              ),
+            ),
+            SizedBox(height: 6.h),
+            Container(
+              width: 46.w,
+              height: 2.h,
+              color: active ? _primaryColor : Colors.transparent,
+            ),
+          ],
+        ),
+      );
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Task info card
@@ -1720,6 +2323,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                           ),
 
                           SizedBox(height: 24.h),
+
+                          // 🔓 UNLOCKED UPLOAD PROOF BUTTON
+                          _buildUploadProofButton(),
+
+                          SizedBox(height: 16.h),
 
                           // 🔓 UNLOCKED SAVE BUTTON
                           Row(
