@@ -16,6 +16,7 @@ abstract class TaskInstanceRepository {
     String? status,
     String? sortBy,
     String? order,
+    bool? overdue,
   });
   Future<ApiResult<BaseApiResponse<TaskInstanceModel>>> getInstanceById({
     required String instanceId,

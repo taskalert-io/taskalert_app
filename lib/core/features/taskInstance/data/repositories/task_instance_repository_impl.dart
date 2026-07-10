@@ -26,6 +26,7 @@ class TaskInstanceRepositoryImpl implements TaskInstanceRepository {
     String? status,
     String? sortBy,
     String? order,
+    bool? overdue,
   }) async {
     try {
       final Map<String, dynamic> queryParameters = {};
@@ -37,6 +38,7 @@ class TaskInstanceRepositoryImpl implements TaskInstanceRepository {
       if (status != null) queryParameters['status'] = status;
       if (sortBy != null) queryParameters['sortBy'] = sortBy;
       if (order != null) queryParameters['order'] = order;
+      if (overdue != null) queryParameters['overdue'] = overdue;
 
       final responseData = await _httpService.get(
         '/tasks/instances',

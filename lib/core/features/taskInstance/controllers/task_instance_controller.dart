@@ -51,6 +51,7 @@ class TaskInstanceController extends ChangeNotifier {
     String? status,
     String? sortBy,
     String? order,
+    bool? overdue,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -65,6 +66,7 @@ class TaskInstanceController extends ChangeNotifier {
       status: status,
       sortBy: sortBy,
       order: order,
+      overdue: overdue,
     );
     _isLoading = false;
 

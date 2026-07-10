@@ -28,10 +28,13 @@ class HomeScreenState extends State<HomeScreen> {
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
 
   late final TaskInstanceController taskController;
+  late final TaskInstanceController overdueTaskController;
   String startDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
   String endDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
   List<Map<String, dynamic>> tasks = [];
   bool _isLoadingTasks = true;
+  List<Map<String, dynamic>> overdueTasks = [];
+  bool _isLoadingOverdueTasks = true;
 
   @override
   void initState() {
@@ -39,45 +42,63 @@ class HomeScreenState extends State<HomeScreen> {
     // ✅ After HomeScreen is fully built and visible on screen,
     // check if we need to show the OrganizationSetupDialog.
     taskController = sl<TaskInstanceController>();
+    overdueTaskController = sl<TaskInstanceController>();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAndShowOrgDialog();
+      _loadTodoTasks();
+      _loadOverdueTasks();
+    });
+  }
 
-      await taskController.handleGetAllInstances(
-        assigned: 'to_me',
-        status: 'todo',
-        // order: '',
-        // sortBy: '',
-        startDate: startDate,
-        endDate: endDate,
-      );
+  List<Map<String, dynamic>> _mapInstancesToTasks(
+    List<TaskInstanceModel> instances,
+  ) {
+    return instances.map<Map<String, dynamic>>((task) {
+      return {
+        "id": task.id,
+        "instanceId": task.instanceId,
+        "title": task.title,
+        "description": task.description,
+        "taskType": task.taskType,
+        "status": task.status,
+        "priority": task.priority,
+        "reportingDate": task.scheduledDate,
+        "reportingTime":
+            "${task.scheduledTime?.time} ${task.scheduledTime?.period}",
 
-      final mappedTasks = taskController.instances.map<Map<String, dynamic>>((
-        TaskInstanceModel task,
-      ) {
-        return {
-          "id": task.id,
-          "instanceId": task.instanceId,
-          "title": task.title,
-          "description": task.description,
-          "taskType": task.taskType,
-          "status": task.status,
-          "priority": task.priority,
-          "reportingDate": task.scheduledDate,
-          "reportingTime":
-              "${task.scheduledTime?.time} ${task.scheduledTime?.period}",
+        "createdBy":
+            "${task.createdBy?.firstName} ${task.createdBy?.lastName}",
+      };
+    }).toList();
+  }
 
-          "createdBy":
-              "${task.createdBy?.firstName} ${task.createdBy?.lastName}",
-        };
-      }).toList();
+  Future<void> _loadTodoTasks() async {
+    await taskController.handleGetAllInstances(
+      assigned: 'to_me',
+      status: 'todo',
+      startDate: startDate,
+      endDate: endDate,
+    );
 
-      setState(() {
-        tasks = mappedTasks;
-        _isLoadingTasks = false;
+    setState(() {
+      tasks = _mapInstancesToTasks(taskController.instances);
+      _isLoadingTasks = false;
+    });
+  }
 
-        print("Mapped Tasks: $tasks");
-      });
+  Future<void> _loadOverdueTasks() async {
+    // No date range here — overdue tasks are, by definition, ones whose
+    // scheduled date has already passed, so scoping to "today" would
+    // exclude them.
+    await overdueTaskController.handleGetAllInstances(
+      assigned: 'to_me',
+      overdue: true,
+    );
+
+    setState(() {
+      overdueTasks = _mapInstancesToTasks(overdueTaskController.instances);
+      _isLoadingOverdueTasks = false;
     });
   }
 
@@ -112,12 +133,14 @@ class HomeScreenState extends State<HomeScreen> {
   );
 
   final PageController _todoController = PageController();
+  final PageController _overdueController = PageController();
 
   /// Upcoming/recent to-do tasks shown in the Work List slider (max 3).
   List<Map<String, dynamic>> get _recentTasks => tasks.take(3).toList();
 
   final ValueNotifier<int> currentPageNotifier = ValueNotifier<int>(1000);
   final ValueNotifier<int> todoCurrentPageNotifier = ValueNotifier<int>(0);
+  final ValueNotifier<int> overdueCurrentPageNotifier = ValueNotifier<int>(0);
   String selectedSort = "All";
   String selectedWorkspaceType = "";
 
@@ -125,8 +148,10 @@ class HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _pageController.dispose();
     _todoController.dispose();
+    _overdueController.dispose();
     currentPageNotifier.dispose();
     todoCurrentPageNotifier.dispose();
+    overdueCurrentPageNotifier.dispose();
     super.dispose();
   }
 
@@ -754,6 +779,180 @@ class HomeScreenState extends State<HomeScreen> {
                       //     );
                       //   },
                       // ),
+                    ],
+                  ),
+                ),
+
+                Container(
+                  margin: EdgeInsets.only(left: 15, right: 15, bottom: 15),
+                  padding: const EdgeInsets.only(
+                    left: 10,
+                    right: 10,
+                    top: 18,
+                    bottom: 14,
+                  ),
+                  clipBehavior: Clip.hardEdge,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      /// TOP HEADER
+                      Padding(
+                        padding: EdgeInsets.only(left: 16, right: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Overdue",
+                              style: GoogleFonts.inter(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF0D095B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(height: 18.h),
+
+                      /// SLIDER
+                      SizedBox(
+                        height: 300.h,
+                        child: PageView(
+                          controller: _overdueController,
+                          onPageChanged: (index) {
+                            overdueCurrentPageNotifier.value = index;
+                          },
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: SingleChildScrollView(
+                                child: Column(
+                                  children: [
+                                    if (_isLoadingOverdueTasks)
+                                      Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 60.h,
+                                        ),
+                                        child: Center(
+                                          child: SizedBox(
+                                            width: 28.w,
+                                            height: 28.w,
+                                            child: const CircularProgressIndicator(
+                                              strokeWidth: 2.5,
+                                              color: Color(0xFF4338CA),
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    else if (overdueTasks.isEmpty)
+                                      Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 60.h,
+                                        ),
+                                        child: Center(
+                                          child: Column(
+                                            children: [
+                                              Icon(
+                                                Icons.check_circle_outline,
+                                                size: 40.r,
+                                                color: const Color(0xFFB8BEC5),
+                                              ),
+                                              SizedBox(height: 8.h),
+                                              Text(
+                                                "No overdue tasks",
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 13.sp,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: const Color(
+                                                    0xFF9AA0AB,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      for (final task in overdueTasks) ...[
+                                        GestureDetector(
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    TaskDetailScreen(
+                                                      userId: widget.userId,
+                                                      mainTaskId: task["id"],
+                                                      taskId:
+                                                          task["instanceId"],
+                                                    ),
+                                              ),
+                                            );
+                                          },
+                                          child: _buildTodoItem(
+                                            image: "",
+                                            title: task["title"],
+                                            status:
+                                                task["status"][0]
+                                                    .toUpperCase() +
+                                                task["status"].substring(1),
+                                            statusColor:
+                                                task["status"] == "todo"
+                                                ? Colors.red
+                                                : (task["status"] ==
+                                                          "In progress"
+                                                      ? Colors.orange
+                                                      : Colors.green),
+                                            requestedBy:
+                                                "Assigned by ${task["createdBy"]}",
+                                            priority:
+                                                task["priority"][0]
+                                                    .toUpperCase() +
+                                                task["priority"].substring(1),
+                                            priorityColor:
+                                                task["priority"]
+                                                        .toLowerCase() ==
+                                                    "high"
+                                                ? Colors.red
+                                                : Colors.green,
+                                            scheduledDate:
+                                                DateFormat('yyyy-MM-dd')
+                                                    .format(
+                                                      DateTime.parse(
+                                                        task['reportingDate']
+                                                                ?.toString() ??
+                                                            '',
+                                                      ),
+                                                    ),
+                                            scheduledTime:
+                                                task['reportingTime']
+                                                    ?.toString() ??
+                                                '',
+                                          ),
+                                        ),
+                                        SizedBox(height: 14.h),
+                                        Divider(color: Colors.grey.shade200),
+                                      ],
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
