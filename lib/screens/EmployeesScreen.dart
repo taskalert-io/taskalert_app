@@ -75,6 +75,7 @@ import '../core/features/departments/controllers/department_controller.dart';
 import '../core/features/departments/data/models/department_model.dart';
 import '../core/features/employees/controllers/employee_controller.dart';
 import '../core/features/employees/data/models/employee_model.dart';
+import '../core/features/jobRoles/controllers/job_role_controller.dart';
 import '../core/features/location/controllers/location_controller.dart';
 import '../core/features/location/data/models/location_model.dart';
 import '../core/features/organization/controllers/organization_controller.dart';
@@ -197,13 +198,6 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     "Create & Assign",
     "Full Access",
   ];
-  static const List<String> _jobRoleOptions = [
-    "Software Development",
-    "Product Design",
-    "Project Management",
-    "Customer Support",
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -664,14 +658,8 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                         ),
 
                         SizedBox(height: 7.w),
-                        _SearchableDropdownField(
-                          label: "Job Role",
-                          hint: "Search job role",
-                          items: _jobRoleOptions,
+                        _JobRoleSearchableField(
                           initialValue: selectedJobRole,
-                          required: true,
-                          icon: CupertinoIcons.briefcase_fill,
-                          emptyLabel: "No job roles found",
                           onChanged: (v) => selectedJobRole = v,
                           validator: (v) => (v == null || v.trim().isEmpty)
                               ? "Select a job role"
@@ -1875,337 +1863,11 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   }
 }
 
-/// A text field that behaves like a searchable / autosuggest dropdown, styled
-/// to match the suggestion-overlay pattern already used for "Search Users"
-/// on this screen and for the location autocomplete in
-/// LocationListScreen / DepartmentListScreen:
-/// - Tapping it (before typing anything) immediately shows the full list
-///   of options in a suggestion overlay, each row with a leading icon.
-/// - Typing filters that list live, matching anywhere in the option text.
-/// - Tapping a suggestion fills the field and closes the overlay.
-/// - A clear (x) button appears once there's text, same as the page search
-///   bar and the department-form location field.
-/// - Losing focus commits whatever text is currently in the field (so the
-///   user can also type a value that isn't in the predefined list).
-///
-/// Used for Organization, Location and Job Role in the "User Details" form.
-class _SearchableDropdownField extends StatefulWidget {
-  const _SearchableDropdownField({
-    required this.label,
-    required this.items,
-    required this.onChanged,
-    this.initialValue,
-    this.hint = "",
-    this.required = false,
-    this.validator,
-    this.icon = CupertinoIcons.square_grid_2x2,
-    this.emptyLabel = "No matches found",
-  });
-
-  final String label;
-  final List<String> items;
-  final ValueChanged<String> onChanged;
-  final String? initialValue;
-  final String hint;
-  final bool required;
-  final String? Function(String?)? validator;
-
-  /// Leading icon shown on each suggestion row — pass a field-specific icon
-  /// (e.g. a location pin for "Location", a briefcase for "Job Role") the
-  /// same way LocationListScreen/DepartmentListScreen do.
-  final IconData icon;
-
-  /// Shown in the overlay when nothing matches the typed query.
-  final String emptyLabel;
-
-  @override
-  State<_SearchableDropdownField> createState() =>
-      _SearchableDropdownFieldState();
-}
-
-class _SearchableDropdownFieldState extends State<_SearchableDropdownField> {
-  late final TextEditingController _controller;
-  final FocusNode _focusNode = FocusNode();
-  final LayerLink _layerLink = LayerLink();
-  final GlobalKey _fieldKey = GlobalKey();
-  OverlayEntry? _overlayEntry;
-  List<String> _suggestions = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.initialValue ?? "");
-    _focusNode.addListener(_onFocusChanged);
-  }
-
-  @override
-  void dispose() {
-    _removeOverlay();
-    _focusNode.removeListener(_onFocusChanged);
-    _focusNode.dispose();
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _onFocusChanged() {
-    if (_focusNode.hasFocus) {
-      // Tapping the field (even with no text typed yet) shows suggestions.
-      _updateSuggestions(_controller.text);
-    } else {
-      // Small delay so a tap on a suggestion registers before the overlay
-      // is torn down (otherwise the overlay disappears first and the tap
-      // never lands) — same pattern used by the page-level search field.
-      Future.delayed(const Duration(milliseconds: 150), () {
-        if (mounted && !_focusNode.hasFocus) {
-          _removeOverlay();
-          widget.onChanged(_controller.text.trim());
-        }
-      });
-    }
-  }
-
-  void _onTextChanged(String text) {
-    setState(() => _updateSuggestions(text));
-    widget.onChanged(text.trim());
-  }
-
-  void _clear() {
-    setState(() {
-      _controller.clear();
-      _updateSuggestions('');
-    });
-    widget.onChanged('');
-  }
-
-  void _updateSuggestions(String query) {
-    final q = query.trim().toLowerCase();
-    _suggestions = q.isEmpty
-        ? widget.items.take(8).toList()
-        : widget.items
-              .where((e) => e.toLowerCase().contains(q))
-              .take(8)
-              .toList();
-
-    if (!_focusNode.hasFocus) {
-      _removeOverlay();
-      return;
-    }
-    _showOverlay();
-  }
-
-  void _showOverlay() {
-    _removeOverlay();
-
-    final overlay = Overlay.of(context);
-    final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
-    final width = box?.size.width ?? 200.w;
-
-    final placement = _overlayPlacement(
-      context: context,
-      fieldKey: _fieldKey,
-      preferredMaxHeight: 220,
-    );
-
-    _overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        width: width,
-        child: CompositedTransformFollower(
-          link: _layerLink,
-          showWhenUnlinked: false,
-          offset: Offset(0, placement.dy),
-          child: Align(
-            alignment: placement.showAbove
-                ? Alignment.bottomLeft
-                : Alignment.topLeft,
-            child: Material(
-              elevation: 6,
-              borderRadius: BorderRadius.circular(10.r),
-              color: Colors.white,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: placement.maxHeight),
-                child: _suggestions.isEmpty
-                    ? Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12.w,
-                          vertical: 14.h,
-                        ),
-                        child: Text(
-                          widget.emptyLabel,
-                          style: GoogleFonts.inter(
-                            fontSize: 12.5.sp,
-                            color: const Color(0xFF9AA0AB),
-                          ),
-                        ),
-                      )
-                    : ListView.separated(
-                        padding: EdgeInsets.symmetric(vertical: 4.h),
-                        shrinkWrap: true,
-                        physics: const ClampingScrollPhysics(),
-                        itemCount: _suggestions.length,
-                        separatorBuilder: (_, __) =>
-                            const Divider(height: 1, color: Color(0xFFE4E7EC)),
-                        itemBuilder: (context, index) {
-                          final s = _suggestions[index];
-                          return InkWell(
-                            onTap: () => _selectSuggestion(s),
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 12.w,
-                                vertical: 10.h,
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    widget.icon,
-                                    size: 14.r,
-                                    color: const Color(0xFF4338CA),
-                                  ),
-                                  SizedBox(width: 8.w),
-                                  Expanded(
-                                    child: Text(
-                                      s,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 13.sp,
-                                        fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF1D2939),
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    overlay.insert(_overlayEntry!);
-  }
-
-  void _removeOverlay() {
-    _overlayEntry?.remove();
-    _overlayEntry = null;
-  }
-
-  void _selectSuggestion(String value) {
-    setState(() {
-      _controller.text = value;
-      _controller.selection = TextSelection.fromPosition(
-        TextPosition(offset: value.length),
-      );
-    });
-    widget.onChanged(value);
-    _removeOverlay();
-    _focusNode.unfocus();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        RichText(
-          text: TextSpan(
-            text: widget.label,
-            style: GoogleFonts.inter(
-              fontSize: 13.sp,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF3F3F3F),
-            ),
-            children: widget.required
-                ? const [
-                    TextSpan(
-                      text: " *",
-                      style: TextStyle(color: Colors.red),
-                    ),
-                  ]
-                : null,
-          ),
-        ),
-        SizedBox(height: 4.h),
-        CompositedTransformTarget(
-          link: _layerLink,
-          child: TextFormField(
-            key: _fieldKey,
-            controller: _controller,
-            focusNode: _focusNode,
-            validator: widget.validator,
-            onTap: () => _updateSuggestions(_controller.text),
-            onChanged: _onTextChanged,
-            style: GoogleFonts.inter(
-              fontSize: 12.sp,
-              fontWeight: FontWeight.w400,
-              color: const Color(0xFF344054),
-            ),
-            decoration: InputDecoration(
-              isDense: true,
-              hintText: widget.hint,
-              hintStyle: GoogleFonts.inter(
-                fontSize: 12.sp,
-                color: const Color(0xFFB8BEC5),
-              ),
-              errorStyle: TextStyle(fontSize: 10.sp),
-              prefixIcon: Icon(
-                CupertinoIcons.search,
-                size: 14.r,
-                color: const Color(0xFF9AA0AB),
-              ),
-              suffixIcon: _controller.text.isEmpty
-                  ? null
-                  : GestureDetector(
-                      onTap: _clear,
-                      child: Icon(
-                        CupertinoIcons.clear_circled_solid,
-                        size: 14.r,
-                        color: const Color(0xFF9AA0AB),
-                      ),
-                    ),
-              filled: true,
-              fillColor: const Color(0xFFF9FAFC),
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 10.w,
-                vertical: 10.h,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.r),
-                borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.r),
-                borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.r),
-                borderSide: const BorderSide(color: Color(0xFF0A0258)),
-              ),
-              errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.r),
-                borderSide: const BorderSide(color: Colors.red),
-              ),
-              focusedErrorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.r),
-                borderSide: const BorderSide(color: Colors.red),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 // ── Location searchable field (live data) ──────────────────────────────
 //
-// Like `_SearchableDropdownField` above, but backed by real
-// `LocationController` data instead of a static list. Hands the full
-// `LocationModel` back to the parent (not just its name) so the Department
-// field below can be scoped to the chosen location's id.
+// Backed by real `LocationController` data. Hands the full `LocationModel`
+// back to the parent (not just its name) so the Department field below
+// can be scoped to the chosen location's id.
 class _LocationSearchableField extends StatefulWidget {
   const _LocationSearchableField({
     required this.initialValue,
@@ -2799,10 +2461,305 @@ class _OrganizationSearchableFieldState
   }
 }
 
+// ── Job Role searchable field (live data) ───────────────────────────────
+//
+// Same shape as `_DepartmentSearchableField` below — backed by real
+// `JobRoleController` data instead of a static list, and hands the
+// selected role's *title* back to the parent (matching how the employee
+// APIs already accept `jobRole` as a plain string, not an id).
+class _JobRoleSearchableField extends StatefulWidget {
+  const _JobRoleSearchableField({
+    required this.initialValue,
+    required this.onChanged,
+    this.validator,
+  });
+
+  final String? initialValue;
+  final ValueChanged<String> onChanged;
+  final String? Function(String?)? validator;
+
+  @override
+  State<_JobRoleSearchableField> createState() =>
+      _JobRoleSearchableFieldState();
+}
+
+class _JobRoleSearchableFieldState extends State<_JobRoleSearchableField> {
+  late final JobRoleController _jobRoleController = sl<JobRoleController>();
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialValue ?? '',
+  );
+  final FocusNode _focusNode = FocusNode();
+  final LayerLink _layerLink = LayerLink();
+  final GlobalKey _fieldKey = GlobalKey();
+  OverlayEntry? _overlayEntry;
+
+  @override
+  void initState() {
+    super.initState();
+    _jobRoleController.handleGetJobRoles();
+    _focusNode.addListener(_onFocusChanged);
+    _jobRoleController.addListener(_onJobRolesChanged);
+  }
+
+  @override
+  void dispose() {
+    _jobRoleController.removeListener(_onJobRolesChanged);
+    _removeOverlay();
+    _focusNode.removeListener(_onFocusChanged);
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onJobRolesChanged() {
+    if (_focusNode.hasFocus) _showOverlay();
+  }
+
+  void _onFocusChanged() {
+    if (_focusNode.hasFocus) {
+      _showOverlay();
+    } else {
+      // Small delay so a tap on a suggestion registers before the overlay
+      // is torn down.
+      Future.delayed(const Duration(milliseconds: 150), () {
+        if (mounted && !_focusNode.hasFocus) _removeOverlay();
+      });
+    }
+  }
+
+  void _onTextChanged(String text) {
+    setState(() {});
+    widget.onChanged(text.trim());
+    _showOverlay();
+  }
+
+  void _clear() {
+    setState(() => _controller.clear());
+    widget.onChanged('');
+    _showOverlay();
+  }
+
+  void _select(String title) {
+    setState(() {
+      _controller.text = title;
+      _controller.selection = TextSelection.fromPosition(
+        TextPosition(offset: title.length),
+      );
+    });
+    widget.onChanged(title);
+    _removeOverlay();
+    _focusNode.unfocus();
+  }
+
+  void _showOverlay() {
+    _removeOverlay();
+
+    final overlay = Overlay.of(context);
+    final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+    final width = box?.size.width ?? 200.w;
+
+    final placement = _overlayPlacement(
+      context: context,
+      fieldKey: _fieldKey,
+      preferredMaxHeight: 240,
+    );
+
+    final q = _controller.text.trim().toLowerCase();
+    final results = q.isEmpty
+        ? _jobRoleController.jobRoles
+        : _jobRoleController.jobRoles
+              .where((j) => j.title.toLowerCase().contains(q))
+              .toList();
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        width: width,
+        child: CompositedTransformFollower(
+          link: _layerLink,
+          showWhenUnlinked: false,
+          offset: Offset(0, placement.dy),
+          child: Align(
+            alignment: placement.showAbove
+                ? Alignment.bottomLeft
+                : Alignment.topLeft,
+            child: Material(
+              elevation: 6,
+              borderRadius: BorderRadius.circular(10.r),
+              color: Colors.white,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: placement.maxHeight),
+                child: _jobRoleController.isLoading
+                    ? Padding(
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
+                        child: Center(
+                          child: SizedBox(
+                            width: 16.r,
+                            height: 16.r,
+                            child: const CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        ),
+                      )
+                    : results.isEmpty
+                    ? Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 14.h,
+                        ),
+                        child: Text(
+                          "No job roles found",
+                          style: GoogleFonts.inter(
+                            fontSize: 12.sp,
+                            color: const Color(0xFF9AA0AB),
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: EdgeInsets.symmetric(vertical: 4.h),
+                        shrinkWrap: true,
+                        itemCount: results.length,
+                        separatorBuilder: (_, __) => const Divider(
+                          height: 1,
+                          color: Color(0xFFE4E7EC),
+                        ),
+                        itemBuilder: (context, index) {
+                          final role = results[index];
+                          return InkWell(
+                            onTap: () => _select(role.title),
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12.w,
+                                vertical: 10.h,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    CupertinoIcons.briefcase_fill,
+                                    size: 14.r,
+                                    color: const Color(0xFF4338CA),
+                                  ),
+                                  SizedBox(width: 8.w),
+                                  Expanded(
+                                    child: Text(
+                                      role.title,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF1D2939),
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(_overlayEntry!);
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Job Role",
+          style: GoogleFonts.inter(
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF3F3F3F),
+          ),
+        ),
+        SizedBox(height: 4.h),
+        CompositedTransformTarget(
+          link: _layerLink,
+          child: TextFormField(
+            key: _fieldKey,
+            controller: _controller,
+            focusNode: _focusNode,
+            validator: widget.validator,
+            onTap: _showOverlay,
+            onChanged: _onTextChanged,
+            style: GoogleFonts.inter(
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w400,
+              color: const Color(0xFF344054),
+            ),
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: "Search job role",
+              hintStyle: GoogleFonts.inter(
+                fontSize: 12.sp,
+                color: const Color(0xFFB8BEC5),
+              ),
+              errorStyle: TextStyle(fontSize: 10.sp),
+              prefixIcon: Icon(
+                CupertinoIcons.briefcase_fill,
+                size: 14.r,
+                color: const Color(0xFF9AA0AB),
+              ),
+              suffixIcon: _controller.text.isEmpty
+                  ? null
+                  : GestureDetector(
+                      onTap: _clear,
+                      child: Icon(
+                        CupertinoIcons.clear_circled_solid,
+                        size: 14.r,
+                        color: const Color(0xFF9AA0AB),
+                      ),
+                    ),
+              filled: true,
+              fillColor: const Color(0xFFF9FAFC),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 10.w,
+                vertical: 10.h,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.r),
+                borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.r),
+                borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.r),
+                borderSide: const BorderSide(color: Color(0xFF0A0258)),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.r),
+                borderSide: const BorderSide(color: Colors.red),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.r),
+                borderSide: const BorderSide(color: Colors.red),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 // ── Department searchable field (live data + inline "Add Department") ─────
 //
-// Like `_SearchableDropdownField` above, but backed by real
-// `DepartmentController` data instead of a static list, and with a pinned
+// Backed by real `DepartmentController` data, and with a pinned
 // "+ Add Department" row at the top of its dropdown that opens the same
 // create-department popup as DepartmentListScreen. Locked (disabled) until
 // a Location has been chosen in the parent form, mirroring the "New
