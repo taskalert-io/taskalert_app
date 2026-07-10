@@ -76,6 +76,7 @@ import '../core/features/departments/data/models/department_model.dart';
 import '../core/features/employees/controllers/employee_controller.dart';
 import '../core/features/employees/data/models/employee_model.dart';
 import '../core/features/jobRoles/controllers/job_role_controller.dart';
+import '../core/features/jobRoles/data/models/job_role_model.dart';
 import '../core/features/location/controllers/location_controller.dart';
 import '../core/features/location/data/models/location_model.dart';
 import '../core/features/organization/controllers/organization_controller.dart';
@@ -432,17 +433,28 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     final emailCtrl = TextEditingController(text: existing?.email ?? "");
     final phoneCtrl = TextEditingController(text: existing?.phoneNumber ?? "");
 
-    final dobDayCtrl = TextEditingController();
-    final dobMonthCtrl = TextEditingController();
-    final dobYearCtrl = TextEditingController();
+    final dobDayCtrl = TextEditingController(
+      text: existing?.dateOfBirth?.day.toString().padLeft(2, '0') ?? "",
+    );
+    final dobMonthCtrl = TextEditingController(
+      text: existing?.dateOfBirth?.month.toString().padLeft(2, '0') ?? "",
+    );
+    final dobYearCtrl = TextEditingController(
+      text: existing?.dateOfBirth?.year.toString() ?? "",
+    );
 
-    String? selectedGender;
+    final genderMatches = _genderOptions.where(
+      (g) => g.toLowerCase() == (existing?.gender ?? '').toLowerCase(),
+    );
+    String? selectedGender = genderMatches.isNotEmpty
+        ? genderMatches.first
+        : null;
     OrganizationModel? selectedOrganization;
     LocationModel? selectedLocation;
-    String? selectedDepartment = existing?.department;
-    String? selectedJobRole = existing?.jobRole;
+    DepartmentModel? selectedDepartment;
+    JobRoleModel? selectedJobRole;
     File? selectedImageFile;
-    bool taskPermission = false;
+    bool taskPermission = existing?.taskPermission ?? false;
     String selectedPermissionLevel = "View Only";
 
     bool autoValidate = false;
@@ -635,17 +647,26 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
                         SizedBox(height: 7.w),
                         _LocationSearchableField(
-                          initialValue: selectedLocation?.name,
+                          initialValue: existing?.location,
                           // Department (below) is locked until a Location
                           // is chosen and scoped to whichever one is
                           // picked, so this needs to trigger a rebuild —
                           // not just update local state silently.
                           onChanged: (loc) => ss(() {
+                            // The very first call on an edit form can be the
+                            // field auto-resolving `existing.location` into
+                            // its real model (see _LocationSearchableField's
+                            // _tryResolveInitial) rather than the user
+                            // actually switching locations — don't wipe out
+                            // the department that's already correct for it.
+                            final isInitialAutoMatch =
+                                selectedLocation == null &&
+                                existing != null &&
+                                loc?.name == existing.location;
                             selectedLocation = loc;
-                            // Changing location invalidates whatever
-                            // department was previously chosen, since
-                            // departments are scoped to a location.
-                            selectedDepartment = null;
+                            if (!isInitialAutoMatch) {
+                              selectedDepartment = null;
+                            }
                           }),
                         ),
 
@@ -659,9 +680,13 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
                         SizedBox(height: 7.w),
                         _JobRoleSearchableField(
-                          initialValue: selectedJobRole,
-                          onChanged: (v) => selectedJobRole = v,
-                          validator: (v) => (v == null || v.trim().isEmpty)
+                          initialValue: existing?.jobRole,
+                          onChanged: (v) => ss(() => selectedJobRole = v),
+                          // Checks the resolved model, not just the text —
+                          // typing free text that doesn't match a real job
+                          // role leaves `selectedJobRole` null, which would
+                          // otherwise send an empty/invalid job role id.
+                          validator: (v) => selectedJobRole == null
                               ? "Select a job role"
                               : null,
                         ),
@@ -679,8 +704,17 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                         _DepartmentSearchableField(
                           enabled: selectedLocation != null,
                           locationId: selectedLocation?.id,
-                          initialValue: selectedDepartment,
+                          initialValue: existing?.department,
                           onChanged: (v) => ss(() => selectedDepartment = v),
+                          // Checks the resolved model, not just the text —
+                          // typing something that doesn't match a real
+                          // department (or submitting before it auto-
+                          // resolves) leaves `selectedDepartment` null,
+                          // which is exactly what sent an empty/invalid
+                          // department id to the API before.
+                          validator: (v) => selectedDepartment == null
+                              ? "Select a department"
+                              : null,
                         ),
                         SizedBox(height: 7.h),
 
@@ -783,6 +817,42 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
                                         ss(() => isSubmitting = true);
 
+                                        final dobText =
+                                            dobDayCtrl.text.trim().isNotEmpty &&
+                                                dobMonthCtrl.text
+                                                    .trim()
+                                                    .isNotEmpty &&
+                                                dobYearCtrl.text
+                                                    .trim()
+                                                    .isNotEmpty
+                                            ? "${dobYearCtrl.text.trim()}-${dobMonthCtrl.text.trim().padLeft(2, '0')}-${dobDayCtrl.text.trim().padLeft(2, '0')}"
+                                            : existing?.dateOfBirth
+                                                  ?.toIso8601String();
+                                        final genderValue =
+                                            (selectedGender ?? existing?.gender)
+                                                ?.toLowerCase();
+                                        // Auto-resolved from the existing
+                                        // display name/id once the real
+                                        // lists load (see
+                                        // _LocationSearchableField /
+                                        // _OrganizationSearchableField's
+                                        // _tryResolveInitial) — so these are
+                                        // populated on edit even without the
+                                        // user touching the field.
+                                        final organizationId =
+                                            selectedOrganization?.id;
+                                        final locationId = selectedLocation?.id;
+                                        // Same auto-resolve story as
+                                        // organization/location — matched
+                                        // against the loaded lists so these
+                                        // are real ids, not display names
+                                        // (the API rejects a plain name as
+                                        // an invalid id format).
+                                        final jobRoleId =
+                                            selectedJobRole?.id ?? '';
+                                        final departmentId =
+                                            selectedDepartment?.id;
+
                                         final bool success;
                                         if (existing == null) {
                                           success = await employeeController
@@ -791,21 +861,18 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                                     .trim(),
                                                 lastName: lastNameCtrl.text
                                                     .trim(),
-                                                jobRole: selectedJobRole ?? '',
+                                                jobRole: jobRoleId,
                                                 email: emailCtrl.text.trim(),
                                                 phoneNumber: phoneCtrl.text
                                                     .trim(),
-                                                department: selectedDepartment,
+                                                department: departmentId,
+                                                organization: organizationId,
+                                                location: locationId,
+                                                gender: genderValue,
+                                                dateOfBirth: dobText,
+                                                taskPermission: taskPermission,
                                                 imageFilePath:
                                                     selectedImageFile?.path,
-                                                // TODO: add these params to
-                                                // EmployeeController /
-                                                // EmployeeModel once ready:
-                                                // organization: selectedOrganization,
-                                                // gender: selectedGender,
-                                                // location: selectedLocation,
-                                                // dateOfBirth: "$dobDayCtrl/$dobMonthCtrl/$dobYearCtrl",
-                                                // taskPermission: taskPermission,
                                               );
                                         } else {
                                           success = await employeeController
@@ -815,11 +882,16 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                                     .trim(),
                                                 lastName: lastNameCtrl.text
                                                     .trim(),
-                                                jobRole: selectedJobRole ?? '',
+                                                jobRole: jobRoleId,
                                                 email: emailCtrl.text.trim(),
                                                 phoneNumber: phoneCtrl.text
                                                     .trim(),
-                                                department: selectedDepartment,
+                                                department: departmentId,
+                                                organization: organizationId,
+                                                location: locationId,
+                                                gender: genderValue,
+                                                dateOfBirth: dobText,
+                                                taskPermission: taskPermission,
                                                 imageFilePath:
                                                     selectedImageFile?.path,
                                               );
@@ -830,6 +902,8 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
                                         if (success) {
                                           Navigator.pop(ctx);
+                                          employeeController
+                                              .handleGetEmployees();
                                           ScaffoldMessenger.of(
                                             context,
                                           ).showSnackBar(
@@ -1347,6 +1421,10 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         _selectedIds.remove(employee.id);
       });
 
+      if (success) {
+        employeeController.handleGetEmployees();
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -1820,6 +1898,10 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                 employee.organization ?? "-",
               ),
               _cardDetail(
+                CupertinoIcons.location_solid,
+                employee.location ?? "-",
+              ),
+              _cardDetail(
                 CupertinoIcons.phone_fill,
                 employee.phoneNumber ?? "-",
               ),
@@ -1885,8 +1967,7 @@ class _LocationSearchableField extends StatefulWidget {
 }
 
 class _LocationSearchableFieldState extends State<_LocationSearchableField> {
-  late final LocationController _locationController =
-      sl<LocationController>();
+  late final LocationController _locationController = sl<LocationController>();
   late final TextEditingController _controller = TextEditingController(
     text: widget.initialValue ?? '',
   );
@@ -1894,6 +1975,7 @@ class _LocationSearchableFieldState extends State<_LocationSearchableField> {
   final LayerLink _layerLink = LayerLink();
   final GlobalKey _fieldKey = GlobalKey();
   OverlayEntry? _overlayEntry;
+  bool _resolvedInitial = false;
 
   @override
   void initState() {
@@ -1913,7 +1995,27 @@ class _LocationSearchableFieldState extends State<_LocationSearchableField> {
     super.dispose();
   }
 
+  // Editing an existing employee only has the location's display name (or
+  // id) to start from, not the full model — once the real list loads, match
+  // it up so the parent gets the id (needed to scope the Department field)
+  // without the user having to reselect a Location that's already correct.
+  void _tryResolveInitial() {
+    if (_resolvedInitial) return;
+    final initial = widget.initialValue;
+    if (initial == null || initial.isEmpty) {
+      _resolvedInitial = true;
+      return;
+    }
+    if (_locationController.locations.isEmpty) return;
+    final matches = _locationController.locations.where(
+      (l) => l.name == initial || l.id == initial,
+    );
+    _resolvedInitial = true;
+    if (matches.isNotEmpty) widget.onChanged(matches.first);
+  }
+
   void _onLocationsChanged() {
+    _tryResolveInitial();
     if (_focusNode.hasFocus) _showOverlay();
   }
 
@@ -2024,10 +2126,8 @@ class _LocationSearchableFieldState extends State<_LocationSearchableField> {
                         padding: EdgeInsets.symmetric(vertical: 4.h),
                         shrinkWrap: true,
                         itemCount: results.length,
-                        separatorBuilder: (_, __) => const Divider(
-                          height: 1,
-                          color: Color(0xFFE4E7EC),
-                        ),
+                        separatorBuilder: (_, __) =>
+                            const Divider(height: 1, color: Color(0xFFE4E7EC)),
                         itemBuilder: (context, index) {
                           final loc = results[index];
                           return InkWell(
@@ -2193,6 +2293,7 @@ class _OrganizationSearchableFieldState
   final LayerLink _layerLink = LayerLink();
   final GlobalKey _fieldKey = GlobalKey();
   OverlayEntry? _overlayEntry;
+  bool _resolvedInitial = false;
 
   @override
   void initState() {
@@ -2212,7 +2313,27 @@ class _OrganizationSearchableFieldState
     super.dispose();
   }
 
+  // Editing an existing employee only has the organization's display name
+  // (or id) to start from, not the full model — once the real list loads,
+  // match it up so the parent gets the id without the user having to
+  // reselect an Organization that's already correct.
+  void _tryResolveInitial() {
+    if (_resolvedInitial) return;
+    final initial = widget.initialValue;
+    if (initial == null || initial.isEmpty) {
+      _resolvedInitial = true;
+      return;
+    }
+    if (_organizationController.organizations.isEmpty) return;
+    final matches = _organizationController.organizations.where(
+      (o) => o.name == initial || o.id == initial,
+    );
+    _resolvedInitial = true;
+    if (matches.isNotEmpty) widget.onChanged(matches.first);
+  }
+
   void _onOrganizationsChanged() {
+    _tryResolveInitial();
     if (_focusNode.hasFocus) _showOverlay();
   }
 
@@ -2323,10 +2444,8 @@ class _OrganizationSearchableFieldState
                         padding: EdgeInsets.symmetric(vertical: 4.h),
                         shrinkWrap: true,
                         itemCount: results.length,
-                        separatorBuilder: (_, __) => const Divider(
-                          height: 1,
-                          color: Color(0xFFE4E7EC),
-                        ),
+                        separatorBuilder: (_, __) =>
+                            const Divider(height: 1, color: Color(0xFFE4E7EC)),
                         itemBuilder: (context, index) {
                           final org = results[index];
                           return InkWell(
@@ -2475,7 +2594,7 @@ class _JobRoleSearchableField extends StatefulWidget {
   });
 
   final String? initialValue;
-  final ValueChanged<String> onChanged;
+  final ValueChanged<JobRoleModel?> onChanged;
   final String? Function(String?)? validator;
 
   @override
@@ -2492,6 +2611,7 @@ class _JobRoleSearchableFieldState extends State<_JobRoleSearchableField> {
   final LayerLink _layerLink = LayerLink();
   final GlobalKey _fieldKey = GlobalKey();
   OverlayEntry? _overlayEntry;
+  bool _resolvedInitial = false;
 
   @override
   void initState() {
@@ -2511,7 +2631,27 @@ class _JobRoleSearchableFieldState extends State<_JobRoleSearchableField> {
     super.dispose();
   }
 
+  // Editing an existing employee only has the job role's display title (or
+  // id) to start from, not the full model — once the real list loads, match
+  // it up so the parent gets the id the create/update API actually requires
+  // (a plain title string is rejected as an invalid id format).
+  void _tryResolveInitial() {
+    if (_resolvedInitial) return;
+    final initial = widget.initialValue;
+    if (initial == null || initial.isEmpty) {
+      _resolvedInitial = true;
+      return;
+    }
+    if (_jobRoleController.jobRoles.isEmpty) return;
+    final matches = _jobRoleController.jobRoles.where(
+      (j) => j.title == initial || j.id == initial,
+    );
+    _resolvedInitial = true;
+    if (matches.isNotEmpty) widget.onChanged(matches.first);
+  }
+
   void _onJobRolesChanged() {
+    _tryResolveInitial();
     if (_focusNode.hasFocus) _showOverlay();
   }
 
@@ -2529,24 +2669,27 @@ class _JobRoleSearchableFieldState extends State<_JobRoleSearchableField> {
 
   void _onTextChanged(String text) {
     setState(() {});
-    widget.onChanged(text.trim());
+    // Manual typing invalidates whatever was previously selected — a valid
+    // choice only exists once the user picks a suggestion below, since we
+    // need the job role's id, not just its title.
+    widget.onChanged(null);
     _showOverlay();
   }
 
   void _clear() {
     setState(() => _controller.clear());
-    widget.onChanged('');
+    widget.onChanged(null);
     _showOverlay();
   }
 
-  void _select(String title) {
+  void _select(JobRoleModel role) {
     setState(() {
-      _controller.text = title;
+      _controller.text = role.title;
       _controller.selection = TextSelection.fromPosition(
-        TextPosition(offset: title.length),
+        TextPosition(offset: role.title.length),
       );
     });
-    widget.onChanged(title);
+    widget.onChanged(role);
     _removeOverlay();
     _focusNode.unfocus();
   }
@@ -2619,14 +2762,12 @@ class _JobRoleSearchableFieldState extends State<_JobRoleSearchableField> {
                         padding: EdgeInsets.symmetric(vertical: 4.h),
                         shrinkWrap: true,
                         itemCount: results.length,
-                        separatorBuilder: (_, __) => const Divider(
-                          height: 1,
-                          color: Color(0xFFE4E7EC),
-                        ),
+                        separatorBuilder: (_, __) =>
+                            const Divider(height: 1, color: Color(0xFFE4E7EC)),
                         itemBuilder: (context, index) {
                           final role = results[index];
                           return InkWell(
-                            onTap: () => _select(role.title),
+                            onTap: () => _select(role),
                             child: Padding(
                               padding: EdgeInsets.symmetric(
                                 horizontal: 12.w,
@@ -2778,7 +2919,7 @@ class _DepartmentSearchableField extends StatefulWidget {
   // form — only departments whose `location.id` matches this are shown.
   final String? locationId;
   final String? initialValue;
-  final ValueChanged<String> onChanged;
+  final ValueChanged<DepartmentModel?> onChanged;
   final String? Function(String?)? validator;
 
   @override
@@ -2798,6 +2939,8 @@ class _DepartmentSearchableFieldState
   final LayerLink _layerLink = LayerLink();
   final GlobalKey _fieldKey = GlobalKey();
   OverlayEntry? _overlayEntry;
+  bool _resolvedInitial = false;
+  bool _userInteracted = false;
 
   @override
   void initState() {
@@ -2812,9 +2955,17 @@ class _DepartmentSearchableFieldState
     super.didUpdateWidget(oldWidget);
     // Location was cleared or switched out from under us — reset so a
     // stale department name can't be submitted for a location that's no
-    // longer selected (or a different one).
+    // longer selected (or a different one). Exception: on an edit form the
+    // very first `locationId` transition (null -> real id) is the Location
+    // field auto-resolving `existing.location`, not the user switching
+    // locations — don't wipe the department that's already correct for it.
     final locationChanged = widget.locationId != oldWidget.locationId;
-    if ((!widget.enabled && oldWidget.enabled) || locationChanged) {
+    final isInitialLocationResolve =
+        oldWidget.locationId == null &&
+        widget.locationId != null &&
+        !_userInteracted;
+    if ((!widget.enabled && oldWidget.enabled) ||
+        (locationChanged && !isInitialLocationResolve)) {
       // Just the local visual reset — the parent already cleared its own
       // `selectedDepartment` state when the location changed.
       _controller.clear();
@@ -2833,7 +2984,27 @@ class _DepartmentSearchableFieldState
     super.dispose();
   }
 
+  // Editing an existing employee only has the department's display name (or
+  // id) to start from, not the full model — once the real list loads, match
+  // it up so the parent gets the id the create/update API actually requires
+  // (a plain name string is rejected as an invalid id format).
+  void _tryResolveInitial() {
+    if (_resolvedInitial) return;
+    final initial = widget.initialValue;
+    if (initial == null || initial.isEmpty) {
+      _resolvedInitial = true;
+      return;
+    }
+    if (_departmentController.departments.isEmpty) return;
+    final matches = _departmentController.departments.where(
+      (d) => d.name == initial || d.id == initial,
+    );
+    _resolvedInitial = true;
+    if (matches.isNotEmpty) widget.onChanged(matches.first);
+  }
+
   void _onDepartmentsChanged() {
+    _tryResolveInitial();
     if (_focusNode.hasFocus) _showOverlay();
   }
 
@@ -2855,24 +3026,31 @@ class _DepartmentSearchableFieldState
 
   void _onTextChanged(String text) {
     setState(() {});
-    widget.onChanged(text.trim());
+    _userInteracted = true;
+    // Manual typing invalidates whatever was previously selected — a valid
+    // choice only exists once the user picks a suggestion below, since we
+    // need the department's id, not just its name.
+    widget.onChanged(null);
     _departmentController.handleGetDepartments(search: text.trim());
   }
 
   void _clear() {
     setState(() => _controller.clear());
-    widget.onChanged('');
+    _userInteracted = true;
+    widget.onChanged(null);
     _departmentController.handleGetDepartments(search: '');
   }
 
-  void _select(String name) {
+  void _select(DepartmentModel dept) {
+    final name = dept.name ?? '';
     setState(() {
       _controller.text = name;
       _controller.selection = TextSelection.fromPosition(
         TextPosition(offset: name.length),
       );
     });
-    widget.onChanged(name);
+    _userInteracted = true;
+    widget.onChanged(dept);
     _removeOverlay();
     _focusNode.unfocus();
   }
@@ -2884,7 +3062,7 @@ class _DepartmentSearchableFieldState
       context,
       departmentController: _departmentController,
       locationController: _locationController,
-      onCreated: (dept) => _select(dept.name ?? ''),
+      onCreated: (dept) => _select(dept),
     );
   }
 
@@ -3000,7 +3178,7 @@ class _DepartmentSearchableFieldState
                           itemBuilder: (context, index) {
                             final dept = results[index];
                             return InkWell(
-                              onTap: () => _select(dept.name ?? ''),
+                              onTap: () => _select(dept),
                               child: Padding(
                                 padding: EdgeInsets.symmetric(
                                   horizontal: 12.w,
