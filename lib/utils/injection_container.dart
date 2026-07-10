@@ -15,6 +15,9 @@ import 'package:taskalert_app/core/features/jobRoles/data/repositories/job_role_
 import 'package:taskalert_app/core/features/location/controllers/location_controller.dart';
 import 'package:taskalert_app/core/features/location/data/repositories/location_repository.dart';
 import 'package:taskalert_app/core/features/location/data/repositories/location_repository_impl.dart';
+import 'package:taskalert_app/core/features/notifications/controllers/notification_controller.dart';
+import 'package:taskalert_app/core/features/notifications/data/repositories/notification_repository.dart';
+import 'package:taskalert_app/core/features/notifications/data/repositories/notification_repository_impl.dart';
 import 'package:taskalert_app/core/features/organization/controllers/organization_controller.dart';
 import 'package:taskalert_app/core/features/organization/data/repositories/organization_repository.dart';
 import 'package:taskalert_app/core/features/organization/data/repositories/organization_repository_impl.dart';
@@ -92,6 +95,13 @@ Future<void> init() async {
     () => JobRoleRepositoryImpl(sl<HttpService>()),
   );
   sl.registerFactory(() => JobRoleController(sl<JobRoleRepository>()));
+
+  sl.registerLazySingleton<NotificationRepository>(
+    () => NotificationRepositoryImpl(sl<HttpService>()),
+  );
+  sl.registerFactory(
+    () => NotificationController(sl<NotificationRepository>()),
+  );
 
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(sl<HttpService>(), sl<FlutterSecureStorage>()),
