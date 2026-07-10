@@ -2586,7 +2586,11 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                         );
                       }
                       final departments = departmentController.departments
-                          .where((d) => d.location?.id == selectedLocation?.id)
+                          .where(
+                            (d) => d.location.any(
+                              (l) => l.id == selectedLocation?.id,
+                            ),
+                          )
                           .toList();
                       if (departments.isEmpty) {
                         return Padding(
