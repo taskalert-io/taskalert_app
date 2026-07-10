@@ -66,20 +66,12 @@ class EmployeeController extends ChangeNotifier {
       final apiResponse =
           (result as Success).data as BaseApiResponse<List<EmployeeModel>>;
 
-      print(department);
-
       if (department != null) {
         _employees = apiResponse.data ?? [];
       } else {
         _allEmployees = apiResponse.data ?? [];
       }
 
-      // print(_allEmployees);
-
-      // print all employee names for debugging
-      // print(
-      //   "Fetched employees: ${_employees.map((e) => e.fullName).join(", ")}",
-      // );
       _pagination = apiResponse
           .pagination; // Capture automatic pagination tracking fields safely
     } else if (result is Failure) {
@@ -95,6 +87,7 @@ class EmployeeController extends ChangeNotifier {
     required String email,
     required String phoneNumber,
     required String jobRole,
+    String? department,
     String? imageFilePath,
   }) async {
     _isLoading = true;
@@ -110,7 +103,7 @@ class EmployeeController extends ChangeNotifier {
       jobRole: jobRole,
       imageFilePath: imageFilePath,
       gender: '',
-      department: '',
+      department: department ?? '',
     );
 
     _isLoading = false;
@@ -120,10 +113,12 @@ class EmployeeController extends ChangeNotifier {
           (result as Success).data as BaseApiResponse<EmployeeModel>;
       _successMessage = apiResponse.message;
       if (apiResponse.data != null) {
-        _employees.insert(
-          0,
-          apiResponse.data!,
-        ); // Optimistically prepend to active local arrays list view
+        // Optimistically prepend to both local list views — `employees` is
+        // the department-scoped list (Create*Screen's "Assign to" pickers),
+        // `allEmployees` is the unscoped list (EmployeesScreen's Users List)
+        // — a create should show up in whichever one is currently in use.
+        _employees.insert(0, apiResponse.data!);
+        _allEmployees.insert(0, apiResponse.data!);
       }
       notifyListeners();
       return true;
@@ -143,6 +138,7 @@ class EmployeeController extends ChangeNotifier {
     required String email,
     required String phoneNumber,
     required String jobRole,
+    String? department,
     String? imageFilePath,
   }) async {
     _isLoading = true;
@@ -159,7 +155,7 @@ class EmployeeController extends ChangeNotifier {
       jobRole: jobRole,
       imageFilePath: imageFilePath,
       gender: '',
-      department: '',
+      department: department ?? '',
     );
 
     _isLoading = false;
@@ -169,9 +165,14 @@ class EmployeeController extends ChangeNotifier {
           (result as Success).data as BaseApiResponse<EmployeeModel>;
       _successMessage = apiResponse.message;
 
-      final index = _employees.indexWhere((element) => element.id == id);
-      if (index != -1 && apiResponse.data != null) {
-        _employees[index] = apiResponse.data!;
+      if (apiResponse.data != null) {
+        final index = _employees.indexWhere((element) => element.id == id);
+        if (index != -1) _employees[index] = apiResponse.data!;
+
+        final allIndex = _allEmployees.indexWhere(
+          (element) => element.id == id,
+        );
+        if (allIndex != -1) _allEmployees[allIndex] = apiResponse.data!;
       }
       notifyListeners();
       return true;
@@ -197,6 +198,7 @@ class EmployeeController extends ChangeNotifier {
       final apiResponse = (result as Success).data as BaseApiResponse<dynamic>;
       _successMessage = apiResponse.message;
       _employees.removeWhere((element) => element.id == id);
+      _allEmployees.removeWhere((element) => element.id == id);
       notifyListeners();
       return true;
     } else if (result is Failure) {
