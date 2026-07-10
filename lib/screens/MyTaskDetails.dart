@@ -6,9 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
-// TODO: add these to pubspec.yaml -> file_picker: ^8.x.x , image_picker: ^1.x.x
-import 'package:file_picker/file_picker.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:taskalert_app/core/features/taskInstance/controllers/task_instance_controller.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
 import '../components/CustomAppBar.dart';
@@ -180,6 +177,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       "text ever since the 1500s, when an unknown printer "
       "took a galley of type.";
   String _assignTo = 'Guadalupe Mró';
+  List<String> _assigneeIds = []; // Raw IDs — used when saving, not display
   String _reportTo = 'Guadalupe Mró';
   String _priority = 'Low';
   String _status = 'To Do';
@@ -197,15 +195,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     'Henry Wilson',
     'Irene Taylor',
   ];
-  static const _reportToItems = [
-    'Manager',
-    'Team Lead',
-    'Director',
-    'HR',
-    'Guadalupe Mró',
-    'Alice Johnson',
-    'Bob Smith',
-  ];
   static const _priorityItems = ['Low', 'Medium', 'High'];
   static const _statusItems = ['To Do', 'In Progress', 'Completed'];
 
@@ -215,6 +204,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   // late final TaskInstanceController taskController;
   TaskInstanceController taskController = sl<TaskInstanceController>();
+  final EmployeeController employeeController = sl<EmployeeController>();
 
   //create state variable to hold the scheduled time and period
 
@@ -236,7 +226,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       // the real instance data is being fetched.
       _isLoading = true;
       WidgetsBinding.instance.addPostFrameCallback((_) async {
-        await taskController.handleGetInstanceById(instanceId: widget.taskId!);
+        await Future.wait([
+          taskController.handleGetInstanceById(instanceId: widget.taskId!),
+          employeeController.handleGetEmployees(),
+        ]);
         final currentUserId = await secureStorage.read(key: 'user_id');
 
         if (mounted) {
@@ -251,8 +244,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             _priority = _titleCase(instance?.priority ?? _priority);
             _status = _statusLabel(instance?.status ?? '');
 
-            _assignTo = instance != null && instance.assignees.isNotEmpty
-                ? instance.assignees.map((a) => a.fullName).join(', ')
+            _assigneeIds = instance?.assignees ?? [];
+            _assignTo = _assigneeIds.isNotEmpty
+                ? _assigneeIds.map((id) => _employeeNameById(id)).join(', ')
                 : 'Unassigned';
             _reportTo = (instance?.createdBy?.fullName.isNotEmpty ?? false)
                 ? instance!.createdBy!.fullName
@@ -300,6 +294,19 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   String _titleCase(String s) =>
       s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
+  /// Resolves an assignee ID (the instance only carries raw user IDs) to a
+  /// display name via the employee directory; falls back to the raw ID if
+  /// the employee isn't found in the currently loaded list.
+  String _employeeNameById(String id) {
+    for (final employee in employeeController.allEmployees) {
+      if (employee.id == id) {
+        final name = employee.fullName;
+        return name.isNotEmpty ? name : id;
+      }
+    }
+    return id;
+  }
 
   String _statusLabel(String status) {
     switch (status) {
@@ -687,6 +694,28 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           ),
         ],
       ),
+    ),
+  );
+
+  // ── Static col (non-editable) — e.g. Assigned By ──────────────────────────
+  Widget _staticCol(String label, String val) => Expanded(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF4A4A4A),
+          ),
+        ),
+        SizedBox(height: 3.h),
+        Text(
+          val,
+          style: GoogleFonts.inter(fontSize: 11.sp, color: _labelColor),
+        ),
+      ],
     ),
   );
 
@@ -1572,16 +1601,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   onSelect: (v) => setState(() => _assignTo = v),
                 ),
               ),
-              _assignCol(
-                'Reporting to',
-                _reportTo,
-                () => _showSearchableSheet(
-                  title: 'Reporting To',
-                  items: _reportToItems,
-                  selected: _reportTo,
-                  onSelect: (v) => setState(() => _reportTo = v),
-                ),
-              ),
+              _staticCol('Assigned By', _reportTo),
             ],
           ),
         ),
@@ -1956,6 +1976,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                     vertical: 2.h,
                                   ),
                                   child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       // Schedule Date — read-only, never editable
                                       _staticInfoRow(
@@ -2082,18 +2104,19 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
                                           setState(() => _isSaving = true);
 
+                                          print(_priority);
+
                                           final success = await taskController
                                               .handleUpdateInstanceConfiguration(
                                                 taskId: widget.mainTaskId ?? '',
                                                 instanceId: widget.taskId ?? '',
                                                 status: statusAfterUpdate,
-                                                assigneeIds: [_assignTo],
-                                                priority: _priority,
+                                                assigneeIds: _assigneeIds,
+                                                priority: _priority
+                                                    .toLowerCase(),
                                                 time: _scheduledTimeValue,
                                                 period: _scheduledPeriodValue,
 
-                                                // scheduledDate: _selectedDate,
-                                                // scheduledTime: _assignTimeEnabled,
                                                 scope: 'single',
                                               );
 
