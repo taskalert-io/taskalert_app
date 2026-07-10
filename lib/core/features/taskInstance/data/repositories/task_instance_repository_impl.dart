@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:dio/dio.dart';
 import 'package:taskalert_app/core/features/taskInstance/data/models/task_instances_response.dart';
 
 import '../../../../network/api_result.dart';
@@ -180,6 +183,60 @@ class TaskInstanceRepositoryImpl implements TaskInstanceRepository {
       final responseData = await _httpService.put(
         '/tasks/instance/update/$instanceId',
         body: body,
+      );
+
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData as Map<String, dynamic>,
+        (json) => TaskInstanceModel.fromJson(json as Map<String, dynamic>),
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    } catch (e) {
+      // Guards against unexpected response shapes (e.g. a field the backend
+      // returns differently than expected) so a parsing bug surfaces as a
+      // normal failure instead of an uncaught exception that leaves the
+      // caller's loading state stuck forever.
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
+    }
+  }
+
+  /// 5. PUT: Upload Proof Files for an Instance (multipart Form-Data)
+  @override
+  Future<ApiResult<BaseApiResponse<TaskInstanceModel>>>
+  uploadInstanceProofFiles({
+    required String taskId,
+    required String instanceId,
+    required List<File> proofFiles,
+  }) async {
+    try {
+      final List<MultipartFile> multipartFiles = [];
+      for (var file in proofFiles) {
+        multipartFiles.add(
+          await MultipartFile.fromFile(
+            file.path,
+            filename: file.path.split('/').last,
+          ),
+        );
+      }
+
+      final formData = FormData.fromMap({'proofFiles': multipartFiles});
+
+      final responseData = await _httpService.put(
+        '/tasks/$taskId/instances/$instanceId/proof',
+        body: formData,
       );
 
       final apiResponse = BaseApiResponse.fromJson(

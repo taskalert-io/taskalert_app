@@ -1019,19 +1019,44 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     ),
   );
 
-  /// "Use Camera" flow — captures a single photo and adds it to the proof list.
+  /// "Use Camera" flow — captures a single photo and uploads it as proof.
   Future<void> _captureProofWithCamera() async {
-    // TODO: wire captured file to your proof-upload API
     final picker = ImagePicker();
     final XFile? shot = await picker.pickImage(source: ImageSource.camera);
     if (shot == null) return;
-    final size = await File(shot.path).length();
-    if (mounted) {
+
+    final success = await taskController.handleUploadInstanceProofFiles(
+      taskId: widget.mainTaskId ?? '',
+      instanceId: widget.taskId ?? '',
+      proofFiles: [File(shot.path)],
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+      final size = await File(shot.path).length();
       setState(() {
         _uploadedProofFiles.add(
           PlatformFile(name: shot.name, size: size, path: shot.path),
         );
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Proof uploaded successfully'),
+          backgroundColor: _greenOn,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            taskController.errorMessage ?? 'Failed to upload proof',
+          ),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -1041,6 +1066,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     String activeTab = 'upload'; // 'upload' | 'webcam'
     List<PlatformFile> pendingFiles = [];
     String? pendingFilesError;
+    bool isUploadingProof = false;
 
     showDialog(
       context: context,
@@ -1331,30 +1357,79 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     color: Colors.transparent,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(8.r),
-                      onTap: pendingFiles.isEmpty || pendingFilesError != null
+                      onTap:
+                          pendingFiles.isEmpty ||
+                              pendingFilesError != null ||
+                              isUploadingProof
                           ? null
-                          : () {
-                              // TODO: wire to real proof-upload API call
-                              setState(
-                                () => _uploadedProofFiles.addAll(pendingFiles),
-                              );
-                              Navigator.pop(ctx);
+                          : () async {
+                              setModalState(() => isUploadingProof = true);
+
+                              final files = pendingFiles
+                                  .where((f) => f.path != null)
+                                  .map((f) => File(f.path!))
+                                  .toList();
+
+                              final success = await taskController
+                                  .handleUploadInstanceProofFiles(
+                                    taskId: widget.mainTaskId ?? '',
+                                    instanceId: widget.taskId ?? '',
+                                    proofFiles: files,
+                                  );
+
+                              if (!mounted) return;
+
+                              if (success) {
+                                setState(
+                                  () => _uploadedProofFiles.addAll(
+                                    pendingFiles,
+                                  ),
+                                );
+                                Navigator.pop(ctx);
+                                ScaffoldMessenger.of(
+                                  context,
+                                ).showSnackBar(
+                                  SnackBar(
+                                    content: const Text(
+                                      'Proof uploaded successfully',
+                                    ),
+                                    backgroundColor: _greenOn,
+                                    duration: const Duration(seconds: 3),
+                                  ),
+                                );
+                              } else {
+                                setModalState(() {
+                                  isUploadingProof = false;
+                                  pendingFilesError =
+                                      taskController.errorMessage ??
+                                      'Failed to upload proof';
+                                });
+                              }
                             },
                       child: Padding(
                         padding: EdgeInsets.symmetric(vertical: 12.h),
                         child: Center(
-                          child: Text(
-                            'Upload',
-                            style: GoogleFonts.inter(
-                              fontSize: 13.sp,
-                              fontWeight: FontWeight.w700,
-                              color:
-                                  (pendingFiles.isEmpty ||
-                                      pendingFilesError != null)
-                                  ? Colors.white.withOpacity(0.7)
-                                  : Colors.white,
-                            ),
-                          ),
+                          child: isUploadingProof
+                              ? SizedBox(
+                                  width: 16.w,
+                                  height: 16.h,
+                                  child: const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  'Upload',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w700,
+                                    color:
+                                        (pendingFiles.isEmpty ||
+                                            pendingFilesError != null)
+                                        ? Colors.white.withOpacity(0.7)
+                                        : Colors.white,
+                                  ),
+                                ),
                         ),
                       ),
                     ),

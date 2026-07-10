@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:taskalert_app/core/features/taskInstance/data/models/task_instances_response.dart';
 
 import '../../../../network/api_result.dart';
@@ -37,5 +39,12 @@ abstract class TaskInstanceRepository {
     String? status,
     String? priority,
     List<String>? assigneeIds,
+  });
+
+  Future<ApiResult<BaseApiResponse<TaskInstanceModel>>>
+  uploadInstanceProofFiles({
+    required String taskId,
+    required String instanceId,
+    required List<File> proofFiles,
   });
 }
