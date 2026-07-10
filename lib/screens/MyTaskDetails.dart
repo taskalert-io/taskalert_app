@@ -2067,10 +2067,17 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
                           SizedBox(height: 24.h),
 
-                          // 🔓 UNLOCKED UPLOAD PROOF BUTTON
-                          _buildUploadProofButton(),
-
-                          SizedBox(height: 16.h),
+                          // 🔓 UNLOCKED UPLOAD PROOF BUTTON — only shown when
+                          // the instance actually requires proof types.
+                          if ((taskController
+                                      .selectedInstance
+                                      ?.proofSubmission
+                                      ?.proofTypes
+                                      .isNotEmpty ??
+                                  false)) ...[
+                            _buildUploadProofButton(),
+                            SizedBox(height: 16.h),
+                          ],
 
                           // 🔓 UNLOCKED SAVE BUTTON
                           Row(
@@ -2133,10 +2140,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                             SnackBar(
                                               content: Text(
                                                 success
-                                                    ? 'Status updated successfully'
+                                                    ? 'Task updated successfully'
                                                     : (taskController
                                                               .errorMessage ??
-                                                          'Failed to update status'),
+                                                          'Failed to update task'),
                                               ),
                                               backgroundColor: success
                                                   ? _greenOn
