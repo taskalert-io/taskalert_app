@@ -11,6 +11,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
+import '../core/features/notifications/controllers/notification_controller.dart';
+import '../core/features/notifications/data/models/notification_model.dart';
+import '../utils/injection_container.dart';
 import 'NotificationScreen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -844,6 +847,102 @@ class MockNotificationRepository implements NotificationRepository {
   void dispose() {}
 }
 
+/// Bridges the real, backend-connected `NotificationController` (see
+/// `core/features/notifications`) into this screen's `NotificationRepository`
+/// interface, so the existing card UI, selection, and mark-read flows don't
+/// need to change — only the data source does.
+///
+/// The real API (`GET /notifications`, `PUT /notifications/mark-all-read`,
+/// `PUT /notifications/:id/mark-read`) has no per-user path segment (the
+/// auth token already implies the user) and doesn't return pagination
+/// metadata, so every fetch is treated as the full list (`hasMore: false`).
+/// It also has no unread-all / approve / deny endpoints, so those three
+/// throw instead of silently no-op'ing.
+class RealNotificationRepository implements NotificationRepository {
+  RealNotificationRepository({NotificationController? controller})
+    : _controller = controller ?? sl<NotificationController>();
+
+  final NotificationController _controller;
+
+  NotifCardData _toCardData(NotificationModel model) {
+    return NotifCardData(
+      id: model.id ?? '',
+      title: model.title ?? '',
+      date: model.sendAt ?? model.createdAt ?? DateTime.now(),
+      status: model.isRead == true ? NotifStatus.read : NotifStatus.unread,
+      badgeBold: '',
+      badgeNormal: model.description ?? '',
+      highlighted: model.severity == 'error' || model.severity == 'critical',
+      lines: const [],
+    );
+  }
+
+  @override
+  Future<NotificationPage> fetchNotifications({
+    required String userId,
+    int page = 1,
+    int pageSize = 20,
+    bool onlyUnread = false,
+  }) async {
+    await _controller.handleGetNotifications(page: page);
+    if (_controller.errorMessage != null) {
+      throw NotificationApiException(_controller.errorMessage!);
+    }
+    var items = _controller.notifications.map(_toCardData).toList();
+    if (onlyUnread) {
+      items = items.where((n) => n.status == NotifStatus.unread).toList();
+    }
+    return NotificationPage(items: items, hasMore: false);
+  }
+
+  @override
+  Future<void> markAllAsRead({required String userId}) async {
+    final ok = await _controller.handleMarkAllRead();
+    if (!ok) {
+      throw NotificationApiException(
+        _controller.errorMessage ?? 'Could not mark all as read.',
+      );
+    }
+  }
+
+  @override
+  Future<void> markAllAsUnread({required String userId}) {
+    throw NotificationApiException('This action is not supported.');
+  }
+
+  @override
+  Future<void> markAsRead({
+    required String userId,
+    required String notificationId,
+  }) async {
+    final ok = await _controller.handleMarkRead(id: notificationId);
+    if (!ok) {
+      throw NotificationApiException(
+        _controller.errorMessage ?? 'Could not mark as read.',
+      );
+    }
+  }
+
+  @override
+  Future<void> approve({
+    required String userId,
+    required String notificationId,
+  }) {
+    throw NotificationApiException('This action is not supported.');
+  }
+
+  @override
+  Future<void> deny({
+    required String userId,
+    required String notificationId,
+  }) {
+    throw NotificationApiException('This action is not supported.');
+  }
+
+  @override
+  void dispose() {}
+}
+
 // ── Notification settings popup ────────────────────────────────────────
 //
 // Opened from the "⋮" icon in the title row. Purely a settings dialog for
@@ -1057,10 +1156,10 @@ enum _LoadState { loading, loaded, error, empty }
 class NotificationStart extends StatefulWidget {
   final String userId;
 
-  /// Data source for this screen. Defaults to [MockNotificationRepository]
-  /// (no URL, no network — works out of the box right now). Swap in
-  /// `ApiNotificationRepository(baseUrl: '...')` once a backend exists;
-  /// nothing else in this file needs to change.
+  /// Data source for this screen. Defaults to [RealNotificationRepository]
+  /// (the live `GET /notifications` backend via `core/features/notifications`).
+  /// Pass [MockNotificationRepository] instead for offline dev/demo work;
+  /// nothing else in this file needs to change either way.
   final NotificationRepository? repository;
 
   const NotificationStart({super.key, required this.userId, this.repository});
@@ -1076,7 +1175,7 @@ class _NotificationStartState extends State<NotificationStart> {
   final ScrollController _scrollController = ScrollController();
 
   late final NotificationRepository _repository =
-      widget.repository ?? MockNotificationRepository();
+      widget.repository ?? RealNotificationRepository();
 
   final List<NotifCardData> _notifications = [];
   _LoadState _loadState = _LoadState.loading;
@@ -1327,7 +1426,26 @@ class _NotificationStartState extends State<NotificationStart> {
   }
 
   void _selectCard(String id) {
-    setState(() => _selectedCardId = _selectedCardId == id ? null : id);
+    final wasSelected = _selectedCardId == id;
+    setState(() => _selectedCardId = wasSelected ? null : id);
+    if (wasSelected) return;
+
+    // Selecting (not deselecting) an unread card also marks it read against
+    // the real `PUT /notifications/:id/mark-read` endpoint — optimistic,
+    // with a rollback if the call fails, same pattern as approve/deny above.
+    final i = _notifications.indexWhere((n) => n.id == id);
+    if (i == -1 || _notifications[i].status != NotifStatus.unread) return;
+    final previous = _notifications[i];
+    setState(() {
+      _notifications[i] = previous.copyWith(status: NotifStatus.read);
+    });
+    _repository
+        .markAsRead(userId: widget.userId, notificationId: id)
+        .catchError((_) {
+          if (!mounted) return;
+          final j = _notifications.indexWhere((n) => n.id == id);
+          if (j != -1) setState(() => _notifications[j] = previous);
+        });
   }
 
   /// Opens the "⋮" settings popup. Current frequency/desktop-toggle values
@@ -2495,7 +2613,11 @@ class NotifCard extends StatelessWidget {
           ),
         ),
         RadioSelector(
-          selected: isSelected || forceRadioActive,
+          // The tick reflects this notification's actual read/unread
+          // status, not whether the card happens to be selected/active —
+          // a read-but-unselected card should still show ticked, and an
+          // unread-but-selected one should not.
+          selected: data.status == NotifStatus.read,
           onTap: onSelect,
           colors: colors,
         ),
