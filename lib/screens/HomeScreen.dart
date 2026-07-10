@@ -1235,18 +1235,7 @@ class HomeScreenState extends State<HomeScreen> {
         /// PROFILE IMAGE
         Stack(
           children: [
-            CircleAvatar(
-              radius: 18.r,
-              backgroundColor: const Color(0xFFE4E7EC),
-              backgroundImage: image.isNotEmpty ? NetworkImage(image) : null,
-              child: image.isEmpty
-                  ? Icon(
-                      Icons.person,
-                      size: 18.r,
-                      color: const Color(0xFF9AA0AB),
-                    )
-                  : null,
-            ),
+            CircleAvatar(radius: 18.r, backgroundImage: NetworkImage(image)),
             Positioned(
               right: 0,
               top: 0,

@@ -11,6 +11,8 @@ import 'package:taskalert_app/screens/ProfileSetting.dart';
 import 'package:taskalert_app/screens/SignInScreen.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
 
+import '../screens/EmployeesScreen.dart';
+
 class CustomDrawer extends StatefulWidget {
   final String activeTile;
   final Function(String) onTileTap;
@@ -317,6 +319,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                 buildDrawerItem(
                   title: "Employees",
                   icon: Icons.supervised_user_circle_outlined,
+                  destinationScreen: EmployeesScreen(userId: ''),
                 ),
 
                 buildDrawerItem(
