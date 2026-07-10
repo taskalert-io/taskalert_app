@@ -75,8 +75,12 @@ import '../core/features/departments/controllers/department_controller.dart';
 import '../core/features/departments/data/models/department_model.dart';
 import '../core/features/employees/controllers/employee_controller.dart';
 import '../core/features/employees/data/models/employee_model.dart';
+import '../core/features/jobRoles/controllers/job_role_controller.dart';
+import '../core/features/jobRoles/data/models/job_role_model.dart';
 import '../core/features/location/controllers/location_controller.dart';
 import '../core/features/location/data/models/location_model.dart';
+import '../core/features/organization/controllers/organization_controller.dart';
+import '../core/features/organization/data/models/organization_model.dart';
 import '../utils/injection_container.dart';
 import 'NotificationStart.dart';
 
@@ -195,23 +199,6 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     "Create & Assign",
     "Full Access",
   ];
-  static const List<String> _organizationOptions = [
-    "Organization A",
-    "Organization B",
-    "Organization C",
-  ];
-  static const List<String> _locationOptions = [
-    "Head Office",
-    "Branch 1",
-    "Branch 2",
-  ];
-  static const List<String> _jobRoleOptions = [
-    "Software Development",
-    "Product Design",
-    "Project Management",
-    "Customer Support",
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -446,17 +433,28 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     final emailCtrl = TextEditingController(text: existing?.email ?? "");
     final phoneCtrl = TextEditingController(text: existing?.phoneNumber ?? "");
 
-    final dobDayCtrl = TextEditingController();
-    final dobMonthCtrl = TextEditingController();
-    final dobYearCtrl = TextEditingController();
+    final dobDayCtrl = TextEditingController(
+      text: existing?.dateOfBirth?.day.toString().padLeft(2, '0') ?? "",
+    );
+    final dobMonthCtrl = TextEditingController(
+      text: existing?.dateOfBirth?.month.toString().padLeft(2, '0') ?? "",
+    );
+    final dobYearCtrl = TextEditingController(
+      text: existing?.dateOfBirth?.year.toString() ?? "",
+    );
 
-    String? selectedGender;
-    String? selectedOrganization = existing?.organization;
-    String? selectedLocation;
-    String? selectedDepartment = existing?.department;
-    String? selectedJobRole = existing?.jobRole;
+    final genderMatches = _genderOptions.where(
+      (g) => g.toLowerCase() == (existing?.gender ?? '').toLowerCase(),
+    );
+    String? selectedGender = genderMatches.isNotEmpty
+        ? genderMatches.first
+        : null;
+    OrganizationModel? selectedOrganization;
+    LocationModel? selectedLocation;
+    DepartmentModel? selectedDepartment;
+    JobRoleModel? selectedJobRole;
     File? selectedImageFile;
-    bool taskPermission = false;
+    bool taskPermission = existing?.taskPermission ?? false;
     String selectedPermissionLevel = "View Only";
 
     bool autoValidate = false;
@@ -648,44 +646,47 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                         ),
 
                         SizedBox(height: 7.w),
-                        _SearchableDropdownField(
-                          label: "Location",
-                          hint: "Search location",
-                          items: _locationOptions,
-                          initialValue: selectedLocation,
-                          icon: CupertinoIcons.location_solid,
-                          emptyLabel: "No locations found",
-                          // Department (below) is locked until a
-                          // Location is chosen, so this needs to
-                          // trigger a rebuild — not just update local
-                          // state silently.
-                          onChanged: (v) => ss(() => selectedLocation = v),
+                        _LocationSearchableField(
+                          initialValue: existing?.location,
+                          // Department (below) is locked until a Location
+                          // is chosen and scoped to whichever one is
+                          // picked, so this needs to trigger a rebuild —
+                          // not just update local state silently.
+                          onChanged: (loc) => ss(() {
+                            // The very first call on an edit form can be the
+                            // field auto-resolving `existing.location` into
+                            // its real model (see _LocationSearchableField's
+                            // _tryResolveInitial) rather than the user
+                            // actually switching locations — don't wipe out
+                            // the department that's already correct for it.
+                            final isInitialAutoMatch =
+                                selectedLocation == null &&
+                                existing != null &&
+                                loc?.name == existing.location;
+                            selectedLocation = loc;
+                            if (!isInitialAutoMatch) {
+                              selectedDepartment = null;
+                            }
+                          }),
                         ),
 
                         SizedBox(height: 7.h),
 
                         // Organization / Job Role
-                        _SearchableDropdownField(
-                          label: "Organization",
-                          hint: "Search organization",
-                          items: _organizationOptions,
-                          initialValue: selectedOrganization,
-                          icon: CupertinoIcons.building_2_fill,
-                          emptyLabel: "No organizations found",
-                          onChanged: (v) => selectedOrganization = v,
+                        _OrganizationSearchableField(
+                          initialValue: existing?.organization,
+                          onChanged: (org) => selectedOrganization = org,
                         ),
 
                         SizedBox(height: 7.w),
-                        _SearchableDropdownField(
-                          label: "Job Role",
-                          hint: "Search job role",
-                          items: _jobRoleOptions,
-                          initialValue: selectedJobRole,
-                          required: true,
-                          icon: CupertinoIcons.briefcase_fill,
-                          emptyLabel: "No job roles found",
-                          onChanged: (v) => selectedJobRole = v,
-                          validator: (v) => (v == null || v.trim().isEmpty)
+                        _JobRoleSearchableField(
+                          initialValue: existing?.jobRole,
+                          onChanged: (v) => ss(() => selectedJobRole = v),
+                          // Checks the resolved model, not just the text —
+                          // typing free text that doesn't match a real job
+                          // role leaves `selectedJobRole` null, which would
+                          // otherwise send an empty/invalid job role id.
+                          validator: (v) => selectedJobRole == null
                               ? "Select a job role"
                               : null,
                         ),
@@ -701,9 +702,19 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                         // Full row width (not split into two columns) so its
                         // dropdown isn't squeezed into a half-width field.
                         _DepartmentSearchableField(
-                          enabled: (selectedLocation ?? '').trim().isNotEmpty,
-                          initialValue: selectedDepartment,
+                          enabled: selectedLocation != null,
+                          locationId: selectedLocation?.id,
+                          initialValue: existing?.department,
                           onChanged: (v) => ss(() => selectedDepartment = v),
+                          // Checks the resolved model, not just the text —
+                          // typing something that doesn't match a real
+                          // department (or submitting before it auto-
+                          // resolves) leaves `selectedDepartment` null,
+                          // which is exactly what sent an empty/invalid
+                          // department id to the API before.
+                          validator: (v) => selectedDepartment == null
+                              ? "Select a department"
+                              : null,
                         ),
                         SizedBox(height: 7.h),
 
@@ -806,6 +817,42 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
                                         ss(() => isSubmitting = true);
 
+                                        final dobText =
+                                            dobDayCtrl.text.trim().isNotEmpty &&
+                                                dobMonthCtrl.text
+                                                    .trim()
+                                                    .isNotEmpty &&
+                                                dobYearCtrl.text
+                                                    .trim()
+                                                    .isNotEmpty
+                                            ? "${dobYearCtrl.text.trim()}-${dobMonthCtrl.text.trim().padLeft(2, '0')}-${dobDayCtrl.text.trim().padLeft(2, '0')}"
+                                            : existing?.dateOfBirth
+                                                  ?.toIso8601String();
+                                        final genderValue =
+                                            (selectedGender ?? existing?.gender)
+                                                ?.toLowerCase();
+                                        // Auto-resolved from the existing
+                                        // display name/id once the real
+                                        // lists load (see
+                                        // _LocationSearchableField /
+                                        // _OrganizationSearchableField's
+                                        // _tryResolveInitial) — so these are
+                                        // populated on edit even without the
+                                        // user touching the field.
+                                        final organizationId =
+                                            selectedOrganization?.id;
+                                        final locationId = selectedLocation?.id;
+                                        // Same auto-resolve story as
+                                        // organization/location — matched
+                                        // against the loaded lists so these
+                                        // are real ids, not display names
+                                        // (the API rejects a plain name as
+                                        // an invalid id format).
+                                        final jobRoleId =
+                                            selectedJobRole?.id ?? '';
+                                        final departmentId =
+                                            selectedDepartment?.id;
+
                                         final bool success;
                                         if (existing == null) {
                                           success = await employeeController
@@ -814,21 +861,18 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                                     .trim(),
                                                 lastName: lastNameCtrl.text
                                                     .trim(),
-                                                jobRole: selectedJobRole ?? '',
+                                                jobRole: jobRoleId,
                                                 email: emailCtrl.text.trim(),
                                                 phoneNumber: phoneCtrl.text
                                                     .trim(),
-                                                department: selectedDepartment,
+                                                department: departmentId,
+                                                organization: organizationId,
+                                                location: locationId,
+                                                gender: genderValue,
+                                                dateOfBirth: dobText,
+                                                taskPermission: taskPermission,
                                                 imageFilePath:
                                                     selectedImageFile?.path,
-                                                // TODO: add these params to
-                                                // EmployeeController /
-                                                // EmployeeModel once ready:
-                                                // organization: selectedOrganization,
-                                                // gender: selectedGender,
-                                                // location: selectedLocation,
-                                                // dateOfBirth: "$dobDayCtrl/$dobMonthCtrl/$dobYearCtrl",
-                                                // taskPermission: taskPermission,
                                               );
                                         } else {
                                           success = await employeeController
@@ -838,11 +882,16 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                                     .trim(),
                                                 lastName: lastNameCtrl.text
                                                     .trim(),
-                                                jobRole: selectedJobRole ?? '',
+                                                jobRole: jobRoleId,
                                                 email: emailCtrl.text.trim(),
                                                 phoneNumber: phoneCtrl.text
                                                     .trim(),
-                                                department: selectedDepartment,
+                                                department: departmentId,
+                                                organization: organizationId,
+                                                location: locationId,
+                                                gender: genderValue,
+                                                dateOfBirth: dobText,
+                                                taskPermission: taskPermission,
                                                 imageFilePath:
                                                     selectedImageFile?.path,
                                               );
@@ -853,6 +902,8 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
                                         if (success) {
                                           Navigator.pop(ctx);
+                                          employeeController
+                                              .handleGetEmployees();
                                           ScaffoldMessenger.of(
                                             context,
                                           ).showSnackBar(
@@ -1370,6 +1421,10 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         _selectedIds.remove(employee.id);
       });
 
+      if (success) {
+        employeeController.handleGetEmployees();
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -1696,7 +1751,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
           );
         },
       ),
-      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 0),
+      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: -1),
     );
   }
 
@@ -1843,6 +1898,10 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                 employee.organization ?? "-",
               ),
               _cardDetail(
+                CupertinoIcons.location_solid,
+                employee.location ?? "-",
+              ),
+              _cardDetail(
                 CupertinoIcons.phone_fill,
                 employee.phoneNumber ?? "-",
               ),
@@ -1886,71 +1945,49 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   }
 }
 
-/// A text field that behaves like a searchable / autosuggest dropdown, styled
-/// to match the suggestion-overlay pattern already used for "Search Users"
-/// on this screen and for the location autocomplete in
-/// LocationListScreen / DepartmentListScreen:
-/// - Tapping it (before typing anything) immediately shows the full list
-///   of options in a suggestion overlay, each row with a leading icon.
-/// - Typing filters that list live, matching anywhere in the option text.
-/// - Tapping a suggestion fills the field and closes the overlay.
-/// - A clear (x) button appears once there's text, same as the page search
-///   bar and the department-form location field.
-/// - Losing focus commits whatever text is currently in the field (so the
-///   user can also type a value that isn't in the predefined list).
-///
-/// Used for Organization, Location and Job Role in the "User Details" form.
-class _SearchableDropdownField extends StatefulWidget {
-  const _SearchableDropdownField({
-    required this.label,
-    required this.items,
+// ── Location searchable field (live data) ──────────────────────────────
+//
+// Backed by real `LocationController` data. Hands the full `LocationModel`
+// back to the parent (not just its name) so the Department field below
+// can be scoped to the chosen location's id.
+class _LocationSearchableField extends StatefulWidget {
+  const _LocationSearchableField({
+    required this.initialValue,
     required this.onChanged,
-    this.initialValue,
-    this.hint = "",
-    this.required = false,
     this.validator,
-    this.icon = CupertinoIcons.square_grid_2x2,
-    this.emptyLabel = "No matches found",
   });
 
-  final String label;
-  final List<String> items;
-  final ValueChanged<String> onChanged;
   final String? initialValue;
-  final String hint;
-  final bool required;
+  final ValueChanged<LocationModel?> onChanged;
   final String? Function(String?)? validator;
 
-  /// Leading icon shown on each suggestion row — pass a field-specific icon
-  /// (e.g. a location pin for "Location", a briefcase for "Job Role") the
-  /// same way LocationListScreen/DepartmentListScreen do.
-  final IconData icon;
-
-  /// Shown in the overlay when nothing matches the typed query.
-  final String emptyLabel;
-
   @override
-  State<_SearchableDropdownField> createState() =>
-      _SearchableDropdownFieldState();
+  State<_LocationSearchableField> createState() =>
+      _LocationSearchableFieldState();
 }
 
-class _SearchableDropdownFieldState extends State<_SearchableDropdownField> {
-  late final TextEditingController _controller;
+class _LocationSearchableFieldState extends State<_LocationSearchableField> {
+  late final LocationController _locationController = sl<LocationController>();
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialValue ?? '',
+  );
   final FocusNode _focusNode = FocusNode();
   final LayerLink _layerLink = LayerLink();
   final GlobalKey _fieldKey = GlobalKey();
   OverlayEntry? _overlayEntry;
-  List<String> _suggestions = [];
+  bool _resolvedInitial = false;
 
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: widget.initialValue ?? "");
+    _locationController.handleGetLocations();
     _focusNode.addListener(_onFocusChanged);
+    _locationController.addListener(_onLocationsChanged);
   }
 
   @override
   void dispose() {
+    _locationController.removeListener(_onLocationsChanged);
     _removeOverlay();
     _focusNode.removeListener(_onFocusChanged);
     _focusNode.dispose();
@@ -1958,50 +1995,67 @@ class _SearchableDropdownFieldState extends State<_SearchableDropdownField> {
     super.dispose();
   }
 
+  // Editing an existing employee only has the location's display name (or
+  // id) to start from, not the full model — once the real list loads, match
+  // it up so the parent gets the id (needed to scope the Department field)
+  // without the user having to reselect a Location that's already correct.
+  void _tryResolveInitial() {
+    if (_resolvedInitial) return;
+    final initial = widget.initialValue;
+    if (initial == null || initial.isEmpty) {
+      _resolvedInitial = true;
+      return;
+    }
+    if (_locationController.locations.isEmpty) return;
+    final matches = _locationController.locations.where(
+      (l) => l.name == initial || l.id == initial,
+    );
+    _resolvedInitial = true;
+    if (matches.isNotEmpty) widget.onChanged(matches.first);
+  }
+
+  void _onLocationsChanged() {
+    _tryResolveInitial();
+    if (_focusNode.hasFocus) _showOverlay();
+  }
+
   void _onFocusChanged() {
     if (_focusNode.hasFocus) {
-      // Tapping the field (even with no text typed yet) shows suggestions.
-      _updateSuggestions(_controller.text);
+      _showOverlay();
     } else {
       // Small delay so a tap on a suggestion registers before the overlay
-      // is torn down (otherwise the overlay disappears first and the tap
-      // never lands) — same pattern used by the page-level search field.
+      // is torn down.
       Future.delayed(const Duration(milliseconds: 150), () {
-        if (mounted && !_focusNode.hasFocus) {
-          _removeOverlay();
-          widget.onChanged(_controller.text.trim());
-        }
+        if (mounted && !_focusNode.hasFocus) _removeOverlay();
       });
     }
   }
 
   void _onTextChanged(String text) {
-    setState(() => _updateSuggestions(text));
-    widget.onChanged(text.trim());
+    setState(() {});
+    // Manual typing invalidates whatever was previously selected — a valid
+    // choice only exists once the user picks a suggestion below, since we
+    // need the location's id, not just its name.
+    widget.onChanged(null);
+    _showOverlay();
   }
 
   void _clear() {
-    setState(() {
-      _controller.clear();
-      _updateSuggestions('');
-    });
-    widget.onChanged('');
+    setState(() => _controller.clear());
+    widget.onChanged(null);
+    _showOverlay();
   }
 
-  void _updateSuggestions(String query) {
-    final q = query.trim().toLowerCase();
-    _suggestions = q.isEmpty
-        ? widget.items.take(8).toList()
-        : widget.items
-              .where((e) => e.toLowerCase().contains(q))
-              .take(8)
-              .toList();
-
-    if (!_focusNode.hasFocus) {
-      _removeOverlay();
-      return;
-    }
-    _showOverlay();
+  void _select(LocationModel location) {
+    setState(() {
+      _controller.text = location.name;
+      _controller.selection = TextSelection.fromPosition(
+        TextPosition(offset: location.name.length),
+      );
+    });
+    widget.onChanged(location);
+    _removeOverlay();
+    _focusNode.unfocus();
   }
 
   void _showOverlay() {
@@ -2014,8 +2068,15 @@ class _SearchableDropdownFieldState extends State<_SearchableDropdownField> {
     final placement = _overlayPlacement(
       context: context,
       fieldKey: _fieldKey,
-      preferredMaxHeight: 220,
+      preferredMaxHeight: 240,
     );
+
+    final q = _controller.text.trim().toLowerCase();
+    final results = q.isEmpty
+        ? _locationController.locations
+        : _locationController.locations
+              .where((l) => l.name.toLowerCase().contains(q))
+              .toList();
 
     _overlayEntry = OverlayEntry(
       builder: (context) => Positioned(
@@ -2034,16 +2095,29 @@ class _SearchableDropdownFieldState extends State<_SearchableDropdownField> {
               color: Colors.white,
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: placement.maxHeight),
-                child: _suggestions.isEmpty
+                child: _locationController.isLoading
+                    ? Padding(
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
+                        child: Center(
+                          child: SizedBox(
+                            width: 16.r,
+                            height: 16.r,
+                            child: const CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        ),
+                      )
+                    : results.isEmpty
                     ? Padding(
                         padding: EdgeInsets.symmetric(
                           horizontal: 12.w,
                           vertical: 14.h,
                         ),
                         child: Text(
-                          widget.emptyLabel,
+                          "No locations found",
                           style: GoogleFonts.inter(
-                            fontSize: 12.5.sp,
+                            fontSize: 12.sp,
                             color: const Color(0xFF9AA0AB),
                           ),
                         ),
@@ -2051,14 +2125,13 @@ class _SearchableDropdownFieldState extends State<_SearchableDropdownField> {
                     : ListView.separated(
                         padding: EdgeInsets.symmetric(vertical: 4.h),
                         shrinkWrap: true,
-                        physics: const ClampingScrollPhysics(),
-                        itemCount: _suggestions.length,
+                        itemCount: results.length,
                         separatorBuilder: (_, __) =>
                             const Divider(height: 1, color: Color(0xFFE4E7EC)),
                         itemBuilder: (context, index) {
-                          final s = _suggestions[index];
+                          final loc = results[index];
                           return InkWell(
-                            onTap: () => _selectSuggestion(s),
+                            onTap: () => _select(loc),
                             child: Padding(
                               padding: EdgeInsets.symmetric(
                                 horizontal: 12.w,
@@ -2067,14 +2140,14 @@ class _SearchableDropdownFieldState extends State<_SearchableDropdownField> {
                               child: Row(
                                 children: [
                                   Icon(
-                                    widget.icon,
+                                    CupertinoIcons.location_solid,
                                     size: 14.r,
                                     color: const Color(0xFF4338CA),
                                   ),
                                   SizedBox(width: 8.w),
                                   Expanded(
                                     child: Text(
-                                      s,
+                                      loc.name,
                                       style: GoogleFonts.inter(
                                         fontSize: 13.sp,
                                         fontWeight: FontWeight.w600,
@@ -2104,39 +2177,17 @@ class _SearchableDropdownFieldState extends State<_SearchableDropdownField> {
     _overlayEntry = null;
   }
 
-  void _selectSuggestion(String value) {
-    setState(() {
-      _controller.text = value;
-      _controller.selection = TextSelection.fromPosition(
-        TextPosition(offset: value.length),
-      );
-    });
-    widget.onChanged(value);
-    _removeOverlay();
-    _focusNode.unfocus();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        RichText(
-          text: TextSpan(
-            text: widget.label,
-            style: GoogleFonts.inter(
-              fontSize: 13.sp,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF3F3F3F),
-            ),
-            children: widget.required
-                ? const [
-                    TextSpan(
-                      text: " *",
-                      style: TextStyle(color: Colors.red),
-                    ),
-                  ]
-                : null,
+        Text(
+          "Location",
+          style: GoogleFonts.inter(
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF3F3F3F),
           ),
         ),
         SizedBox(height: 4.h),
@@ -2147,7 +2198,7 @@ class _SearchableDropdownFieldState extends State<_SearchableDropdownField> {
             controller: _controller,
             focusNode: _focusNode,
             validator: widget.validator,
-            onTap: () => _updateSuggestions(_controller.text),
+            onTap: _showOverlay,
             onChanged: _onTextChanged,
             style: GoogleFonts.inter(
               fontSize: 12.sp,
@@ -2156,14 +2207,650 @@ class _SearchableDropdownFieldState extends State<_SearchableDropdownField> {
             ),
             decoration: InputDecoration(
               isDense: true,
-              hintText: widget.hint,
+              hintText: "Search location",
               hintStyle: GoogleFonts.inter(
                 fontSize: 12.sp,
                 color: const Color(0xFFB8BEC5),
               ),
               errorStyle: TextStyle(fontSize: 10.sp),
               prefixIcon: Icon(
-                CupertinoIcons.search,
+                CupertinoIcons.location_solid,
+                size: 14.r,
+                color: const Color(0xFF9AA0AB),
+              ),
+              suffixIcon: _controller.text.isEmpty
+                  ? null
+                  : GestureDetector(
+                      onTap: _clear,
+                      child: Icon(
+                        CupertinoIcons.clear_circled_solid,
+                        size: 14.r,
+                        color: const Color(0xFF9AA0AB),
+                      ),
+                    ),
+              filled: true,
+              fillColor: const Color(0xFFF9FAFC),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 10.w,
+                vertical: 10.h,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.r),
+                borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.r),
+                borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.r),
+                borderSide: const BorderSide(color: Color(0xFF0A0258)),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.r),
+                borderSide: const BorderSide(color: Colors.red),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.r),
+                borderSide: const BorderSide(color: Colors.red),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Organization searchable field (live data) ──────────────────────────
+//
+// Same shape as `_LocationSearchableField` above, but backed by real
+// `OrganizationController` data instead of a static list.
+class _OrganizationSearchableField extends StatefulWidget {
+  const _OrganizationSearchableField({
+    required this.initialValue,
+    required this.onChanged,
+    this.validator,
+  });
+
+  final String? initialValue;
+  final ValueChanged<OrganizationModel?> onChanged;
+  final String? Function(String?)? validator;
+
+  @override
+  State<_OrganizationSearchableField> createState() =>
+      _OrganizationSearchableFieldState();
+}
+
+class _OrganizationSearchableFieldState
+    extends State<_OrganizationSearchableField> {
+  late final OrganizationController _organizationController =
+      sl<OrganizationController>();
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialValue ?? '',
+  );
+  final FocusNode _focusNode = FocusNode();
+  final LayerLink _layerLink = LayerLink();
+  final GlobalKey _fieldKey = GlobalKey();
+  OverlayEntry? _overlayEntry;
+  bool _resolvedInitial = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _organizationController.handleGetOrganizations();
+    _focusNode.addListener(_onFocusChanged);
+    _organizationController.addListener(_onOrganizationsChanged);
+  }
+
+  @override
+  void dispose() {
+    _organizationController.removeListener(_onOrganizationsChanged);
+    _removeOverlay();
+    _focusNode.removeListener(_onFocusChanged);
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  // Editing an existing employee only has the organization's display name
+  // (or id) to start from, not the full model — once the real list loads,
+  // match it up so the parent gets the id without the user having to
+  // reselect an Organization that's already correct.
+  void _tryResolveInitial() {
+    if (_resolvedInitial) return;
+    final initial = widget.initialValue;
+    if (initial == null || initial.isEmpty) {
+      _resolvedInitial = true;
+      return;
+    }
+    if (_organizationController.organizations.isEmpty) return;
+    final matches = _organizationController.organizations.where(
+      (o) => o.name == initial || o.id == initial,
+    );
+    _resolvedInitial = true;
+    if (matches.isNotEmpty) widget.onChanged(matches.first);
+  }
+
+  void _onOrganizationsChanged() {
+    _tryResolveInitial();
+    if (_focusNode.hasFocus) _showOverlay();
+  }
+
+  void _onFocusChanged() {
+    if (_focusNode.hasFocus) {
+      _showOverlay();
+    } else {
+      // Small delay so a tap on a suggestion registers before the overlay
+      // is torn down.
+      Future.delayed(const Duration(milliseconds: 150), () {
+        if (mounted && !_focusNode.hasFocus) _removeOverlay();
+      });
+    }
+  }
+
+  void _onTextChanged(String text) {
+    setState(() {});
+    // Manual typing invalidates whatever was previously selected — a valid
+    // choice only exists once the user picks a suggestion below, since we
+    // need the organization's id, not just its name.
+    widget.onChanged(null);
+    _showOverlay();
+  }
+
+  void _clear() {
+    setState(() => _controller.clear());
+    widget.onChanged(null);
+    _showOverlay();
+  }
+
+  void _select(OrganizationModel organization) {
+    setState(() {
+      _controller.text = organization.name;
+      _controller.selection = TextSelection.fromPosition(
+        TextPosition(offset: organization.name.length),
+      );
+    });
+    widget.onChanged(organization);
+    _removeOverlay();
+    _focusNode.unfocus();
+  }
+
+  void _showOverlay() {
+    _removeOverlay();
+
+    final overlay = Overlay.of(context);
+    final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+    final width = box?.size.width ?? 200.w;
+
+    final placement = _overlayPlacement(
+      context: context,
+      fieldKey: _fieldKey,
+      preferredMaxHeight: 240,
+    );
+
+    final q = _controller.text.trim().toLowerCase();
+    final results = q.isEmpty
+        ? _organizationController.organizations
+        : _organizationController.organizations
+              .where((o) => o.name.toLowerCase().contains(q))
+              .toList();
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        width: width,
+        child: CompositedTransformFollower(
+          link: _layerLink,
+          showWhenUnlinked: false,
+          offset: Offset(0, placement.dy),
+          child: Align(
+            alignment: placement.showAbove
+                ? Alignment.bottomLeft
+                : Alignment.topLeft,
+            child: Material(
+              elevation: 6,
+              borderRadius: BorderRadius.circular(10.r),
+              color: Colors.white,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: placement.maxHeight),
+                child: _organizationController.isLoading
+                    ? Padding(
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
+                        child: Center(
+                          child: SizedBox(
+                            width: 16.r,
+                            height: 16.r,
+                            child: const CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        ),
+                      )
+                    : results.isEmpty
+                    ? Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 14.h,
+                        ),
+                        child: Text(
+                          "No organizations found",
+                          style: GoogleFonts.inter(
+                            fontSize: 12.sp,
+                            color: const Color(0xFF9AA0AB),
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: EdgeInsets.symmetric(vertical: 4.h),
+                        shrinkWrap: true,
+                        itemCount: results.length,
+                        separatorBuilder: (_, __) =>
+                            const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                        itemBuilder: (context, index) {
+                          final org = results[index];
+                          return InkWell(
+                            onTap: () => _select(org),
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12.w,
+                                vertical: 10.h,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    CupertinoIcons.building_2_fill,
+                                    size: 14.r,
+                                    color: const Color(0xFF4338CA),
+                                  ),
+                                  SizedBox(width: 8.w),
+                                  Expanded(
+                                    child: Text(
+                                      org.name,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF1D2939),
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(_overlayEntry!);
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Organization",
+          style: GoogleFonts.inter(
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF3F3F3F),
+          ),
+        ),
+        SizedBox(height: 4.h),
+        CompositedTransformTarget(
+          link: _layerLink,
+          child: TextFormField(
+            key: _fieldKey,
+            controller: _controller,
+            focusNode: _focusNode,
+            validator: widget.validator,
+            onTap: _showOverlay,
+            onChanged: _onTextChanged,
+            style: GoogleFonts.inter(
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w400,
+              color: const Color(0xFF344054),
+            ),
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: "Search organization",
+              hintStyle: GoogleFonts.inter(
+                fontSize: 12.sp,
+                color: const Color(0xFFB8BEC5),
+              ),
+              errorStyle: TextStyle(fontSize: 10.sp),
+              prefixIcon: Icon(
+                CupertinoIcons.building_2_fill,
+                size: 14.r,
+                color: const Color(0xFF9AA0AB),
+              ),
+              suffixIcon: _controller.text.isEmpty
+                  ? null
+                  : GestureDetector(
+                      onTap: _clear,
+                      child: Icon(
+                        CupertinoIcons.clear_circled_solid,
+                        size: 14.r,
+                        color: const Color(0xFF9AA0AB),
+                      ),
+                    ),
+              filled: true,
+              fillColor: const Color(0xFFF9FAFC),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 10.w,
+                vertical: 10.h,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.r),
+                borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.r),
+                borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.r),
+                borderSide: const BorderSide(color: Color(0xFF0A0258)),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.r),
+                borderSide: const BorderSide(color: Colors.red),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.r),
+                borderSide: const BorderSide(color: Colors.red),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Job Role searchable field (live data) ───────────────────────────────
+//
+// Same shape as `_DepartmentSearchableField` below — backed by real
+// `JobRoleController` data instead of a static list, and hands the
+// selected role's *title* back to the parent (matching how the employee
+// APIs already accept `jobRole` as a plain string, not an id).
+class _JobRoleSearchableField extends StatefulWidget {
+  const _JobRoleSearchableField({
+    required this.initialValue,
+    required this.onChanged,
+    this.validator,
+  });
+
+  final String? initialValue;
+  final ValueChanged<JobRoleModel?> onChanged;
+  final String? Function(String?)? validator;
+
+  @override
+  State<_JobRoleSearchableField> createState() =>
+      _JobRoleSearchableFieldState();
+}
+
+class _JobRoleSearchableFieldState extends State<_JobRoleSearchableField> {
+  late final JobRoleController _jobRoleController = sl<JobRoleController>();
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialValue ?? '',
+  );
+  final FocusNode _focusNode = FocusNode();
+  final LayerLink _layerLink = LayerLink();
+  final GlobalKey _fieldKey = GlobalKey();
+  OverlayEntry? _overlayEntry;
+  bool _resolvedInitial = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _jobRoleController.handleGetJobRoles();
+    _focusNode.addListener(_onFocusChanged);
+    _jobRoleController.addListener(_onJobRolesChanged);
+  }
+
+  @override
+  void dispose() {
+    _jobRoleController.removeListener(_onJobRolesChanged);
+    _removeOverlay();
+    _focusNode.removeListener(_onFocusChanged);
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  // Editing an existing employee only has the job role's display title (or
+  // id) to start from, not the full model — once the real list loads, match
+  // it up so the parent gets the id the create/update API actually requires
+  // (a plain title string is rejected as an invalid id format).
+  void _tryResolveInitial() {
+    if (_resolvedInitial) return;
+    final initial = widget.initialValue;
+    if (initial == null || initial.isEmpty) {
+      _resolvedInitial = true;
+      return;
+    }
+    if (_jobRoleController.jobRoles.isEmpty) return;
+    final matches = _jobRoleController.jobRoles.where(
+      (j) => j.title == initial || j.id == initial,
+    );
+    _resolvedInitial = true;
+    if (matches.isNotEmpty) widget.onChanged(matches.first);
+  }
+
+  void _onJobRolesChanged() {
+    _tryResolveInitial();
+    if (_focusNode.hasFocus) _showOverlay();
+  }
+
+  void _onFocusChanged() {
+    if (_focusNode.hasFocus) {
+      _showOverlay();
+    } else {
+      // Small delay so a tap on a suggestion registers before the overlay
+      // is torn down.
+      Future.delayed(const Duration(milliseconds: 150), () {
+        if (mounted && !_focusNode.hasFocus) _removeOverlay();
+      });
+    }
+  }
+
+  void _onTextChanged(String text) {
+    setState(() {});
+    // Manual typing invalidates whatever was previously selected — a valid
+    // choice only exists once the user picks a suggestion below, since we
+    // need the job role's id, not just its title.
+    widget.onChanged(null);
+    _showOverlay();
+  }
+
+  void _clear() {
+    setState(() => _controller.clear());
+    widget.onChanged(null);
+    _showOverlay();
+  }
+
+  void _select(JobRoleModel role) {
+    setState(() {
+      _controller.text = role.title;
+      _controller.selection = TextSelection.fromPosition(
+        TextPosition(offset: role.title.length),
+      );
+    });
+    widget.onChanged(role);
+    _removeOverlay();
+    _focusNode.unfocus();
+  }
+
+  void _showOverlay() {
+    _removeOverlay();
+
+    final overlay = Overlay.of(context);
+    final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+    final width = box?.size.width ?? 200.w;
+
+    final placement = _overlayPlacement(
+      context: context,
+      fieldKey: _fieldKey,
+      preferredMaxHeight: 240,
+    );
+
+    final q = _controller.text.trim().toLowerCase();
+    final results = q.isEmpty
+        ? _jobRoleController.jobRoles
+        : _jobRoleController.jobRoles
+              .where((j) => j.title.toLowerCase().contains(q))
+              .toList();
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        width: width,
+        child: CompositedTransformFollower(
+          link: _layerLink,
+          showWhenUnlinked: false,
+          offset: Offset(0, placement.dy),
+          child: Align(
+            alignment: placement.showAbove
+                ? Alignment.bottomLeft
+                : Alignment.topLeft,
+            child: Material(
+              elevation: 6,
+              borderRadius: BorderRadius.circular(10.r),
+              color: Colors.white,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: placement.maxHeight),
+                child: _jobRoleController.isLoading
+                    ? Padding(
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
+                        child: Center(
+                          child: SizedBox(
+                            width: 16.r,
+                            height: 16.r,
+                            child: const CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        ),
+                      )
+                    : results.isEmpty
+                    ? Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 14.h,
+                        ),
+                        child: Text(
+                          "No job roles found",
+                          style: GoogleFonts.inter(
+                            fontSize: 12.sp,
+                            color: const Color(0xFF9AA0AB),
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: EdgeInsets.symmetric(vertical: 4.h),
+                        shrinkWrap: true,
+                        itemCount: results.length,
+                        separatorBuilder: (_, __) =>
+                            const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                        itemBuilder: (context, index) {
+                          final role = results[index];
+                          return InkWell(
+                            onTap: () => _select(role),
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12.w,
+                                vertical: 10.h,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    CupertinoIcons.briefcase_fill,
+                                    size: 14.r,
+                                    color: const Color(0xFF4338CA),
+                                  ),
+                                  SizedBox(width: 8.w),
+                                  Expanded(
+                                    child: Text(
+                                      role.title,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF1D2939),
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(_overlayEntry!);
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Job Role",
+          style: GoogleFonts.inter(
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF3F3F3F),
+          ),
+        ),
+        SizedBox(height: 4.h),
+        CompositedTransformTarget(
+          link: _layerLink,
+          child: TextFormField(
+            key: _fieldKey,
+            controller: _controller,
+            focusNode: _focusNode,
+            validator: widget.validator,
+            onTap: _showOverlay,
+            onChanged: _onTextChanged,
+            style: GoogleFonts.inter(
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w400,
+              color: const Color(0xFF344054),
+            ),
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: "Search job role",
+              hintStyle: GoogleFonts.inter(
+                fontSize: 12.sp,
+                color: const Color(0xFFB8BEC5),
+              ),
+              errorStyle: TextStyle(fontSize: 10.sp),
+              prefixIcon: Icon(
+                CupertinoIcons.briefcase_fill,
                 size: 14.r,
                 color: const Color(0xFF9AA0AB),
               ),
@@ -2213,8 +2900,7 @@ class _SearchableDropdownFieldState extends State<_SearchableDropdownField> {
 
 // ── Department searchable field (live data + inline "Add Department") ─────
 //
-// Like `_SearchableDropdownField` above, but backed by real
-// `DepartmentController` data instead of a static list, and with a pinned
+// Backed by real `DepartmentController` data, and with a pinned
 // "+ Add Department" row at the top of its dropdown that opens the same
 // create-department popup as DepartmentListScreen. Locked (disabled) until
 // a Location has been chosen in the parent form, mirroring the "New
@@ -2222,14 +2908,18 @@ class _SearchableDropdownFieldState extends State<_SearchableDropdownField> {
 class _DepartmentSearchableField extends StatefulWidget {
   const _DepartmentSearchableField({
     required this.enabled,
+    required this.locationId,
     required this.initialValue,
     required this.onChanged,
     this.validator,
   });
 
   final bool enabled;
+  // Departments are scoped to whichever Location is selected in the parent
+  // form — only departments whose `location.id` matches this are shown.
+  final String? locationId;
   final String? initialValue;
-  final ValueChanged<String> onChanged;
+  final ValueChanged<DepartmentModel?> onChanged;
   final String? Function(String?)? validator;
 
   @override
@@ -2249,6 +2939,8 @@ class _DepartmentSearchableFieldState
   final LayerLink _layerLink = LayerLink();
   final GlobalKey _fieldKey = GlobalKey();
   OverlayEntry? _overlayEntry;
+  bool _resolvedInitial = false;
+  bool _userInteracted = false;
 
   @override
   void initState() {
@@ -2261,9 +2953,21 @@ class _DepartmentSearchableFieldState
   @override
   void didUpdateWidget(covariant _DepartmentSearchableField oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Location was cleared out from under us — reset so a stale department
-    // name can't be submitted for a location that's no longer selected.
-    if (!widget.enabled && oldWidget.enabled) {
+    // Location was cleared or switched out from under us — reset so a
+    // stale department name can't be submitted for a location that's no
+    // longer selected (or a different one). Exception: on an edit form the
+    // very first `locationId` transition (null -> real id) is the Location
+    // field auto-resolving `existing.location`, not the user switching
+    // locations — don't wipe the department that's already correct for it.
+    final locationChanged = widget.locationId != oldWidget.locationId;
+    final isInitialLocationResolve =
+        oldWidget.locationId == null &&
+        widget.locationId != null &&
+        !_userInteracted;
+    if ((!widget.enabled && oldWidget.enabled) ||
+        (locationChanged && !isInitialLocationResolve)) {
+      // Just the local visual reset — the parent already cleared its own
+      // `selectedDepartment` state when the location changed.
       _controller.clear();
       _removeOverlay();
       _focusNode.unfocus();
@@ -2280,7 +2984,27 @@ class _DepartmentSearchableFieldState
     super.dispose();
   }
 
+  // Editing an existing employee only has the department's display name (or
+  // id) to start from, not the full model — once the real list loads, match
+  // it up so the parent gets the id the create/update API actually requires
+  // (a plain name string is rejected as an invalid id format).
+  void _tryResolveInitial() {
+    if (_resolvedInitial) return;
+    final initial = widget.initialValue;
+    if (initial == null || initial.isEmpty) {
+      _resolvedInitial = true;
+      return;
+    }
+    if (_departmentController.departments.isEmpty) return;
+    final matches = _departmentController.departments.where(
+      (d) => d.name == initial || d.id == initial,
+    );
+    _resolvedInitial = true;
+    if (matches.isNotEmpty) widget.onChanged(matches.first);
+  }
+
   void _onDepartmentsChanged() {
+    _tryResolveInitial();
     if (_focusNode.hasFocus) _showOverlay();
   }
 
@@ -2302,24 +3026,31 @@ class _DepartmentSearchableFieldState
 
   void _onTextChanged(String text) {
     setState(() {});
-    widget.onChanged(text.trim());
+    _userInteracted = true;
+    // Manual typing invalidates whatever was previously selected — a valid
+    // choice only exists once the user picks a suggestion below, since we
+    // need the department's id, not just its name.
+    widget.onChanged(null);
     _departmentController.handleGetDepartments(search: text.trim());
   }
 
   void _clear() {
     setState(() => _controller.clear());
-    widget.onChanged('');
+    _userInteracted = true;
+    widget.onChanged(null);
     _departmentController.handleGetDepartments(search: '');
   }
 
-  void _select(String name) {
+  void _select(DepartmentModel dept) {
+    final name = dept.name ?? '';
     setState(() {
       _controller.text = name;
       _controller.selection = TextSelection.fromPosition(
         TextPosition(offset: name.length),
       );
     });
-    widget.onChanged(name);
+    _userInteracted = true;
+    widget.onChanged(dept);
     _removeOverlay();
     _focusNode.unfocus();
   }
@@ -2331,7 +3062,7 @@ class _DepartmentSearchableFieldState
       context,
       departmentController: _departmentController,
       locationController: _locationController,
-      onCreated: (dept) => _select(dept.name ?? ''),
+      onCreated: (dept) => _select(dept),
     );
   }
 
@@ -2353,11 +3084,10 @@ class _DepartmentSearchableFieldState
     );
 
     final q = _controller.text.trim().toLowerCase();
-    final results = q.isEmpty
-        ? _departmentController.departments
-        : _departmentController.departments
-              .where((d) => (d.name ?? '').toLowerCase().contains(q))
-              .toList();
+    final results = _departmentController.departments
+        .where((d) => d.location.any((l) => l.id == widget.locationId))
+        .where((d) => q.isEmpty || (d.name ?? '').toLowerCase().contains(q))
+        .toList();
 
     _overlayEntry = OverlayEntry(
       builder: (context) => Positioned(
@@ -2448,7 +3178,7 @@ class _DepartmentSearchableFieldState
                           itemBuilder: (context, index) {
                             final dept = results[index];
                             return InkWell(
-                              onTap: () => _select(dept.name ?? ''),
+                              onTap: () => _select(dept),
                               child: Padding(
                                 padding: EdgeInsets.symmetric(
                                   horizontal: 12.w,

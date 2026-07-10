@@ -1,4 +1,4 @@
-import '../../../tasks/data/models/task_model.dart'; // Reuse ReportingUserModel, TaskTime, CreatedByModel
+import '../../../tasks/data/models/task_model.dart'; // Reuse TaskTime, CreatedByModel
 
 class ProofSubmissionModel {
   final DateTime? submittedAt;
@@ -98,8 +98,7 @@ class TaskInstanceModel {
   final String taskId;
   final List<String> department;
   final String organization;
-  final List<ReportingUserModel>
-  assignees; // 🌟 Updated from String to Model to match list payload safely
+  final List<String> assignees; // Array of assignee user IDs
 
   final String? parentInstance;
   final CreatedByModel? completedBy;
@@ -190,15 +189,12 @@ class TaskInstanceModel {
       organization: json['organization'] ?? '',
       assignees: json['assignees'] != null
           ? (json['assignees'] as List).map((x) {
+              // Handle both a populated object (`{"_id": ...}`) and a plain
+              // ID string, in case the backend ever mixes shapes.
               if (x is Map<String, dynamic>) {
-                return ReportingUserModel.fromJson(x);
+                return (x['_id'] ?? '').toString();
               }
-              // Handle fallback string variants gracefully if mixed
-              return ReportingUserModel(
-                id: x.toString(),
-                firstName: '',
-                lastName: '',
-              );
+              return x.toString();
             }).toList()
           : [],
       parentInstance: json['parentInstance'],

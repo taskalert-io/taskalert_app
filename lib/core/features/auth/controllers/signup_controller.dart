@@ -23,6 +23,11 @@ class SignUpController extends ChangeNotifier {
   String? _currentPhoneNumber;
   String? get currentPhoneNumber => _currentPhoneNumber;
 
+  // ✅ Dev/test backends echo the generated OTP back in the response so the
+  // UI can auto-fill it instead of requiring the user to check SMS/email.
+  String? _otp;
+  String? get otp => _otp;
+
   /// Utility to seed or transfer phone number across fields
   void setPhoneNumber(String phoneNumber) {
     _currentPhoneNumber = phoneNumber;
@@ -37,6 +42,7 @@ class SignUpController extends ChangeNotifier {
     _isLoading = true;
     _errorMessage = null;
     _successMessage = null;
+    _otp = null;
     notifyListeners();
 
     final result = await _authRepository.signUp(
@@ -49,8 +55,10 @@ class SignUpController extends ChangeNotifier {
     if (result is Success) {
       _currentPhoneNumber = phoneNumber;
       final apiResponse = (result as Success).data;
-      // _successMessage = apiResponse.message;
-      _successMessage = apiResponse.message + apiResponse.data['otp'];
+      _otp = apiResponse.data['otp']?.toString();
+      _successMessage = _otp != null
+          ? '${apiResponse.message} Your OTP is: $_otp'
+          : apiResponse.message;
       // Cache phone number for subsequent steps
 
       notifyListeners();
@@ -142,9 +150,9 @@ class SignUpController extends ChangeNotifier {
 
     if (result is Success) {
       final apiResponse = (result as Success).data as BaseApiResponse<dynamic>;
-      final otp = apiResponse.data['otp'];
-      if (otp != null) {
-        _successMessage = " Your new OTP is: $otp";
+      _otp = apiResponse.data['otp']?.toString();
+      if (_otp != null) {
+        _successMessage = " Your new OTP is: $_otp";
       } else {
         _successMessage = " OTP resent successfully to ${_currentPhoneNumber!}";
       }

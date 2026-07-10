@@ -1,14 +1,14 @@
 // ignore_for_file: use_build_context_synchronously
 import 'dart:io';
 import 'dart:math' as math;
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
-// TODO: add these to pubspec.yaml -> file_picker: ^8.x.x , image_picker: ^1.x.x
-import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:taskalert_app/core/features/employees/controllers/employee_controller.dart';
 import 'package:taskalert_app/core/features/taskInstance/controllers/task_instance_controller.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
 import '../components/CustomAppBar.dart';
@@ -28,7 +28,6 @@ class TaskDetail {
   final String? assignDate; // "YYYY-MM-DD" or null
   final String? assignTime; // "HH:mm" 24h or null
   final int durationHours;
-  final String timeZone;
   final String priority;
   final String status;
 
@@ -40,7 +39,6 @@ class TaskDetail {
     this.assignDate,
     this.assignTime,
     required this.durationHours,
-    required this.timeZone,
     required this.priority,
     required this.status,
   });
@@ -54,7 +52,6 @@ class TaskDetail {
     assignDate: json['assign_date'] as String?,
     assignTime: json['assign_time'] as String?,
     durationHours: (json['duration_hours'] as num?)?.toInt() ?? 5,
-    timeZone: json['time_zone'] as String? ?? 'Kolkata',
     priority: json['priority'] as String? ?? 'Low',
     status: json['status'] as String? ?? 'Pending',
   );
@@ -68,7 +65,6 @@ class TaskDetail {
     'assign_date': assignDate,
     'assign_time': assignTime,
     'duration_hours': durationHours,
-    'time_zone': timeZone,
     'priority': priority,
     'status': status,
   };
@@ -82,7 +78,6 @@ class TaskDetail {
     String? assignDate,
     String? assignTime,
     int? durationHours,
-    String? timeZone,
     String? priority,
     String? status,
   }) => TaskDetail(
@@ -93,7 +88,6 @@ class TaskDetail {
     assignDate: assignDate, // allow clearing with null
     assignTime: assignTime,
     durationHours: durationHours ?? this.durationHours,
-    timeZone: timeZone ?? this.timeZone,
     priority: priority ?? this.priority,
     status: status ?? this.status,
   );
@@ -107,15 +101,12 @@ class TaskDetailScreen extends StatefulWidget {
   final String userId;
   final String? taskId; // pass null for create, an id for edit/view
   final String? mainTaskId; // optional main task ID for context
-  final bool?
-  taskAssignedToUser; // optional flag to indicate if the task is assigned to the user
 
   const TaskDetailScreen({
     super.key,
     required this.userId,
     required this.mainTaskId,
     this.taskId,
-    this.taskAssignedToUser,
   });
 
   @override
@@ -157,7 +148,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   // ── UI-only toggle visibility flags ───────────────────────────────────────
   // These are purely UI — not sent to API.
-  bool _showCalendar = false;
   bool _showTimePicker = false;
 
   // ── Toggle enable states (drive API fields) ────────────────────────────────
@@ -190,10 +180,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       "text ever since the 1500s, when an unknown printer "
       "took a galley of type.";
   String _assignTo = 'Guadalupe Mró';
+  List<String> _assigneeIds = []; // Raw IDs — used when saving, not display
   String _reportTo = 'Guadalupe Mró';
   String _priority = 'Low';
-  String _status = 'Pending';
-  String _timeZone = 'Kolkata';
+  String _status = 'To Do';
 
   // ── Static option lists ────────────────────────────────────────────────────
   static const _assignToItems = [
@@ -208,53 +198,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     'Henry Wilson',
     'Irene Taylor',
   ];
-  static const _reportToItems = [
-    'Manager',
-    'Team Lead',
-    'Director',
-    'HR',
-    'Guadalupe Mró',
-    'Alice Johnson',
-    'Bob Smith',
-  ];
   static const _priorityItems = ['Low', 'Medium', 'High'];
-  static const _statusItems = [
-    'Pending',
-    'In Progress',
-    'Completed',
-    'Cancelled',
-  ];
-  static const _timeZoneItems = [
-    'Kolkata',
-    'Mumbai',
-    'Delhi',
-    'Chennai',
-    'Bangalore',
-    'London',
-    'New York',
-    'Los Angeles',
-    'Dubai',
-    'Singapore',
-    'Tokyo',
-    'Sydney',
-    'Paris',
-    'Berlin',
-    'Toronto',
-  ];
-  static const _monthNames = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
+  static const _statusItems = ['To Do', 'In Progress', 'Completed'];
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Lifecycle
@@ -262,6 +207,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   // late final TaskInstanceController taskController;
   TaskInstanceController taskController = sl<TaskInstanceController>();
+  final EmployeeController employeeController = sl<EmployeeController>();
+
+  //create state variable to hold the scheduled time and period
+
+  String? _scheduledTimeValue;
+  String? _scheduledPeriodValue;
 
   // @override
   @override
@@ -274,53 +225,102 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     // taskController = sl<TaskInstanceController>();
 
     if (widget.taskId != null) {
+      // Show a loader instead of the placeholder/mock field values while
+      // the real instance data is being fetched.
+      _isLoading = true;
       WidgetsBinding.instance.addPostFrameCallback((_) async {
-        await taskController.handleGetInstanceById(instanceId: widget.taskId!);
+        await Future.wait([
+          taskController.handleGetInstanceById(instanceId: widget.taskId!),
+          employeeController.handleGetEmployees(),
+        ]);
+        final currentUserId = await secureStorage.read(key: 'user_id');
 
         if (mounted) {
+          final instance = taskController.selectedInstance;
           setState(() {
-            _title = taskController.selectedInstance?.title ?? '';
-            _description = taskController.selectedInstance?.description ?? '';
+            _title = instance?.title ?? '';
+            _description = instance?.description ?? '';
 
             _titleCtrl.text = _title;
             _descCtrl.text = _description;
-            // _assignTo = taskController.selectedInstance?.assigneeName ?? '';
-            if (widget.taskAssignedToUser == true) {
-              print(
-                'Task is assigned to the user. Disabling editing for certain fields.',
-              );
-              // If the task is assigned to the user, disable editing for certain fields
-              if (widget.taskAssignedToUser == true) {
-                // If the task is assigned to the user, disable editing for certain fields
-                _isReadOnly = true;
-                // _titleReadOnly = true;
-                // _descReadOnly = true;
-                // _assignDateEnabled = false;
-                // _assignTimeEnabled = false;
-                // _selectDurationEnabled = false;
-                // _priority = _priority;
-                // _assignTo = _assignTo;
-                // _reportTo = _reportTo;
-                // _durationHours = _durationHours;
-                // _timeZone = _timeZone;
-              } else {
-                // Allow editing for all fields
-                _isReadOnly = false;
-                // _titleReadOnly = false;
-                // _descReadOnly = false;
-                // _assignDateEnabled = true;
-                // _assignTimeEnabled = true;
-                // _selectDurationEnabled = true;
-                // _priority = '';
-                _assignTo = '';
-                _reportTo = '';
-                _durationHours = 0;
-                _timeZone = '';
+
+            _priority = _titleCase(instance?.priority ?? _priority);
+            _status = _statusLabel(instance?.status ?? '');
+
+            _assigneeIds = instance?.assignees ?? [];
+            _assignTo = _assigneeIds.isNotEmpty
+                ? _assigneeIds.map((id) => _employeeNameById(id)).join(', ')
+                : 'Unassigned';
+            _reportTo = (instance?.createdBy?.fullName.isNotEmpty ?? false)
+                ? instance!.createdBy!.fullName
+                : 'Unknown';
+
+            final scheduledDate = instance?.scheduledDate;
+            if (scheduledDate != null) {
+              _calendarYear = scheduledDate.year;
+              _calendarMonth = scheduledDate.month;
+              _selectedDay = scheduledDate.day;
+              _assignDateEnabled = true;
+            }
+
+            final scheduledTime = instance?.scheduledTime;
+            if (scheduledTime != null && scheduledTime.time.isNotEmpty) {
+              final parts = scheduledTime.time.split(':');
+              if (parts.length == 2) {
+                final h = int.tryParse(parts[0]) ?? _hour;
+                _hour = h == 0 ? 12 : h;
+                _minute = int.tryParse(parts[1]) ?? _minute;
+                _isAM = scheduledTime.period.toUpperCase() != 'PM';
+                _assignTimeEnabled = true;
               }
             }
+
+            _scheduledTimeValue = scheduledTime?.time;
+            _scheduledPeriodValue = scheduledTime?.period.toUpperCase();
+
+            // Full edit access only when the current user is the one who
+            // created/assigned this task; assignees who merely received it
+            // may only update its status (see the unlocked Status card
+            // below, which sits outside the AbsorbPointer this flag gates).
+            final isCreatedByCurrentUser =
+                currentUserId != null &&
+                currentUserId.isNotEmpty &&
+                instance?.createdBy?.id == currentUserId;
+            _isReadOnly = !isCreatedByCurrentUser;
+
+            _isLoading = false;
           });
         }
       });
+    }
+  }
+
+  String _titleCase(String s) =>
+      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
+  /// Resolves an assignee ID (the instance only carries raw user IDs) to a
+  /// display name via the employee directory; falls back to the raw ID if
+  /// the employee isn't found in the currently loaded list.
+  String _employeeNameById(String id) {
+    for (final employee in employeeController.allEmployees) {
+      if (employee.id == id) {
+        final name = employee.fullName;
+        return name.isNotEmpty ? name : id;
+      }
+    }
+    return id;
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'todo':
+        return 'To Do';
+      case 'inProgress':
+        return 'In Progress';
+      case 'completed':
+        return 'Completed';
+      default:
+        return _titleCase(status);
     }
   }
 
@@ -406,7 +406,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       _reportTo = m.reportingTo;
       _priority = m.priority;
       _status = m.status;
-      _timeZone = m.timeZone;
       _durationHours = m.durationHours;
 
       // Parse assign_date "YYYY-MM-DD"
@@ -417,7 +416,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           _calendarMonth = int.tryParse(p[1]) ?? _calendarMonth;
           _selectedDay = int.tryParse(p[2]);
           _assignDateEnabled = true;
-          _showCalendar = false;
         }
       }
 
@@ -466,7 +464,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       assignDate: assignDate,
       assignTime: startTime,
       durationHours: _durationHours,
-      timeZone: _timeZone,
       priority: _priority,
       status: _status,
     );
@@ -509,9 +506,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     ];
     return '${m[_calendarMonth - 1]} $_selectedDay, $_calendarYear';
   }
-
-  int _daysInMonth(int m, int y) => DateTime(y, m + 1, 0).day;
-  int _firstWeekday(int m, int y) => DateTime(y, m, 1).weekday % 7;
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Reusable UI components
@@ -610,6 +604,30 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     ),
   );
 
+  // ── Static (non-editable) info row — e.g. Schedule Date ───────────────────
+  Widget _staticInfoRow({required String label, required String value}) =>
+      Padding(
+        padding: EdgeInsets.symmetric(vertical: 10.h),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w600,
+                color: _textColor,
+              ),
+            ),
+            SizedBox(height: 2.h),
+            Text(
+              value,
+              style: GoogleFonts.inter(fontSize: 11.sp, color: _labelColor),
+            ),
+          ],
+        ),
+      );
+
   // ── Dropdown row (Priority / Status / Time Zone) ──────────────────────────
   Widget _dropdownField({
     required String label,
@@ -679,6 +697,28 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           ),
         ],
       ),
+    ),
+  );
+
+  // ── Static col (non-editable) — e.g. Assigned By ──────────────────────────
+  Widget _staticCol(String label, String val) => Expanded(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF4A4A4A),
+          ),
+        ),
+        SizedBox(height: 3.h),
+        Text(
+          val,
+          style: GoogleFonts.inter(fontSize: 11.sp, color: _labelColor),
+        ),
+      ],
     ),
   );
 
@@ -979,19 +1019,44 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     ),
   );
 
-  /// "Use Camera" flow — captures a single photo and adds it to the proof list.
+  /// "Use Camera" flow — captures a single photo and uploads it as proof.
   Future<void> _captureProofWithCamera() async {
-    // TODO: wire captured file to your proof-upload API
     final picker = ImagePicker();
     final XFile? shot = await picker.pickImage(source: ImageSource.camera);
     if (shot == null) return;
-    final size = await File(shot.path).length();
-    if (mounted) {
+
+    final success = await taskController.handleUploadInstanceProofFiles(
+      taskId: widget.mainTaskId ?? '',
+      instanceId: widget.taskId ?? '',
+      proofFiles: [File(shot.path)],
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+      final size = await File(shot.path).length();
       setState(() {
         _uploadedProofFiles.add(
           PlatformFile(name: shot.name, size: size, path: shot.path),
         );
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Proof uploaded successfully'),
+          backgroundColor: _greenOn,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            taskController.errorMessage ?? 'Failed to upload proof',
+          ),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -1001,6 +1066,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     String activeTab = 'upload'; // 'upload' | 'webcam'
     List<PlatformFile> pendingFiles = [];
     String? pendingFilesError;
+    bool isUploadingProof = false;
 
     showDialog(
       context: context,
@@ -1291,30 +1357,79 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     color: Colors.transparent,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(8.r),
-                      onTap: pendingFiles.isEmpty || pendingFilesError != null
+                      onTap:
+                          pendingFiles.isEmpty ||
+                              pendingFilesError != null ||
+                              isUploadingProof
                           ? null
-                          : () {
-                              // TODO: wire to real proof-upload API call
-                              setState(
-                                () => _uploadedProofFiles.addAll(pendingFiles),
-                              );
-                              Navigator.pop(ctx);
+                          : () async {
+                              setModalState(() => isUploadingProof = true);
+
+                              final files = pendingFiles
+                                  .where((f) => f.path != null)
+                                  .map((f) => File(f.path!))
+                                  .toList();
+
+                              final success = await taskController
+                                  .handleUploadInstanceProofFiles(
+                                    taskId: widget.mainTaskId ?? '',
+                                    instanceId: widget.taskId ?? '',
+                                    proofFiles: files,
+                                  );
+
+                              if (!mounted) return;
+
+                              if (success) {
+                                setState(
+                                  () => _uploadedProofFiles.addAll(
+                                    pendingFiles,
+                                  ),
+                                );
+                                Navigator.pop(ctx);
+                                ScaffoldMessenger.of(
+                                  context,
+                                ).showSnackBar(
+                                  SnackBar(
+                                    content: const Text(
+                                      'Proof uploaded successfully',
+                                    ),
+                                    backgroundColor: _greenOn,
+                                    duration: const Duration(seconds: 3),
+                                  ),
+                                );
+                              } else {
+                                setModalState(() {
+                                  isUploadingProof = false;
+                                  pendingFilesError =
+                                      taskController.errorMessage ??
+                                      'Failed to upload proof';
+                                });
+                              }
                             },
                       child: Padding(
                         padding: EdgeInsets.symmetric(vertical: 12.h),
                         child: Center(
-                          child: Text(
-                            'Upload',
-                            style: GoogleFonts.inter(
-                              fontSize: 13.sp,
-                              fontWeight: FontWeight.w700,
-                              color:
-                                  (pendingFiles.isEmpty ||
-                                      pendingFilesError != null)
-                                  ? Colors.white.withOpacity(0.7)
-                                  : Colors.white,
-                            ),
-                          ),
+                          child: isUploadingProof
+                              ? SizedBox(
+                                  width: 16.w,
+                                  height: 16.h,
+                                  child: const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  'Upload',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w700,
+                                    color:
+                                        (pendingFiles.isEmpty ||
+                                            pendingFilesError != null)
+                                        ? Colors.white.withOpacity(0.7)
+                                        : Colors.white,
+                                  ),
+                                ),
                         ),
                       ),
                     ),
@@ -1564,277 +1679,13 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   onSelect: (v) => setState(() => _assignTo = v),
                 ),
               ),
-              _assignCol(
-                'Reporting to',
-                _reportTo,
-                () => _showSearchableSheet(
-                  title: 'Reporting To',
-                  items: _reportToItems,
-                  selected: _reportTo,
-                  onSelect: (v) => setState(() => _reportTo = v),
-                ),
-              ),
+              _staticCol('Assigned By', _reportTo),
             ],
           ),
         ),
       ],
     ),
   );
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Calendar widget
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Widget _buildCalendar() {
-    final days = _daysInMonth(_calendarMonth, _calendarYear);
-    final firstDay = _firstWeekday(_calendarMonth, _calendarYear);
-    final now = DateTime.now();
-    final isNowMonth = _calendarMonth == now.month && _calendarYear == now.year;
-
-    return _card(
-      child: Column(
-        children: [
-          // Header
-          Row(
-            children: [
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: BoxConstraints(minWidth: 28.w, minHeight: 28.h),
-                icon: Icon(Icons.chevron_left, size: 20.r, color: _accentColor),
-                onPressed: () => setState(() {
-                  if (_calendarYear > now.year ||
-                      (_calendarYear == now.year &&
-                          _calendarMonth > now.month)) {
-                    if (--_calendarMonth < 1) {
-                      _calendarMonth = 12;
-                      _calendarYear--;
-                    }
-                  }
-                }),
-              ),
-              Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _calDropdown(
-                      _monthNames[_calendarMonth - 1].substring(0, 3),
-                      _showMonthPicker,
-                    ),
-                    SizedBox(width: 6.w),
-                    _calDropdown('$_calendarYear', _showYearPicker),
-                  ],
-                ),
-              ),
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: BoxConstraints(minWidth: 28.w, minHeight: 28.h),
-                icon: Icon(
-                  Icons.chevron_right,
-                  size: 20.r,
-                  color: _accentColor,
-                ),
-                onPressed: () => setState(() {
-                  if (++_calendarMonth > 12) {
-                    _calendarMonth = 1;
-                    _calendarYear++;
-                  }
-                }),
-              ),
-            ],
-          ),
-          SizedBox(height: 8.h),
-          // Day headers
-          Row(
-            children: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-                .map(
-                  (d) => Expanded(
-                    child: Center(
-                      child: Text(
-                        d,
-                        style: GoogleFonts.inter(
-                          fontSize: 10.sp,
-                          fontWeight: FontWeight.w600,
-                          color: _textColor,
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-                .toList(),
-          ),
-          SizedBox(height: 4.h),
-          // Day grid
-          ...() {
-            final rows = <Widget>[];
-            int day = 1;
-            final totalRows = ((firstDay + days) / 7).ceil();
-            for (int r = 0; r < totalRows; r++) {
-              final cells = <Widget>[];
-              for (int c = 0; c < 7; c++) {
-                final idx = r * 7 + c;
-                if (idx < firstDay || day > days) {
-                  cells.add(Expanded(child: SizedBox(height: 30.h)));
-                } else {
-                  final d = day;
-                  final isToday = isNowMonth && d == now.day;
-                  final isSel = _selectedDay == d;
-                  final isPast =
-                      _calendarYear < now.year ||
-                      (_calendarYear == now.year &&
-                          _calendarMonth < now.month) ||
-                      (_calendarYear == now.year &&
-                          _calendarMonth == now.month &&
-                          d < now.day);
-                  cells.add(
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: isPast
-                            ? null
-                            : () => setState(() => _selectedDay = d),
-                        child: Container(
-                          height: 30.h,
-                          margin: EdgeInsets.all(1.w),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isSel
-                                ? _primaryColor
-                                : isToday
-                                ? const Color(0xFFE8E6F5)
-                                : Colors.transparent,
-                          ),
-                          child: Center(
-                            child: Text(
-                              '$d',
-                              style: GoogleFonts.inter(
-                                fontSize: 11.sp,
-                                fontWeight: isToday || isSel
-                                    ? FontWeight.w700
-                                    : FontWeight.w400,
-                                color: isPast
-                                    ? const Color(0xFFCCCCCC)
-                                    : isSel
-                                    ? Colors.white
-                                    : isToday
-                                    ? _primaryColor
-                                    : _labelColor,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                  day++;
-                }
-              }
-              rows.add(Row(children: cells));
-              if (r < totalRows - 1) rows.add(SizedBox(height: 2.h));
-            }
-            return rows;
-          }(),
-        ],
-      ),
-    );
-  }
-
-  Widget _calDropdown(String text, VoidCallback onTap) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-      decoration: BoxDecoration(
-        border: Border.all(color: _dividerColor),
-        borderRadius: BorderRadius.circular(6.r),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            text,
-            style: GoogleFonts.inter(
-              fontSize: 12.sp,
-              fontWeight: FontWeight.w600,
-              color: _labelColor,
-            ),
-          ),
-          Icon(Icons.keyboard_arrow_down, size: 14.r, color: _textColor),
-        ],
-      ),
-    ),
-  );
-
-  void _showMonthPicker() {
-    final now = DateTime.now();
-    showModalBottomSheet(
-      context: context,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
-      ),
-      builder: (_) => ListView.builder(
-        shrinkWrap: true,
-        itemCount: 12,
-        itemBuilder: (_, i) {
-          final month = i + 1;
-          final isDisabled = _calendarYear == now.year && month < now.month;
-          return ListTile(
-            enabled: !isDisabled,
-            title: Text(
-              _monthNames[i],
-              style: GoogleFonts.inter(
-                fontSize: 13.sp,
-                color: isDisabled ? const Color(0xFFCCCCCC) : _labelColor,
-              ),
-            ),
-            trailing: _calendarMonth == month
-                ? Icon(Icons.check, color: _primaryColor, size: 16.r)
-                : null,
-            onTap: isDisabled
-                ? null
-                : () {
-                    setState(() => _calendarMonth = month);
-                    Navigator.pop(context);
-                  },
-          );
-        },
-      ),
-    );
-  }
-
-  void _showYearPicker() {
-    final now = DateTime.now();
-    final years = List.generate(2100 - now.year + 1, (i) => now.year + i);
-    showModalBottomSheet(
-      context: context,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
-      ),
-      builder: (_) => ListView(
-        shrinkWrap: true,
-        children: years
-            .map(
-              (y) => ListTile(
-                title: Text(
-                  '$y',
-                  style: GoogleFonts.inter(fontSize: 13.sp, color: _labelColor),
-                ),
-                trailing: _calendarYear == y
-                    ? Icon(Icons.check, color: _primaryColor, size: 16.r)
-                    : null,
-                onTap: () {
-                  setState(() {
-                    _calendarYear = y;
-                    if (_calendarYear == now.year &&
-                        _calendarMonth < now.month) {
-                      _calendarMonth = now.month;
-                    }
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-            )
-            .toList(),
-      ),
-    );
-  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Time picker widget
@@ -2203,42 +2054,25 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                     vertical: 2.h,
                                   ),
                                   child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      // Assign Date toggle
-                                      _toggleRow(
-                                        label: 'Assign Date',
-                                        sub: _selectedDateLabel,
-                                        value: _assignDateEnabled,
-                                        onTap: () => setState(() {
-                                          _assignDateEnabled =
-                                              !_assignDateEnabled;
-                                          _showCalendar = _assignDateEnabled;
-                                          if (_assignDateEnabled) {
-                                            _assignTimeEnabled = false;
-                                            _showTimePicker = false;
-                                          }
-                                        }),
+                                      // Schedule Date — read-only, never editable
+                                      _staticInfoRow(
+                                        label: 'Schedule Date',
+                                        value: _selectedDateLabel,
                                       ),
-                                      if (_showCalendar) ...[
-                                        SizedBox(height: 6.h),
-                                        _buildCalendar(),
-                                        SizedBox(height: 8.h),
-                                      ],
                                       _divider(),
 
-                                      // Assign Time toggle
+                                      // Schedule Time toggle
                                       _toggleRow(
-                                        label: 'Assign Time',
+                                        label: 'Schedule Time',
                                         sub: _formattedTime,
                                         value: _assignTimeEnabled,
                                         onTap: () => setState(() {
                                           _assignTimeEnabled =
                                               !_assignTimeEnabled;
                                           _showTimePicker = _assignTimeEnabled;
-                                          if (_assignTimeEnabled) {
-                                            _assignDateEnabled = false;
-                                            _showCalendar = false;
-                                          }
                                         }),
                                       ),
                                       if (_showTimePicker) ...[
@@ -2246,21 +2080,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                         _buildTimePicker(),
                                         SizedBox(height: 8.h),
                                       ],
-                                      _divider(),
-
-                                      // Time Zone
-                                      _dropdownField(
-                                        label: 'Time Zone',
-                                        value: _timeZone,
-                                        valueColor: _labelColor,
-                                        onTap: () => _showSearchableSheet(
-                                          title: 'Time Zone',
-                                          items: _timeZoneItems,
-                                          selected: _timeZone,
-                                          onSelect: (v) =>
-                                              setState(() => _timeZone = v),
-                                        ),
-                                      ),
                                     ],
                                   ),
                                 ),
@@ -2314,8 +2133,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                     items: _statusItems,
                                     selected: _status,
                                     onSelect: (v) =>
-                                        print('Selected status: $v'),
-                                    // setState(() => _status = v),
+                                        setState(() => _status = v),
                                   ),
                                 ),
                               ],
@@ -2324,10 +2142,17 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
                           SizedBox(height: 24.h),
 
-                          // 🔓 UNLOCKED UPLOAD PROOF BUTTON
-                          _buildUploadProofButton(),
-
-                          SizedBox(height: 16.h),
+                          // 🔓 UNLOCKED UPLOAD PROOF BUTTON — only shown when
+                          // the instance actually requires proof types.
+                          if ((taskController
+                                      .selectedInstance
+                                      ?.proofSubmission
+                                      ?.proofTypes
+                                      .isNotEmpty ??
+                                  false)) ...[
+                            _buildUploadProofButton(),
+                            SizedBox(height: 16.h),
+                          ],
 
                           // 🔓 UNLOCKED SAVE BUTTON
                           Row(
@@ -2352,10 +2177,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                       onTap: () async {
                                         if (!_isSaving &&
                                             await userTaskPermission) {
-                                          print(_status);
                                           String statusAfterUpdate = 'todo';
 
-                                          if (_status == 'Pending') {
+                                          if (_status == 'To Do') {
                                             statusAfterUpdate = 'todo';
                                           } else if (_status == 'In Progress') {
                                             statusAfterUpdate = 'inProgress';
@@ -2363,30 +2187,47 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                             statusAfterUpdate = 'completed';
                                           }
 
-                                          print(
-                                            'Status after update: $statusAfterUpdate',
-                                          );
-                                          // await taskController
-                                          //     .handleUpdateInstanceConfiguration(
-                                          //       taskId: widget.mainTaskId ?? '',
-                                          //       instanceId: widget.taskId ?? '',
-                                          //       status: statusAfterUpdate,
-                                          //       scope: 'single', // optional
-                                          //       // priority: _priority,
-                                          //       // assigneeIds: _assignToItems
-                                          //       //     .where(
-                                          //       //       (e) => e['id'] == _assignTo,
-                                          //       //     )
-                                          //       //     .map((e) => e['id'] as String)
-                                          //       // .toList(),
-                                          //       // scheduledTime: {
-                                          //       //   'date': _selectedDateLabel,
-                                          //       //   'time': _formattedTime,
-                                          //       //   'timezone': _timeZone,
-                                          //       // },
-                                          //     );
+                                          setState(() => _isSaving = true);
 
-                                          // _saveTask();
+                                          print(_priority);
+
+                                          final success = await taskController
+                                              .handleUpdateInstanceConfiguration(
+                                                taskId: widget.mainTaskId ?? '',
+                                                instanceId: widget.taskId ?? '',
+                                                status: statusAfterUpdate,
+                                                assigneeIds: _assigneeIds,
+                                                priority: _priority
+                                                    .toLowerCase(),
+                                                time: _scheduledTimeValue,
+                                                period: _scheduledPeriodValue,
+
+                                                scope: 'single',
+                                              );
+
+                                          if (!mounted) return;
+
+                                          setState(() => _isSaving = false);
+
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                success
+                                                    ? 'Task updated successfully'
+                                                    : (taskController
+                                                              .errorMessage ??
+                                                          'Failed to update task'),
+                                              ),
+                                              backgroundColor: success
+                                                  ? _greenOn
+                                                  : Colors.redAccent,
+                                              duration: const Duration(
+                                                seconds: 3,
+                                              ),
+                                            ),
+                                          );
                                         } else {
                                           ScaffoldMessenger.of(
                                             context,
@@ -2445,7 +2286,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               ),
             ),
 
-      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 1),
+      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: -1),
     );
   }
 }

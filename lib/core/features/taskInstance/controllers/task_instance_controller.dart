@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:taskalert_app/core/features/taskInstance/data/models/task_instance_counts_model.dart';
 import 'package:taskalert_app/core/features/taskInstance/data/models/task_instances_response.dart';
@@ -49,6 +51,7 @@ class TaskInstanceController extends ChangeNotifier {
     String? status,
     String? sortBy,
     String? order,
+    bool? overdue,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -63,6 +66,7 @@ class TaskInstanceController extends ChangeNotifier {
       status: status,
       sortBy: sortBy,
       order: order,
+      overdue: overdue,
     );
     _isLoading = false;
 
@@ -176,6 +180,49 @@ class TaskInstanceController extends ChangeNotifier {
       status: status,
       priority: priority,
       assigneeIds: assigneeIds,
+    );
+
+    _isLoading = false;
+
+    if (result is Success) {
+      final apiResponse =
+          (result as Success).data as BaseApiResponse<TaskInstanceModel>;
+      _successMessage = apiResponse.message;
+
+      final index = _instances.indexWhere(
+        (element) => element.id == instanceId,
+      );
+      if (index != -1 && apiResponse.data != null) {
+        _instances[index] = apiResponse.data!;
+      }
+      if (_selectedInstance?.id == instanceId) {
+        _selectedInstance = apiResponse.data;
+      }
+      notifyListeners();
+      return true;
+    } else if (result is Failure) {
+      _errorMessage = (result as Failure).exception.userMessage;
+      notifyListeners();
+      return false;
+    }
+    return false;
+  }
+
+  /// 5. Upload Proof Files for an Instance
+  Future<bool> handleUploadInstanceProofFiles({
+    required String taskId,
+    required String instanceId,
+    required List<File> proofFiles,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _successMessage = null;
+    notifyListeners();
+
+    final result = await _repository.uploadInstanceProofFiles(
+      taskId: taskId,
+      instanceId: instanceId,
+      proofFiles: proofFiles,
     );
 
     _isLoading = false;

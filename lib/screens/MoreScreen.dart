@@ -118,7 +118,7 @@ class MoreScreenState extends State<MoreScreen> {
         showLeading: true,
         onBackPressed: () => Navigator.pop(context),
       ),
-      drawer: CustomDrawer(activeTile: "Home", onTileTap: (value) {}),
+      drawer: CustomDrawer(activeTile: "Settings", onTileTap: (value) {}),
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => FocusScope.of(context).unfocus(),

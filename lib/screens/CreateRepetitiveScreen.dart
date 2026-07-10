@@ -15,23 +15,14 @@ import 'package:taskalert_app/core/features/departments/controllers/department_c
 import 'package:taskalert_app/core/features/departments/data/models/department_model.dart';
 import 'package:taskalert_app/core/features/employees/controllers/employee_controller.dart';
 import 'package:taskalert_app/core/features/employees/data/models/employee_model.dart';
+import 'package:taskalert_app/core/features/location/controllers/location_controller.dart';
+import 'package:taskalert_app/core/features/location/data/models/location_model.dart';
 import 'package:taskalert_app/core/features/tasks/controllers/task_controller.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
 
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
-
-class LocationOptionModel {
-  final String id;
-  final String name;
-  final String city;
-  LocationOptionModel({
-    required this.id,
-    required this.name,
-    required this.city,
-  });
-}
 
 class CreateRepetitiveScreen extends StatefulWidget {
   const CreateRepetitiveScreen({super.key, required this.userId});
@@ -62,16 +53,10 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
   final FocusNode locationFocusNode = FocusNode();
   final LayerLink locationLayerLink = LayerLink();
   OverlayEntry? _locationSuggestionsOverlay;
-  List<LocationOptionModel> _locationSuggestions = [];
-  LocationOptionModel? selectedLocation;
+  List<LocationModel> _locationSuggestions = [];
+  LocationModel? selectedLocation;
   String? _locationError;
   final GlobalKey _locationFieldKey = GlobalKey();
-
-  // Mock — swap for LocationController.locations once wired up
-  final List<LocationOptionModel> _mockLocations = [
-    LocationOptionModel(id: "1", name: "Second Office", city: "Kolkata"),
-    LocationOptionModel(id: "2", name: "Head Office", city: "Kolkata"),
-  ];
 
   // ── New Department (searchable multi-select, scoped to selected Location) ─
   List<DepartmentModel> selectedNewDepartments = [];
@@ -83,21 +68,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
   // ── Toggle-level error messages ───────────────────────────────────────────
   String? _assignmentToggleError;
   String? _proofToggleError;
-
-  // ── Department (searchable single-select) ─────────────────────────────────
-  DepartmentModel? selectedDepartment;
-  String? _departmentError;
-  // String selectedDepartment = "Select Department";
-  // final List<String> _departmentItems = [
-  //   "Retail",
-  //   "Marketing",
-  //   "Sales",
-  //   "Finance",
-  //   "HR",
-  //   "Operations",
-  //   "IT",
-  //   "Legal",
-  // ];
 
   // ── Assign To (multi-select) ──────────────────────────────────────────────
   final List<Map<String, String>> _allUsers = [
@@ -891,9 +861,9 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
   int occurrencesCount = 1;
   int timePeriodCount = 1;
 
-  late final DepartmentController departmentController;
   late final EmployeeController employeeController;
   late final TaskController taskController;
+  late final LocationController locationController;
 
   // ─────────────────────────────────────────────────────────────────────────
   @override
@@ -913,13 +883,14 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     locationSearchController.addListener(_onLocationSearchChanged);
     locationFocusNode.addListener(_onLocationFocusChanged);
 
-    departmentController = sl<DepartmentController>();
     employeeController = sl<EmployeeController>();
     taskController = sl<TaskController>();
+    locationController = sl<LocationController>();
+    locationController.addListener(_onLocationsChanged);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      departmentController.handleGetDepartments();
       employeeController.handleGetEmployees();
+      locationController.handleGetLocations();
     });
   }
 
@@ -943,6 +914,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     locationSearchController.dispose();
     locationFocusNode.removeListener(_onLocationFocusChanged);
     locationFocusNode.dispose();
+    locationController.removeListener(_onLocationsChanged);
     _removeLocationSuggestionsOverlay();
 
     super.dispose();
@@ -960,11 +932,13 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       setState(() => _weekdayError = null);
     }
 
-    if (selectedDepartment == null) {
-      setState(() => _departmentError = "Please select department");
+    if (selectedNewDepartments.isEmpty) {
+      setState(
+        () => _newDepartmentError = "Please select at least one department",
+      );
       valid = false;
     } else {
-      setState(() => _departmentError = null);
+      setState(() => _newDepartmentError = null);
     }
 
     if (selectedReportingList.isEmpty) {
@@ -1135,10 +1109,9 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
         "taskType": taskType,
         "title": titleNameController.text.trim(),
         "location": selectedLocation?.id,
-        "newDepartments": jsonEncode(
-          selectedNewDepartments.map((d) => d.id).toList(),
+        "department": jsonEncode(
+          selectedNewDepartments.map((d) => d.id).whereType<String>().toList(),
         ),
-        "department": selectedDepartment?.id,
         "priority": selectedPriority.toLowerCase(),
         "assignees": jsonEncode(selectedAssignees),
         "reportingTo": jsonEncode(selectedReportingList),
@@ -1184,7 +1157,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       //print(formData);
 
       if (isProofEnabled) {
-        formData['proofTypes'] = selectedProofTypes;
+        formData['proofTypes'] = jsonEncode(selectedProofTypes);
         formData["aiValidationEnabled"] = selectedProofRadioType == "Yes"
             ? true
             : false;
@@ -1293,15 +1266,21 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     }
   }
 
+  void _onLocationsChanged() {
+    if (!mounted) return;
+    _updateLocationSuggestions(locationSearchController.text);
+  }
+
   void _updateLocationSuggestions(String query) {
     final q = query.trim().toLowerCase();
+    final allLocations = locationController.locations;
     _locationSuggestions = q.isEmpty
-        ? List.from(_mockLocations)
-        : _mockLocations
+        ? List.from(allLocations)
+        : allLocations
               .where(
                 (l) =>
                     l.name.toLowerCase().contains(q) ||
-                    l.city.toLowerCase().contains(q),
+                    (l.address?.city.toLowerCase().contains(q) ?? false),
               )
               .toList();
 
@@ -1365,7 +1344,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                   ),
                                 ),
                                 Text(
-                                  loc.city,
+                                  loc.address?.city ?? '',
                                   style: GoogleFonts.inter(
                                     fontSize: 11.sp,
                                     color: const Color(0xFF667085),
@@ -1393,7 +1372,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     _locationSuggestionsOverlay = null;
   }
 
-  void _selectLocationSuggestion(LocationOptionModel location) {
+  void _selectLocationSuggestion(LocationModel location) {
     locationSearchController.removeListener(_onLocationSearchChanged);
     locationSearchController.text = location.name;
     locationSearchController.selection = TextSelection.fromPosition(
@@ -1580,7 +1559,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     if (startDateController.text.trim().isNotEmpty) return true;
 
     // 2. Base Dropdown Entity Selection Objects
-    if (selectedDepartment != null) return true;
+    if (selectedNewDepartments.isNotEmpty) return true;
 
     // Assuming "low" is your baseline priority default fallback
     if (selectedPriority.toLowerCase() != "low") return true;
@@ -1907,7 +1886,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                 SizedBox(height: 8.h),
 
                                 // New Department — searchable multi-select, scoped to Location
-                                _buildLabel("New Department"),
+                                _buildLabel("Department"),
                                 SizedBox(height: 3.h),
                                 IgnorePointer(
                                   ignoring: selectedLocation == null,
@@ -2004,76 +1983,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                     ),
                                   ),
 
-                                SizedBox(height: 8.h),
-
-                                // Department
-                                _buildLabel("Department"),
-                                SizedBox(height: 3.h),
-
-                                _buildSearchableDropdownField(
-                                  // If a department is selected, display its real name, otherwise display your placeholder hint
-                                  value:
-                                      selectedDepartment?.name ??
-                                      "Select Department",
-                                  hint: "Select Department",
-
-                                  onTap: () => _showSearchableBottomSheet(
-                                    context: context,
-                                    title: "Select Department",
-                                    selectedValue: selectedDepartment,
-                                    onSelected:
-                                        (DepartmentModel departmentModel) {
-                                          setState(() {
-                                            selectedDepartment =
-                                                departmentModel;
-                                            _departmentError = null;
-                                          });
-                                        },
-                                  ),
-                                  errorText: _departmentError,
-                                ),
-
-                                if (_departmentError != null)
-                                  Padding(
-                                    padding: EdgeInsets.only(
-                                      top: 4.h,
-                                      left: 4.w,
-                                    ),
-                                    child: Text(
-                                      _departmentError!,
-                                      style: GoogleFonts.inter(
-                                        color: Colors.red,
-                                        fontSize: 10.sp,
-                                      ),
-                                    ),
-                                  ),
-
-                                // _buildSearchableDropdownField(
-                                //   value: selectedDepartment,
-                                //   hint: "Select Department",
-                                //   errorText: _departmentError,
-                                //   onTap: () => _showSearchableBottomSheet(
-                                //     context: context,
-                                //     title: "Select Department",
-                                //     items: _departmentItems,
-                                //     selectedValue: selectedDepartment,
-                                //     onSelected: (v) => setState(() {
-                                //       selectedDepartment = v;
-                                //       _departmentError = null;
-                                //     }),
-                                //   ),
-                                // ),
-                                // if (_departmentError != null)
-                                //   Padding(
-                                //     padding: EdgeInsets.only(top: 4.h, left: 4.w),
-                                //     child: Text(
-                                //       _departmentError!,
-                                //       style: GoogleFonts.inter(
-                                //         color: Colors.red,
-                                //         fontSize: 10.sp,
-                                //       ),
-                                //     ),
-                                //   ),
                                 SizedBox(height: 8.h),
 
                                 // Priority
@@ -2184,13 +2093,9 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
                                 GestureDetector(
                                   onTap: () {
-                                    final activeEmployees = employeeController
-                                        .employees
-                                        .toList();
-
                                     _showAssignToBottomSheet(
                                       context,
-                                      activeEmployees,
+                                      _employeesForSelectedDepartments(),
                                     );
                                   },
                                   child: Container(
@@ -2229,7 +2134,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                                   ) {
                                                     // Match selected IDs back to names for display chips
                                                     final emp = employeeController
-                                                        .employees
+                                                        .allEmployees
                                                         .firstWhere(
                                                           (e) => e.id == id,
                                                           orElse: () =>
@@ -3670,7 +3575,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
             },
           ),
         ),
-        bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 0),
+        bottomNavigationBar: const CustomBottomNavBar(selectedIndex: -1),
       ),
     );
   }
@@ -4453,239 +4358,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     );
   }
 
-  // ── Searchable single-select field ─────────────────────────────────────────
-
-  Widget _buildSearchableDropdownField({
-    required String value,
-    required String hint,
-    required VoidCallback onTap,
-    String? errorText,
-  }) {
-    final isPlaceholder =
-        value == hint ||
-        value == "Select User" ||
-        value == "Select Users" ||
-        value == "Select Department";
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF9FAFC),
-          borderRadius: BorderRadius.circular(8.r),
-          border: Border.all(
-            color: errorText != null ? Colors.red : const Color(0xFFD9DEE5),
-          ),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                value,
-                style: GoogleFonts.inter(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w400,
-                  color: isPlaceholder
-                      ? const Color(0xFFB8BEC5)
-                      : const Color(0xFF6C7278),
-                ),
-              ),
-            ),
-            Icon(
-              CupertinoIcons.chevron_down,
-              size: 11.r,
-              color: const Color(0xFF6C7278),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // void _showSearchableBottomSheet({
-  //   required BuildContext context,
-  //   required String title,
-  //   required List<String> items,
-  //   required String selectedValue,
-  //   required ValueChanged<String> onSelected,
-  // }) {
-  //   String query = "";
-  //   List<String> filtered = List.from(items);
-
-  //   showModalBottomSheet(
-  //     context: context,
-  //     backgroundColor: Colors.transparent,
-  //     isScrollControlled: true,
-  //     useRootNavigator: true,
-  //     builder: (_) => StatefulBuilder(
-  //       builder: (ctx, ss) => Padding(
-  //         padding: EdgeInsets.only(
-  //           bottom: MediaQuery.of(ctx).viewInsets.bottom,
-  //         ),
-  //         child: Container(
-  //           constraints: BoxConstraints(
-  //             maxHeight: MediaQuery.of(ctx).size.height * 0.6,
-  //           ),
-  //           padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 24.h),
-  //           decoration: BoxDecoration(
-  //             color: Colors.white,
-  //             borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-  //             boxShadow: [
-  //               BoxShadow(
-  //                 color: Colors.black.withOpacity(0.12),
-  //                 blurRadius: 10.r,
-  //                 offset: const Offset(0, -2),
-  //               ),
-  //             ],
-  //           ),
-  //           child: Column(
-  //             mainAxisSize: MainAxisSize.min,
-  //             crossAxisAlignment: CrossAxisAlignment.start,
-  //             children: [
-  //               Row(
-  //                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //                 children: [
-  //                   Text(
-  //                     title,
-  //                     style: GoogleFonts.inter(
-  //                       fontSize: 14.sp,
-  //                       fontWeight: FontWeight.w700,
-  //                       color: const Color(0xFF0A0258),
-  //                     ),
-  //                   ),
-  //                   GestureDetector(
-  //                     onTap: () => Navigator.pop(ctx),
-  //                     child: Icon(
-  //                       Icons.close,
-  //                       size: 20.r,
-  //                       color: const Color(0xFF6C7278),
-  //                     ),
-  //                   ),
-  //                 ],
-  //               ),
-  //               SizedBox(height: 12.h),
-  //               TextField(
-  //                 autofocus: true,
-  //                 onChanged: (val) => ss(() {
-  //                   query = val;
-  //                   filtered = items
-  //                       .where(
-  //                         (e) => e.toLowerCase().contains(
-  //                           val.toLowerCase().trim(),
-  //                         ),
-  //                       )
-  //                       .toList();
-  //                 }),
-  //                 style: GoogleFonts.inter(
-  //                   fontSize: 12.sp,
-  //                   color: const Color(0xFF344054),
-  //                 ),
-  //                 decoration: InputDecoration(
-  //                   isDense: true,
-  //                   hintText: "Search...",
-  //                   hintStyle: GoogleFonts.inter(
-  //                     fontSize: 12.sp,
-  //                     color: const Color(0xFFB8BEC5),
-  //                   ),
-  //                   prefixIcon: Icon(
-  //                     CupertinoIcons.search,
-  //                     size: 16.r,
-  //                     color: const Color(0xFF4338CA),
-  //                   ),
-  //                   filled: true,
-  //                   fillColor: const Color(0xFFF9FAFC),
-  //                   contentPadding: EdgeInsets.symmetric(
-  //                     horizontal: 10.w,
-  //                     vertical: 10.h,
-  //                   ),
-  //                   border: OutlineInputBorder(
-  //                     borderRadius: BorderRadius.circular(8.r),
-  //                     borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
-  //                   ),
-  //                   enabledBorder: OutlineInputBorder(
-  //                     borderRadius: BorderRadius.circular(8.r),
-  //                     borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
-  //                   ),
-  //                   focusedBorder: OutlineInputBorder(
-  //                     borderRadius: BorderRadius.circular(8.r),
-  //                     borderSide: const BorderSide(color: Color(0xFF0A0258)),
-  //                   ),
-  //                 ),
-  //               ),
-  //               SizedBox(height: 8.h),
-  //               Flexible(
-  //                 child: filtered.isEmpty
-  //                     ? Padding(
-  //                         padding: EdgeInsets.symmetric(vertical: 24.h),
-  //                         child: Center(
-  //                           child: Text(
-  //                             "No results found",
-  //                             style: GoogleFonts.inter(
-  //                               fontSize: 12.sp,
-  //                               color: const Color(0xFF9AA0AB),
-  //                             ),
-  //                           ),
-  //                         ),
-  //                       )
-  //                     : ListView.separated(
-  //                         shrinkWrap: true,
-  //                         itemCount: filtered.length,
-  //                         separatorBuilder: (_, __) => const Divider(
-  //                           height: 1,
-  //                           color: Color(0xFFE4E7EC),
-  //                         ),
-  //                         itemBuilder: (_, i) {
-  //                           final item = filtered[i];
-  //                           final isSel = item == selectedValue;
-  //                           return InkWell(
-  //                             borderRadius: BorderRadius.circular(8.r),
-  //                             onTap: () {
-  //                               onSelected(item);
-  //                               Navigator.pop(ctx);
-  //                             },
-  //                             child: Padding(
-  //                               padding: EdgeInsets.symmetric(
-  //                                 horizontal: 4.w,
-  //                                 vertical: 12.h,
-  //                               ),
-  //                               child: Row(
-  //                                 children: [
-  //                                   Expanded(
-  //                                     child: Text(
-  //                                       item,
-  //                                       style: GoogleFonts.inter(
-  //                                         fontSize: 13.sp,
-  //                                         fontWeight: isSel
-  //                                             ? FontWeight.w600
-  //                                             : FontWeight.w400,
-  //                                         color: isSel
-  //                                             ? const Color(0xFF0A0258)
-  //                                             : const Color(0xFF344054),
-  //                                       ),
-  //                                     ),
-  //                                   ),
-  //                                   if (isSel)
-  //                                     Icon(
-  //                                       Icons.check,
-  //                                       size: 16.r,
-  //                                       color: const Color(0xFF0A0258),
-  //                                     ),
-  //                                 ],
-  //                               ),
-  //                             ),
-  //                           );
-  //                         },
-  //                       ),
-  //               ),
-  //             ],
-  //           ),
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  // }
-
   // // ── Assign To multi-select bottom sheet ───────────────────────────────────
 
   // void _showAssignToBottomSheet(BuildContext context) {
@@ -5181,7 +4853,13 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                           child: Center(child: CircularProgressIndicator()),
                         );
                       }
-                      final departments = departmentController.departments;
+                      final departments = departmentController.departments
+                          .where(
+                            (d) => d.location.any(
+                              (l) => l.id == selectedLocation?.id,
+                            ),
+                          )
+                          .toList();
                       if (departments.isEmpty) {
                         return Padding(
                           padding: EdgeInsets.symmetric(vertical: 24.h),
@@ -5310,11 +4988,25 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                             child: ElevatedButton(
                               onPressed: () {
                                 setState(() {
+                                  final oldIds = selectedNewDepartments
+                                      .map((d) => d.id)
+                                      .toSet();
+                                  final newIds = tempSelected
+                                      .map((d) => d.id)
+                                      .toSet();
+                                  final departmentsChanged =
+                                      oldIds.length != newIds.length ||
+                                      !oldIds.containsAll(newIds);
                                   selectedNewDepartments = List.from(
                                     tempSelected,
                                   );
                                   if (selectedNewDepartments.isNotEmpty) {
                                     _newDepartmentError = null;
+                                  }
+                                  // Previously selected assignees may not
+                                  // belong to the newly chosen department(s).
+                                  if (departmentsChanged) {
+                                    selectedAssignees = [];
                                   }
                                 });
                                 Navigator.pop(ctx);
@@ -5390,6 +5082,19 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       ],
     ),
   );
+
+  /// Employees belonging to any of the currently selected "New Department"
+  /// entries — the Assign To dropdown is scoped to this list.
+  List<EmployeeModel> _employeesForSelectedDepartments() {
+    if (selectedNewDepartments.isEmpty) return [];
+    final departmentNames = selectedNewDepartments
+        .map((d) => d.name)
+        .whereType<String>()
+        .toSet();
+    return employeeController.allEmployees
+        .where((e) => departmentNames.contains(e.department))
+        .toList();
+  }
 
   void _showAssignToBottomSheet(
     BuildContext context,
@@ -5744,112 +5449,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  void _showSearchableBottomSheet({
-    required BuildContext context,
-    required String title,
-    required DepartmentModel? selectedValue,
-    required Function(DepartmentModel) onSelected,
-  }) {
-    // Grab the factory instance straight out of your service locator container
-    final departmentController = sl<DepartmentController>();
-    departmentController.handleGetDepartments(search: "");
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-      builder: (context) {
-        // Use ListenableBuilder (built straight into Flutter) to re-render when the controller notifies
-        return ListenableBuilder(
-          listenable: departmentController,
-          builder: (context, child) {
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.75,
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        title,
-                        style: GoogleFonts.inter(
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 10.h),
-                  TextField(
-                    onChanged: (value) {
-                      departmentController.handleGetDepartments(
-                        search: value.trim(),
-                      );
-                    },
-                    decoration: InputDecoration(
-                      hintText: "Search...",
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 16.h),
-                  Expanded(
-                    child: departmentController.isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : departmentController.departments.isEmpty
-                        ? const Center(child: Text("No departments found"))
-                        : ListView.builder(
-                            itemCount: departmentController.departments.length,
-                            itemBuilder: (context, index) {
-                              final department =
-                                  departmentController.departments[index];
-                              final isSelected =
-                                  department.id == selectedValue?.id;
-
-                              return ListTile(
-                                title: Text(
-                                  department.name ?? "",
-                                  style: GoogleFonts.inter(
-                                    fontWeight: isSelected
-                                        ? FontWeight.w600
-                                        : FontWeight.w400,
-                                  ),
-                                ),
-                                trailing: isSelected
-                                    ? const Icon(
-                                        Icons.check,
-                                        color: Colors.blue,
-                                      )
-                                    : null,
-                                onTap: () {
-                                  onSelected(department);
-                                  Navigator.pop(context);
-
-                                  employeeController.handleGetEmployees(
-                                    department: department.name,
-                                  );
-                                },
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
     );
   }
 

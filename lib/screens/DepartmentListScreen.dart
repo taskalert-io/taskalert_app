@@ -38,7 +38,7 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
 
   bool _matchesQuery(DepartmentModel d, String q) =>
       (d.name ?? "").toLowerCase().contains(q) ||
-      (d.location?.name?.toLowerCase().contains(q) ?? false);
+      d.location.any((l) => (l.name ?? "").toLowerCase().contains(q));
 
   List<DepartmentModel> get _filtered {
     final q = _searchController.text.trim().toLowerCase();
@@ -204,10 +204,15 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
     final nameCtrl = TextEditingController(text: existing?.name ?? "");
 
     // ── Location autocomplete plumbing (scoped to this dialog) ────────────
+    // A department can now belong to multiple locations, but this dialog's
+    // field only supports picking one — prefill from the first, if any.
+    final existingLocation = existing != null && existing.location.isNotEmpty
+        ? existing.location.first
+        : null;
     final locationCtrl = TextEditingController(
-      text: existing?.location?.name ?? "",
+      text: existingLocation?.name ?? "",
     );
-    String? selectedLocationId = existing?.location?.id;
+    String? selectedLocationId = existingLocation?.id;
     final locationFocusNode = FocusNode();
     final LayerLink locationLayerLink = LayerLink();
     OverlayEntry? locationOverlay;
@@ -1065,8 +1070,9 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
                                                 color: const Color(0xFF1D2939),
                                               ),
                                             ),
-                                            if (department.location?.name !=
-                                                null) ...[
+                                            if (department
+                                                .location
+                                                .isNotEmpty) ...[
                                               SizedBox(height: 4.h),
                                               Row(
                                                 mainAxisSize: MainAxisSize.min,
@@ -1080,13 +1086,23 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
                                                     ),
                                                   ),
                                                   SizedBox(width: 4.w),
-                                                  Text(
-                                                    department.location?.name ??
-                                                        "",
-                                                    style: GoogleFonts.inter(
-                                                      fontSize: 11.5.sp,
-                                                      color: const Color(
-                                                        0xFF667085,
+                                                  Flexible(
+                                                    child: Text(
+                                                      department.location
+                                                          .map(
+                                                            (l) => l.name ?? '',
+                                                          )
+                                                          .where(
+                                                            (n) => n.isNotEmpty,
+                                                          )
+                                                          .join(', '),
+                                                      overflow: TextOverflow
+                                                          .ellipsis,
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 11.5.sp,
+                                                        color: const Color(
+                                                          0xFF667085,
+                                                        ),
                                                       ),
                                                     ),
                                                   ),
@@ -1128,7 +1144,7 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
           );
         },
       ),
-      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 0),
+      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: -1),
     );
   }
 }

@@ -1215,7 +1215,7 @@ class _LocationListScreenState extends State<LocationListScreen> {
           );
         },
       ),
-      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 0),
+      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: -1),
     );
   }
 }

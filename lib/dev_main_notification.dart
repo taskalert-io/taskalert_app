@@ -21,7 +21,14 @@ class _DevApp extends StatelessWidget {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           theme: ThemeData(textTheme: GoogleFonts.interTextTheme()),
-          home: const NotificationStart(userId: 'dev_user'),
+          // This standalone harness never calls the app's DI setup
+          // (`di.init()`), so the screen's default RealNotificationRepository
+          // (which pulls `NotificationController` from that DI container)
+          // would crash here — force the offline mock repository instead.
+          home: NotificationStart(
+            userId: 'dev_user',
+            repository: MockNotificationRepository(),
+          ),
         );
       },
     );

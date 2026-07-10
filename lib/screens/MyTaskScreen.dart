@@ -141,6 +141,13 @@ class MyTaskScreenState extends State<MyTaskScreen> {
 
   int _selectedTab = 0;
 
+  // ── Assignment filter: "My Tasks" (to_me) vs "Assigned by Me" (by_me) ──────
+  String _assignedFilter = 'to_me';
+  final List<Map<String, String>> _assignmentFilters = [
+    {'label': 'My Tasks', 'value': 'to_me'},
+    {'label': 'Assigned by Me', 'value': 'by_me'},
+  ];
+
   // ── Tab data: label + key (for API mapping) + count ────────────────────────
   List<Map<String, dynamic>> _tabs = [
     {'label': 'Today', 'key': 'today', 'count': 0},
@@ -181,8 +188,14 @@ class MyTaskScreenState extends State<MyTaskScreen> {
     taskController = sl<TaskInstanceController>();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      loadTasks('to_me', order, sortBy, startDate, endDate);
+      loadTasks(_assignedFilter, order, sortBy, startDate, endDate);
     });
+  }
+
+  void _onAssignmentFilterChanged(String value) {
+    if (_assignedFilter == value) return;
+    setState(() => _assignedFilter = value);
+    loadTasks(_assignedFilter, order, sortBy, startDate, endDate);
   }
 
   Future<void> loadTasks(assigned, order, sortBy, startDate, endDate) async {
@@ -716,7 +729,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                       userId: widget.userId,
                       taskId: items[i].id ?? '',
                       mainTaskId: items[i].mainTaskId ?? '',
-                      taskAssignedToUser: true,
                     ),
                   ),
                 );
@@ -839,31 +851,21 @@ class MyTaskScreenState extends State<MyTaskScreen> {
               SizedBox(height: 10.h),
 
               /// DATE TIME PRIORITY
+              // Each chip is a direct Wrap child (not nested inside one more
+              // Row) so the Wrap can actually do its job — dropping a chip
+              // to a new line when the three of them together don't fit the
+              // available width, instead of a single min-sized Row forcing
+              // all three to their natural width and overflowing.
               Wrap(
+                spacing: 12.w,
+                runSpacing: 6.h,
                 children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (item.date.isNotEmpty)
-                        _buildInfoChip(
-                          Icons.calendar_today_outlined,
-                          item.date,
-                        ),
-
-                      if (item.date.isNotEmpty && item.time.isNotEmpty)
-                        SizedBox(width: 12.w),
-
-                      if (item.time.isNotEmpty)
-                        _buildInfoChip(Icons.access_time, item.time),
-
-                      if ((item.date.isNotEmpty || item.time.isNotEmpty) &&
-                          item.priority.isNotEmpty)
-                        SizedBox(width: 12.w),
-
-                      if (item.priority.isNotEmpty)
-                        _buildPriorityChip(item.priority),
-                    ],
-                  ),
+                  if (item.date.isNotEmpty)
+                    _buildInfoChip(Icons.calendar_today_outlined, item.date),
+                  if (item.time.isNotEmpty)
+                    _buildInfoChip(Icons.access_time, item.time),
+                  if (item.priority.isNotEmpty)
+                    _buildPriorityChip(item.priority),
                 ],
               ),
             ],
@@ -892,6 +894,52 @@ class MyTaskScreenState extends State<MyTaskScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(height: 10.h),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 15.w),
+              child: Row(
+                children: _assignmentFilters.map((f) {
+                  final isSelected = _assignedFilter == f['value'];
+                  return Padding(
+                    padding: EdgeInsets.only(right: 10.w),
+                    child: GestureDetector(
+                      onTap: () =>
+                          _onAssignmentFilterChanged(f['value']!),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 14.w,
+                          vertical: 8.h,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: isSelected
+                              ? const LinearGradient(
+                                  colors: [
+                                    Color(0xFF0A0258),
+                                    Color(0xFF4338CA),
+                                  ],
+                                )
+                              : null,
+                          color: isSelected
+                              ? null
+                              : const Color(0xFFF1F4F9),
+                          borderRadius: BorderRadius.circular(20.r),
+                        ),
+                        child: Text(
+                          f['label']!,
+                          style: GoogleFonts.inter(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected
+                                ? Colors.white
+                                : const Color(0xFF667085),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            SizedBox(height: 12.h),
             SizedBox(
               height: 40.h,
               child: SingleChildScrollView(
@@ -961,7 +1009,13 @@ class MyTaskScreenState extends State<MyTaskScreen> {
 
                           endDate = DateFormat('yyyy-MM-dd').format(endDateVal);
 
-                          loadTasks('to_me', order, sortBy, startDate, endDate);
+                          loadTasks(
+                            _assignedFilter,
+                            order,
+                            sortBy,
+                            startDate,
+                            endDate,
+                          );
 
                           // _fetchTodoItems();
                         },
@@ -1017,7 +1071,13 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                           order = 'desc';
                         }
 
-                        loadTasks('to_me', order, sortBy, startDate, endDate);
+                        loadTasks(
+                          _assignedFilter,
+                          order,
+                          sortBy,
+                          startDate,
+                          endDate,
+                        );
 
                         // _fetchTodoItems();
                       },
