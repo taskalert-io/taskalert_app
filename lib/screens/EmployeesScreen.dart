@@ -66,6 +66,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../components/CustomAppBar.dart';
@@ -79,9 +80,9 @@ import '../core/features/jobRoles/controllers/job_role_controller.dart';
 import '../core/features/jobRoles/data/models/job_role_model.dart';
 import '../core/features/location/controllers/location_controller.dart';
 import '../core/features/location/data/models/location_model.dart';
-import '../core/features/organization/controllers/organization_controller.dart';
-import '../core/features/organization/data/models/organization_model.dart';
 import '../utils/injection_container.dart';
+import 'DepartmentListScreen.dart' show openDepartmentFormDialog;
+import 'LocationListScreen.dart' show openLocationFormDialog;
 import 'NotificationStart.dart';
 
 // ── Shared overlay-placement helper ─────────────────────────────────────
@@ -179,6 +180,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   static const _primaryColor = Color(0xFF0A0258);
 
   late final EmployeeController employeeController;
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   // ── Autocomplete plumbing ────────────────────────────────────────────────
   final FocusNode _searchFocusNode = FocusNode();
@@ -474,7 +476,6 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     String? selectedGender = genderMatches.isNotEmpty
         ? genderMatches.first
         : null;
-    OrganizationModel? selectedOrganization;
     LocationModel? selectedLocation;
     DepartmentModel? selectedDepartment;
     JobRoleModel? selectedJobRole;
@@ -693,27 +694,27 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                               selectedDepartment = null;
                             }
                           }),
+                          // Checks the resolved model, not just the text —
+                          // typing something that doesn't match a real
+                          // location leaves `selectedLocation` null, which
+                          // would otherwise send no location at all.
+                          validator: (v) => selectedLocation == null
+                              ? "Select a location"
+                              : null,
                         ),
 
                         SizedBox(height: 7.h),
 
-                        // Organization / Job Role
-                        _OrganizationSearchableField(
-                          initialValue: existing?.organization,
-                          onChanged: (org) => selectedOrganization = org,
-                        ),
-
-                        SizedBox(height: 7.w),
+                        // Job Role — Organization is no longer user-picked
+                        // here; it's taken automatically from the logged-in
+                        // user's active organization at submit time.
                         _JobRoleSearchableField(
                           initialValue: existing?.jobRole,
                           onChanged: (v) => ss(() => selectedJobRole = v),
-                          // Checks the resolved model, not just the text —
-                          // typing free text that doesn't match a real job
-                          // role leaves `selectedJobRole` null, which would
-                          // otherwise send an empty/invalid job role id.
-                          validator: (v) => selectedJobRole == null
-                              ? "Select a job role"
-                              : null,
+                          // Optional field — no validator. If the user types
+                          // free text that doesn't match a real job role,
+                          // `selectedJobRole` just stays null and nothing is
+                          // sent for it (see the submit handler below).
                         ),
 
                         SizedBox(height: 7.h),
@@ -731,15 +732,10 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                           locationId: selectedLocation?.id,
                           initialValue: existing?.department,
                           onChanged: (v) => ss(() => selectedDepartment = v),
-                          // Checks the resolved model, not just the text —
-                          // typing something that doesn't match a real
-                          // department (or submitting before it auto-
-                          // resolves) leaves `selectedDepartment` null,
-                          // which is exactly what sent an empty/invalid
-                          // department id to the API before.
-                          validator: (v) => selectedDepartment == null
-                              ? "Select a department"
-                              : null,
+                          // Optional field — no validator. If the user types
+                          // free text that doesn't match a real department,
+                          // `selectedDepartment` just stays null and nothing
+                          // is sent for it (see the submit handler below).
                         ),
                         SizedBox(height: 7.h),
 
@@ -855,25 +851,34 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                         final genderValue =
                                             (selectedGender ?? existing?.gender)
                                                 ?.toLowerCase();
+                                        // Organization is no longer a form
+                                        // field — every employee is created
+                                        // under the logged-in user's own
+                                        // active organization.
+                                        final organizationId =
+                                            await _secureStorage.read(
+                                              key:
+                                                  'user_active_organization_id',
+                                            );
                                         // Auto-resolved from the existing
                                         // display name/id once the real
-                                        // lists load (see
-                                        // _LocationSearchableField /
-                                        // _OrganizationSearchableField's
-                                        // _tryResolveInitial) — so these are
+                                        // list loads (see
+                                        // _LocationSearchableField's
+                                        // _tryResolveInitial) — so this is
                                         // populated on edit even without the
                                         // user touching the field.
-                                        final organizationId =
-                                            selectedOrganization?.id;
                                         final locationId = selectedLocation?.id;
                                         // Same auto-resolve story as
                                         // organization/location — matched
                                         // against the loaded lists so these
                                         // are real ids, not display names
                                         // (the API rejects a plain name as
-                                        // an invalid id format).
-                                        final jobRoleId =
-                                            selectedJobRole?.id ?? '';
+                                        // an invalid id format). Both are
+                                        // optional now, so a null id just
+                                        // means the field is omitted from
+                                        // the request rather than sent as an
+                                        // invalid empty string.
+                                        final jobRoleId = selectedJobRole?.id;
                                         final departmentId =
                                             selectedDepartment?.id;
 
@@ -2093,6 +2098,20 @@ class _LocationSearchableFieldState extends State<_LocationSearchableField> {
     _focusNode.unfocus();
   }
 
+  // Reuses the real Location create/edit form (see LocationListScreen.dart's
+  // `openLocationFormDialog`) instead of a simplified quick-add — same as
+  // CreateOneTimeScreen's Location field. Newly created locations are
+  // auto-selected the same way picking a suggestion from the list works.
+  void _openAddLocationDialog() {
+    _removeOverlay();
+    _focusNode.unfocus();
+    openLocationFormDialog(
+      context: context,
+      locationController: _locationController,
+      onCreated: _select,
+    );
+  }
+
   void _showOverlay() {
     _removeOverlay();
 
@@ -2130,8 +2149,41 @@ class _LocationSearchableFieldState extends State<_LocationSearchableField> {
               color: Colors.white,
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: placement.maxHeight),
-                child: _locationController.isLoading
-                    ? Padding(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      onTap: _openAddLocationDialog,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 10.w,
+                          vertical: 10.h,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              CupertinoIcons.add_circled_solid,
+                              size: 14.r,
+                              color: const Color(0xFF0A0258),
+                            ),
+                            SizedBox(width: 6.w),
+                            Expanded(
+                              child: Text(
+                                "Add Location",
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.5.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF0A0258),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                    if (_locationController.isLoading)
+                      Padding(
                         padding: EdgeInsets.symmetric(vertical: 14.h),
                         child: Center(
                           child: SizedBox(
@@ -2143,8 +2195,8 @@ class _LocationSearchableFieldState extends State<_LocationSearchableField> {
                           ),
                         ),
                       )
-                    : results.isEmpty
-                    ? Padding(
+                    else if (results.isEmpty)
+                      Padding(
                         padding: EdgeInsets.symmetric(
                           horizontal: 12.w,
                           vertical: 14.h,
@@ -2157,46 +2209,53 @@ class _LocationSearchableFieldState extends State<_LocationSearchableField> {
                           ),
                         ),
                       )
-                    : ListView.separated(
-                        padding: EdgeInsets.symmetric(vertical: 4.h),
-                        shrinkWrap: true,
-                        itemCount: results.length,
-                        separatorBuilder: (_, __) =>
-                            const Divider(height: 1, color: Color(0xFFE4E7EC)),
-                        itemBuilder: (context, index) {
-                          final loc = results[index];
-                          return InkWell(
-                            onTap: () => _select(loc),
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 12.w,
-                                vertical: 10.h,
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    CupertinoIcons.location_solid,
-                                    size: 14.r,
-                                    color: const Color(0xFF4338CA),
-                                  ),
-                                  SizedBox(width: 8.w),
-                                  Expanded(
-                                    child: Text(
-                                      loc.name,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 13.sp,
-                                        fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF1D2939),
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
+                    else
+                      Flexible(
+                        child: ListView.separated(
+                          padding: EdgeInsets.symmetric(vertical: 4.h),
+                          shrinkWrap: true,
+                          itemCount: results.length,
+                          separatorBuilder: (_, __) => const Divider(
+                            height: 1,
+                            color: Color(0xFFE4E7EC),
+                          ),
+                          itemBuilder: (context, index) {
+                            final loc = results[index];
+                            return InkWell(
+                              onTap: () => _select(loc),
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 12.w,
+                                  vertical: 10.h,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      CupertinoIcons.location_solid,
+                                      size: 14.r,
+                                      color: const Color(0xFF4338CA),
                                     ),
-                                  ),
-                                ],
+                                    SizedBox(width: 8.w),
+                                    Expanded(
+                                      child: Text(
+                                        loc.name,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13.sp,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF1D2939),
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
                       ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -2250,324 +2309,6 @@ class _LocationSearchableFieldState extends State<_LocationSearchableField> {
               errorStyle: TextStyle(fontSize: 10.sp),
               prefixIcon: Icon(
                 CupertinoIcons.location_solid,
-                size: 14.r,
-                color: const Color(0xFF9AA0AB),
-              ),
-              suffixIcon: _controller.text.isEmpty
-                  ? null
-                  : GestureDetector(
-                      onTap: _clear,
-                      child: Icon(
-                        CupertinoIcons.clear_circled_solid,
-                        size: 14.r,
-                        color: const Color(0xFF9AA0AB),
-                      ),
-                    ),
-              filled: true,
-              fillColor: const Color(0xFFF9FAFC),
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 10.w,
-                vertical: 10.h,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.r),
-                borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.r),
-                borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.r),
-                borderSide: const BorderSide(color: Color(0xFF0A0258)),
-              ),
-              errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.r),
-                borderSide: const BorderSide(color: Colors.red),
-              ),
-              focusedErrorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.r),
-                borderSide: const BorderSide(color: Colors.red),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Organization searchable field (live data) ──────────────────────────
-//
-// Same shape as `_LocationSearchableField` above, but backed by real
-// `OrganizationController` data instead of a static list.
-class _OrganizationSearchableField extends StatefulWidget {
-  const _OrganizationSearchableField({
-    required this.initialValue,
-    required this.onChanged,
-    this.validator,
-  });
-
-  final String? initialValue;
-  final ValueChanged<OrganizationModel?> onChanged;
-  final String? Function(String?)? validator;
-
-  @override
-  State<_OrganizationSearchableField> createState() =>
-      _OrganizationSearchableFieldState();
-}
-
-class _OrganizationSearchableFieldState
-    extends State<_OrganizationSearchableField> {
-  late final OrganizationController _organizationController =
-      sl<OrganizationController>();
-  late final TextEditingController _controller = TextEditingController(
-    text: widget.initialValue ?? '',
-  );
-  final FocusNode _focusNode = FocusNode();
-  final LayerLink _layerLink = LayerLink();
-  final GlobalKey _fieldKey = GlobalKey();
-  OverlayEntry? _overlayEntry;
-  bool _resolvedInitial = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _organizationController.handleGetOrganizations();
-    _focusNode.addListener(_onFocusChanged);
-    _organizationController.addListener(_onOrganizationsChanged);
-  }
-
-  @override
-  void dispose() {
-    _organizationController.removeListener(_onOrganizationsChanged);
-    _removeOverlay();
-    _focusNode.removeListener(_onFocusChanged);
-    _focusNode.dispose();
-    _controller.dispose();
-    super.dispose();
-  }
-
-  // Editing an existing employee only has the organization's display name
-  // (or id) to start from, not the full model — once the real list loads,
-  // match it up so the parent gets the id without the user having to
-  // reselect an Organization that's already correct.
-  void _tryResolveInitial() {
-    if (_resolvedInitial) return;
-    final initial = widget.initialValue;
-    if (initial == null || initial.isEmpty) {
-      _resolvedInitial = true;
-      return;
-    }
-    if (_organizationController.organizations.isEmpty) return;
-    final matches = _organizationController.organizations.where(
-      (o) => o.name == initial || o.id == initial,
-    );
-    _resolvedInitial = true;
-    if (matches.isNotEmpty) widget.onChanged(matches.first);
-  }
-
-  void _onOrganizationsChanged() {
-    _tryResolveInitial();
-    if (_focusNode.hasFocus) _showOverlay();
-  }
-
-  void _onFocusChanged() {
-    if (_focusNode.hasFocus) {
-      _showOverlay();
-    } else {
-      // Small delay so a tap on a suggestion registers before the overlay
-      // is torn down.
-      Future.delayed(const Duration(milliseconds: 150), () {
-        if (mounted && !_focusNode.hasFocus) _removeOverlay();
-      });
-    }
-  }
-
-  void _onTextChanged(String text) {
-    setState(() {});
-    // Manual typing invalidates whatever was previously selected — a valid
-    // choice only exists once the user picks a suggestion below, since we
-    // need the organization's id, not just its name.
-    widget.onChanged(null);
-    _showOverlay();
-  }
-
-  void _clear() {
-    setState(() => _controller.clear());
-    widget.onChanged(null);
-    _showOverlay();
-  }
-
-  void _select(OrganizationModel organization) {
-    setState(() {
-      _controller.text = organization.name;
-      _controller.selection = TextSelection.fromPosition(
-        TextPosition(offset: organization.name.length),
-      );
-    });
-    widget.onChanged(organization);
-    _removeOverlay();
-    _focusNode.unfocus();
-  }
-
-  void _showOverlay() {
-    _removeOverlay();
-
-    final overlay = Overlay.of(context);
-    final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
-    final width = box?.size.width ?? 200.w;
-
-    final placement = _overlayPlacement(
-      context: context,
-      fieldKey: _fieldKey,
-      preferredMaxHeight: 240,
-    );
-
-    final q = _controller.text.trim().toLowerCase();
-    final results = q.isEmpty
-        ? _organizationController.organizations
-        : _organizationController.organizations
-              .where((o) => o.name.toLowerCase().contains(q))
-              .toList();
-
-    _overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        width: width,
-        child: CompositedTransformFollower(
-          link: _layerLink,
-          showWhenUnlinked: false,
-          offset: Offset(0, placement.dy),
-          child: Align(
-            alignment: placement.showAbove
-                ? Alignment.bottomLeft
-                : Alignment.topLeft,
-            child: Material(
-              elevation: 6,
-              borderRadius: BorderRadius.circular(10.r),
-              color: Colors.white,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: placement.maxHeight),
-                child: _organizationController.isLoading
-                    ? Padding(
-                        padding: EdgeInsets.symmetric(vertical: 14.h),
-                        child: Center(
-                          child: SizedBox(
-                            width: 16.r,
-                            height: 16.r,
-                            child: const CircularProgressIndicator(
-                              strokeWidth: 2,
-                            ),
-                          ),
-                        ),
-                      )
-                    : results.isEmpty
-                    ? Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12.w,
-                          vertical: 14.h,
-                        ),
-                        child: Text(
-                          "No organizations found",
-                          style: GoogleFonts.inter(
-                            fontSize: 12.sp,
-                            color: const Color(0xFF9AA0AB),
-                          ),
-                        ),
-                      )
-                    : ListView.separated(
-                        padding: EdgeInsets.symmetric(vertical: 4.h),
-                        shrinkWrap: true,
-                        itemCount: results.length,
-                        separatorBuilder: (_, __) =>
-                            const Divider(height: 1, color: Color(0xFFE4E7EC)),
-                        itemBuilder: (context, index) {
-                          final org = results[index];
-                          return InkWell(
-                            onTap: () => _select(org),
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 12.w,
-                                vertical: 10.h,
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    CupertinoIcons.building_2_fill,
-                                    size: 14.r,
-                                    color: const Color(0xFF4338CA),
-                                  ),
-                                  SizedBox(width: 8.w),
-                                  Expanded(
-                                    child: Text(
-                                      org.name,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 13.sp,
-                                        fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF1D2939),
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    overlay.insert(_overlayEntry!);
-  }
-
-  void _removeOverlay() {
-    _overlayEntry?.remove();
-    _overlayEntry = null;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "Organization",
-          style: GoogleFonts.inter(
-            fontSize: 13.sp,
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFF3F3F3F),
-          ),
-        ),
-        SizedBox(height: 4.h),
-        CompositedTransformTarget(
-          link: _layerLink,
-          child: TextFormField(
-            key: _fieldKey,
-            controller: _controller,
-            focusNode: _focusNode,
-            validator: widget.validator,
-            onTap: _showOverlay,
-            onChanged: _onTextChanged,
-            style: GoogleFonts.inter(
-              fontSize: 12.sp,
-              fontWeight: FontWeight.w400,
-              color: const Color(0xFF344054),
-            ),
-            decoration: InputDecoration(
-              isDense: true,
-              hintText: "Search organization",
-              hintStyle: GoogleFonts.inter(
-                fontSize: 12.sp,
-                color: const Color(0xFFB8BEC5),
-              ),
-              errorStyle: TextStyle(fontSize: 10.sp),
-              prefixIcon: Icon(
-                CupertinoIcons.building_2_fill,
                 size: 14.r,
                 color: const Color(0xFF9AA0AB),
               ),
@@ -3090,14 +2831,19 @@ class _DepartmentSearchableFieldState
     _focusNode.unfocus();
   }
 
+  // Reuses the real Department create/edit form (see
+  // DepartmentListScreen.dart's `openDepartmentFormDialog`) instead of a
+  // simplified quick-add — same as the Location field above. Newly created
+  // departments are auto-selected the same way picking a suggestion from
+  // the list already works.
   void _openAddDepartmentDialog() {
     _removeOverlay();
     _focusNode.unfocus();
-    _showAddDepartmentDialog(
-      context,
+    openDepartmentFormDialog(
+      context: context,
       departmentController: _departmentController,
       locationController: _locationController,
-      onCreated: (dept) => _select(dept),
+      onCreated: _select,
     );
   }
 
@@ -3355,516 +3101,4 @@ class _DepartmentSearchableFieldState
       ],
     );
   }
-}
-
-// ── Add Department popup ────────────────────────────────────────────────
-//
-// Mirrors DepartmentListScreen's "Add Department" dialog (Name + a live
-// Location autocomplete) so a department can be created on the fly from
-// inside the Employee form without navigating away.
-void _showAddDepartmentDialog(
-  BuildContext context, {
-  required DepartmentController departmentController,
-  required LocationController locationController,
-  required ValueChanged<DepartmentModel> onCreated,
-}) {
-  locationController.handleGetLocations();
-
-  final formKey = GlobalKey<FormState>();
-  final nameCtrl = TextEditingController();
-  final locationCtrl = TextEditingController();
-  String? selectedLocationId;
-  final locationFocusNode = FocusNode();
-  final LayerLink locationLayerLink = LayerLink();
-  OverlayEntry? locationOverlay;
-  List<LocationModel> locationSuggestions = [];
-  bool autoValidate = false;
-  bool isSubmitting = false;
-
-  // Holds the dialog's StatefulBuilder setState so overlay item taps (which
-  // live outside the builder's rebuild scope) can still trigger a rebuild.
-  StateSetter? dialogSetState;
-  final GlobalKey locationFieldKey = GlobalKey();
-
-  double measuredFieldWidth() {
-    final box =
-        locationFieldKey.currentContext?.findRenderObject() as RenderBox?;
-    return box?.size.width ?? (420.w - 40.w);
-  }
-
-  void removeLocationOverlay() {
-    locationOverlay?.remove();
-    locationOverlay = null;
-  }
-
-  void showLocationOverlay(BuildContext overlayContext, double fieldWidth) {
-    removeLocationOverlay();
-    final overlay = Overlay.of(overlayContext);
-
-    final placement = _overlayPlacement(
-      context: overlayContext,
-      fieldKey: locationFieldKey,
-      preferredMaxHeight: 240,
-    );
-
-    locationOverlay = OverlayEntry(
-      builder: (context) => Positioned(
-        width: fieldWidth,
-        child: CompositedTransformFollower(
-          link: locationLayerLink,
-          showWhenUnlinked: false,
-          offset: Offset(0, placement.dy),
-          child: Align(
-            alignment: placement.showAbove
-                ? Alignment.bottomLeft
-                : Alignment.topLeft,
-            child: Material(
-              elevation: 6,
-              borderRadius: BorderRadius.circular(10.r),
-              color: Colors.white,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: placement.maxHeight),
-                child: locationSuggestions.isEmpty
-                    ? Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12.w,
-                          vertical: 12.h,
-                        ),
-                        child: Text(
-                          "No locations found",
-                          style: GoogleFonts.inter(
-                            fontSize: 12.5.sp,
-                            color: const Color(0xFF9AA0AB),
-                          ),
-                        ),
-                      )
-                    : ListView.separated(
-                        padding: EdgeInsets.symmetric(vertical: 4.h),
-                        shrinkWrap: true,
-                        physics: const ClampingScrollPhysics(),
-                        itemCount: locationSuggestions.length,
-                        separatorBuilder: (_, __) =>
-                            const Divider(height: 1, color: Color(0xFFE4E7EC)),
-                        itemBuilder: (context, index) {
-                          final s = locationSuggestions[index];
-                          return InkWell(
-                            onTap: () {
-                              locationCtrl.text = s.name;
-                              selectedLocationId = s.id;
-                              locationCtrl
-                                  .selection = TextSelection.fromPosition(
-                                TextPosition(offset: locationCtrl.text.length),
-                              );
-                              removeLocationOverlay();
-                              locationFocusNode.unfocus();
-                              dialogSetState?.call(() {});
-                            },
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 12.w,
-                                vertical: 10.h,
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    CupertinoIcons.location_solid,
-                                    size: 14.r,
-                                    color: const Color(0xFF4338CA),
-                                  ),
-                                  SizedBox(width: 8.w),
-                                  Expanded(
-                                    child: Text(
-                                      s.name,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 13.sp,
-                                        fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF1D2939),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-    overlay.insert(locationOverlay!);
-  }
-
-  void updateLocationSuggestions(
-    String query,
-    BuildContext overlayContext,
-    double fieldWidth,
-  ) {
-    final q = query.trim().toLowerCase();
-    locationSuggestions = q.isEmpty
-        ? List.from(locationController.locations)
-        : locationController.locations
-              .where((l) => l.name.toLowerCase().contains(q))
-              .toList();
-    showLocationOverlay(overlayContext, fieldWidth);
-  }
-
-  locationFocusNode.addListener(() {
-    if (!locationFocusNode.hasFocus) {
-      Future.delayed(const Duration(milliseconds: 150), () {
-        if (!locationFocusNode.hasFocus) removeLocationOverlay();
-      });
-    }
-  });
-
-  showDialog(
-    context: context,
-    barrierColor: Colors.black.withOpacity(0.35),
-    builder: (_) => StatefulBuilder(
-      builder: (ctx, ss) {
-        dialogSetState = ss;
-
-        return Dialog(
-          backgroundColor: Colors.white,
-          insetPadding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 24.h),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14.r),
-            side: const BorderSide(color: Color(0xFFE4E7EC)),
-          ),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: 420.w,
-              maxHeight: MediaQuery.of(ctx).size.height * 0.85,
-            ),
-            child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(20.w, 18.h, 20.w, 20.h),
-              child: Form(
-                key: formKey,
-                autovalidateMode: autoValidate
-                    ? AutovalidateMode.onUserInteraction
-                    : AutovalidateMode.disabled,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "Add Department",
-                          style: GoogleFonts.inter(
-                            fontSize: 16.sp,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF1D2939),
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => Navigator.pop(ctx),
-                          child: Icon(
-                            Icons.close,
-                            size: 20.r,
-                            color: const Color(0xFF6C7278),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 18.h),
-
-                    Text(
-                      "Department Name",
-                      style: GoogleFonts.inter(
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF4338CA),
-                      ),
-                    ),
-                    SizedBox(height: 6.h),
-                    TextFormField(
-                      controller: nameCtrl,
-                      autofocus: true,
-                      style: GoogleFonts.inter(
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w400,
-                        color: const Color(0xFF344054),
-                      ),
-                      validator: (v) {
-                        final trimmed = v?.trim() ?? "";
-                        if (trimmed.isEmpty) return "Enter department name";
-                        if (trimmed.length < 2) {
-                          return "Name must be at least 2 characters";
-                        }
-                        return null;
-                      },
-                      decoration: InputDecoration(
-                        isDense: true,
-                        hintText: "Department Name",
-                        hintStyle: GoogleFonts.inter(
-                          fontSize: 13.sp,
-                          color: const Color(0xFFB8BEC5),
-                        ),
-                        errorStyle: TextStyle(fontSize: 10.sp),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12.w,
-                          vertical: 13.h,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10.r),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFE4E7EC),
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10.r),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFE4E7EC),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10.r),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF4338CA),
-                          ),
-                        ),
-                        errorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10.r),
-                          borderSide: const BorderSide(color: Colors.red),
-                        ),
-                        focusedErrorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10.r),
-                          borderSide: const BorderSide(color: Colors.red),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 18.h),
-
-                    Text(
-                      "Location",
-                      style: GoogleFonts.inter(
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF4338CA),
-                      ),
-                    ),
-                    SizedBox(height: 6.h),
-                    CompositedTransformTarget(
-                      link: locationLayerLink,
-                      child: TextFormField(
-                        key: locationFieldKey,
-                        controller: locationCtrl,
-                        focusNode: locationFocusNode,
-                        style: GoogleFonts.inter(
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.w400,
-                          color: const Color(0xFF344054),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) {
-                            return "Enter location";
-                          }
-                          if (selectedLocationId == null) {
-                            return "Select a location from the list";
-                          }
-                          return null;
-                        },
-                        onChanged: (val) {
-                          selectedLocationId = null;
-                          ss(() {});
-                          updateLocationSuggestions(
-                            val,
-                            ctx,
-                            measuredFieldWidth(),
-                          );
-                        },
-                        onTap: () => updateLocationSuggestions(
-                          locationCtrl.text,
-                          ctx,
-                          measuredFieldWidth(),
-                        ),
-                        decoration: InputDecoration(
-                          isDense: true,
-                          hintText: "Search location",
-                          hintStyle: GoogleFonts.inter(
-                            fontSize: 13.sp,
-                            color: const Color(0xFFB8BEC5),
-                          ),
-                          errorStyle: TextStyle(fontSize: 10.sp),
-                          prefixIcon: Icon(
-                            CupertinoIcons.search,
-                            size: 14.r,
-                            color: const Color(0xFF9AA0AB),
-                          ),
-                          suffixIcon: locationCtrl.text.isEmpty
-                              ? null
-                              : GestureDetector(
-                                  onTap: () {
-                                    locationCtrl.clear();
-                                    selectedLocationId = null;
-                                    removeLocationOverlay();
-                                    ss(() {});
-                                  },
-                                  child: Icon(
-                                    CupertinoIcons.clear_circled_solid,
-                                    size: 14.r,
-                                    color: const Color(0xFF9AA0AB),
-                                  ),
-                                ),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12.w,
-                            vertical: 13.h,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10.r),
-                            borderSide: const BorderSide(
-                              color: Color(0xFFE4E7EC),
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10.r),
-                            borderSide: const BorderSide(
-                              color: Color(0xFFE4E7EC),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10.r),
-                            borderSide: const BorderSide(
-                              color: Color(0xFF4338CA),
-                            ),
-                          ),
-                          errorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10.r),
-                            borderSide: const BorderSide(color: Colors.red),
-                          ),
-                          focusedErrorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10.r),
-                            borderSide: const BorderSide(color: Colors.red),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 26.h),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        OutlinedButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFFD9DEE5)),
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 20.w,
-                              vertical: 12.h,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8.r),
-                            ),
-                          ),
-                          child: Text(
-                            "Cancel",
-                            style: GoogleFonts.inter(
-                              fontSize: 13.sp,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF344054),
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 10.w),
-                        ElevatedButton(
-                          onPressed: isSubmitting
-                              ? null
-                              : () async {
-                                  ss(() => autoValidate = true);
-                                  if (!(formKey.currentState?.validate() ??
-                                      false)) {
-                                    return;
-                                  }
-
-                                  removeLocationOverlay();
-                                  ss(() => isSubmitting = true);
-
-                                  final success = await departmentController
-                                      .handleCreateDepartment(
-                                        name: nameCtrl.text.trim(),
-                                        location: selectedLocationId,
-                                      );
-
-                                  ss(() => isSubmitting = false);
-
-                                  if (success) {
-                                    Navigator.pop(ctx);
-                                    onCreated(
-                                      DepartmentModel(
-                                        name: nameCtrl.text.trim(),
-                                      ),
-                                    );
-                                    departmentController.handleGetDepartments();
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          departmentController.errorMessage ??
-                                              "Something went wrong",
-                                          style: GoogleFonts.inter(
-                                            fontSize: 13.sp,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                        backgroundColor: Colors.red,
-                                        behavior: SnackBarBehavior.floating,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            8.r,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                },
-                          style: ElevatedButton.styleFrom(
-                            elevation: 0,
-                            backgroundColor: const Color(0xFF3B82F6),
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 22.w,
-                              vertical: 12.h,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8.r),
-                            ),
-                          ),
-                          child: isSubmitting
-                              ? SizedBox(
-                                  width: 16.r,
-                                  height: 16.r,
-                                  child: const CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation(
-                                      Colors.white,
-                                    ),
-                                  ),
-                                )
-                              : Text(
-                                  "Save",
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13.sp,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    ),
-  );
 }

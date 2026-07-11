@@ -18,9 +18,9 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
     required String lastName,
     required String email,
     required String phoneNumber,
-    required String jobRole,
     required String gender,
-    required String department,
+    String? jobRole,
+    String? department,
     String? organization,
     String? location,
     String? dateOfBirth,
@@ -35,11 +35,15 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
         'lastName': lastName,
         'email': email,
         'phoneNumber': phoneNumber,
-        'jobRole': jobRole,
         'gender': gender,
-        'department': department,
       };
 
+      if (jobRole != null && jobRole.isNotEmpty) {
+        map['jobRole'] = jobRole;
+      }
+      if (department != null && department.isNotEmpty) {
+        map['department'] = department;
+      }
       if (organization != null && organization.isNotEmpty) {
         map['organization'] = organization;
       }
@@ -171,10 +175,9 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
     required String lastName,
     required String email,
     required String phoneNumber,
-    required String jobRole,
-
     required String gender,
-    required String department,
+    String? jobRole,
+    String? department,
     String? organization,
     String? location,
     String? dateOfBirth,
@@ -188,11 +191,15 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
         'lastName': lastName,
         'email': email,
         'phoneNumber': phoneNumber,
-        'jobRole': jobRole,
         'gender': gender,
-        'department': department,
       };
 
+      if (jobRole != null && jobRole.isNotEmpty) {
+        map['jobRole'] = jobRole;
+      }
+      if (department != null && department.isNotEmpty) {
+        map['department'] = department;
+      }
       if (organization != null && organization.isNotEmpty) {
         map['organization'] = organization;
       }

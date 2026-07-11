@@ -159,6 +159,10 @@ class AuthRepositoryImpl implements AuthRepository {
             key: 'user_active_organization',
             value: user.activeOrganization?.name ?? '',
           );
+          await _secureStorage.write(
+            key: 'user_active_organization_id',
+            value: user.activeOrganization?.id ?? '',
+          );
         }
         return ApiResult.success(apiResponse);
       }
@@ -313,6 +317,10 @@ class AuthRepositoryImpl implements AuthRepository {
           await _secureStorage.write(
             key: 'user_active_organization',
             value: user.activeOrganization?.name ?? '',
+          );
+          await _secureStorage.write(
+            key: 'user_active_organization_id',
+            value: user.activeOrganization?.id ?? '',
           );
         }
         return ApiResult.success(apiResponse);
