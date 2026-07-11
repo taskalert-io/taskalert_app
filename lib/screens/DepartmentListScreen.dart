@@ -754,6 +754,8 @@ void openDepartmentFormDialog({
 
                     // Location — multi-select, checkbox dropdown backed
                     // by the screen's already-loaded LocationController.
+                    // Required — wrapped in a FormField so it participates
+                    // in the same Form.validate() as the other fields.
                     Text(
                       "Location",
                       style: GoogleFonts.inter(
@@ -763,11 +765,39 @@ void openDepartmentFormDialog({
                       ),
                     ),
                     SizedBox(height: 6.h),
-                    _LocationMultiSelectField(
-                      locationController: locationController,
-                      initialSelected: existing?.location ?? const [],
-                      onChanged: (v) => selectedLocations = v,
-                      canCreateLocation: canAddLocation,
+                    FormField<List<LocationModel>>(
+                      autovalidateMode: autoValidate
+                          ? AutovalidateMode.onUserInteraction
+                          : AutovalidateMode.disabled,
+                      initialValue: selectedLocations,
+                      validator: (_) => selectedLocations.isEmpty
+                          ? "Select at least one location"
+                          : null,
+                      builder: (field) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _LocationMultiSelectField(
+                            locationController: locationController,
+                            initialSelected: existing?.location ?? const [],
+                            onChanged: (v) {
+                              selectedLocations = v;
+                              field.didChange(v);
+                            },
+                            canCreateLocation: canAddLocation,
+                          ),
+                          if (field.hasError)
+                            Padding(
+                              padding: EdgeInsets.only(top: 6.h, left: 4.w),
+                              child: Text(
+                                field.errorText!,
+                                style: GoogleFonts.inter(
+                                  fontSize: 10.sp,
+                                  color: Colors.red,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                     SizedBox(height: 26.h),
 
