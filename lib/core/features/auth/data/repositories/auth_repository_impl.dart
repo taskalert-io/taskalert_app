@@ -142,6 +142,23 @@ class AuthRepositoryImpl implements AuthRepository {
             key: 'user_requires_organization',
             value: user.requiresOrganization.toString(),
           );
+          await _secureStorage.write(
+            key: 'user_gender',
+            value: user.gender ?? '',
+          );
+          await _secureStorage.write(
+            key: 'user_dob',
+            value: user.dateOfBirth?.toIso8601String() ?? '',
+          );
+          await _secureStorage.write(key: 'user_role', value: user.role ?? '');
+          await _secureStorage.write(
+            key: 'user_organization',
+            value: user.organization?.name ?? '',
+          );
+          await _secureStorage.write(
+            key: 'user_active_organization',
+            value: user.activeOrganization?.name ?? '',
+          );
         }
         return ApiResult.success(apiResponse);
       }
@@ -279,6 +296,23 @@ class AuthRepositoryImpl implements AuthRepository {
           await _secureStorage.write(
             key: 'user_requires_organization',
             value: user.requiresOrganization.toString(),
+          );
+          await _secureStorage.write(
+            key: 'user_gender',
+            value: user.gender ?? '',
+          );
+          await _secureStorage.write(
+            key: 'user_dob',
+            value: user.dateOfBirth?.toIso8601String() ?? '',
+          );
+          await _secureStorage.write(key: 'user_role', value: user.role ?? '');
+          await _secureStorage.write(
+            key: 'user_organization',
+            value: user.organization?.name ?? '',
+          );
+          await _secureStorage.write(
+            key: 'user_active_organization',
+            value: user.activeOrganization?.name ?? '',
           );
         }
         return ApiResult.success(apiResponse);
