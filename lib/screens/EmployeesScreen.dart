@@ -194,11 +194,36 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   // pulled from EmployeeController (e.g. controller.organizations) or from
   // a dedicated lookup/config service.
   static const List<String> _genderOptions = ["Male", "Female", "Other"];
-  static const List<String> _permissionLevelOptions = [
-    "View Only",
-    "Create & Assign",
-    "Full Access",
+  static const List<String> _taskTypeOptions = [
+    "One Time",
+    "Repetitive",
+    "Both",
   ];
+
+  /// UI label -> API value (matches EmployeeModel.taskType: 'one_time' |
+  /// 'repetitive' | 'both').
+  static String _taskTypeApiValue(String label) {
+    switch (label) {
+      case "One Time":
+        return "one_time";
+      case "Repetitive":
+        return "repetitive";
+      default:
+        return "both";
+    }
+  }
+
+  /// API value -> UI label, for prefilling on edit.
+  static String _taskTypeLabel(String? apiValue) {
+    switch (apiValue) {
+      case "one_time":
+        return "One Time";
+      case "repetitive":
+        return "Repetitive";
+      default:
+        return "Both";
+    }
+  }
   @override
   void initState() {
     super.initState();
@@ -455,7 +480,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     JobRoleModel? selectedJobRole;
     File? selectedImageFile;
     bool taskPermission = existing?.taskPermission ?? false;
-    String selectedPermissionLevel = "View Only";
+    String selectedTaskType = _taskTypeLabel(existing?.taskType);
 
     bool autoValidate = false;
     bool isSubmitting = false;
@@ -743,31 +768,30 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                             ),
                           ],
                         ),
-                        // Permission level radios — only shown once Task Permission is ON
+                        // Task type radios — only shown once Task Permission is ON
                         if (taskPermission) ...[
                           SizedBox(height: 6.h),
 
                           SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
                             child: Row(
-                              children: _permissionLevelOptions.map((level) {
-                                final isSelected =
-                                    selectedPermissionLevel == level;
+                              children: _taskTypeOptions.map((level) {
+                                final isSelected = selectedTaskType == level;
                                 return InkWell(
                                   onTap: () =>
-                                      ss(() => selectedPermissionLevel = level),
+                                      ss(() => selectedTaskType = level),
                                   child: Row(
                                     children: [
                                       Radio<String>(
                                         value: level,
-                                        groupValue: selectedPermissionLevel,
+                                        groupValue: selectedTaskType,
                                         activeColor: const Color(0xFF0A0258),
                                         materialTapTargetSize:
                                             MaterialTapTargetSize.shrinkWrap,
                                         visualDensity: VisualDensity.compact,
                                         onChanged: (v) => ss(
-                                          () => selectedPermissionLevel =
-                                              v ?? level,
+                                          () =>
+                                              selectedTaskType = v ?? level,
                                         ),
                                       ),
                                       SizedBox(width: 2.w),
@@ -871,6 +895,9 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                                 gender: genderValue,
                                                 dateOfBirth: dobText,
                                                 taskPermission: taskPermission,
+                                                taskType: _taskTypeApiValue(
+                                                  selectedTaskType,
+                                                ),
                                                 imageFilePath:
                                                     selectedImageFile?.path,
                                               );
@@ -892,6 +919,9 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                                 gender: genderValue,
                                                 dateOfBirth: dobText,
                                                 taskPermission: taskPermission,
+                                                taskType: _taskTypeApiValue(
+                                                  selectedTaskType,
+                                                ),
                                                 imageFilePath:
                                                     selectedImageFile?.path,
                                               );
