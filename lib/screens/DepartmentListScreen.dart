@@ -1070,6 +1070,10 @@ class _LocationMultiSelectFieldState
         setState(() => _selected[loc.id] = loc);
         widget.onChanged(_selected.values.toList());
       },
+      // Already inside the Create Department form — its own "Create
+      // Location" dialog shouldn't offer to stack a nested "create
+      // department" dialog on top of that.
+      canAddDepartment: false,
     );
   }
 

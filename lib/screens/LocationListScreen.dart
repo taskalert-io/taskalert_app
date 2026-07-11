@@ -815,6 +815,10 @@ void openLocationFormDialog({
   required LocationController locationController,
   LocationModel? existing,
   ValueChanged<LocationModel>? onCreated,
+  // False when this dialog is itself opened from the Create Department
+  // form's "Create Location" option — avoids stacking a nested "create
+  // department" dialog on top of that.
+  bool canAddDepartment = true,
 }) {
   final formKey = GlobalKey<FormState>();
   final nameCtrl = TextEditingController(text: existing?.name ?? "");
@@ -965,6 +969,7 @@ void openLocationFormDialog({
                     _DepartmentMultiSelectField(
                       initialSelected: existing?.department ?? const [],
                       onChanged: (v) => selectedDepartments = v,
+                      canAddDepartment: canAddDepartment,
                     ),
                     SizedBox(height: 12.h),
 
@@ -1287,10 +1292,18 @@ class _DepartmentMultiSelectField extends StatefulWidget {
   const _DepartmentMultiSelectField({
     required this.initialSelected,
     required this.onChanged,
+    this.canAddDepartment = true,
   });
 
   final List<LocationDepartmentModel> initialSelected;
   final ValueChanged<List<DepartmentModel>> onChanged;
+
+  // When false, the pinned "+ Add Department" row is shown but inactive —
+  // used when this field is opened from within the Create Department
+  // form's own "Create Location" flow, where opening a nested "create
+  // department" dialog on top of that would be a confusing dialog-within-
+  // dialog-within-dialog stack.
+  final bool canAddDepartment;
 
   @override
   State<_DepartmentMultiSelectField> createState() =>
@@ -1510,31 +1523,36 @@ class _DepartmentMultiSelectFieldState
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     InkWell(
-                      onTap: _openAddDepartmentDialog,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 10.w,
-                          vertical: 10.h,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              CupertinoIcons.add_circled_solid,
-                              size: 14.r,
-                              color: const Color(0xFF0A0258),
-                            ),
-                            SizedBox(width: 6.w),
-                            Expanded(
-                              child: Text(
-                                "Add Department",
-                                style: GoogleFonts.inter(
-                                  fontSize: 12.5.sp,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF0A0258),
+                      onTap: widget.canAddDepartment
+                          ? _openAddDepartmentDialog
+                          : null,
+                      child: Opacity(
+                        opacity: widget.canAddDepartment ? 1 : 0.4,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 10.w,
+                            vertical: 10.h,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                CupertinoIcons.add_circled_solid,
+                                size: 14.r,
+                                color: const Color(0xFF0A0258),
+                              ),
+                              SizedBox(width: 6.w),
+                              Expanded(
+                                child: Text(
+                                  "Add Department",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.5.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF0A0258),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
