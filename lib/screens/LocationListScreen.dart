@@ -13,6 +13,7 @@ import '../core/features/departments/data/models/department_model.dart';
 import '../core/features/location/controllers/location_controller.dart';
 import '../core/features/location/data/models/location_model.dart';
 import '../utils/injection_container.dart';
+import 'DepartmentListScreen.dart' show openDepartmentFormDialog;
 
 class LocationListScreen extends StatefulWidget {
   const LocationListScreen({super.key, required this.userId});
@@ -1412,88 +1413,33 @@ class _DepartmentMultiSelectFieldState
     if (_focusNode.hasFocus) _showOverlay();
   }
 
+  // Reuses the exact same Department create/edit dialog as the Department
+  // screen itself (see DepartmentListScreen.dart's `openDepartmentFormDialog`)
+  // instead of the previous name-only quick-add, so departments created
+  // here can also be scoped to locations right away. This field's own
+  // `_departmentController` already has the department list loaded, but a
+  // fresh `LocationController` is needed since nothing here has fetched
+  // one yet — the dialog's own Location field needs it loaded.
   void _openAddDepartmentDialog() {
     _removeOverlay();
     _focusNode.unfocus();
 
-    final nameCtrl = TextEditingController();
-    final dialogFormKey = GlobalKey<FormState>();
-    bool submitting = false;
+    final freshLocationController = sl<LocationController>();
+    freshLocationController.handleGetLocations();
 
-    showDialog(
+    openDepartmentFormDialog(
       context: context,
-      builder: (dialogCtx) => StatefulBuilder(
-        builder: (dialogCtx, dss) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12.r),
-          ),
-          title: Text(
-            "Add Department",
-            style: GoogleFonts.inter(
-              fontWeight: FontWeight.w700,
-              fontSize: 15.sp,
-              color: const Color(0xFF0A0258),
-            ),
-          ),
-          content: Form(
-            key: dialogFormKey,
-            child: TextFormField(
-              controller: nameCtrl,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: "Department name",
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-              ),
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? "Enter a department name"
-                  : null,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogCtx),
-              child: Text("Cancel", style: GoogleFonts.inter()),
-            ),
-            ElevatedButton(
-              onPressed: submitting
-                  ? null
-                  : () async {
-                      if (!(dialogFormKey.currentState?.validate() ??
-                          false)) {
-                        return;
-                      }
-                      dss(() => submitting = true);
-
-                      final name = nameCtrl.text.trim();
-                      final success = await _departmentController
-                          .handleCreateDepartment(name: name);
-
-                      dss(() => submitting = false);
-
-                      if (success) {
-                        final created = _departmentController.departments
-                            .where((d) => d.name == name)
-                            .firstOrNull;
-                        if (mounted && created?.id != null) {
-                          setState(() => _selected[created!.id!] = created);
-                          widget.onChanged(_selected.values.toList());
-                        }
-                        if (dialogCtx.mounted) Navigator.pop(dialogCtx);
-                      }
-                    },
-              child: submitting
-                  ? SizedBox(
-                      width: 16.r,
-                      height: 16.r,
-                      child: const CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text("Add", style: GoogleFonts.inter()),
-            ),
-          ],
-        ),
-      ),
+      departmentController: _departmentController,
+      locationController: freshLocationController,
+      onCreated: (dept) {
+        if (!mounted || dept.id == null) return;
+        setState(() => _selected[dept.id!] = dept);
+        widget.onChanged(_selected.values.toList());
+      },
+      // Already inside the Create Location form — its own "Create
+      // Department" dialog shouldn't offer to stack a nested "create
+      // location" dialog on top of that.
+      canAddLocation: false,
     );
   }
 

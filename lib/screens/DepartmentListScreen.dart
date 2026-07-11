@@ -199,353 +199,6 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
   double get _searchBoxWidth =>
       MediaQuery.of(context).size.width - 15.w * 2 - 10.w - 150.w;
 
-  // ── CREATE / EDIT ─────────────────────────────────────────────────────────
-  void _openDepartmentForm({DepartmentModel? existing}) {
-    final formKey = GlobalKey<FormState>();
-    final nameCtrl = TextEditingController(text: existing?.name ?? "");
-
-    // A department can belong to multiple locations — pre-select all of
-    // them (not just the first) for the multi-select field below.
-    List<LocationModel> selectedLocations = existing != null
-        ? existing.location
-              .where((l) => l.id != null)
-              .map(
-                (l) => LocationModel(
-                  id: l.id!,
-                  organization: '',
-                  name: l.name ?? '',
-                  phoneNumber: '',
-                  isDeleted: false,
-                ),
-              )
-              .toList()
-        : <LocationModel>[];
-    bool autoValidate = false;
-    bool isSubmitting = false;
-
-    showDialog(
-      context: context,
-      barrierColor: Colors.black.withOpacity(0.35),
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, ss) {
-          return Dialog(
-            backgroundColor: Colors.white,
-            insetPadding: EdgeInsets.symmetric(
-              horizontal: 24.w,
-              vertical: 24.h,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14.r),
-              side: const BorderSide(color: Color(0xFFE4E7EC)),
-            ),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: 420.w,
-                maxHeight: MediaQuery.of(ctx).size.height * 0.85,
-              ),
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(20.w, 18.h, 20.w, 20.h),
-                child: Form(
-                  key: formKey,
-                  autovalidateMode: autoValidate
-                      ? AutovalidateMode.onUserInteraction
-                      : AutovalidateMode.disabled,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "Department Details",
-                            style: GoogleFonts.inter(
-                              fontSize: 16.sp,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF1D2939),
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () => Navigator.pop(ctx),
-                            child: Icon(
-                              Icons.close,
-                              size: 20.r,
-                              color: const Color(0xFF6C7278),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 18.h),
-
-                      // Department Name
-                      Text(
-                        "Department Name",
-                        style: GoogleFonts.inter(
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF4338CA),
-                        ),
-                      ),
-                      SizedBox(height: 6.h),
-                      TextFormField(
-                        controller: nameCtrl,
-                        style: GoogleFonts.inter(
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.w400,
-                          color: const Color(0xFF344054),
-                        ),
-                        validator: (v) {
-                          final trimmed = v?.trim() ?? "";
-                          if (trimmed.isEmpty) {
-                            return "Enter department name";
-                          }
-                          if (trimmed.length < 2) {
-                            return "Name must be at least 2 characters";
-                          }
-                          return null;
-                        },
-                        decoration: InputDecoration(
-                          isDense: true,
-                          hintText: "Department Name",
-                          hintStyle: GoogleFonts.inter(
-                            fontSize: 13.sp,
-                            color: const Color(0xFFB8BEC5),
-                          ),
-                          errorStyle: TextStyle(fontSize: 10.sp),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12.w,
-                            vertical: 13.h,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10.r),
-                            borderSide: const BorderSide(
-                              color: Color(0xFFE4E7EC),
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10.r),
-                            borderSide: const BorderSide(
-                              color: Color(0xFFE4E7EC),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10.r),
-                            borderSide: const BorderSide(
-                              color: Color(0xFF4338CA),
-                            ),
-                          ),
-                          errorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10.r),
-                            borderSide: const BorderSide(color: Colors.red),
-                          ),
-                          focusedErrorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10.r),
-                            borderSide: const BorderSide(color: Colors.red),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 18.h),
-
-                      // Location — multi-select, checkbox dropdown backed
-                      // by the screen's already-loaded LocationController.
-                      Text(
-                        "Location",
-                        style: GoogleFonts.inter(
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF4338CA),
-                        ),
-                      ),
-                      SizedBox(height: 6.h),
-                      _LocationMultiSelectField(
-                        locationController: locationController,
-                        initialSelected: existing?.location ?? const [],
-                        onChanged: (v) => selectedLocations = v,
-                      ),
-                      SizedBox(height: 26.h),
-
-                      // Actions
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          OutlinedButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Color(0xFFD9DEE5)),
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 20.w,
-                                vertical: 12.h,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8.r),
-                              ),
-                            ),
-                            child: Text(
-                              "Cancel",
-                              style: GoogleFonts.inter(
-                                fontSize: 13.sp,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF344054),
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 10.w),
-                          ElevatedButton(
-                            onPressed: isSubmitting
-                                ? null
-                                : () async {
-                                    ss(() => autoValidate = true);
-                                    if (!(formKey.currentState?.validate() ??
-                                        false)) {
-                                      return;
-                                    }
-
-                                    ss(() => isSubmitting = true);
-
-                                    final locationIds = selectedLocations
-                                        .map((l) => l.id)
-                                        .toList();
-
-                                    final bool success;
-                                    if (existing == null) {
-                                      success = await departmentController
-                                          .handleCreateDepartment(
-                                            name: nameCtrl.text.trim(),
-                                            locationIds: locationIds,
-                                          );
-                                    } else {
-                                      success = await departmentController
-                                          .handleUpdateDepartment(
-                                            id: existing.id ?? "",
-                                            name: nameCtrl.text.trim(),
-                                            locationIds: locationIds,
-                                          );
-                                    }
-
-                                    if (!mounted) return;
-                                    ss(() => isSubmitting = false);
-
-                                    if (success) {
-                                      Navigator.pop(ctx);
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            departmentController
-                                                    .successMessage ??
-                                                (existing == null
-                                                    ? "Department created successfully!"
-                                                    : "Department updated successfully!"),
-                                            style: GoogleFonts.inter(
-                                              fontSize: 13.sp,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                          backgroundColor: const Color(
-                                            0xFF0DA99E,
-                                          ),
-                                          behavior: SnackBarBehavior.floating,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              8.r,
-                                            ),
-                                          ),
-                                        ),
-                                      );
-
-                                      // The create/update response only
-                                      // returns the location as a bare ID
-                                      // (unpopulated), so the row's location
-                                      // name would show blank until the next
-                                      // fetch. Refresh now so it reflects the
-                                      // fully populated data immediately.
-                                      departmentController
-                                          .handleGetDepartments();
-                                    } else {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            departmentController.errorMessage ??
-                                                "Something went wrong",
-                                            style: GoogleFonts.inter(
-                                              fontSize: 13.sp,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                          backgroundColor: Colors.red,
-                                          behavior: SnackBarBehavior.floating,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              8.r,
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  },
-                            style: ElevatedButton.styleFrom(
-                              elevation: 0,
-                              backgroundColor: const Color(0xFF3B82F6),
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 22.w,
-                                vertical: 12.h,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8.r),
-                              ),
-                            ),
-                            child: isSubmitting
-                                ? SizedBox(
-                                    width: 16.r,
-                                    height: 16.r,
-                                    child: const CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation(
-                                        Colors.white,
-                                      ),
-                                    ),
-                                  )
-                                : Text(
-                                    "Confirm",
-                                    style: GoogleFonts.inter(
-                                      fontSize: 13.sp,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    ).then((_) {
-      // Dialog closed by any path (Cancel, X, Confirm, or barrier tap).
-      // `_LocationMultiSelectField` owns and disposes its own FocusNode/
-      // overlay internally (standard StatefulWidget lifecycle) — only
-      // `nameCtrl` is this scope's responsibility.
-      //
-      // Delay disposing: the dialog route's exit transition keeps
-      // rebuilding the form for a few more frames after this Future
-      // resolves, and disposing too early causes "A TextEditingController
-      // was used after being disposed." Waiting past Material's default
-      // dialog transition (~150ms) avoids that race.
-      Future.delayed(const Duration(milliseconds: 300), () {
-        nameCtrl.dispose();
-      });
-    });
-  }
 
   // ── DELETE ────────────────────────────────────────────────────────────────
   Future<void> _confirmDelete(DepartmentModel department) async {
@@ -760,7 +413,11 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
                           ),
                         ),
                         child: ElevatedButton.icon(
-                          onPressed: () => _openDepartmentForm(),
+                          onPressed: () => openDepartmentFormDialog(
+                            context: context,
+                            departmentController: departmentController,
+                            locationController: locationController,
+                          ),
                           style: ElevatedButton.styleFrom(
                             elevation: 0,
                             backgroundColor: Colors.transparent,
@@ -892,7 +549,12 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
                                         ),
                                       ),
                                       GestureDetector(
-                                        onTap: () => _openDepartmentForm(
+                                        onTap: () => openDepartmentFormDialog(
+                                          context: context,
+                                          departmentController:
+                                              departmentController,
+                                          locationController:
+                                              locationController,
                                           existing: department,
                                         ),
                                         child: Icon(
@@ -928,25 +590,405 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
   }
 }
 
-// ── Location multi-select field (live data, no inline "add") ──────────────
+// ── Reusable Department create/edit dialog ─────────────────────────────
+//
+// Extracted to a top-level function (not a State method) so other screens
+// can reuse the exact same create/edit UI — e.g. the "Create Department"
+// option pinned above the Department multi-select field on the Create
+// Location form (see LocationListScreen.dart).
+void openDepartmentFormDialog({
+  required BuildContext context,
+  required DepartmentController departmentController,
+  required LocationController locationController,
+  DepartmentModel? existing,
+  ValueChanged<DepartmentModel>? onCreated,
+  bool canAddLocation = true,
+}) {
+  final formKey = GlobalKey<FormState>();
+  final nameCtrl = TextEditingController(text: existing?.name ?? "");
+
+  // A department can belong to multiple locations — pre-select all of
+  // them (not just the first) for the multi-select field below.
+  List<LocationModel> selectedLocations = existing != null
+      ? existing.location
+            .where((l) => l.id != null)
+            .map(
+              (l) => LocationModel(
+                id: l.id!,
+                organization: '',
+                name: l.name ?? '',
+                phoneNumber: '',
+                isDeleted: false,
+              ),
+            )
+            .toList()
+      : <LocationModel>[];
+  bool autoValidate = false;
+  bool isSubmitting = false;
+
+  showDialog(
+    context: context,
+    barrierColor: Colors.black.withOpacity(0.35),
+    builder: (_) => StatefulBuilder(
+      builder: (ctx, ss) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          insetPadding: EdgeInsets.symmetric(
+            horizontal: 24.w,
+            vertical: 24.h,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14.r),
+            side: const BorderSide(color: Color(0xFFE4E7EC)),
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 420.w,
+              maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+            ),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(20.w, 18.h, 20.w, 20.h),
+              child: Form(
+                key: formKey,
+                autovalidateMode: autoValidate
+                    ? AutovalidateMode.onUserInteraction
+                    : AutovalidateMode.disabled,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "Department Details",
+                          style: GoogleFonts.inter(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF1D2939),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(ctx),
+                          child: Icon(
+                            Icons.close,
+                            size: 20.r,
+                            color: const Color(0xFF6C7278),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 18.h),
+
+                    // Department Name
+                    Text(
+                      "Department Name",
+                      style: GoogleFonts.inter(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF4338CA),
+                      ),
+                    ),
+                    SizedBox(height: 6.h),
+                    TextFormField(
+                      controller: nameCtrl,
+                      style: GoogleFonts.inter(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w400,
+                        color: const Color(0xFF344054),
+                      ),
+                      validator: (v) {
+                        final trimmed = v?.trim() ?? "";
+                        if (trimmed.isEmpty) {
+                          return "Enter department name";
+                        }
+                        if (trimmed.length < 2) {
+                          return "Name must be at least 2 characters";
+                        }
+                        return null;
+                      },
+                      decoration: InputDecoration(
+                        isDense: true,
+                        hintText: "Department Name",
+                        hintStyle: GoogleFonts.inter(
+                          fontSize: 13.sp,
+                          color: const Color(0xFFB8BEC5),
+                        ),
+                        errorStyle: TextStyle(fontSize: 10.sp),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 13.h,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.r),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE4E7EC),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.r),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE4E7EC),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.r),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF4338CA),
+                          ),
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.r),
+                          borderSide: const BorderSide(color: Colors.red),
+                        ),
+                        focusedErrorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.r),
+                          borderSide: const BorderSide(color: Colors.red),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 18.h),
+
+                    // Location — multi-select, checkbox dropdown backed
+                    // by the screen's already-loaded LocationController.
+                    Text(
+                      "Location",
+                      style: GoogleFonts.inter(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF4338CA),
+                      ),
+                    ),
+                    SizedBox(height: 6.h),
+                    _LocationMultiSelectField(
+                      locationController: locationController,
+                      initialSelected: existing?.location ?? const [],
+                      onChanged: (v) => selectedLocations = v,
+                      canCreateLocation: canAddLocation,
+                    ),
+                    SizedBox(height: 26.h),
+
+                    // Actions
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        OutlinedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFFD9DEE5)),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 20.w,
+                              vertical: 12.h,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
+                          ),
+                          child: Text(
+                            "Cancel",
+                            style: GoogleFonts.inter(
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF344054),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 10.w),
+                        ElevatedButton(
+                          onPressed: isSubmitting
+                              ? null
+                              : () async {
+                                  ss(() => autoValidate = true);
+                                  if (!(formKey.currentState?.validate() ??
+                                      false)) {
+                                    return;
+                                  }
+
+                                  ss(() => isSubmitting = true);
+
+                                  final locationIds = selectedLocations
+                                      .map((l) => l.id)
+                                      .toList();
+
+                                  final bool success;
+                                  if (existing == null) {
+                                    success = await departmentController
+                                        .handleCreateDepartment(
+                                          name: nameCtrl.text.trim(),
+                                          locationIds: locationIds,
+                                        );
+                                  } else {
+                                    success = await departmentController
+                                        .handleUpdateDepartment(
+                                          id: existing.id ?? "",
+                                          name: nameCtrl.text.trim(),
+                                          locationIds: locationIds,
+                                        );
+                                  }
+
+                                  if (!context.mounted) return;
+                                  ss(() => isSubmitting = false);
+
+                                  if (success) {
+                                    Navigator.pop(ctx);
+                                    if (existing == null && onCreated != null) {
+                                      final created = departmentController
+                                          .departments
+                                          .where(
+                                            (d) =>
+                                                d.name ==
+                                                nameCtrl.text.trim(),
+                                          )
+                                          .firstOrNull;
+                                      if (created != null) {
+                                        onCreated(created);
+                                      }
+                                    }
+                                    ScaffoldMessenger.of(
+                                      context,
+                                    ).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          departmentController
+                                                  .successMessage ??
+                                              (existing == null
+                                                  ? "Department created successfully!"
+                                                  : "Department updated successfully!"),
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13.sp,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        backgroundColor: const Color(
+                                          0xFF0DA99E,
+                                        ),
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8.r,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+
+                                    // The create/update response only
+                                    // returns the location as a bare ID
+                                    // (unpopulated), so the row's location
+                                    // name would show blank until the next
+                                    // fetch. Refresh now so it reflects the
+                                    // fully populated data immediately.
+                                    departmentController
+                                        .handleGetDepartments();
+                                  } else {
+                                    ScaffoldMessenger.of(
+                                      context,
+                                    ).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          departmentController.errorMessage ??
+                                              "Something went wrong",
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13.sp,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        backgroundColor: Colors.red,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8.r,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            elevation: 0,
+                            backgroundColor: const Color(0xFF3B82F6),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 22.w,
+                              vertical: 12.h,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
+                          ),
+                          child: isSubmitting
+                              ? SizedBox(
+                                  width: 16.r,
+                                  height: 16.r,
+                                  child: const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                )
+                              : Text(
+                                  "Confirm",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    ),
+  ).then((_) {
+    // Dialog closed by any path (Cancel, X, Confirm, or barrier tap).
+    // `_LocationMultiSelectField` owns and disposes its own FocusNode/
+    // overlay internally (standard StatefulWidget lifecycle) — only
+    // `nameCtrl` is this scope's responsibility.
+    //
+    // Delay disposing: the dialog route's exit transition keeps
+    // rebuilding the form for a few more frames after this Future
+    // resolves, and disposing too early causes "A TextEditingController
+    // was used after being disposed." Waiting past Material's default
+    // dialog transition (~150ms) avoids that race.
+    Future.delayed(const Duration(milliseconds: 300), () {
+      nameCtrl.dispose();
+    });
+  });
+}
+
+// ── Location multi-select field (live data + inline "Create Location") ────
 //
 // Used in the Create/Edit Department dialog. Takes the parent's already-
 // loaded `LocationController` (this screen already fetches the full
 // location list in `initState`) instead of spinning up its own, so opening
-// the dialog doesn't trigger a redundant fetch. Unlike the analogous
-// Departments-multi-select field on the Location form, this one has no
-// pinned "+ Add Location" row — creating a location needs a full address
-// form, not a one-field quick-add.
+// the dialog doesn't trigger a redundant fetch. Has a pinned "+ Create
+// Location" row backed by the real Location create/edit form (not a
+// simplified quick-add — a location needs a full address).
 class _LocationMultiSelectField extends StatefulWidget {
   const _LocationMultiSelectField({
     required this.locationController,
     required this.initialSelected,
     required this.onChanged,
+    this.canCreateLocation = true,
   });
 
   final LocationController locationController;
   final List<DepartmentLocationModel> initialSelected;
   final ValueChanged<List<LocationModel>> onChanged;
+
+  // When false, the pinned "+ Create Location" row is shown but inactive —
+  // used when this field is itself opened from within the Location form's
+  // own "Create Department" flow, to avoid a Location-form-within-
+  // Department-form-within-Location-form dialog stack.
+  final bool canCreateLocation;
 
   @override
   State<_LocationMultiSelectField> createState() =>
@@ -1103,31 +1145,36 @@ class _LocationMultiSelectFieldState
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     InkWell(
-                      onTap: _openCreateLocationDialog,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 10.w,
-                          vertical: 10.h,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              CupertinoIcons.add_circled_solid,
-                              size: 14.r,
-                              color: const Color(0xFF4338CA),
-                            ),
-                            SizedBox(width: 6.w),
-                            Expanded(
-                              child: Text(
-                                "Create Location",
-                                style: GoogleFonts.inter(
-                                  fontSize: 12.5.sp,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF4338CA),
+                      onTap: widget.canCreateLocation
+                          ? _openCreateLocationDialog
+                          : null,
+                      child: Opacity(
+                        opacity: widget.canCreateLocation ? 1 : 0.4,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 10.w,
+                            vertical: 10.h,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                CupertinoIcons.add_circled_solid,
+                                size: 14.r,
+                                color: const Color(0xFF4338CA),
+                              ),
+                              SizedBox(width: 6.w),
+                              Expanded(
+                                child: Text(
+                                  "Create Location",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.5.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF4338CA),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
