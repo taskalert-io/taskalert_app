@@ -203,162 +203,30 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
     final formKey = GlobalKey<FormState>();
     final nameCtrl = TextEditingController(text: existing?.name ?? "");
 
-    // ── Location autocomplete plumbing (scoped to this dialog) ────────────
-    // A department can now belong to multiple locations, but this dialog's
-    // field only supports picking one — prefill from the first, if any.
-    final existingLocation = existing != null && existing.location.isNotEmpty
-        ? existing.location.first
-        : null;
-    final locationCtrl = TextEditingController(
-      text: existingLocation?.name ?? "",
-    );
-    String? selectedLocationId = existingLocation?.id;
-    final locationFocusNode = FocusNode();
-    final LayerLink locationLayerLink = LayerLink();
-    OverlayEntry? locationOverlay;
-    List<LocationModel> locationSuggestions = [];
+    // A department can belong to multiple locations — pre-select all of
+    // them (not just the first) for the multi-select field below.
+    List<LocationModel> selectedLocations = existing != null
+        ? existing.location
+              .where((l) => l.id != null)
+              .map(
+                (l) => LocationModel(
+                  id: l.id!,
+                  organization: '',
+                  name: l.name ?? '',
+                  phoneNumber: '',
+                  isDeleted: false,
+                ),
+              )
+              .toList()
+        : <LocationModel>[];
     bool autoValidate = false;
     bool isSubmitting = false;
-
-    // Holds the StatefulBuilder's setState so overlay item taps (which live
-    // outside the builder's rebuild scope) can still trigger a rebuild.
-    StateSetter? dialogSetState;
-    final GlobalKey locationFieldKey = GlobalKey();
-
-    double measuredFieldWidth() {
-      final box =
-          locationFieldKey.currentContext?.findRenderObject() as RenderBox?;
-      return box?.size.width ?? (420.w - 40.w);
-    }
-
-    void removeLocationOverlay() {
-      locationOverlay?.remove();
-      locationOverlay = null;
-    }
-
-    void showLocationOverlay(BuildContext overlayContext, double fieldWidth) {
-      removeLocationOverlay();
-      final overlay = Overlay.of(overlayContext);
-      locationOverlay = OverlayEntry(
-        builder: (context) => Positioned(
-          width: fieldWidth,
-          child: CompositedTransformFollower(
-            link: locationLayerLink,
-            showWhenUnlinked: false,
-            offset: Offset(0, 46.h),
-            child: Material(
-              elevation: 6,
-              borderRadius: BorderRadius.circular(10.r),
-              color: Colors.white,
-              child: ConstrainedBox(
-                // Caps the dropdown's height — once the suggestion list is
-                // taller than this, ListView scrolls internally instead of
-                // overflowing or growing the overlay indefinitely.
-                constraints: BoxConstraints(maxHeight: 240.h),
-                child: locationSuggestions.isEmpty
-                    ? Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12.w,
-                          vertical: 12.h,
-                        ),
-                        child: Text(
-                          "No locations found",
-                          style: GoogleFonts.inter(
-                            fontSize: 12.5.sp,
-                            color: const Color(0xFF9AA0AB),
-                          ),
-                        ),
-                      )
-                    : ListView.separated(
-                        padding: EdgeInsets.symmetric(vertical: 4.h),
-                        shrinkWrap: true,
-                        physics: const ClampingScrollPhysics(),
-                        itemCount: locationSuggestions.length,
-                        separatorBuilder: (_, __) =>
-                            const Divider(height: 1, color: Color(0xFFE4E7EC)),
-                        itemBuilder: (context, index) {
-                          final s = locationSuggestions[index];
-                          return InkWell(
-                            onTap: () {
-                              locationCtrl.text = s.name;
-                              selectedLocationId = s.id;
-                              locationCtrl
-                                  .selection = TextSelection.fromPosition(
-                                TextPosition(offset: locationCtrl.text.length),
-                              );
-                              removeLocationOverlay();
-                              locationFocusNode.unfocus();
-                              dialogSetState?.call(() {});
-                            },
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 12.w,
-                                vertical: 10.h,
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    CupertinoIcons.location_solid,
-                                    size: 14.r,
-                                    color: const Color(0xFF4338CA),
-                                  ),
-                                  SizedBox(width: 8.w),
-                                  Expanded(
-                                    child: Text(
-                                      s.name,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 13.sp,
-                                        fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF1D2939),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-              ),
-            ),
-          ),
-        ),
-      );
-      overlay.insert(locationOverlay!);
-    }
-
-    void updateLocationSuggestions(
-      String query,
-      BuildContext overlayContext,
-      double fieldWidth,
-    ) {
-      final q = query.trim().toLowerCase();
-      locationSuggestions = q.isEmpty
-          ? List.from(locationController.locations)
-          : locationController.locations
-                .where((l) => l.name.toLowerCase().contains(q))
-                .toList();
-
-      showLocationOverlay(overlayContext, fieldWidth);
-    }
-
-    locationFocusNode.addListener(() {
-      if (!locationFocusNode.hasFocus) {
-        // Small delay so a tap on a suggestion registers before the
-        // overlay is torn down.
-        Future.delayed(const Duration(milliseconds: 150), () {
-          if (!locationFocusNode.hasFocus) removeLocationOverlay();
-        });
-      }
-    });
 
     showDialog(
       context: context,
       barrierColor: Colors.black.withOpacity(0.35),
       builder: (_) => StatefulBuilder(
         builder: (ctx, ss) {
-          dialogSetState = ss;
-
           return Dialog(
             backgroundColor: Colors.white,
             insetPadding: EdgeInsets.symmetric(
@@ -480,7 +348,8 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
                       ),
                       SizedBox(height: 18.h),
 
-                      // Location — search box with live autocomplete
+                      // Location — multi-select, checkbox dropdown backed
+                      // by the screen's already-loaded LocationController.
                       Text(
                         "Location",
                         style: GoogleFonts.inter(
@@ -490,102 +359,10 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
                         ),
                       ),
                       SizedBox(height: 6.h),
-                      CompositedTransformTarget(
-                        link: locationLayerLink,
-                        child: TextFormField(
-                          key: locationFieldKey,
-                          controller: locationCtrl,
-                          focusNode: locationFocusNode,
-                          style: GoogleFonts.inter(
-                            fontSize: 13.sp,
-                            fontWeight: FontWeight.w400,
-                            color: const Color(0xFF344054),
-                          ),
-                          validator: (v) {
-                            if (v == null || v.trim().isEmpty) {
-                              return "Enter location";
-                            }
-                            if (selectedLocationId == null) {
-                              return "Select a location from the list";
-                            }
-                            return null;
-                          },
-                          onChanged: (val) {
-                            selectedLocationId = null;
-                            ss(() {});
-                            updateLocationSuggestions(
-                              val,
-                              ctx,
-                              measuredFieldWidth(),
-                            );
-                          },
-                          onTap: () => updateLocationSuggestions(
-                            locationCtrl.text,
-                            ctx,
-                            measuredFieldWidth(),
-                          ),
-                          decoration: InputDecoration(
-                            isDense: true,
-                            hintText: "Search location",
-                            hintStyle: GoogleFonts.inter(
-                              fontSize: 13.sp,
-                              color: const Color(0xFFB8BEC5),
-                            ),
-                            errorStyle: TextStyle(fontSize: 10.sp),
-                            prefixIcon: Icon(
-                              CupertinoIcons.search,
-                              size: 14.r,
-                              color: const Color(0xFF9AA0AB),
-                            ),
-                            suffixIcon: locationCtrl.text.isEmpty
-                                ? null
-                                : GestureDetector(
-                                    onTap: () {
-                                      locationCtrl.clear();
-                                      selectedLocationId = null;
-                                      removeLocationOverlay();
-                                      ss(() {});
-                                    },
-                                    child: Icon(
-                                      CupertinoIcons.clear_circled_solid,
-                                      size: 14.r,
-                                      color: const Color(0xFF9AA0AB),
-                                    ),
-                                  ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12.w,
-                              vertical: 13.h,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10.r),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFE4E7EC),
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10.r),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFE4E7EC),
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10.r),
-                              borderSide: const BorderSide(
-                                color: Color(0xFF4338CA),
-                              ),
-                            ),
-                            errorBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10.r),
-                              borderSide: const BorderSide(color: Colors.red),
-                            ),
-                            focusedErrorBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10.r),
-                              borderSide: const BorderSide(color: Colors.red),
-                            ),
-                          ),
-                        ),
+                      _LocationMultiSelectField(
+                        locationController: locationController,
+                        initialSelected: existing?.location ?? const [],
+                        onChanged: (v) => selectedLocations = v,
                       ),
                       SizedBox(height: 26.h),
 
@@ -625,22 +402,25 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
                                       return;
                                     }
 
-                                    removeLocationOverlay();
                                     ss(() => isSubmitting = true);
+
+                                    final locationIds = selectedLocations
+                                        .map((l) => l.id)
+                                        .toList();
 
                                     final bool success;
                                     if (existing == null) {
                                       success = await departmentController
                                           .handleCreateDepartment(
                                             name: nameCtrl.text.trim(),
-                                            location: selectedLocationId,
+                                            locationIds: locationIds,
                                           );
                                     } else {
                                       success = await departmentController
                                           .handleUpdateDepartment(
                                             id: existing.id ?? "",
                                             name: nameCtrl.text.trim(),
-                                            location: selectedLocationId,
+                                            locationIds: locationIds,
                                           );
                                     }
 
@@ -751,18 +531,16 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
       ),
     ).then((_) {
       // Dialog closed by any path (Cancel, X, Confirm, or barrier tap).
-      // Remove the overlay immediately — it's not part of the dialog's
-      // widget tree, so it's safe to tear down right away.
-      removeLocationOverlay();
-
-      // Delay disposing the FocusNode/controllers: the dialog route's exit
-      // transition keeps rebuilding the TextFormField for a few more frames
-      // after this Future resolves, and disposing too early causes
-      // "A FocusNode was used after being disposed." Waiting past Material's
-      // default dialog transition (~150ms) avoids that race.
+      // `_LocationMultiSelectField` owns and disposes its own FocusNode/
+      // overlay internally (standard StatefulWidget lifecycle) — only
+      // `nameCtrl` is this scope's responsibility.
+      //
+      // Delay disposing: the dialog route's exit transition keeps
+      // rebuilding the form for a few more frames after this Future
+      // resolves, and disposing too early causes "A TextEditingController
+      // was used after being disposed." Waiting past Material's default
+      // dialog transition (~150ms) avoids that race.
       Future.delayed(const Duration(milliseconds: 300), () {
-        locationFocusNode.dispose();
-        locationCtrl.dispose();
         nameCtrl.dispose();
       });
     });
@@ -1145,6 +923,356 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
         },
       ),
       bottomNavigationBar: const CustomBottomNavBar(selectedIndex: -1),
+    );
+  }
+}
+
+// ── Location multi-select field (live data, no inline "add") ──────────────
+//
+// Used in the Create/Edit Department dialog. Takes the parent's already-
+// loaded `LocationController` (this screen already fetches the full
+// location list in `initState`) instead of spinning up its own, so opening
+// the dialog doesn't trigger a redundant fetch. Unlike the analogous
+// Departments-multi-select field on the Location form, this one has no
+// pinned "+ Add Location" row — creating a location needs a full address
+// form, not a one-field quick-add.
+class _LocationMultiSelectField extends StatefulWidget {
+  const _LocationMultiSelectField({
+    required this.locationController,
+    required this.initialSelected,
+    required this.onChanged,
+  });
+
+  final LocationController locationController;
+  final List<DepartmentLocationModel> initialSelected;
+  final ValueChanged<List<LocationModel>> onChanged;
+
+  @override
+  State<_LocationMultiSelectField> createState() =>
+      _LocationMultiSelectFieldState();
+}
+
+class _LocationMultiSelectFieldState
+    extends State<_LocationMultiSelectField> {
+  final FocusNode _focusNode = FocusNode();
+  final LayerLink _layerLink = LayerLink();
+  final GlobalKey _fieldKey = GlobalKey();
+  OverlayEntry? _overlayEntry;
+
+  // id -> model, so both pre-selected refs (id + name only, from an
+  // existing department's `location` list) and freshly-picked full
+  // LocationModel entries live in the same map.
+  final Map<String, LocationModel> _selected = {};
+
+  @override
+  void initState() {
+    super.initState();
+    for (final l in widget.initialSelected) {
+      if (l.id != null) {
+        _selected[l.id!] = LocationModel(
+          id: l.id!,
+          organization: '',
+          name: l.name ?? '',
+          phoneNumber: '',
+          isDeleted: false,
+        );
+      }
+    }
+    widget.locationController.addListener(_onLocationsChanged);
+    _focusNode.addListener(_onFocusChanged);
+    // The parent screen may have already finished loading its location
+    // list by the time this dialog opens — resolve names immediately
+    // instead of waiting for a change notification that may never fire.
+    _resolveSelectedNames();
+  }
+
+  @override
+  void dispose() {
+    widget.locationController.removeListener(_onLocationsChanged);
+    _removeOverlay();
+    _focusNode.removeListener(_onFocusChanged);
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _onLocationsChanged() {
+    _resolveSelectedNames();
+    if (_focusNode.hasFocus) _showOverlay();
+  }
+
+  // A department's own `location` refs sometimes come back as plain id
+  // strings rather than populated `{_id, name}` objects, which leaves the
+  // pre-selected entries seeded in `initState` with an empty `name`. Once
+  // the real location list is available, patch in the missing names by
+  // matching on id.
+  void _resolveSelectedNames() {
+    if (widget.locationController.locations.isEmpty) return;
+    var changed = false;
+    for (final id in _selected.keys.toList()) {
+      if (_selected[id]!.name.isNotEmpty) continue;
+      final matches = widget.locationController.locations.where(
+        (l) => l.id == id,
+      );
+      if (matches.isNotEmpty) {
+        _selected[id] = matches.first;
+        changed = true;
+      }
+    }
+    if (changed) {
+      setState(() {});
+      widget.onChanged(_selected.values.toList());
+    }
+  }
+
+  void _onFocusChanged() {
+    if (_focusNode.hasFocus) {
+      _showOverlay();
+    } else {
+      // Small delay so a tap on a checkbox registers before the overlay
+      // is torn down.
+      Future.delayed(const Duration(milliseconds: 150), () {
+        if (mounted && !_focusNode.hasFocus) _removeOverlay();
+      });
+    }
+  }
+
+  void _toggle(LocationModel loc) {
+    setState(() {
+      if (_selected.containsKey(loc.id)) {
+        _selected.remove(loc.id);
+      } else {
+        _selected[loc.id] = loc;
+      }
+    });
+    widget.onChanged(_selected.values.toList());
+    _showOverlay();
+  }
+
+  void _remove(LocationModel loc) {
+    setState(() => _selected.remove(loc.id));
+    widget.onChanged(_selected.values.toList());
+    if (_focusNode.hasFocus) _showOverlay();
+  }
+
+  void _showOverlay() {
+    _removeOverlay();
+
+    final overlay = Overlay.of(context);
+    final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+    final width = box?.size.width ?? 260.w;
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        width: width,
+        child: CompositedTransformFollower(
+          link: _layerLink,
+          showWhenUnlinked: false,
+          offset: Offset(0, (box?.size.height ?? 44.h) + 6.h),
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: Material(
+              elevation: 6,
+              borderRadius: BorderRadius.circular(10.r),
+              color: Colors.white,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: 260.h),
+                child: widget.locationController.isLoading
+                    ? Padding(
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
+                        child: Center(
+                          child: SizedBox(
+                            width: 16.r,
+                            height: 16.r,
+                            child: const CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        ),
+                      )
+                    : widget.locationController.locations.isEmpty
+                    ? Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 14.h,
+                        ),
+                        child: Text(
+                          "No locations found",
+                          style: GoogleFonts.inter(
+                            fontSize: 12.sp,
+                            color: const Color(0xFF9AA0AB),
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: EdgeInsets.symmetric(vertical: 4.h),
+                        shrinkWrap: true,
+                        itemCount: widget.locationController.locations.length,
+                        separatorBuilder: (_, __) => const Divider(
+                          height: 1,
+                          color: Color(0xFFE4E7EC),
+                        ),
+                        itemBuilder: (context, index) {
+                          final loc =
+                              widget.locationController.locations[index];
+                          final isChecked = _selected.containsKey(loc.id);
+                          return InkWell(
+                            onTap: () => _toggle(loc),
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12.w,
+                                vertical: 8.h,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    isChecked
+                                        ? CupertinoIcons.checkmark_square_fill
+                                        : CupertinoIcons.square,
+                                    size: 16.r,
+                                    color: isChecked
+                                        ? const Color(0xFF4338CA)
+                                        : const Color(0xFF9AA0AB),
+                                  ),
+                                  SizedBox(width: 8.w),
+                                  Expanded(
+                                    child: Text(
+                                      loc.name,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.w500,
+                                        color: const Color(0xFF1D2939),
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(_overlayEntry!);
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  Widget _chip(LocationModel loc) {
+    return Container(
+      padding: EdgeInsets.only(left: 9.w, right: 4.w, top: 4.h, bottom: 4.h),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEEF0FF),
+        borderRadius: BorderRadius.circular(20.r),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: 140.w),
+            child: Text(
+              loc.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(
+                fontSize: 11.5.sp,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF4338CA),
+              ),
+            ),
+          ),
+          SizedBox(width: 4.w),
+          // Its own tap target — removing a chip must not also toggle the
+          // dropdown open/closed the way tapping the rest of the field does.
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _remove(loc),
+            child: Icon(
+              CupertinoIcons.xmark_circle_fill,
+              size: 14.r,
+              color: const Color(0xFF8B8FA8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasSelection = _selected.isNotEmpty;
+
+    return CompositedTransformTarget(
+      link: _layerLink,
+      child: Focus(
+        focusNode: _focusNode,
+        child: GestureDetector(
+          key: _fieldKey,
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _focusNode.hasFocus
+              ? _focusNode.unfocus()
+              : _focusNode.requestFocus(),
+          child: Container(
+            width: double.infinity,
+            constraints: BoxConstraints(minHeight: 46.h),
+            padding: EdgeInsets.symmetric(
+              horizontal: 12.w,
+              vertical: hasSelection ? 8.h : 13.h,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10.r),
+              border: Border.all(color: const Color(0xFFE4E7EC)),
+            ),
+            child: !hasSelection
+                ? Row(
+                    children: [
+                      Icon(
+                        CupertinoIcons.location_solid,
+                        size: 14.r,
+                        color: const Color(0xFF9AA0AB),
+                      ),
+                      SizedBox(width: 8.w),
+                      Expanded(
+                        child: Text(
+                          "Select locations",
+                          style: GoogleFonts.inter(
+                            fontSize: 13.sp,
+                            color: const Color(0xFFB8BEC5),
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        CupertinoIcons.chevron_down,
+                        size: 12.r,
+                        color: const Color(0xFF9AA0AB),
+                      ),
+                    ],
+                  )
+                : Wrap(
+                    spacing: 6.w,
+                    runSpacing: 6.h,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      for (final loc in _selected.values) _chip(loc),
+                      Icon(
+                        CupertinoIcons.chevron_down,
+                        size: 12.r,
+                        color: const Color(0xFF9AA0AB),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+      ),
     );
   }
 }
