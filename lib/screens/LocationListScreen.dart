@@ -1125,61 +1125,6 @@ class _LocationListScreenState extends State<LocationListScreen> {
                                                           ),
                                                         ],
                                                       ),
-                                                      if (location
-                                                          .department
-                                                          .isNotEmpty) ...[
-                                                        SizedBox(width: 6.w),
-                                                        Row(
-                                                          mainAxisSize:
-                                                              MainAxisSize.min,
-                                                          children: [
-                                                            Icon(
-                                                              CupertinoIcons
-                                                                  .square_grid_2x2,
-                                                              size: 11.r,
-                                                              color:
-                                                                  const Color(
-                                                                    0xFF9AA0AB,
-                                                                  ),
-                                                            ),
-                                                            SizedBox(
-                                                              width: 4.w,
-                                                            ),
-                                                            ConstrainedBox(
-                                                              constraints: BoxConstraints(
-                                                                maxWidth: 160.w,
-                                                              ),
-                                                              child: Text(
-                                                                location
-                                                                    .department
-                                                                    .map(
-                                                                      (d) =>
-                                                                          d.name ??
-                                                                          '',
-                                                                    )
-                                                                    .where(
-                                                                      (n) =>
-                                                                          n.isNotEmpty,
-                                                                    )
-                                                                    .join(
-                                                                      ', ',
-                                                                    ),
-                                                                overflow:
-                                                                    TextOverflow
-                                                                        .ellipsis,
-                                                                maxLines: 1,
-                                                                style: GoogleFonts.inter(
-                                                                  fontSize:
-                                                                      12.sp,
-                                                                  color: const Color(
-                                                                    0xFF667085,
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ],
                                                     ],
                                                   ),
                                                 ],
