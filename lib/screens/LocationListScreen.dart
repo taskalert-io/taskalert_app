@@ -232,455 +232,6 @@ class _LocationListScreenState extends State<LocationListScreen> {
     });
   }
 
-  // ── CREATE / EDIT ─────────────────────────────────────────────────────────
-  void _openLocationForm({LocationModel? existing}) {
-    final formKey = GlobalKey<FormState>();
-    final nameCtrl = TextEditingController(text: existing?.name ?? "");
-    final phoneCtrl = TextEditingController(text: existing?.phoneNumber ?? "");
-    final streetCtrl = TextEditingController(
-      text: existing?.address?.street ?? "",
-    );
-    final cityCtrl = TextEditingController(text: existing?.address?.city ?? "");
-    final stateCtrl = TextEditingController(
-      text: existing?.address?.state ?? "",
-    );
-    final countryCtrl = TextEditingController(
-      text: existing?.address?.country ?? "",
-    );
-    final pincodeCtrl = TextEditingController(
-      text: existing?.address?.pinCode ?? "",
-    );
-    List<DepartmentModel> selectedDepartments = (existing?.department ?? [])
-        .where((d) => d.id != null)
-        .map((d) => DepartmentModel(id: d.id, name: d.name))
-        .toList();
-    bool autoValidate = false;
-    bool isSubmitting = false;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      useRootNavigator: true,
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, ss) => GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          // Tapping anywhere inside the popup (outside whichever field is
-          // currently focused) should close the Departments dropdown.
-          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-          child: Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          ),
-          child: Container(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(ctx).size.height * 0.9,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.12),
-                  blurRadius: 10.r,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: SafeArea(
-              top: false,
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(18.w, 16.h, 18.w, 24.h),
-                child: Form(
-                  key: formKey,
-                  autovalidateMode: autoValidate
-                      ? AutovalidateMode.onUserInteraction
-                      : AutovalidateMode.disabled,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Handle bar
-                      Center(
-                        child: Container(
-                          width: 36.w,
-                          height: 4.h,
-                          margin: EdgeInsets.only(bottom: 14.h),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFD9DEE5),
-                            borderRadius: BorderRadius.circular(4.r),
-                          ),
-                        ),
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            existing == null
-                                ? "Add New Location"
-                                : "Edit Location",
-                            style: GoogleFonts.inter(
-                              fontSize: 16.sp,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF0A0258),
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () => Navigator.pop(ctx),
-                            child: Icon(
-                              Icons.close,
-                              size: 20.r,
-                              color: const Color(0xFF6C7278),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 16.h),
-
-                      // Location Name + Phone
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _formField(
-                              label: "Location Name",
-                              required: true,
-                              controller: nameCtrl,
-                              hint: "Location Name",
-                              validator: (v) => (v == null || v.trim().isEmpty)
-                                  ? "Enter location name"
-                                  : null,
-                            ),
-                          ),
-                          SizedBox(width: 10.w),
-                          Expanded(
-                            child: _formField(
-                              label: "Phone",
-                              required: true,
-                              controller: phoneCtrl,
-                              hint: "10-digit phone number",
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                                LengthLimitingTextInputFormatter(10),
-                              ],
-                              validator: (v) {
-                                final digits = (v ?? "").trim();
-                                if (digits.isEmpty) {
-                                  return "Enter phone number";
-                                }
-                                if (digits.length != 10) {
-                                  return "Enter a valid 10-digit number";
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 12.h),
-
-                      // Departments — multi-select, with an inline
-                      // "+ Add Department" option pinned above the list.
-                      _DepartmentMultiSelectField(
-                        initialSelected: existing?.department ?? const [],
-                        onChanged: (v) => selectedDepartments = v,
-                      ),
-                      SizedBox(height: 12.h),
-
-                      // Street
-                      _formField(
-                        label: "Street",
-                        controller: streetCtrl,
-                        hint: "Street Address",
-                        maxLines: 3,
-                      ),
-                      SizedBox(height: 12.h),
-
-                      // City + State
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _formField(
-                              label: "City",
-                              controller: cityCtrl,
-                              hint: "City",
-                            ),
-                          ),
-                          SizedBox(width: 10.w),
-                          Expanded(
-                            child: _formField(
-                              label: "State",
-                              controller: stateCtrl,
-                              hint: "State",
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 12.h),
-
-                      // Country + Pincode
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _formField(
-                              label: "Country",
-                              controller: countryCtrl,
-                              hint: "Country",
-                            ),
-                          ),
-                          SizedBox(width: 10.w),
-                          Expanded(
-                            child: _formField(
-                              label: "Pincode",
-                              controller: pincodeCtrl,
-                              hint: "Pincode",
-                              keyboardType: TextInputType.number,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 22.h),
-
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8.r),
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFFD96CFF), Color(0xFF5CE1E6)],
-                              ),
-                            ),
-                            child: ElevatedButton(
-                              onPressed: isSubmitting
-                                  ? null
-                                  : () async {
-                                      ss(() => autoValidate = true);
-                                      if (!(formKey.currentState?.validate() ??
-                                          false)) {
-                                        return;
-                                      }
-
-                                      ss(() => isSubmitting = true);
-
-                                      final departmentIds = selectedDepartments
-                                          .map((d) => d.id)
-                                          .whereType<String>()
-                                          .toList();
-
-                                      final bool success;
-                                      if (existing == null) {
-                                        success = await locationController
-                                            .handleCreateLocation(
-                                              name: nameCtrl.text.trim(),
-                                              phoneNumber: phoneCtrl.text
-                                                  .trim(),
-                                              street: streetCtrl.text.trim(),
-                                              city: cityCtrl.text.trim(),
-                                              state: stateCtrl.text.trim(),
-                                              pinCode: pincodeCtrl.text.trim(),
-                                              country: countryCtrl.text.trim(),
-                                              departmentIds: departmentIds,
-                                            );
-                                      } else {
-                                        success = await locationController
-                                            .handleUpdateLocation(
-                                              locationId: existing.id,
-                                              name: nameCtrl.text.trim(),
-                                              phoneNumber: phoneCtrl.text
-                                                  .trim(),
-                                              street: streetCtrl.text.trim(),
-                                              city: cityCtrl.text.trim(),
-                                              state: stateCtrl.text.trim(),
-                                              pinCode: pincodeCtrl.text.trim(),
-                                              country: countryCtrl.text.trim(),
-                                              departmentIds: departmentIds,
-                                            );
-                                      }
-
-                                      if (!mounted) return;
-                                      ss(() => isSubmitting = false);
-
-                                      if (success) {
-                                        Navigator.pop(ctx);
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              locationController
-                                                      .successMessage ??
-                                                  (existing == null
-                                                      ? "Location created successfully!"
-                                                      : "Location updated successfully!"),
-                                              style: GoogleFonts.inter(
-                                                fontSize: 13.sp,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                            backgroundColor: const Color(
-                                              0xFF0DA99E,
-                                            ),
-                                            behavior: SnackBarBehavior.floating,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8.r),
-                                            ),
-                                          ),
-                                        );
-                                      } else {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              locationController.errorMessage ??
-                                                  "Something went wrong",
-                                              style: GoogleFonts.inter(
-                                                fontSize: 13.sp,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                            backgroundColor: Colors.red,
-                                            behavior: SnackBarBehavior.floating,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8.r),
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    },
-                              style: ElevatedButton.styleFrom(
-                                elevation: 0,
-                                backgroundColor: Colors.transparent,
-                                shadowColor: Colors.transparent,
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 22.w,
-                                  vertical: 12.h,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8.r),
-                                ),
-                              ),
-                              child: isSubmitting
-                                  ? SizedBox(
-                                      width: 16.r,
-                                      height: 16.r,
-                                      child: const CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation(
-                                          Colors.white,
-                                        ),
-                                      ),
-                                    )
-                                  : Text(
-                                      existing == null
-                                          ? "Create Location"
-                                          : "Save Changes",
-                                      style: GoogleFonts.inter(
-                                        fontSize: 13.sp,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _formField({
-    required String label,
-    required TextEditingController controller,
-    required String hint,
-    bool required = false,
-    int maxLines = 1,
-    TextInputType keyboardType = TextInputType.text,
-    List<TextInputFormatter>? inputFormatters,
-    String? Function(String?)? validator,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        RichText(
-          text: TextSpan(
-            text: label,
-            style: GoogleFonts.inter(
-              fontSize: 13.sp,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF3F3F3F),
-            ),
-            children: required
-                ? const [
-                    TextSpan(
-                      text: " *",
-                      style: TextStyle(color: Colors.red),
-                    ),
-                  ]
-                : null,
-          ),
-        ),
-        SizedBox(height: 4.h),
-        TextFormField(
-          controller: controller,
-          maxLines: maxLines,
-          keyboardType: keyboardType,
-          inputFormatters: inputFormatters,
-          validator: validator,
-          style: GoogleFonts.inter(
-            fontSize: 12.sp,
-            fontWeight: FontWeight.w400,
-            color: const Color(0xFF6C7278),
-          ),
-          decoration: InputDecoration(
-            isDense: true,
-            hintText: hint,
-            hintStyle: GoogleFonts.inter(
-              fontSize: 12.sp,
-              color: const Color(0xFFB8BEC5),
-            ),
-            errorStyle: TextStyle(fontSize: 10.sp),
-            filled: true,
-            fillColor: const Color(0xFFF9FAFC),
-            contentPadding: EdgeInsets.symmetric(
-              horizontal: 10.w,
-              vertical: 10.h,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.r),
-              borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.r),
-              borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.r),
-              borderSide: const BorderSide(color: Color(0xFF0A0258)),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.r),
-              borderSide: const BorderSide(color: Colors.red),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.r),
-              borderSide: const BorderSide(color: Colors.red),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 
   // ── DELETE ────────────────────────────────────────────────────────────────
   Future<void> _confirmDelete(LocationModel location) async {
@@ -899,7 +450,10 @@ class _LocationListScreenState extends State<LocationListScreen> {
                           ),
                         ),
                         child: ElevatedButton.icon(
-                          onPressed: () => _openLocationForm(),
+                          onPressed: () => openLocationFormDialog(
+                            context: context,
+                            locationController: locationController,
+                          ),
                           style: ElevatedButton.styleFrom(
                             elevation: 0,
                             backgroundColor: Colors.transparent,
@@ -1170,7 +724,10 @@ class _LocationListScreenState extends State<LocationListScreen> {
                                               ),
                                               onSelected: (value) {
                                                 if (value == 'edit') {
-                                                  _openLocationForm(
+                                                  openLocationFormDialog(
+                                                    context: context,
+                                                    locationController:
+                                                        locationController,
                                                     existing: location,
                                                   );
                                                 } else if (value == 'delete') {
@@ -1245,6 +802,479 @@ class _LocationListScreenState extends State<LocationListScreen> {
       bottomNavigationBar: const CustomBottomNavBar(selectedIndex: -1),
     );
   }
+}
+
+// ── Reusable Location create/edit dialog ────────────────────────────────
+//
+// Extracted to a top-level function (not a State method) so other screens
+// can reuse the exact same create/edit UI — e.g. the "+ Create Location"
+// option pinned above the Location multi-select field on the Create
+// Department form (see DepartmentListScreen.dart).
+void openLocationFormDialog({
+  required BuildContext context,
+  required LocationController locationController,
+  LocationModel? existing,
+  ValueChanged<LocationModel>? onCreated,
+}) {
+  final formKey = GlobalKey<FormState>();
+  final nameCtrl = TextEditingController(text: existing?.name ?? "");
+  final phoneCtrl = TextEditingController(text: existing?.phoneNumber ?? "");
+  final streetCtrl = TextEditingController(
+    text: existing?.address?.street ?? "",
+  );
+  final cityCtrl = TextEditingController(text: existing?.address?.city ?? "");
+  final stateCtrl = TextEditingController(
+    text: existing?.address?.state ?? "",
+  );
+  final countryCtrl = TextEditingController(
+    text: existing?.address?.country ?? "",
+  );
+  final pincodeCtrl = TextEditingController(
+    text: existing?.address?.pinCode ?? "",
+  );
+  List<DepartmentModel> selectedDepartments = (existing?.department ?? [])
+      .where((d) => d.id != null)
+      .map((d) => DepartmentModel(id: d.id, name: d.name))
+      .toList();
+  bool autoValidate = false;
+  bool isSubmitting = false;
+
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    useRootNavigator: true,
+    builder: (_) => StatefulBuilder(
+      builder: (ctx, ss) => GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        // Tapping anywhere inside the popup (outside whichever field is
+        // currently focused) should close the Departments dropdown.
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom,
+        ),
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.9,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.12),
+                blurRadius: 10.r,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(18.w, 16.h, 18.w, 24.h),
+              child: Form(
+                key: formKey,
+                autovalidateMode: autoValidate
+                    ? AutovalidateMode.onUserInteraction
+                    : AutovalidateMode.disabled,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Handle bar
+                    Center(
+                      child: Container(
+                        width: 36.w,
+                        height: 4.h,
+                        margin: EdgeInsets.only(bottom: 14.h),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD9DEE5),
+                          borderRadius: BorderRadius.circular(4.r),
+                        ),
+                      ),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          existing == null
+                              ? "Add New Location"
+                              : "Edit Location",
+                          style: GoogleFonts.inter(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF0A0258),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(ctx),
+                          child: Icon(
+                            Icons.close,
+                            size: 20.r,
+                            color: const Color(0xFF6C7278),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 16.h),
+
+                    // Location Name + Phone
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _formField(
+                            label: "Location Name",
+                            required: true,
+                            controller: nameCtrl,
+                            hint: "Location Name",
+                            validator: (v) => (v == null || v.trim().isEmpty)
+                                ? "Enter location name"
+                                : null,
+                          ),
+                        ),
+                        SizedBox(width: 10.w),
+                        Expanded(
+                          child: _formField(
+                            label: "Phone",
+                            required: true,
+                            controller: phoneCtrl,
+                            hint: "10-digit phone number",
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(10),
+                            ],
+                            validator: (v) {
+                              final digits = (v ?? "").trim();
+                              if (digits.isEmpty) {
+                                return "Enter phone number";
+                              }
+                              if (digits.length != 10) {
+                                return "Enter a valid 10-digit number";
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12.h),
+
+                    // Departments — multi-select, with an inline
+                    // "+ Add Department" option pinned above the list.
+                    _DepartmentMultiSelectField(
+                      initialSelected: existing?.department ?? const [],
+                      onChanged: (v) => selectedDepartments = v,
+                    ),
+                    SizedBox(height: 12.h),
+
+                    // Street
+                    _formField(
+                      label: "Street",
+                      controller: streetCtrl,
+                      hint: "Street Address",
+                      maxLines: 3,
+                    ),
+                    SizedBox(height: 12.h),
+
+                    // City + State
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _formField(
+                            label: "City",
+                            controller: cityCtrl,
+                            hint: "City",
+                          ),
+                        ),
+                        SizedBox(width: 10.w),
+                        Expanded(
+                          child: _formField(
+                            label: "State",
+                            controller: stateCtrl,
+                            hint: "State",
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12.h),
+
+                    // Country + Pincode
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _formField(
+                            label: "Country",
+                            controller: countryCtrl,
+                            hint: "Country",
+                          ),
+                        ),
+                        SizedBox(width: 10.w),
+                        Expanded(
+                          child: _formField(
+                            label: "Pincode",
+                            controller: pincodeCtrl,
+                            hint: "Pincode",
+                            keyboardType: TextInputType.number,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 22.h),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8.r),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFD96CFF), Color(0xFF5CE1E6)],
+                            ),
+                          ),
+                          child: ElevatedButton(
+                            onPressed: isSubmitting
+                                ? null
+                                : () async {
+                                    ss(() => autoValidate = true);
+                                    if (!(formKey.currentState?.validate() ??
+                                        false)) {
+                                      return;
+                                    }
+
+                                    ss(() => isSubmitting = true);
+
+                                    final departmentIds = selectedDepartments
+                                        .map((d) => d.id)
+                                        .whereType<String>()
+                                        .toList();
+
+                                    final bool success;
+                                    if (existing == null) {
+                                      success = await locationController
+                                          .handleCreateLocation(
+                                            name: nameCtrl.text.trim(),
+                                            phoneNumber: phoneCtrl.text
+                                                .trim(),
+                                            street: streetCtrl.text.trim(),
+                                            city: cityCtrl.text.trim(),
+                                            state: stateCtrl.text.trim(),
+                                            pinCode: pincodeCtrl.text.trim(),
+                                            country: countryCtrl.text.trim(),
+                                            departmentIds: departmentIds,
+                                          );
+                                    } else {
+                                      success = await locationController
+                                          .handleUpdateLocation(
+                                            locationId: existing.id,
+                                            name: nameCtrl.text.trim(),
+                                            phoneNumber: phoneCtrl.text
+                                                .trim(),
+                                            street: streetCtrl.text.trim(),
+                                            city: cityCtrl.text.trim(),
+                                            state: stateCtrl.text.trim(),
+                                            pinCode: pincodeCtrl.text.trim(),
+                                            country: countryCtrl.text.trim(),
+                                            departmentIds: departmentIds,
+                                          );
+                                    }
+
+                                    if (!context.mounted) return;
+                                    ss(() => isSubmitting = false);
+
+                                    if (success) {
+                                      Navigator.pop(ctx);
+                                      if (existing == null && onCreated != null) {
+                                        final created = locationController
+                                            .locations
+                                            .where(
+                                              (l) =>
+                                                  l.name ==
+                                                  nameCtrl.text.trim(),
+                                            )
+                                            .firstOrNull;
+                                        if (created != null) {
+                                          onCreated(created);
+                                        }
+                                      }
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            locationController
+                                                    .successMessage ??
+                                                (existing == null
+                                                    ? "Location created successfully!"
+                                                    : "Location updated successfully!"),
+                                            style: GoogleFonts.inter(
+                                              fontSize: 13.sp,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          backgroundColor: const Color(
+                                            0xFF0DA99E,
+                                          ),
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8.r),
+                                          ),
+                                        ),
+                                      );
+                                    } else {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            locationController.errorMessage ??
+                                                "Something went wrong",
+                                            style: GoogleFonts.inter(
+                                              fontSize: 13.sp,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          backgroundColor: Colors.red,
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8.r),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              elevation: 0,
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 22.w,
+                                vertical: 12.h,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.r),
+                              ),
+                            ),
+                            child: isSubmitting
+                                ? SizedBox(
+                                    width: 16.r,
+                                    height: 16.r,
+                                    child: const CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation(
+                                        Colors.white,
+                                      ),
+                                    ),
+                                  )
+                                : Text(
+                                    existing == null
+                                        ? "Create Location"
+                                        : "Save Changes",
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _formField({
+  required String label,
+  required TextEditingController controller,
+  required String hint,
+  bool required = false,
+  int maxLines = 1,
+  TextInputType keyboardType = TextInputType.text,
+  List<TextInputFormatter>? inputFormatters,
+  String? Function(String?)? validator,
+}) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      RichText(
+        text: TextSpan(
+          text: label,
+          style: GoogleFonts.inter(
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF3F3F3F),
+          ),
+          children: required
+              ? const [
+                  TextSpan(
+                    text: " *",
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ]
+              : null,
+        ),
+      ),
+      SizedBox(height: 4.h),
+      TextFormField(
+        controller: controller,
+        maxLines: maxLines,
+        keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
+        validator: validator,
+        style: GoogleFonts.inter(
+          fontSize: 12.sp,
+          fontWeight: FontWeight.w400,
+          color: const Color(0xFF6C7278),
+        ),
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: hint,
+          hintStyle: GoogleFonts.inter(
+            fontSize: 12.sp,
+            color: const Color(0xFFB8BEC5),
+          ),
+          errorStyle: TextStyle(fontSize: 10.sp),
+          filled: true,
+          fillColor: const Color(0xFFF9FAFC),
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: 10.w,
+            vertical: 10.h,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.r),
+            borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.r),
+            borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.r),
+            borderSide: const BorderSide(color: Color(0xFF0A0258)),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.r),
+            borderSide: const BorderSide(color: Colors.red),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.r),
+            borderSide: const BorderSide(color: Colors.red),
+          ),
+        ),
+      ),
+    ],
+  );
 }
 
 // ── Department multi-select field (live data + inline "Add Department") ──

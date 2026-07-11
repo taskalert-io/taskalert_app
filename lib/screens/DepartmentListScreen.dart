@@ -12,6 +12,7 @@ import '../core/features/departments/data/models/department_model.dart';
 import '../core/features/location/controllers/location_controller.dart';
 import '../core/features/location/data/models/location_model.dart';
 import '../utils/injection_container.dart';
+import 'LocationListScreen.dart' show openLocationFormDialog;
 
 class DepartmentListScreen extends StatefulWidget {
   const DepartmentListScreen({super.key, required this.userId});
@@ -1054,6 +1055,24 @@ class _LocationMultiSelectFieldState
     if (_focusNode.hasFocus) _showOverlay();
   }
 
+  // Reuses the exact same Location create/edit dialog as the Location
+  // screen itself (see LocationListScreen.dart's `openLocationFormDialog`)
+  // instead of a simplified one-field quick-add — a location needs a full
+  // address, not just a name. Newly created locations are auto-selected.
+  void _openCreateLocationDialog() {
+    _removeOverlay();
+    _focusNode.unfocus();
+    openLocationFormDialog(
+      context: context,
+      locationController: widget.locationController,
+      onCreated: (loc) {
+        if (!mounted) return;
+        setState(() => _selected[loc.id] = loc);
+        widget.onChanged(_selected.values.toList());
+      },
+    );
+  }
+
   void _showOverlay() {
     _removeOverlay();
 
@@ -1075,9 +1094,42 @@ class _LocationMultiSelectFieldState
               borderRadius: BorderRadius.circular(10.r),
               color: Colors.white,
               child: ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: 260.h),
-                child: widget.locationController.isLoading
-                    ? Padding(
+                constraints: BoxConstraints(maxHeight: 300.h),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      onTap: _openCreateLocationDialog,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 10.w,
+                          vertical: 10.h,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              CupertinoIcons.add_circled_solid,
+                              size: 14.r,
+                              color: const Color(0xFF4338CA),
+                            ),
+                            SizedBox(width: 6.w),
+                            Expanded(
+                              child: Text(
+                                "Create Location",
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.5.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF4338CA),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                    if (widget.locationController.isLoading)
+                      Padding(
                         padding: EdgeInsets.symmetric(vertical: 14.h),
                         child: Center(
                           child: SizedBox(
@@ -1089,8 +1141,8 @@ class _LocationMultiSelectFieldState
                           ),
                         ),
                       )
-                    : widget.locationController.locations.isEmpty
-                    ? Padding(
+                    else if (widget.locationController.locations.isEmpty)
+                      Padding(
                         padding: EdgeInsets.symmetric(
                           horizontal: 12.w,
                           vertical: 14.h,
@@ -1103,54 +1155,61 @@ class _LocationMultiSelectFieldState
                           ),
                         ),
                       )
-                    : ListView.separated(
-                        padding: EdgeInsets.symmetric(vertical: 4.h),
-                        shrinkWrap: true,
-                        itemCount: widget.locationController.locations.length,
-                        separatorBuilder: (_, __) => const Divider(
-                          height: 1,
-                          color: Color(0xFFE4E7EC),
-                        ),
-                        itemBuilder: (context, index) {
-                          final loc =
-                              widget.locationController.locations[index];
-                          final isChecked = _selected.containsKey(loc.id);
-                          return InkWell(
-                            onTap: () => _toggle(loc),
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 12.w,
-                                vertical: 8.h,
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    isChecked
-                                        ? CupertinoIcons.checkmark_square_fill
-                                        : CupertinoIcons.square,
-                                    size: 16.r,
-                                    color: isChecked
-                                        ? const Color(0xFF4338CA)
-                                        : const Color(0xFF9AA0AB),
-                                  ),
-                                  SizedBox(width: 8.w),
-                                  Expanded(
-                                    child: Text(
-                                      loc.name,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 13.sp,
-                                        fontWeight: FontWeight.w500,
-                                        color: const Color(0xFF1D2939),
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
+                    else
+                      Flexible(
+                        child: ListView.separated(
+                          padding: EdgeInsets.symmetric(vertical: 4.h),
+                          shrinkWrap: true,
+                          itemCount:
+                              widget.locationController.locations.length,
+                          separatorBuilder: (_, __) => const Divider(
+                            height: 1,
+                            color: Color(0xFFE4E7EC),
+                          ),
+                          itemBuilder: (context, index) {
+                            final loc =
+                                widget.locationController.locations[index];
+                            final isChecked = _selected.containsKey(loc.id);
+                            return InkWell(
+                              onTap: () => _toggle(loc),
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 12.w,
+                                  vertical: 8.h,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      isChecked
+                                          ? CupertinoIcons
+                                                .checkmark_square_fill
+                                          : CupertinoIcons.square,
+                                      size: 16.r,
+                                      color: isChecked
+                                          ? const Color(0xFF4338CA)
+                                          : const Color(0xFF9AA0AB),
                                     ),
-                                  ),
-                                ],
+                                    SizedBox(width: 8.w),
+                                    Expanded(
+                                      child: Text(
+                                        loc.name,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13.sp,
+                                          fontWeight: FontWeight.w500,
+                                          color: const Color(0xFF1D2939),
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
                       ),
+                  ],
+                ),
               ),
             ),
           ),
