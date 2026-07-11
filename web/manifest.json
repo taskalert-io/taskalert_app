@@ -1,6 +1,6 @@
 {
-    "name": "taskalert_app",
-    "short_name": "taskalert_app",
+    "name": "taskalert.io",
+    "short_name": "taskalert.io",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

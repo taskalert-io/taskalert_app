@@ -63,6 +63,7 @@ class _MyAppState extends State<MyApp> {
           ).copyWith(textScaler: const TextScaler.linear(1.0)),
 
           child: MaterialApp(
+            title: 'taskalert.io',
             debugShowCheckedModeBanner: false,
 
             navigatorObservers: [routeObserver],
