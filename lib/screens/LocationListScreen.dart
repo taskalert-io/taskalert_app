@@ -8,6 +8,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
+import '../core/features/departments/controllers/department_controller.dart';
+import '../core/features/departments/data/models/department_model.dart';
 import '../core/features/location/controllers/location_controller.dart';
 import '../core/features/location/data/models/location_model.dart';
 import '../utils/injection_container.dart';
@@ -248,6 +250,10 @@ class _LocationListScreenState extends State<LocationListScreen> {
     final pincodeCtrl = TextEditingController(
       text: existing?.address?.pinCode ?? "",
     );
+    List<DepartmentModel> selectedDepartments = (existing?.department ?? [])
+        .where((d) => d.id != null)
+        .map((d) => DepartmentModel(id: d.id, name: d.name))
+        .toList();
     bool autoValidate = false;
     bool isSubmitting = false;
 
@@ -257,7 +263,12 @@ class _LocationListScreenState extends State<LocationListScreen> {
       isScrollControlled: true,
       useRootNavigator: true,
       builder: (_) => StatefulBuilder(
-        builder: (ctx, ss) => Padding(
+        builder: (ctx, ss) => GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          // Tapping anywhere inside the popup (outside whichever field is
+          // currently focused) should close the Departments dropdown.
+          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+          child: Padding(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(ctx).viewInsets.bottom,
           ),
@@ -367,6 +378,14 @@ class _LocationListScreenState extends State<LocationListScreen> {
                       ),
                       SizedBox(height: 12.h),
 
+                      // Departments — multi-select, with an inline
+                      // "+ Add Department" option pinned above the list.
+                      _DepartmentMultiSelectField(
+                        initialSelected: existing?.department ?? const [],
+                        onChanged: (v) => selectedDepartments = v,
+                      ),
+                      SizedBox(height: 12.h),
+
                       // Street
                       _formField(
                         label: "Street",
@@ -443,6 +462,11 @@ class _LocationListScreenState extends State<LocationListScreen> {
 
                                       ss(() => isSubmitting = true);
 
+                                      final departmentIds = selectedDepartments
+                                          .map((d) => d.id)
+                                          .whereType<String>()
+                                          .toList();
+
                                       final bool success;
                                       if (existing == null) {
                                         success = await locationController
@@ -455,6 +479,7 @@ class _LocationListScreenState extends State<LocationListScreen> {
                                               state: stateCtrl.text.trim(),
                                               pinCode: pincodeCtrl.text.trim(),
                                               country: countryCtrl.text.trim(),
+                                              departmentIds: departmentIds,
                                             );
                                       } else {
                                         success = await locationController
@@ -468,6 +493,7 @@ class _LocationListScreenState extends State<LocationListScreen> {
                                               state: stateCtrl.text.trim(),
                                               pinCode: pincodeCtrl.text.trim(),
                                               country: countryCtrl.text.trim(),
+                                              departmentIds: departmentIds,
                                             );
                                       }
 
@@ -566,6 +592,7 @@ class _LocationListScreenState extends State<LocationListScreen> {
                 ),
               ),
             ),
+          ),
           ),
         ),
       ),
@@ -1098,6 +1125,61 @@ class _LocationListScreenState extends State<LocationListScreen> {
                                                           ),
                                                         ],
                                                       ),
+                                                      if (location
+                                                          .department
+                                                          .isNotEmpty) ...[
+                                                        SizedBox(width: 6.w),
+                                                        Row(
+                                                          mainAxisSize:
+                                                              MainAxisSize.min,
+                                                          children: [
+                                                            Icon(
+                                                              CupertinoIcons
+                                                                  .square_grid_2x2,
+                                                              size: 11.r,
+                                                              color:
+                                                                  const Color(
+                                                                    0xFF9AA0AB,
+                                                                  ),
+                                                            ),
+                                                            SizedBox(
+                                                              width: 4.w,
+                                                            ),
+                                                            ConstrainedBox(
+                                                              constraints: BoxConstraints(
+                                                                maxWidth: 160.w,
+                                                              ),
+                                                              child: Text(
+                                                                location
+                                                                    .department
+                                                                    .map(
+                                                                      (d) =>
+                                                                          d.name ??
+                                                                          '',
+                                                                    )
+                                                                    .where(
+                                                                      (n) =>
+                                                                          n.isNotEmpty,
+                                                                    )
+                                                                    .join(
+                                                                      ', ',
+                                                                    ),
+                                                                overflow:
+                                                                    TextOverflow
+                                                                        .ellipsis,
+                                                                maxLines: 1,
+                                                                style: GoogleFonts.inter(
+                                                                  fontSize:
+                                                                      12.sp,
+                                                                  color: const Color(
+                                                                    0xFF667085,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ],
                                                     ],
                                                   ),
                                                 ],
@@ -1216,6 +1298,492 @@ class _LocationListScreenState extends State<LocationListScreen> {
         },
       ),
       bottomNavigationBar: const CustomBottomNavBar(selectedIndex: -1),
+    );
+  }
+}
+
+// ── Department multi-select field (live data + inline "Add Department") ──
+//
+// Used in the Location create/edit form. Backed by real `DepartmentController`
+// data (unscoped — unlike the Employee form's department field, a Location
+// being created doesn't have an id yet, so there's no location to filter
+// by), with a pinned "+ Add Department" row at the top of its dropdown.
+class _DepartmentMultiSelectField extends StatefulWidget {
+  const _DepartmentMultiSelectField({
+    required this.initialSelected,
+    required this.onChanged,
+  });
+
+  final List<LocationDepartmentModel> initialSelected;
+  final ValueChanged<List<DepartmentModel>> onChanged;
+
+  @override
+  State<_DepartmentMultiSelectField> createState() =>
+      _DepartmentMultiSelectFieldState();
+}
+
+class _DepartmentMultiSelectFieldState
+    extends State<_DepartmentMultiSelectField> {
+  late final DepartmentController _departmentController =
+      sl<DepartmentController>();
+  final FocusNode _focusNode = FocusNode();
+  final LayerLink _layerLink = LayerLink();
+  final GlobalKey _fieldKey = GlobalKey();
+  OverlayEntry? _overlayEntry;
+
+  // id -> model, so both pre-selected refs (id + name only, from an
+  // existing location's `department` list) and freshly-picked full
+  // DepartmentModel entries live in the same map.
+  final Map<String, DepartmentModel> _selected = {};
+
+  @override
+  void initState() {
+    super.initState();
+    for (final d in widget.initialSelected) {
+      if (d.id != null) {
+        _selected[d.id!] = DepartmentModel(id: d.id, name: d.name);
+      }
+    }
+    _departmentController.handleGetDepartments(search: '');
+    _focusNode.addListener(_onFocusChanged);
+    _departmentController.addListener(_onDepartmentsChanged);
+  }
+
+  @override
+  void dispose() {
+    _departmentController.removeListener(_onDepartmentsChanged);
+    _removeOverlay();
+    _focusNode.removeListener(_onFocusChanged);
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _onDepartmentsChanged() {
+    _resolveSelectedNames();
+    if (_focusNode.hasFocus) _showOverlay();
+  }
+
+  // A location's own `department` refs sometimes come back as plain id
+  // strings rather than populated `{_id, name}` objects, which leaves the
+  // pre-selected entries seeded in `initState` with a null `name` — the
+  // dropdown's checkmarks still work fine (id-only match), but the field's
+  // chips would render blank. Once the real department list loads, patch
+  // in the missing names by matching on id.
+  void _resolveSelectedNames() {
+    if (_departmentController.departments.isEmpty) return;
+    var changed = false;
+    for (final id in _selected.keys.toList()) {
+      if ((_selected[id]?.name ?? '').isNotEmpty) continue;
+      final matches = _departmentController.departments.where(
+        (d) => d.id == id,
+      );
+      if (matches.isNotEmpty) {
+        _selected[id] = matches.first;
+        changed = true;
+      }
+    }
+    if (changed) {
+      setState(() {});
+      widget.onChanged(_selected.values.toList());
+    }
+  }
+
+  void _onFocusChanged() {
+    if (_focusNode.hasFocus) {
+      _showOverlay();
+    } else {
+      // Small delay so a tap on a checkbox/"Add Department" registers
+      // before the overlay is torn down.
+      Future.delayed(const Duration(milliseconds: 150), () {
+        if (mounted && !_focusNode.hasFocus) _removeOverlay();
+      });
+    }
+  }
+
+  void _toggle(DepartmentModel dept) {
+    if (dept.id == null) return;
+    setState(() {
+      if (_selected.containsKey(dept.id)) {
+        _selected.remove(dept.id);
+      } else {
+        _selected[dept.id!] = dept;
+      }
+    });
+    widget.onChanged(_selected.values.toList());
+    _showOverlay();
+  }
+
+  // Removing directly from the field's chip (the "x") — distinct from
+  // `_toggle` in that it doesn't need to open/refresh the dropdown; it
+  // only does so if the dropdown already happens to be open, so its
+  // checkboxes stay in sync.
+  void _remove(DepartmentModel dept) {
+    if (dept.id == null) return;
+    setState(() => _selected.remove(dept.id));
+    widget.onChanged(_selected.values.toList());
+    if (_focusNode.hasFocus) _showOverlay();
+  }
+
+  void _openAddDepartmentDialog() {
+    _removeOverlay();
+    _focusNode.unfocus();
+
+    final nameCtrl = TextEditingController();
+    final dialogFormKey = GlobalKey<FormState>();
+    bool submitting = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, dss) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.r),
+          ),
+          title: Text(
+            "Add Department",
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.w700,
+              fontSize: 15.sp,
+              color: const Color(0xFF0A0258),
+            ),
+          ),
+          content: Form(
+            key: dialogFormKey,
+            child: TextFormField(
+              controller: nameCtrl,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: "Department name",
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+              ),
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? "Enter a department name"
+                  : null,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: Text("Cancel", style: GoogleFonts.inter()),
+            ),
+            ElevatedButton(
+              onPressed: submitting
+                  ? null
+                  : () async {
+                      if (!(dialogFormKey.currentState?.validate() ??
+                          false)) {
+                        return;
+                      }
+                      dss(() => submitting = true);
+
+                      final name = nameCtrl.text.trim();
+                      final success = await _departmentController
+                          .handleCreateDepartment(name: name);
+
+                      dss(() => submitting = false);
+
+                      if (success) {
+                        final created = _departmentController.departments
+                            .where((d) => d.name == name)
+                            .firstOrNull;
+                        if (mounted && created?.id != null) {
+                          setState(() => _selected[created!.id!] = created);
+                          widget.onChanged(_selected.values.toList());
+                        }
+                        if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+                      }
+                    },
+              child: submitting
+                  ? SizedBox(
+                      width: 16.r,
+                      height: 16.r,
+                      child: const CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text("Add", style: GoogleFonts.inter()),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showOverlay() {
+    _removeOverlay();
+
+    final overlay = Overlay.of(context);
+    final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+    final width = box?.size.width ?? 260.w;
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        width: width,
+        child: CompositedTransformFollower(
+          link: _layerLink,
+          showWhenUnlinked: false,
+          offset: Offset(0, (box?.size.height ?? 44.h) + 6.h),
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: Material(
+              elevation: 6,
+              borderRadius: BorderRadius.circular(10.r),
+              color: Colors.white,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: 280.h),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      onTap: _openAddDepartmentDialog,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 10.w,
+                          vertical: 10.h,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              CupertinoIcons.add_circled_solid,
+                              size: 14.r,
+                              color: const Color(0xFF0A0258),
+                            ),
+                            SizedBox(width: 6.w),
+                            Expanded(
+                              child: Text(
+                                "Add Department",
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.5.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF0A0258),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                    if (_departmentController.isLoading)
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
+                        child: Center(
+                          child: SizedBox(
+                            width: 16.r,
+                            height: 16.r,
+                            child: const CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        ),
+                      )
+                    else if (_departmentController.departments.isEmpty)
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 14.h,
+                        ),
+                        child: Text(
+                          "No departments found",
+                          style: GoogleFonts.inter(
+                            fontSize: 12.sp,
+                            color: const Color(0xFF9AA0AB),
+                          ),
+                        ),
+                      )
+                    else
+                      Flexible(
+                        child: ListView.separated(
+                          padding: EdgeInsets.symmetric(vertical: 4.h),
+                          shrinkWrap: true,
+                          itemCount: _departmentController.departments.length,
+                          separatorBuilder: (_, __) => const Divider(
+                            height: 1,
+                            color: Color(0xFFE4E7EC),
+                          ),
+                          itemBuilder: (context, index) {
+                            final dept =
+                                _departmentController.departments[index];
+                            final isChecked =
+                                dept.id != null &&
+                                _selected.containsKey(dept.id);
+                            return InkWell(
+                              onTap: () => _toggle(dept),
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 12.w,
+                                  vertical: 8.h,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      isChecked
+                                          ? CupertinoIcons
+                                                .checkmark_square_fill
+                                          : CupertinoIcons.square,
+                                      size: 16.r,
+                                      color: isChecked
+                                          ? const Color(0xFF0A0258)
+                                          : const Color(0xFF9AA0AB),
+                                    ),
+                                    SizedBox(width: 8.w),
+                                    Expanded(
+                                      child: Text(
+                                        dept.name ?? '',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13.sp,
+                                          fontWeight: FontWeight.w500,
+                                          color: const Color(0xFF1D2939),
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(_overlayEntry!);
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  Widget _chip(DepartmentModel dept) {
+    return Container(
+      padding: EdgeInsets.only(left: 9.w, right: 4.w, top: 4.h, bottom: 4.h),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF0FF),
+        borderRadius: BorderRadius.circular(20.r),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: 140.w),
+            child: Text(
+              dept.name ?? '',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(
+                fontSize: 11.5.sp,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF0A0258),
+              ),
+            ),
+          ),
+          SizedBox(width: 4.w),
+          // Its own tap target — removing a chip must not also toggle the
+          // dropdown open/closed the way tapping the rest of the field does.
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _remove(dept),
+            child: Icon(
+              CupertinoIcons.xmark_circle_fill,
+              size: 14.r,
+              color: const Color(0xFF8B8FA8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasSelection = _selected.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Departments",
+          style: GoogleFonts.inter(
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF3F3F3F),
+          ),
+        ),
+        SizedBox(height: 4.h),
+        CompositedTransformTarget(
+          link: _layerLink,
+          child: Focus(
+            focusNode: _focusNode,
+            child: GestureDetector(
+              key: _fieldKey,
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _focusNode.hasFocus
+                  ? _focusNode.unfocus()
+                  : _focusNode.requestFocus(),
+              child: Container(
+                width: double.infinity,
+                constraints: BoxConstraints(minHeight: 40.h),
+                padding: EdgeInsets.symmetric(
+                  horizontal: 10.w,
+                  vertical: hasSelection ? 8.h : 10.h,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FAFC),
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border.all(color: const Color(0xFFD9DEE5)),
+                ),
+                child: !hasSelection
+                    ? Row(
+                        children: [
+                          Icon(
+                            CupertinoIcons.square_grid_2x2,
+                            size: 14.r,
+                            color: const Color(0xFF9AA0AB),
+                          ),
+                          SizedBox(width: 8.w),
+                          Expanded(
+                            child: Text(
+                              "Select departments",
+                              style: GoogleFonts.inter(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w400,
+                                color: const Color(0xFFB8BEC5),
+                              ),
+                            ),
+                          ),
+                          Icon(
+                            CupertinoIcons.chevron_down,
+                            size: 12.r,
+                            color: const Color(0xFF9AA0AB),
+                          ),
+                        ],
+                      )
+                    : Wrap(
+                        spacing: 6.w,
+                        runSpacing: 6.h,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          for (final dept in _selected.values) _chip(dept),
+                          Icon(
+                            CupertinoIcons.chevron_down,
+                            size: 12.r,
+                            color: const Color(0xFF9AA0AB),
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -4,6 +4,7 @@ class LocationModel {
   final String name;
   final String phoneNumber;
   final AddressModel? address;
+  final List<LocationDepartmentModel> department;
   final bool isDeleted;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -14,6 +15,7 @@ class LocationModel {
     required this.name,
     required this.phoneNumber,
     this.address,
+    this.department = const [],
     required this.isDeleted,
     this.createdAt,
     this.updatedAt,
@@ -28,6 +30,7 @@ class LocationModel {
       address: json['address'] != null
           ? AddressModel.fromJson(json['address'] as Map<String, dynamic>)
           : null,
+      department: _parseDepartmentList(json['department']),
       isDeleted: json['isDeleted'] ?? false,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'])
@@ -46,6 +49,53 @@ class LocationModel {
     if (value is String) return value;
     if (value is Map<String, dynamic>) return value['_id'] as String?;
     return null;
+  }
+
+  /// `department` comes back as an array of populated objects
+  /// (`[{"_id": ..., "name": ...}]`). Also tolerates a single object or
+  /// plain ID string, in case an older endpoint still sends that shape.
+  static List<LocationDepartmentModel> _parseDepartmentList(dynamic value) {
+    if (value == null) return [];
+    if (value is List) {
+      return value
+          .map((e) => LocationDepartmentModel.fromDynamic(e))
+          .whereType<LocationDepartmentModel>()
+          .toList();
+    }
+    final single = LocationDepartmentModel.fromDynamic(value);
+    return single != null ? [single] : [];
+  }
+}
+
+class LocationDepartmentModel {
+  final String? id;
+  final String? name;
+
+  LocationDepartmentModel({this.id, this.name});
+
+  factory LocationDepartmentModel.fromJson(Map<String, dynamic> json) {
+    return LocationDepartmentModel(
+      id: json['_id'] as String?,
+      name: json['name'] as String?,
+    );
+  }
+
+  /// Handles both shapes the API sends for this relation: a populated
+  /// object (`{"_id": ..., "name": ...}`, e.g. on GET) or a plain ID
+  /// string (e.g. on POST/PUT, where the ref isn't populated).
+  static LocationDepartmentModel? fromDynamic(dynamic value) {
+    if (value == null) return null;
+    if (value is Map<String, dynamic>) {
+      return LocationDepartmentModel.fromJson(value);
+    }
+    if (value is String) {
+      return LocationDepartmentModel(id: value);
+    }
+    return null;
+  }
+
+  Map<String, dynamic> toJson() {
+    return {if (id != null) '_id': id, if (name != null) 'name': name};
   }
 }
 
