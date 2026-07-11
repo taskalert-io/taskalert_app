@@ -164,8 +164,6 @@ class ProfileSettingState extends State<ProfileSetting> {
     String? storedJobRole = await storage.read(key: "user_job");
     String? storedDepartment = await storage.read(key: "user_department");
 
-    print(storedJobRole);
-
     setState(() {
       userName = storedName ?? "User";
       userEmail = storedEmail ?? "";

@@ -314,8 +314,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
         for (final task in tasks) {
           // if (task['status'] == 'todo') {
 
-          print('task : ${task}');
-
           var taskStatus = task['status'];
           if (taskStatus == 'completed') {
             taskStatus = 'Done';

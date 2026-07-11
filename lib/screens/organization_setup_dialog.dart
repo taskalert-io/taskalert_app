@@ -436,7 +436,6 @@ class _OrganizationSetupDialogState extends State<OrganizationSetupDialog> {
                                                     .trim(),
                                               );
                                       if (isOrgSet) {
-                                        print('Organization setup successful');
                                         if (_organizationController
                                                 .successMessage !=
                                             null) {
@@ -479,7 +478,6 @@ class _OrganizationSetupDialogState extends State<OrganizationSetupDialog> {
                                             },
                                           );
                                         }
-                                        print('organization created');
                                         // ✅ Mark org setup as done so dialog never shows again
                                         // await _secureStorage.write(
                                         //   key: 'org_setup_done',
@@ -515,8 +513,10 @@ class _OrganizationSetupDialogState extends State<OrganizationSetupDialog> {
                                         );
                                         // print('something wrong');
                                       }
-                                    } catch (e) {
-                                      print('Error: $e');
+                                    } catch (_) {
+                                      // Swallow — the UI already shows an
+                                      // error dialog/snackbar for the
+                                      // known-failure branches above.
                                     }
                                   },
                             style: ElevatedButton.styleFrom(

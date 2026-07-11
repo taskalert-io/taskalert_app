@@ -2189,8 +2189,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
                                           setState(() => _isSaving = true);
 
-                                          print(_priority);
-
                                           final success = await taskController
                                               .handleUpdateInstanceConfiguration(
                                                 taskId: widget.mainTaskId ?? '',

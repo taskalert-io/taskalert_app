@@ -79,8 +79,6 @@ class TaskInstanceController extends ChangeNotifier {
 
       _instanceCounts = apiResponse.data?.counts;
       _pagination = apiResponse.pagination;
-
-      print(_instances.length);
     } else if (result is Failure) {
       _errorMessage = (result as Failure).exception.userMessage;
     }
@@ -100,8 +98,6 @@ class TaskInstanceController extends ChangeNotifier {
       final apiResponse =
           (result as Success).data as BaseApiResponse<TaskInstanceModel>;
       _selectedInstance = apiResponse.data;
-
-      print('Selected Instance: ${_selectedInstance?.title}');
     } else if (result is Failure) {
       _errorMessage = (result as Failure).exception.userMessage;
     }

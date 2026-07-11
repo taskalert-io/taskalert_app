@@ -29,7 +29,6 @@ class DepartmentRepositoryImpl implements DepartmentRepository {
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      _handleErrorEnvelope(apiResponse);
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -90,7 +89,6 @@ class DepartmentRepositoryImpl implements DepartmentRepository {
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      _handleErrorEnvelope(apiResponse);
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -133,7 +131,6 @@ class DepartmentRepositoryImpl implements DepartmentRepository {
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      _handleErrorEnvelope(apiResponse);
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -172,7 +169,6 @@ class DepartmentRepositoryImpl implements DepartmentRepository {
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      _handleErrorEnvelope(apiResponse);
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -216,7 +212,6 @@ class DepartmentRepositoryImpl implements DepartmentRepository {
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      _handleErrorEnvelope(apiResponse);
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -254,7 +249,6 @@ class DepartmentRepositoryImpl implements DepartmentRepository {
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      _handleErrorEnvelope(apiResponse);
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -275,12 +269,5 @@ class DepartmentRepositoryImpl implements DepartmentRepository {
         ),
       );
     }
-  }
-
-  /// Centralized system response error logger fallback
-  void _handleErrorEnvelope(BaseApiResponse<dynamic> response) {
-    print(
-      "❌ Department API Operation Failed Error Message: ${response.message}",
-    );
   }
 }

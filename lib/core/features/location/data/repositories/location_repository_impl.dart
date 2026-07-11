@@ -33,7 +33,6 @@ class LocationRepositoryImpl implements LocationRepository {
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      print("\u274c Location API Operation Failed Error Message: ${apiResponse.message}");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -47,7 +46,6 @@ class LocationRepositoryImpl implements LocationRepository {
       // backend populates differently than expected) so a parsing bug
       // surfaces as a normal failure instead of an uncaught exception
       // that leaves the controller's loading state stuck forever.
-      print("\u274c Location API Operation Failed: $e");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -72,7 +70,6 @@ class LocationRepositoryImpl implements LocationRepository {
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      print("\u274c Location API Operation Failed Error Message: ${apiResponse.message}");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -86,7 +83,6 @@ class LocationRepositoryImpl implements LocationRepository {
       // backend populates differently than expected) so a parsing bug
       // surfaces as a normal failure instead of an uncaught exception
       // that leaves the controller's loading state stuck forever.
-      print("\u274c Location API Operation Failed: $e");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -129,7 +125,6 @@ class LocationRepositoryImpl implements LocationRepository {
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      print("\u274c Location API Operation Failed Error Message: ${apiResponse.message}");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -143,7 +138,6 @@ class LocationRepositoryImpl implements LocationRepository {
       // backend populates differently than expected) so a parsing bug
       // surfaces as a normal failure instead of an uncaught exception
       // that leaves the controller's loading state stuck forever.
-      print("\u274c Location API Operation Failed: $e");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -190,7 +184,6 @@ class LocationRepositoryImpl implements LocationRepository {
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      print("\u274c Location API Operation Failed Error Message: ${apiResponse.message}");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -204,7 +197,6 @@ class LocationRepositoryImpl implements LocationRepository {
       // backend populates differently than expected) so a parsing bug
       // surfaces as a normal failure instead of an uncaught exception
       // that leaves the controller's loading state stuck forever.
-      print("\u274c Location API Operation Failed: $e");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -229,7 +221,6 @@ class LocationRepositoryImpl implements LocationRepository {
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      print("\u274c Location API Operation Failed Error Message: ${apiResponse.message}");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -243,7 +234,6 @@ class LocationRepositoryImpl implements LocationRepository {
       // backend populates differently than expected) so a parsing bug
       // surfaces as a normal failure instead of an uncaught exception
       // that leaves the controller's loading state stuck forever.
-      print("\u274c Location API Operation Failed: $e");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,

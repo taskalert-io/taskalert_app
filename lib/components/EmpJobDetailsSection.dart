@@ -65,7 +65,6 @@ class EmpJobDetailsSectionState extends State<EmpJobDetailsSection>
 
   @override
   void initState() {
-    print(widget.employeeData);
     super.initState();
     _jobTitleController.text = widget.employeeData?['designation'] ?? "";
     _departmentController.text =
