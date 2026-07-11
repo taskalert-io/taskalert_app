@@ -228,69 +228,76 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       // Show a loader instead of the placeholder/mock field values while
       // the real instance data is being fetched.
       _isLoading = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        await Future.wait([
-          taskController.handleGetInstanceById(instanceId: widget.taskId!),
-          employeeController.handleGetEmployees(),
-        ]);
-        final currentUserId = await secureStorage.read(key: 'user_id');
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadInstance());
+    }
+  }
 
-        if (mounted) {
-          final instance = taskController.selectedInstance;
-          setState(() {
-            _title = instance?.title ?? '';
-            _description = instance?.description ?? '';
+  /// Fetches the task instance (+ employee directory) and populates all the
+  /// local form fields from it. Used both for the initial load and for
+  /// pull-to-refresh.
+  Future<void> _loadInstance() async {
+    if (widget.taskId == null) return;
 
-            _titleCtrl.text = _title;
-            _descCtrl.text = _description;
+    await Future.wait([
+      taskController.handleGetInstanceById(instanceId: widget.taskId!),
+      employeeController.handleGetEmployees(),
+    ]);
+    final currentUserId = await secureStorage.read(key: 'user_id');
 
-            _priority = _titleCase(instance?.priority ?? _priority);
-            _status = _statusLabel(instance?.status ?? '');
+    if (mounted) {
+      final instance = taskController.selectedInstance;
+      setState(() {
+        _title = instance?.title ?? '';
+        _description = instance?.description ?? '';
 
-            _assigneeIds = instance?.assignees ?? [];
-            _assignTo = _assigneeIds.isNotEmpty
-                ? _assigneeIds.map((id) => _employeeNameById(id)).join(', ')
-                : 'Unassigned';
-            _reportTo = (instance?.createdBy?.fullName.isNotEmpty ?? false)
-                ? instance!.createdBy!.fullName
-                : 'Unknown';
+        _titleCtrl.text = _title;
+        _descCtrl.text = _description;
 
-            final scheduledDate = instance?.scheduledDate;
-            if (scheduledDate != null) {
-              _calendarYear = scheduledDate.year;
-              _calendarMonth = scheduledDate.month;
-              _selectedDay = scheduledDate.day;
-              _assignDateEnabled = true;
-            }
+        _priority = _titleCase(instance?.priority ?? _priority);
+        _status = _statusLabel(instance?.status ?? '');
 
-            final scheduledTime = instance?.scheduledTime;
-            if (scheduledTime != null && scheduledTime.time.isNotEmpty) {
-              final parts = scheduledTime.time.split(':');
-              if (parts.length == 2) {
-                final h = int.tryParse(parts[0]) ?? _hour;
-                _hour = h == 0 ? 12 : h;
-                _minute = int.tryParse(parts[1]) ?? _minute;
-                _isAM = scheduledTime.period.toUpperCase() != 'PM';
-                _assignTimeEnabled = true;
-              }
-            }
+        _assigneeIds = instance?.assignees ?? [];
+        _assignTo = _assigneeIds.isNotEmpty
+            ? _assigneeIds.map((id) => _employeeNameById(id)).join(', ')
+            : 'Unassigned';
+        _reportTo = (instance?.createdBy?.fullName.isNotEmpty ?? false)
+            ? instance!.createdBy!.fullName
+            : 'Unknown';
 
-            _scheduledTimeValue = scheduledTime?.time;
-            _scheduledPeriodValue = scheduledTime?.period.toUpperCase();
-
-            // Full edit access only when the current user is the one who
-            // created/assigned this task; assignees who merely received it
-            // may only update its status (see the unlocked Status card
-            // below, which sits outside the AbsorbPointer this flag gates).
-            final isCreatedByCurrentUser =
-                currentUserId != null &&
-                currentUserId.isNotEmpty &&
-                instance?.createdBy?.id == currentUserId;
-            _isReadOnly = !isCreatedByCurrentUser;
-
-            _isLoading = false;
-          });
+        final scheduledDate = instance?.scheduledDate;
+        if (scheduledDate != null) {
+          _calendarYear = scheduledDate.year;
+          _calendarMonth = scheduledDate.month;
+          _selectedDay = scheduledDate.day;
+          _assignDateEnabled = true;
         }
+
+        final scheduledTime = instance?.scheduledTime;
+        if (scheduledTime != null && scheduledTime.time.isNotEmpty) {
+          final parts = scheduledTime.time.split(':');
+          if (parts.length == 2) {
+            final h = int.tryParse(parts[0]) ?? _hour;
+            _hour = h == 0 ? 12 : h;
+            _minute = int.tryParse(parts[1]) ?? _minute;
+            _isAM = scheduledTime.period.toUpperCase() != 'PM';
+            _assignTimeEnabled = true;
+          }
+        }
+
+        _scheduledTimeValue = scheduledTime?.time;
+        _scheduledPeriodValue = scheduledTime?.period.toUpperCase();
+
+        // Full edit access only when the current user is the one who
+        // created/assigned this task; assignees who merely received it
+        // may only update its status (see the unlocked Status card
+        // below, which sits outside the AbsorbPointer this flag gates).
+        final isCreatedByCurrentUser =
+            currentUserId != null &&
+            currentUserId.isNotEmpty &&
+            instance?.createdBy?.id == currentUserId;
+        _isReadOnly = !isCreatedByCurrentUser;
+
+        _isLoading = false;
       });
     }
   }
@@ -2025,7 +2032,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
                   // Scrollable body
                   Expanded(
-                    child: SingleChildScrollView(
+                    child: RefreshIndicator(
+                      onRefresh: _loadInstance,
+                      child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
                       keyboardDismissBehavior:
                           ScrollViewKeyboardDismissBehavior.onDrag,
                       padding: EdgeInsets.only(
@@ -2277,6 +2287,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
                           SizedBox(height: 24.h),
                         ],
+                      ),
                       ),
                     ),
                   ),

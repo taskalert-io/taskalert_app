@@ -61,6 +61,12 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
     });
   }
 
+  /// Pull-to-refresh — reruns both list fetches together.
+  Future<void> _onRefresh() => Future.wait([
+    departmentController.handleGetDepartments(),
+    locationController.handleGetLocations(),
+  ]);
+
   @override
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
@@ -469,7 +475,10 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
                                 ),
                               ),
                             )
-                          : ListView.builder(
+                          : RefreshIndicator(
+                              onRefresh: _onRefresh,
+                              child: ListView.builder(
+                              physics: const AlwaysScrollableScrollPhysics(),
                               padding: EdgeInsets.symmetric(
                                 horizontal: 8.w,
                                 vertical: 4.h,
@@ -576,6 +585,7 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
                                   ),
                                 );
                               },
+                            ),
                             ),
                     ),
                   ),

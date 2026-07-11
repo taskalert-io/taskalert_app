@@ -553,7 +553,11 @@ class _LocationListScreenState extends State<LocationListScreen> {
                                       ),
                                     ),
                                   )
-                                : ListView.separated(
+                                : RefreshIndicator(
+                                    onRefresh:
+                                        locationController.handleGetLocations,
+                                    child: ListView.separated(
+                                    physics: const AlwaysScrollableScrollPhysics(),
                                     padding: EdgeInsets.zero,
                                     itemCount: filtered.length,
                                     separatorBuilder: (_, __) => const Divider(
@@ -788,6 +792,7 @@ class _LocationListScreenState extends State<LocationListScreen> {
                                         ),
                                       );
                                     },
+                                  ),
                                   ),
                           ),
                         ],

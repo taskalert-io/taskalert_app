@@ -1737,12 +1737,17 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                               ),
                             ),
                           )
-                        : ListView.separated(
-                            padding: EdgeInsets.only(bottom: 8.h),
-                            itemCount: filtered.length,
-                            separatorBuilder: (_, __) => SizedBox(height: 10.h),
-                            itemBuilder: (context, index) =>
-                                _employeeCard(filtered[index], index),
+                        : RefreshIndicator(
+                            onRefresh: employeeController.handleGetEmployees,
+                            child: ListView.separated(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding: EdgeInsets.only(bottom: 8.h),
+                              itemCount: filtered.length,
+                              separatorBuilder: (_, __) =>
+                                  SizedBox(height: 10.h),
+                              itemBuilder: (context, index) =>
+                                  _employeeCard(filtered[index], index),
+                            ),
                           ),
                   ),
                 ],

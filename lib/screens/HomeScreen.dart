@@ -102,6 +102,11 @@ class HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  /// Pull-to-refresh — reruns both list fetches together.
+  Future<void> _onRefresh() async {
+    await Future.wait([_loadTodoTasks(), _loadOverdueTasks()]);
+  }
+
   Future<bool> get userTaskPermission async {
     String? permission = await secureStorage.read(key: 'user_task_permission');
     return permission == 'true';
@@ -174,7 +179,9 @@ class HomeScreenState extends State<HomeScreen> {
         onTap: () {
           FocusScope.of(context).unfocus();
         },
-        child: SingleChildScrollView(
+        child: RefreshIndicator(
+          onRefresh: _onRefresh,
+          child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Container(
             color: const Color(0xFFF5F7FB),
@@ -1125,6 +1132,7 @@ class HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
+          ),
           ),
         ),
       ),

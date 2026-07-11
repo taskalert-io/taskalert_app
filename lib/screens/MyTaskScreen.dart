@@ -198,6 +198,10 @@ class MyTaskScreenState extends State<MyTaskScreen> {
     loadTasks(_assignedFilter, order, sortBy, startDate, endDate);
   }
 
+  /// Pull-to-refresh — reruns the fetch with whatever filters are active.
+  Future<void> _onRefresh() =>
+      loadTasks(_assignedFilter, order, sortBy, startDate, endDate);
+
   Future<void> loadTasks(assigned, order, sortBy, startDate, endDate) async {
     await taskController.handleGetAllInstances(
       assigned: assigned,
@@ -1129,7 +1133,9 @@ class MyTaskScreenState extends State<MyTaskScreen> {
 
             /// CONTENT
             Expanded(
-              child: SingleChildScrollView(
+              child: RefreshIndicator(
+                onRefresh: _onRefresh,
+                child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(
                   children: [
@@ -1177,6 +1183,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                     ),
                   ],
                 ),
+              ),
               ),
             ),
           ],
