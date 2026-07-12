@@ -485,6 +485,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
     bool autoValidate = false;
     bool isSubmitting = false;
+    String? formErrorMessage;
 
     showModalBottomSheet(
       context: context,
@@ -555,6 +556,44 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                         Divider(color: const Color(0xFFE4E7EC), height: 1.h),
                         SizedBox(height: 10.h),
 
+                        if (formErrorMessage != null) ...[
+                          Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 10.w,
+                              vertical: 8.h,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFDECEC),
+                              borderRadius: BorderRadius.circular(8.r),
+                              border: Border.all(
+                                color: const Color(0xFFF5B5B5),
+                              ),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  Icons.error_outline,
+                                  size: 15.r,
+                                  color: Colors.red,
+                                ),
+                                SizedBox(width: 6.w),
+                                Expanded(
+                                  child: Text(
+                                    formErrorMessage!,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12.sp,
+                                      color: Colors.red,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 10.h),
+                        ],
+
                         // First Name / Last Name
                         Row(
                           children: [
@@ -593,6 +632,8 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                           children: [
                             Expanded(
                               child: _dobField(
+                                context: ctx,
+                                setState: ss,
                                 dayCtrl: dobDayCtrl,
                                 monthCtrl: dobMonthCtrl,
                                 yearCtrl: dobYearCtrl,
@@ -828,7 +869,10 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                 onPressed: isSubmitting
                                     ? null
                                     : () async {
-                                        ss(() => autoValidate = true);
+                                        ss(() {
+                                          autoValidate = true;
+                                          formErrorMessage = null;
+                                        });
                                         if (!(formKey.currentState
                                                 ?.validate() ??
                                             false)) {
@@ -966,27 +1010,11 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                             ),
                                           );
                                         } else {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
+                                          ss(
+                                            () => formErrorMessage =
                                                 employeeController
-                                                        .errorMessage ??
-                                                    "Something went wrong",
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 13.sp,
-                                                  color: Colors.white,
-                                                ),
-                                              ),
-                                              backgroundColor: Colors.red,
-                                              behavior:
-                                                  SnackBarBehavior.floating,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(8.r),
-                                              ),
-                                            ),
+                                                    .errorMessage ??
+                                                "Something went wrong",
                                           );
                                         }
                                       },
@@ -1211,6 +1239,8 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   /// Day / Month / Year date-of-birth field grouped inside one bordered
   /// container, matching the design.
   Widget _dobField({
+    required BuildContext context,
+    required void Function(void Function()) setState,
     required TextEditingController dayCtrl,
     required TextEditingController monthCtrl,
     required TextEditingController yearCtrl,
@@ -1284,11 +1314,73 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                   decoration: cellDecoration("Year"),
                 ),
               ),
+              // Opens a native calendar picker as an alternative to typing
+              // the day/month/year in manually — selecting a date fills
+              // all three fields at once.
+              InkWell(
+                borderRadius: BorderRadius.circular(6.r),
+                onTap: () => _pickDobDate(
+                  context: context,
+                  setState: setState,
+                  dayCtrl: dayCtrl,
+                  monthCtrl: monthCtrl,
+                  yearCtrl: yearCtrl,
+                ),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w),
+                  child: Icon(
+                    CupertinoIcons.calendar,
+                    size: 16.r,
+                    color: const Color(0xFF9AA0AB),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
       ],
     );
+  }
+
+  /// Opens Flutter's built-in Material date picker and, on a selection,
+  /// fills the day/month/year controllers together.
+  Future<void> _pickDobDate({
+    required BuildContext context,
+    required void Function(void Function()) setState,
+    required TextEditingController dayCtrl,
+    required TextEditingController monthCtrl,
+    required TextEditingController yearCtrl,
+  }) async {
+    final now = DateTime.now();
+    final day = int.tryParse(dayCtrl.text.trim());
+    final month = int.tryParse(monthCtrl.text.trim());
+    final year = int.tryParse(yearCtrl.text.trim());
+
+    DateTime initialDate = DateTime(now.year - 18, now.month, now.day);
+    if (day != null && month != null && year != null) {
+      try {
+        initialDate = DateTime(year, month, day);
+      } catch (_) {
+        // Keep the fallback above if the typed values don't form a valid date.
+      }
+    }
+    if (initialDate.isAfter(now)) initialDate = now;
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(1900),
+      lastDate: now,
+      helpText: "Select date of birth",
+    );
+
+    if (picked != null) {
+      setState(() {
+        dayCtrl.text = picked.day.toString().padLeft(2, '0');
+        monthCtrl.text = picked.month.toString().padLeft(2, '0');
+        yearCtrl.text = picked.year.toString();
+      });
+    }
   }
 
   /// Upload box + helper hint text, matching the "Image" field in the
