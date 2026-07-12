@@ -20,7 +20,7 @@ class DioHttpService implements HttpService {
       ),
     );
 
-    _dio.interceptors.add(AuthInterceptor(secureStorage));
+    _dio.interceptors.add(AuthInterceptor(secureStorage, _dio));
     // We will add global Interceptors for auth and error mapping right here next!
   }
 
