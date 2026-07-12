@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../../network/api_result.dart';
@@ -19,6 +21,11 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
     required String name,
     required String email,
     required String phoneNumber,
+    String? street,
+    String? city,
+    String? state,
+    String? country,
+    String? pinCode,
     String? imageFilePath,
   }) async {
     try {
@@ -28,7 +35,32 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
         'phoneNumber': phoneNumber,
       };
 
-      if (imageFilePath != null && imageFilePath.isNotEmpty) {
+      final address = _buildAddressMap(
+        street: street,
+        city: city,
+        state: state,
+        country: country,
+        pinCode: pinCode,
+      );
+
+      // A logo is now mandatory from the admin create-organization form, so
+      // this request is (in practice) always multipart. Previously `map`
+      // (which can hold a `MultipartFile`) was passed straight through as
+      // the JSON body — Dio only auto-encodes multipart for an actual
+      // `FormData` instance, so a `MultipartFile` value inside a plain Map
+      // silently failed to serialize, and with it, every other field
+      // (including address). Only switch to `FormData` when there's
+      // actually a file to send, so the no-image case (e.g. the onboarding
+      // setup dialog) keeps going out as plain JSON exactly as before.
+      final hasImage = imageFilePath != null && imageFilePath.isNotEmpty;
+
+      if (address != null) {
+        // `FormData.fromMap` doesn't recurse into nested Maps — send the
+        // address as a JSON string on the multipart path, same as update().
+        map['address'] = hasImage ? jsonEncode(address) : address;
+      }
+
+      if (hasImage) {
         final String fileName = imageFilePath.split('/').last;
         map['image'] = await MultipartFile.fromFile(
           imageFilePath,
@@ -36,11 +68,9 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
         );
       }
 
-      // final formData = FormData.fromMap(map);
-
       final responseData = await _httpService.post(
         '/auth/create-organization',
-        body: map,
+        body: hasImage ? FormData.fromMap(map) : map,
       );
 
       final apiResponse = BaseApiResponse.fromJson(
@@ -134,6 +164,11 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
     required String name,
     required String email,
     required String phoneNumber,
+    String? street,
+    String? city,
+    String? state,
+    String? country,
+    String? pinCode,
     String? imageFilePath,
   }) async {
     try {
@@ -142,6 +177,18 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
         'email': email,
         'phoneNumber': phoneNumber,
       };
+
+      final address = _buildAddressMap(
+        street: street,
+        city: city,
+        state: state,
+        country: country,
+        pinCode: pinCode,
+      );
+      // Sent as a JSON string (not a nested map) since this request goes
+      // out as multipart `FormData` — `FormData.fromMap` doesn't recurse
+      // into nested Maps, it would just stringify it via `toString()`.
+      if (address != null) map['address'] = jsonEncode(address);
 
       if (imageFilePath != null && imageFilePath.isNotEmpty) {
         final String fileName = imageFilePath.split('/').last;
@@ -198,5 +245,33 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
     } on NetworkException catch (e) {
       return ApiResult.failure(e);
     }
+  }
+
+  /// Builds the nested `address` payload only when at least one field was
+  /// actually provided — so a plain name/phone/email edit (e.g. from the
+  /// onboarding setup dialog, which never collects an address) doesn't
+  /// accidentally overwrite an existing address with empty strings.
+  Map<String, dynamic>? _buildAddressMap({
+    String? street,
+    String? city,
+    String? state,
+    String? country,
+    String? pinCode,
+  }) {
+    final hasAny =
+        (street != null && street.isNotEmpty) ||
+        (city != null && city.isNotEmpty) ||
+        (state != null && state.isNotEmpty) ||
+        (country != null && country.isNotEmpty) ||
+        (pinCode != null && pinCode.isNotEmpty);
+    if (!hasAny) return null;
+
+    return {
+      'street': street ?? '',
+      'city': city ?? '',
+      'state': state ?? '',
+      'country': country ?? '',
+      'pinCode': pinCode ?? '',
+    };
   }
 }

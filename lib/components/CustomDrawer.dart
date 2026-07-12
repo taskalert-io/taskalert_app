@@ -7,6 +7,7 @@ import 'package:taskalert_app/screens/DepartmentListScreen.dart';
 import 'package:taskalert_app/screens/HomeScreen.dart';
 import 'package:taskalert_app/screens/LocationListScreen.dart';
 import 'package:taskalert_app/screens/MoreScreen.dart';
+import 'package:taskalert_app/screens/OrganizationListScreen.dart';
 import 'package:taskalert_app/screens/ProfileSetting.dart';
 import 'package:taskalert_app/screens/SignInScreen.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
@@ -325,6 +326,12 @@ class _CustomDrawerState extends State<CustomDrawer> {
                   title: "Location",
                   icon: Icons.location_on,
                   destinationScreen: LocationListScreen(userId: ''),
+                ),
+
+                buildDrawerItem(
+                  title: "Organizations",
+                  icon: Icons.business_outlined,
+                  destinationScreen: OrganizationListScreen(userId: ''),
                 ),
 
                 buildDrawerItem(

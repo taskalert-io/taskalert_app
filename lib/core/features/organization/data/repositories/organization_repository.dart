@@ -7,6 +7,11 @@ abstract class OrganizationRepository {
     required String name,
     required String email,
     required String phoneNumber,
+    String? street,
+    String? city,
+    String? state,
+    String? country,
+    String? pinCode,
     String? imageFilePath, // Path to local file if picked from gallery/camera
   });
 
@@ -22,6 +27,11 @@ abstract class OrganizationRepository {
     required String name,
     required String email,
     required String phoneNumber,
+    String? street,
+    String? city,
+    String? state,
+    String? country,
+    String? pinCode,
     String? imageFilePath,
   });
 

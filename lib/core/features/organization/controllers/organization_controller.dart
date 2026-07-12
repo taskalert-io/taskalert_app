@@ -82,6 +82,11 @@ class OrganizationController extends ChangeNotifier {
     required String name,
     required String email,
     required String phoneNumber,
+    String? street,
+    String? city,
+    String? state,
+    String? country,
+    String? pinCode,
     String? imageFilePath,
   }) async {
     _isLoading = true;
@@ -93,6 +98,11 @@ class OrganizationController extends ChangeNotifier {
       name: name,
       email: email,
       phoneNumber: phoneNumber,
+      street: street,
+      city: city,
+      state: state,
+      country: country,
+      pinCode: pinCode,
       imageFilePath: imageFilePath,
     );
 
@@ -123,6 +133,11 @@ class OrganizationController extends ChangeNotifier {
     required String name,
     required String email,
     required String phoneNumber,
+    String? street,
+    String? city,
+    String? state,
+    String? country,
+    String? pinCode,
     String? imageFilePath,
   }) async {
     _isLoading = true;
@@ -135,6 +150,11 @@ class OrganizationController extends ChangeNotifier {
       name: name,
       email: email,
       phoneNumber: phoneNumber,
+      street: street,
+      city: city,
+      state: state,
+      country: country,
+      pinCode: pinCode,
       imageFilePath: imageFilePath,
     );
 
