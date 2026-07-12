@@ -23,6 +23,7 @@ import 'package:taskalert_app/utils/injection_container.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
+import 'MyTaskScreen.dart';
 
 class CreateRepetitiveScreen extends StatefulWidget {
   const CreateRepetitiveScreen({super.key, required this.userId});
@@ -1171,22 +1172,14 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       );
 
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              "Task created successfully!",
-              style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
-            ),
-            backgroundColor: const Color(0xFF0DA99E),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8.r),
-            ),
-          ),
+        // Land on a fresh MyTaskScreen instance (not just pop back) so its
+        // initState re-fetches the task list and the newly created task is
+        // immediately visible — also clears the create-flow screens off the
+        // stack instead of leaving a stale "Create New Workspace" trail.
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => MyTaskScreen(userId: '')),
+          (route) => false,
         );
-        Navigator.pop(
-          context,
-        ); // Go back to previous screen after successful creation
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
