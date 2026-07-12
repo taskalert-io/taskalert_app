@@ -2470,6 +2470,91 @@ class _JobRoleSearchableFieldState extends State<_JobRoleSearchableField> {
     _focusNode.unfocus();
   }
 
+  // Job roles only ever need a title, so unlike Location/Department this
+  // is a plain one-field quick-add dialog rather than reusing a bigger
+  // form — wired to the existing `JobRoleController.handleCreateJobRole`.
+  void _openAddJobRoleDialog() {
+    _removeOverlay();
+    _focusNode.unfocus();
+
+    final titleCtrl = TextEditingController();
+    final dialogFormKey = GlobalKey<FormState>();
+    bool submitting = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, dss) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.r),
+          ),
+          title: Text(
+            "Add Job Role",
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.w700,
+              fontSize: 15.sp,
+              color: const Color(0xFF0A0258),
+            ),
+          ),
+          content: Form(
+            key: dialogFormKey,
+            child: TextFormField(
+              controller: titleCtrl,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: "Job title",
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+              ),
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? "Enter a job title"
+                  : null,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: Text("Cancel", style: GoogleFonts.inter()),
+            ),
+            ElevatedButton(
+              onPressed: submitting
+                  ? null
+                  : () async {
+                      if (!(dialogFormKey.currentState?.validate() ??
+                          false)) {
+                        return;
+                      }
+                      dss(() => submitting = true);
+
+                      final title = titleCtrl.text.trim();
+                      final success = await _jobRoleController
+                          .handleCreateJobRole(title: title);
+
+                      dss(() => submitting = false);
+
+                      if (success) {
+                        final created = _jobRoleController.jobRoles
+                            .where((j) => j.title == title)
+                            .firstOrNull;
+                        if (mounted && created != null) _select(created);
+                        if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+                      }
+                    },
+              child: submitting
+                  ? SizedBox(
+                      width: 16.r,
+                      height: 16.r,
+                      child: const CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text("Add", style: GoogleFonts.inter()),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showOverlay() {
     _removeOverlay();
 
@@ -2507,8 +2592,41 @@ class _JobRoleSearchableFieldState extends State<_JobRoleSearchableField> {
               color: Colors.white,
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: placement.maxHeight),
-                child: _jobRoleController.isLoading
-                    ? Padding(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      onTap: _openAddJobRoleDialog,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 10.w,
+                          vertical: 10.h,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              CupertinoIcons.add_circled_solid,
+                              size: 14.r,
+                              color: const Color(0xFF0A0258),
+                            ),
+                            SizedBox(width: 6.w),
+                            Expanded(
+                              child: Text(
+                                "Add Job Role",
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.5.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF0A0258),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                    if (_jobRoleController.isLoading)
+                      Padding(
                         padding: EdgeInsets.symmetric(vertical: 14.h),
                         child: Center(
                           child: SizedBox(
@@ -2520,8 +2638,8 @@ class _JobRoleSearchableFieldState extends State<_JobRoleSearchableField> {
                           ),
                         ),
                       )
-                    : results.isEmpty
-                    ? Padding(
+                    else if (results.isEmpty)
+                      Padding(
                         padding: EdgeInsets.symmetric(
                           horizontal: 12.w,
                           vertical: 14.h,
@@ -2534,46 +2652,53 @@ class _JobRoleSearchableFieldState extends State<_JobRoleSearchableField> {
                           ),
                         ),
                       )
-                    : ListView.separated(
-                        padding: EdgeInsets.symmetric(vertical: 4.h),
-                        shrinkWrap: true,
-                        itemCount: results.length,
-                        separatorBuilder: (_, __) =>
-                            const Divider(height: 1, color: Color(0xFFE4E7EC)),
-                        itemBuilder: (context, index) {
-                          final role = results[index];
-                          return InkWell(
-                            onTap: () => _select(role),
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 12.w,
-                                vertical: 10.h,
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    CupertinoIcons.briefcase_fill,
-                                    size: 14.r,
-                                    color: const Color(0xFF4338CA),
-                                  ),
-                                  SizedBox(width: 8.w),
-                                  Expanded(
-                                    child: Text(
-                                      role.title,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 13.sp,
-                                        fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF1D2939),
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
+                    else
+                      Flexible(
+                        child: ListView.separated(
+                          padding: EdgeInsets.symmetric(vertical: 4.h),
+                          shrinkWrap: true,
+                          itemCount: results.length,
+                          separatorBuilder: (_, __) => const Divider(
+                            height: 1,
+                            color: Color(0xFFE4E7EC),
+                          ),
+                          itemBuilder: (context, index) {
+                            final role = results[index];
+                            return InkWell(
+                              onTap: () => _select(role),
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 12.w,
+                                  vertical: 10.h,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      CupertinoIcons.briefcase_fill,
+                                      size: 14.r,
+                                      color: const Color(0xFF4338CA),
                                     ),
-                                  ),
-                                ],
+                                    SizedBox(width: 8.w),
+                                    Expanded(
+                                      child: Text(
+                                        role.title,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13.sp,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF1D2939),
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
                       ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -2839,6 +2964,12 @@ class _DepartmentSearchableFieldState
   void _openAddDepartmentDialog() {
     _removeOverlay();
     _focusNode.unfocus();
+    // `openDepartmentFormDialog`'s Location field expects its
+    // `locationController` to already be loaded (it doesn't fetch on its
+    // own — see _LocationMultiSelectField) — this field's own
+    // `_locationController` is otherwise idle until this dialog opens, so
+    // nothing had ever triggered that fetch.
+    _locationController.handleGetLocations();
     openDepartmentFormDialog(
       context: context,
       departmentController: _departmentController,
