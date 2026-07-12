@@ -74,10 +74,6 @@ class AuthInterceptor extends Interceptor {
     }
   }
 
-  /// Calls `/auth/refresh-token` with the stored refresh token and, on
-  /// success, persists + returns the new access token. Returns null on any
-  /// failure (no refresh token stored, expired/invalid refresh token,
-  /// network error) — callers treat that as "refresh isn't possible".
   Future<String?> _refreshAccessToken() {
     // Already refreshing (from a concurrent 401) — piggyback on that
     // instead of starting a second refresh call.
@@ -96,7 +92,7 @@ class AuthInterceptor extends Interceptor {
       if (refreshToken == null || refreshToken.isEmpty) return null;
 
       final response = await _refreshDio.post(
-        '/auth/refresh-token',
+        '/auth/access-token',
         data: {'refreshToken': refreshToken},
       );
 

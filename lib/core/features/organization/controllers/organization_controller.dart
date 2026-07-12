@@ -25,6 +25,9 @@ class OrganizationController extends ChangeNotifier {
   OrganizationModel? _selectedOrganization;
   OrganizationModel? get selectedOrganization => _selectedOrganization;
 
+  OrganizationModel? _myOrganization;
+  OrganizationModel? get myOrganization => _myOrganization;
+
   PaginationModel? _pagination;
   PaginationModel? get pagination => _pagination;
 
@@ -204,6 +207,52 @@ class OrganizationController extends ChangeNotifier {
         _selectedOrganization = null;
       }
 
+      notifyListeners();
+      return true;
+    } else if (result is Failure) {
+      _errorMessage = (result as Failure).exception.userMessage;
+      notifyListeners();
+      return false;
+    }
+    return false;
+  }
+
+  /// 6. Fetch the organization currently scoped to this session
+  Future<void> handleGetMyOrganization() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    final result = await _organizationRepository.getMyOrganization();
+
+    _isLoading = false;
+
+    if (result is Success) {
+      final apiResponse =
+          (result as Success).data as BaseApiResponse<OrganizationModel>;
+      _myOrganization = apiResponse.data;
+    } else if (result is Failure) {
+      _errorMessage = (result as Failure).exception.userMessage;
+    }
+    notifyListeners();
+  }
+
+  /// 7. Switch which organization the user's session is scoped to
+  Future<bool> handleSwitchOrganization({required String organizationId}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _successMessage = null;
+    notifyListeners();
+
+    final result = await _organizationRepository.switchOrganization(
+      organizationId: organizationId,
+    );
+
+    _isLoading = false;
+
+    if (result is Success) {
+      final apiResponse = (result as Success).data as BaseApiResponse<dynamic>;
+      _successMessage = apiResponse.message;
       notifyListeners();
       return true;
     } else if (result is Failure) {

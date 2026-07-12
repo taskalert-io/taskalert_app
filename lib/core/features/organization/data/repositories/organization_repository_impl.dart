@@ -6,6 +6,7 @@ import '../../../../network/api_result.dart';
 import '../../../../network/base_api_response.dart';
 import '../../../../network/http_service.dart';
 import 'package:taskalert_app/core/errors/network_exceptions.dart';
+import '../../../auth/data/models/user_model.dart';
 import '../models/organization_model.dart';
 import 'organization_repository.dart';
 
@@ -236,6 +237,83 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
       );
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    }
+  }
+
+  /// 6. GET: Fetch the organization currently scoped to this session
+  @override
+  Future<ApiResult<BaseApiResponse<OrganizationModel>>>
+  getMyOrganization() async {
+    try {
+      final responseData = await _httpService.get('/organizations/me');
+
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData as Map<String, dynamic>,
+        (json) => OrganizationModel.fromJson(json as Map<String, dynamic>),
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    }
+  }
+
+  /// 7. POST: Switch which organization the user's session is scoped to
+  @override
+  Future<ApiResult<BaseApiResponse<UserModel>>> switchOrganization({
+    required String organizationId,
+  }) async {
+    try {
+      final responseData = await _httpService.post(
+        '/auth/switch-organization',
+        body: {'organizationId': organizationId},
+      );
+
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData as Map<String, dynamic>,
+        (json) => UserModel.fromJson(json as Map<String, dynamic>),
+      );
+
+      if (apiResponse.success && apiResponse.data != null) {
+        final user = apiResponse.data!;
+        // The response may or may not include fresh tokens, depending on
+        // whether the backend scopes the JWT to the active organization —
+        // only overwrite what's actually present rather than assuming
+        // either shape.
+        if (user.token != null && user.token!.isNotEmpty) {
+          await _secureStorage.write(key: 'auth_token', value: user.token!);
+        }
+        if (user.refreshToken != null && user.refreshToken!.isNotEmpty) {
+          await _secureStorage.write(
+            key: 'refresh_token',
+            value: user.refreshToken!,
+          );
+        }
+        await _secureStorage.write(
+          key: 'user_active_organization',
+          value: user.activeOrganization?.name ?? '',
+        );
+        await _secureStorage.write(
+          key: 'user_active_organization_id',
+          value: user.activeOrganization?.id ?? organizationId,
+        );
+        return ApiResult.success(apiResponse);
+      }
+
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
