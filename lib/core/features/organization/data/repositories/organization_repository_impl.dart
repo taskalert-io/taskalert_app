@@ -581,15 +581,36 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
   }
 
   /// 6. GET: Fetch the organization currently scoped to this session
+  ///
+  /// The backend returns every organization the user belongs to as a list
+  /// (each entry flagged with `isActive`), not a single object — pick the
+  /// active one out rather than assuming `data` is already a single map.
   @override
   Future<ApiResult<BaseApiResponse<OrganizationModel>>>
   getMyOrganization() async {
     try {
       final responseData = await _httpService.get('/organizations/me');
+      final envelope = responseData as Map<String, dynamic>;
+      final rawData = envelope['data'];
 
-      final apiResponse = BaseApiResponse.fromJson(
-        responseData as Map<String, dynamic>,
-        (json) => OrganizationModel.fromJson(json as Map<String, dynamic>),
+      Map<String, dynamic>? activeOrgJson;
+      if (rawData is List) {
+        final orgs = rawData.cast<Map<String, dynamic>>();
+        activeOrgJson = orgs.firstWhere(
+          (o) => o['isActive'] == true,
+          orElse: () => orgs.isNotEmpty ? orgs.first : <String, dynamic>{},
+        );
+        if (activeOrgJson.isEmpty) activeOrgJson = null;
+      } else if (rawData is Map<String, dynamic>) {
+        activeOrgJson = rawData; // tolerate a single-object response too
+      }
+
+      final apiResponse = BaseApiResponse<OrganizationModel>(
+        success: envelope['success'] ?? false,
+        message: envelope['message'] ?? '',
+        data: activeOrgJson != null
+            ? OrganizationModel.fromJson(activeOrgJson)
+            : null,
       );
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
