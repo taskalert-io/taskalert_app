@@ -104,7 +104,7 @@ class EmployeeController extends ChangeNotifier {
   Future<bool> handleCreateEmployee({
     required String firstName,
     required String lastName,
-    required String email,
+    String? email,
     required String phoneNumber,
     String? jobRole,
     String? department,
@@ -124,7 +124,7 @@ class EmployeeController extends ChangeNotifier {
     final result = await _employeeRepository.createEmployee(
       firstName: firstName,
       lastName: lastName,
-      email: email,
+      email: email ?? '',
       phoneNumber: phoneNumber,
       jobRole: jobRole,
       imageFilePath: imageFilePath,

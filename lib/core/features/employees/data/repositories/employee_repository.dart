@@ -6,7 +6,7 @@ abstract class EmployeeRepository {
   Future<ApiResult<BaseApiResponse<EmployeeModel>>> createEmployee({
     required String firstName,
     required String lastName,
-    required String email,
+     String email,
     required String phoneNumber,
     required String gender, // 🌟 Added
     String? jobRole,
