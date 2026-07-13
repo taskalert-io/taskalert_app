@@ -1778,15 +1778,17 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Back + page title
-                          GestureDetector(
-                            onTap: () => Navigator.maybePop(context),
-                            child: Icon(
+                          IconButton(
+                            onPressed: () => Navigator.maybePop(context),
+                            icon: Icon(
                               Icons.arrow_back,
                               size: 17.r,
                               color: const Color(0xFF0A0258),
                             ),
+                            splashRadius: 22.r,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
                           ),
-                          SizedBox(height: 5.h),
                           Text(
                             "Core Identity & Media",
                             style: GoogleFonts.inter(
