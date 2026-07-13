@@ -25,7 +25,8 @@ class ActivityLogController extends ChangeNotifier {
   int get totalLogsCount => _totalLogsCount;
 
   /// Fetches system action logs filtered down to specific instance operations trail
-  Future<void> handleGetInstanceActivityLogs({
+  Future<void> handleGetInstanceActivityLogs(
+    String s, {
     required String instanceId,
   }) async {
     _isLoading = true;
@@ -44,6 +45,8 @@ class ActivityLogController extends ChangeNotifier {
       _logs = apiResponse.data?.logs ?? [];
       _instanceMeta = apiResponse.data?.instanceMeta;
       _totalLogsCount = apiResponse.data?.total ?? 0;
+
+      print('Fetched ${_logs.length} activity logs for instance $instanceId');
     } else if (result is Failure) {
       _errorMessage = (result as Failure).exception.userMessage;
     }

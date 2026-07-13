@@ -16,7 +16,7 @@ class ActivityLogRepositoryImpl implements ActivityLogRepository {
     try {
       // Adjusted path as needed based on endpoint standards
       final responseData = await _httpService.get(
-        '/tasks/instances/$instanceId/activity-logs',
+        '/activity-logs/instance/$instanceId',
       );
       final responseMap = responseData as Map<String, dynamic>;
 

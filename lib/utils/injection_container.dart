@@ -1,5 +1,8 @@
 import 'package:get_it/get_it.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:taskalert_app/core/features/activityLogs/controllers/activity_log_controller.dart';
+import 'package:taskalert_app/core/features/activityLogs/data/repositories/activity_log_repository.dart';
+import 'package:taskalert_app/core/features/activityLogs/data/repositories/activity_log_repository_impl.dart';
 import 'package:taskalert_app/core/features/auth/controllers/signup_controller.dart';
 import 'package:taskalert_app/core/features/auth/data/repositories/auth_repository.dart';
 import 'package:taskalert_app/core/features/auth/data/repositories/auth_repository_impl.dart';
@@ -102,6 +105,11 @@ Future<void> init() async {
   sl.registerFactory(
     () => NotificationController(sl<NotificationRepository>()),
   );
+
+  sl.registerLazySingleton<ActivityLogRepository>(
+    () => ActivityLogRepositoryImpl(sl<HttpService>()),
+  );
+  sl.registerFactory(() => ActivityLogController(sl<ActivityLogRepository>()));
 
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(sl<HttpService>(), sl<FlutterSecureStorage>()),

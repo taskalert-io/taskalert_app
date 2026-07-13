@@ -8,6 +8,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:taskalert_app/core/features/activityLogs/controllers/activity_log_controller.dart';
 import 'package:taskalert_app/core/features/employees/controllers/employee_controller.dart';
 import 'package:taskalert_app/core/features/employees/data/models/employee_model.dart';
 import 'package:taskalert_app/core/features/taskInstance/controllers/task_instance_controller.dart';
@@ -204,6 +205,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   String _priority = 'Low';
   String _status = 'To Do';
 
+  final activityLogs = <ActivityItem>[];
+
   // ── Static option lists ────────────────────────────────────────────────────
   static const _priorityItems = ['Low', 'Medium', 'High'];
   static const _statusItems = ['To Do', 'In Progress', 'Completed'];
@@ -214,6 +217,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   // late final TaskInstanceController taskController;
   TaskInstanceController taskController = sl<TaskInstanceController>();
+  ActivityLogController activityLogController = sl<ActivityLogController>();
   final EmployeeController employeeController = sl<EmployeeController>();
 
   // @override
@@ -246,8 +250,28 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     ]);
     final currentUserId = await secureStorage.read(key: 'user_id');
 
+    try {
+      await activityLogController.handleGetInstanceActivityLogs(
+        'fetching logs',
+        instanceId: widget.taskId!,
+      );
+    } catch (e) {
+      debugPrint('Error fetching activity logs: $e');
+    }
+
     if (mounted) {
       final instance = taskController.selectedInstance;
+
+      final fetchedLogs = activityLogController.logs.map((log) {
+        final userName = log.userSnapshot?.name ?? 'Unknown User';
+        final action = log.description;
+        final entityName = log.entityName;
+        return ActivityItem(
+          text: '$userName $action'.trim(),
+          timeAgo: log.timeLabel,
+        );
+      }).toList();
+
       setState(() {
         _currentUserId = currentUserId;
         _title = instance?.title ?? '';
@@ -303,8 +327,54 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             instance?.createdBy?.id == currentUserId;
         _isReadOnly = !isCreatedByCurrentUser;
 
+        activityLogs.clear();
+        activityLogs.addAll(fetchedLogs);
+
         _isLoading = false;
+
+        print('Activity logs for instance ${widget.taskId!}:');
+
+        // activityLogController.handleGetInstanceActivityLogs(
+        //   'fetching logs',
+        //   instanceId: widget.taskId!,
+        // );
+
+        // activityLogs.addAll(
+        //   activityLogController.logs.map((log) {
+        //     final userName = log.userSnapshot?.name ?? 'Unknown User';
+        //     final action = log.description;
+        //     final entityName = log.entityName;
+        //     return ActivityItem(
+        //       text: '$userName $action $entityName',
+        //       timeAgo: log.timeLabel,
+        //     );
+        //   }).toList(),
+        // );
+
+        print('Activity logs for instance ${activityLogs}:');
+
+        //add some dummy datas in activityLogs list
+        // activityLogs.addAll([
+        //   const ActivityItem(
+        //     text: 'John Doe created the task',
+        //     timeAgo: '2 hours ago',
+        //   ),
+        //   const ActivityItem(
+        //     text: 'Jane Smith updated the task status to In Progress',
+        //     timeAgo: '1 hour ago',
+        //   ),
+        //   const ActivityItem(
+        //     text: 'John Doe commented on the task',
+        //     timeAgo: '30 minutes ago',
+        //   ),
+        // ]);
       });
+
+      // print('Activity logs for instance ${activityLogs}:');
+
+      //In a varibale fetch and save activity logs for this instance
+
+      // Fetch activity logs for the instance
     }
   }
 
@@ -2763,23 +2833,34 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                 onTap: () {
                                   showActivityBottomSheet(
                                     context,
-                                    activities: const [
-                                      ActivityItem(
-                                        text:
-                                            'You created taskinstance "Design"',
-                                        timeAgo: '2 hours ago',
-                                      ),
-                                      ActivityItem(
-                                        text: 'Show more',
-                                        timeAgo: '',
-                                        isExpandable: true,
-                                      ),
-                                      ActivityItem(
-                                        text:
-                                            'Sudipta Sarkar uploaded proof for "Design" (1 file(s))',
-                                        timeAgo: '1 hour ago',
-                                      ),
-                                    ],
+                                    activities: activityLogs
+                                        .map(
+                                          (log) => ActivityItem(
+                                            text: log.text,
+                                            timeAgo: log.timeAgo,
+                                          ),
+                                        )
+                                        .toList(),
+
+                                    // [
+                                    //   //Fetch the activity log controller and display the activity log for the task instance
+                                    //   // await taskController.fetchActivityLog(widget.taskId ?? ''),
+                                    //   const ActivityItem(
+                                    //     text:
+                                    //         'You created taskinstance "Design"',
+                                    //     timeAgo: '2 hours ago',
+                                    //   ),
+                                    //   const ActivityItem(
+                                    //     text: 'Show more',
+                                    //     timeAgo: '',
+                                    //     isExpandable: true,
+                                    //   ),
+                                    //   const ActivityItem(
+                                    //     text:
+                                    //         'Sudipta Sarkar uploaded proof for "Design" (1 file(s))',
+                                    //     timeAgo: '1 hour ago',
+                                    //   ),
+                                    // ],
                                     onDelete: () {
                                       // TODO: delete action
                                     },
@@ -2805,6 +2886,111 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             ],
                           ),
                         ),
+
+                        // Align(
+                        //   alignment: Alignment.centerRight,
+                        //   child: Row(
+                        //     mainAxisSize: MainAxisSize.min,
+                        //     children: [
+                        //       InkWell(
+                        //         onTap: () {
+                        //           showActivityBottomSheet(
+                        //             context,
+                        //             activities: const [
+                        //               ActivityItem(
+                        //                 text:
+                        //                     'You created taskinstance "Design"',
+                        //                 timeAgo: '2 hours ago',
+                        //               ),
+                        //               ActivityItem(
+                        //                 text: 'Show more',
+                        //                 timeAgo: '',
+                        //                 isExpandable: true,
+                        //               ),
+                        //               ActivityItem(
+                        //                 text:
+                        //                     'Sudipta Sarkar uploaded proof for "Design" (1 file(s))',
+                        //                 timeAgo: '1 hour ago',
+                        //               ),
+                        //             ],
+                        //             onDelete: () {
+                        //               // TODO: delete action
+                        //             },
+                        //             onSubmit: () {
+                        //               // TODO: submit action
+                        //             },
+                        //           );
+                        //         },
+                        //         child: PanelRightCloseIcon(
+                        //           size: 20.r,
+                        //           color: _textColor,
+                        //         ),
+                        //       ),
+                        //       SizedBox(width: 12.w),
+                        //       InkWell(
+                        //         onTap: () => Navigator.pop(context),
+                        //         child: Icon(
+                        //           Icons.close,
+                        //           size: 20.r,
+                        //           color: _textColor,
+                        //         ),
+                        //       ),
+                        //     ],
+                        //   ),
+                        // ),
+
+                        // Align(
+                        //   alignment: Alignment.centerRight,
+                        //   child: Row(
+                        //     mainAxisSize: MainAxisSize.min,
+                        //     children: [
+                        //       InkWell(
+                        //         onTap: () {
+                        //           showActivityBottomSheet(
+                        //             context,
+                        //             activities: const [
+                        //               ActivityItem(
+                        //                 text:
+                        //                     'You created taskinstance "Design"',
+                        //                 timeAgo: '2 hours ago',
+                        //               ),
+                        //               ActivityItem(
+                        //                 text: 'Show more',
+                        //                 timeAgo: '',
+                        //                 isExpandable: true,
+                        //               ),
+                        //               ActivityItem(
+                        //                 text:
+                        //                     'Sudipta Sarkar uploaded proof for "Design" (1 file(s))',
+                        //                 timeAgo: '1 hour ago',
+                        //               ),
+                        //             ],
+                        //             onDelete: () {
+                        //               // TODO: delete action
+                        //             },
+                        //             onSubmit: () {
+                        //               // TODO: submit action
+                        //             },
+                        //           );
+
+                        //         },
+                        //         child: PanelRightCloseIcon(
+                        //           size: 20.r,
+                        //           color: _textColor,
+                        //         ),
+                        //       ),
+                        //       SizedBox(width: 12.w),
+                        //       InkWell(
+                        //         onTap: () => Navigator.pop(context),
+                        //         child: Icon(
+                        //           Icons.close,
+                        //           size: 20.r,
+                        //           color: _textColor,
+                        //         ),
+                        //       ),
+                        //     ],
+                        //   ),
+                        // ),
 
                         // Align(
                         //   alignment: Alignment.centerRight,
