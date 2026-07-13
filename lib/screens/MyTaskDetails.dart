@@ -9,6 +9,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:taskalert_app/core/features/employees/controllers/employee_controller.dart';
+import 'package:taskalert_app/core/features/employees/data/models/employee_model.dart';
 import 'package:taskalert_app/core/features/taskInstance/controllers/task_instance_controller.dart';
 import 'package:taskalert_app/core/features/taskInstance/data/models/task_instance_model.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
@@ -204,18 +205,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   String _status = 'To Do';
 
   // ── Static option lists ────────────────────────────────────────────────────
-  static const _assignToItems = [
-    'Alice Johnson',
-    'Bob Smith',
-    'Carol White',
-    'David Brown',
-    'Eva Martinez',
-    'Frank Lee',
-    'Grace Kim',
-    'Guadalupe Mró',
-    'Henry Wilson',
-    'Irene Taylor',
-  ];
   static const _priorityItems = ['Low', 'Medium', 'High'];
   static const _statusItems = ['To Do', 'In Progress', 'Completed'];
 
@@ -691,40 +680,403 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     ),
   );
 
-  // ── Assign col (Assign to / Reporting to) ────────────────────────────────
-  Widget _assignCol(String label, String val, VoidCallback onTap) => Expanded(
-    child: GestureDetector(
-      onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w600,
+  // ── Assign to (multi-select, with chips) ──────────────────────────────────
+  Widget _assignToTriggerCol() {
+    final selectedNames = _assigneeIds.map(_employeeNameById).toList();
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _showAssignToBottomSheet(employeeController.allEmployees),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  'Assign to',
+                  style: GoogleFonts.inter(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF4A4A4A),
+                  ),
+                ),
+                SizedBox(width: 2.w),
+                Icon(
+                  Icons.keyboard_arrow_down,
+                  size: 15.r,
                   color: const Color(0xFF4A4A4A),
                 ),
-              ),
-              SizedBox(width: 2.w),
-              Icon(
-                Icons.keyboard_arrow_down,
-                size: 15.r,
-                color: const Color(0xFF4A4A4A),
-              ),
-            ],
-          ),
-          SizedBox(height: 3.h),
-          Text(
-            val,
-            style: GoogleFonts.inter(fontSize: 11.sp, color: _labelColor),
-          ),
-        ],
+              ],
+            ),
+            SizedBox(height: 4.h),
+            selectedNames.isEmpty
+                ? Text(
+                    'Unassigned',
+                    style: GoogleFonts.inter(fontSize: 11.sp, color: _labelColor),
+                  )
+                : Wrap(
+                    spacing: 4.w,
+                    runSpacing: 4.h,
+                    children: selectedNames
+                        .map((name) => _assigneeChip(name))
+                        .toList(),
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _assigneeChip(String name) => Container(
+    padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+    decoration: BoxDecoration(
+      color: const Color(0xFFEEF0FF),
+      borderRadius: BorderRadius.circular(20.r),
+      border: Border.all(color: const Color(0xFF4338CA)),
+    ),
+    child: Text(
+      name.split(' ').first,
+      style: GoogleFonts.inter(
+        fontSize: 10.sp,
+        fontWeight: FontWeight.w500,
+        color: const Color(0xFF0A0258),
       ),
     ),
   );
+
+  /// Multi-select "Assign To" bottom sheet — lists every employee (not
+  /// scoped to a department, unlike the Create*Screen forms) with search,
+  /// pre-checks whoever is already assigned, and only commits back to
+  /// `_assigneeIds` on "Confirm" (so search/mid-session toggles don't
+  /// mutate state until the user is done picking).
+  void _showAssignToBottomSheet(List<EmployeeModel> employees) {
+    List<String> tempSelected = List.from(_assigneeIds);
+    List<EmployeeModel> filtered = List.from(employees);
+    final searchCtrl = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, ss) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.12),
+                  blurRadius: 10.r,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36.w,
+                      height: 4.h,
+                      margin: EdgeInsets.symmetric(vertical: 10.h),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD9DEE5),
+                        borderRadius: BorderRadius.circular(4.r),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Assign To',
+                              style: GoogleFonts.inter(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w700,
+                                color: _primaryColor,
+                              ),
+                            ),
+                            Text(
+                              '${tempSelected.length} selected',
+                              style: GoogleFonts.inter(
+                                fontSize: 11.sp,
+                                color: _labelColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(ctx),
+                          child: Icon(Icons.close, size: 20.r, color: _labelColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 10.h),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    child: TextField(
+                      controller: searchCtrl,
+                      style: GoogleFonts.inter(fontSize: 12.sp),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        hintText: 'Search employees',
+                        hintStyle: GoogleFonts.inter(
+                          fontSize: 12.sp,
+                          color: const Color(0xFFB8BEC5),
+                        ),
+                        prefixIcon: Icon(
+                          CupertinoIcons.search,
+                          size: 16.r,
+                          color: const Color(0xFF9AA0AB),
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFFF9FAFC),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 10.w,
+                          vertical: 10.h,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.r),
+                          borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.r),
+                          borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.r),
+                          borderSide: const BorderSide(color: Color(0xFF0A0258)),
+                        ),
+                      ),
+                      onChanged: (q) => ss(() {
+                        final query = q.trim().toLowerCase();
+                        filtered = query.isEmpty
+                            ? List.from(employees)
+                            : employees
+                                  .where(
+                                    (e) =>
+                                        e.fullName.toLowerCase().contains(query) ||
+                                        (e.jobRole ?? '').toLowerCase().contains(
+                                          query,
+                                        ),
+                                  )
+                                  .toList();
+                      }),
+                    ),
+                  ),
+                  SizedBox(height: 8.h),
+                  Flexible(
+                    child: filtered.isEmpty
+                        ? Padding(
+                            padding: EdgeInsets.symmetric(vertical: 30.h),
+                            child: Center(
+                              child: Text(
+                                'No employees found',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.sp,
+                                  color: _labelColor,
+                                ),
+                              ),
+                            ),
+                          )
+                        : ListView.separated(
+                            shrinkWrap: true,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 16.w,
+                              vertical: 8.h,
+                            ),
+                            itemCount: filtered.length,
+                            separatorBuilder: (_, __) =>
+                                const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                            itemBuilder: (context, index) {
+                              final employee = filtered[index];
+                              final empId = employee.id ?? '';
+                              final name = employee.fullName.isEmpty
+                                  ? 'No Name'
+                                  : employee.fullName;
+                              final role = (employee.jobRole?.isEmpty ?? true)
+                                  ? 'No Role Assigned'
+                                  : employee.jobRole!;
+                              final isChecked = tempSelected.contains(empId);
+                              return InkWell(
+                                onTap: () => ss(() {
+                                  if (isChecked) {
+                                    tempSelected.remove(empId);
+                                  } else {
+                                    tempSelected.add(empId);
+                                  }
+                                }),
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 10.h),
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 18.r,
+                                        backgroundColor: isChecked
+                                            ? _primaryColor
+                                            : const Color(0xFFEFF0FF),
+                                        child: Text(
+                                          name.isNotEmpty
+                                              ? name[0].toUpperCase()
+                                              : '?',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13.sp,
+                                            fontWeight: FontWeight.w700,
+                                            color: isChecked
+                                                ? Colors.white
+                                                : const Color(0xFF4338CA),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(width: 10.w),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              name,
+                                              style: GoogleFonts.inter(
+                                                fontSize: 13.sp,
+                                                fontWeight: FontWeight.w600,
+                                                color: const Color(0xFF1D2939),
+                                              ),
+                                            ),
+                                            Text(
+                                              role,
+                                              style: GoogleFonts.inter(
+                                                fontSize: 11.sp,
+                                                color: _labelColor,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 150,
+                                        ),
+                                        width: 20.r,
+                                        height: 20.r,
+                                        decoration: BoxDecoration(
+                                          color: isChecked
+                                              ? _primaryColor
+                                              : Colors.white,
+                                          borderRadius: BorderRadius.circular(
+                                            5.r,
+                                          ),
+                                          border: Border.all(
+                                            color: isChecked
+                                                ? _primaryColor
+                                                : const Color(0xFFD0D5DD),
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                        child: isChecked
+                                            ? Icon(
+                                                Icons.check,
+                                                size: 14.r,
+                                                color: Colors.white,
+                                              )
+                                            : null,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 16.h),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => ss(() => tempSelected.clear()),
+                            style: OutlinedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(vertical: 12.h),
+                              side: const BorderSide(color: Color(0xFFD9DEE5)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.r),
+                              ),
+                            ),
+                            child: Text(
+                              'Clear All',
+                              style: GoogleFonts.inter(
+                                fontSize: 13.sp,
+                                fontWeight: FontWeight.w600,
+                                color: _accentColor,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 10.w),
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8.r),
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFD96CFF), Color(0xFF5CE1E6)],
+                              ),
+                            ),
+                            child: ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _assigneeIds = List.from(tempSelected);
+                                  _assignTo = _assigneeIds.isNotEmpty
+                                      ? _assigneeIds
+                                            .map((id) => _employeeNameById(id))
+                                            .join(', ')
+                                      : 'Unassigned';
+                                });
+                                Navigator.pop(ctx);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                elevation: 0,
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                padding: EdgeInsets.symmetric(vertical: 12.h),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8.r),
+                                ),
+                              ),
+                              child: Text(
+                                'Confirm (${tempSelected.length})',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   // ── Static col (non-editable) — e.g. Assigned By ──────────────────────────
   Widget _staticCol(String label, String val) => Expanded(
@@ -1958,16 +2310,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           padding: EdgeInsets.symmetric(vertical: 8.h),
           child: Row(
             children: [
-              _assignCol(
-                'Assign to',
-                _assignTo,
-                () => _showSearchableSheet(
-                  title: 'Assign To',
-                  items: _assignToItems,
-                  selected: _assignTo,
-                  onSelect: (v) => setState(() => _assignTo = v),
-                ),
-              ),
+              _assignToTriggerCol(),
               _staticCol('Assigned By', _reportTo),
             ],
           ),
