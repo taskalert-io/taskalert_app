@@ -268,4 +268,43 @@ class TaskInstanceRepositoryImpl implements TaskInstanceRepository {
       );
     }
   }
+
+  /// 6. DELETE: Remove one or more already-uploaded proof files from an
+  /// instance, identified by their cloud storage `publicId`s.
+  @override
+  Future<ApiResult<BaseApiResponse<TaskInstanceModel>>>
+  deleteInstanceProofFile({
+    required String taskId,
+    required String instanceId,
+    required List<String> publicIds,
+  }) async {
+    try {
+      final responseData = await _httpService.delete(
+        '/tasks/$taskId/instances/$instanceId/proof',
+        body: {'publicId': publicIds},
+      );
+
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData as Map<String, dynamic>,
+        (json) => TaskInstanceModel.fromJson(json as Map<String, dynamic>),
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    } catch (e) {
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
+    }
+  }
 }

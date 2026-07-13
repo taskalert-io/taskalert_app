@@ -73,9 +73,9 @@ class DioHttpService implements HttpService {
   }
 
   @override
-  Future<dynamic> delete(String path) async {
+  Future<dynamic> delete(String path, {dynamic body}) async {
     try {
-      final response = await _dio.delete(path);
+      final response = await _dio.delete(path, data: body);
       return response.data;
     } on DioException catch (e) {
       throw NetworkException.fromDioError(e);
