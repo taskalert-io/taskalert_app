@@ -137,26 +137,17 @@ class HomeScreenState extends State<HomeScreen> {
     initialPage: 1000,
   );
 
-  final PageController _todoController = PageController();
-  final PageController _overdueController = PageController();
-
   /// Upcoming/recent to-do tasks shown in the Work List slider (max 3).
   List<Map<String, dynamic>> get _recentTasks => tasks.take(3).toList();
 
   final ValueNotifier<int> currentPageNotifier = ValueNotifier<int>(1000);
-  final ValueNotifier<int> todoCurrentPageNotifier = ValueNotifier<int>(0);
-  final ValueNotifier<int> overdueCurrentPageNotifier = ValueNotifier<int>(0);
   String selectedSort = "All";
   String selectedWorkspaceType = "";
 
   @override
   void dispose() {
     _pageController.dispose();
-    _todoController.dispose();
-    _overdueController.dispose();
     currentPageNotifier.dispose();
-    todoCurrentPageNotifier.dispose();
-    overdueCurrentPageNotifier.dispose();
     super.dispose();
   }
 
@@ -488,22 +479,16 @@ class HomeScreenState extends State<HomeScreen> {
 
                       SizedBox(height: 18.h),
 
-                      /// SLIDER
-                      SizedBox(
-                        height: 300.h,
-                        child: PageView(
-                          controller: _todoController,
-                          onPageChanged: (index) {
-                            todoCurrentPageNotifier.value = index;
-                          },
-                          children: [
-                            /// PAGE 1
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: SingleChildScrollView(
-                                child: Column(
+                      /// TASK LIST — sized to its actual content (not a
+                      /// fixed height) so a handful of tasks doesn't leave
+                      /// a huge empty box, and a long list doesn't get
+                      /// clipped inside a fixed-height nested scroll view;
+                      /// the page itself is already scrollable.
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                        ),
+                        child: Column(
                                   children: [
                                     if (_isLoadingTasks)
                                       Padding(
@@ -659,133 +644,6 @@ class HomeScreenState extends State<HomeScreen> {
                                   ],
                                 ),
                               ),
-                            ),
-
-                            // /// PAGE 2
-                            // Padding(
-                            //   padding: const EdgeInsets.symmetric(
-                            //     horizontal: 16,
-                            //   ),
-                            //   child: Column(
-                            //     children: [
-                            //       GestureDetector(
-                            //         onTap: () {
-                            //           Navigator.push(
-                            //             context,
-                            //             MaterialPageRoute(
-                            //               builder: (context) =>
-                            //                   TaskDetailScreen(
-                            //                     userId: widget.userId,
-                            //                     taskId: '4',
-                            //                   ),
-                            //             ),
-                            //           );
-                            //         },
-                            //         child: _buildTodoItem(
-                            //           image: "https://i.pravatar.cc/150?img=30",
-                            //           title: "Office Cleaning",
-                            //           status: "Pending",
-                            //           statusColor: Colors.red,
-                            //           requestedBy: "Requested by Alex",
-                            //           priority: "Low",
-                            //           priorityColor: Colors.green,
-                            //         ),
-                            //       ),
-                            //       SizedBox(height: 14.h),
-                            //       Divider(color: Colors.grey.shade200),
-                            //       SizedBox(height: 14.h),
-                            //       GestureDetector(
-                            //         onTap: () {
-                            //           Navigator.push(
-                            //             context,
-                            //             MaterialPageRoute(
-                            //               builder: (context) =>
-                            //                   TaskDetailScreen(
-                            //                     userId: widget.userId,
-                            //                     taskId: '5',
-                            //                   ),
-                            //             ),
-                            //           );
-                            //         },
-                            //         child: _buildTodoItem(
-                            //           image: "https://i.pravatar.cc/150?img=35",
-                            //           title: "Electrical Repair",
-                            //           status: "In progress",
-                            //           statusColor: Colors.orange,
-                            //           requestedBy: "Requested by Smith",
-                            //           priority: "High",
-                            //           priorityColor: Colors.red,
-                            //         ),
-                            //       ),
-                            //     ],
-                            //   ),
-                            // ),
-
-                            // /// PAGE 3
-                            // Padding(
-                            //   padding: const EdgeInsets.symmetric(
-                            //     horizontal: 16,
-                            //   ),
-                            //   child: Column(
-                            //     children: [
-                            //       GestureDetector(
-                            //         onTap: () {
-                            //           Navigator.push(
-                            //             context,
-                            //             MaterialPageRoute(
-                            //               builder: (context) =>
-                            //                   TaskDetailScreen(
-                            //                     userId: widget.userId,
-                            //                     taskId: '6',
-                            //                   ),
-                            //             ),
-                            //           );
-                            //         },
-                            //         child: _buildTodoItem(
-                            //           image: "https://i.pravatar.cc/150?img=40",
-                            //           title: "Water Supply",
-                            //           status: "Done",
-                            //           statusColor: Colors.green,
-                            //           requestedBy: "Requested by Jacob",
-                            //           priority: "Low",
-                            //           priorityColor: Colors.green,
-                            //         ),
-                            //       ),
-                            //     ],
-                            //   ),
-                            // ),
-                          ],
-                        ),
-                      ),
-
-                      /// DOTS
-                      // ValueListenableBuilder<int>(
-                      //   valueListenable: todoCurrentPageNotifier,
-                      //   builder: (context, todoCurrentPage, child) {
-                      //     return Row(
-                      //       mainAxisAlignment: MainAxisAlignment.center,
-                      //       children: List.generate(
-                      //         3,
-                      //         (index) => GestureDetector(
-                      //           onTap: () {
-                      //             _todoController.animateToPage(
-                      //               index,
-                      //               duration: const Duration(milliseconds: 300),
-                      //               curve: Curves.easeInOut,
-                      //             );
-                      //             todoCurrentPageNotifier.value = index;
-                      //           },
-                      //           child: Padding(
-                      //             padding: const EdgeInsets.symmetric(
-                      //               horizontal: 3,
-                      //             ),
-                      //             child: _dot(todoCurrentPage == index),
-                      //           ),
-                      //         ),
-                      //       ),
-                      //     );
-                      //   },
-                      // ),
                     ],
                   ),
                 ),
@@ -832,21 +690,14 @@ class HomeScreenState extends State<HomeScreen> {
 
                       SizedBox(height: 18.h),
 
-                      /// SLIDER
-                      SizedBox(
-                        height: 300.h,
-                        child: PageView(
-                          controller: _overdueController,
-                          onPageChanged: (index) {
-                            overdueCurrentPageNotifier.value = index;
-                          },
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: SingleChildScrollView(
-                                child: Column(
+                      /// TASK LIST — sized to its actual content (not a
+                      /// fixed height), same reasoning as the To-do list
+                      /// section above.
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                        ),
+                        child: Column(
                                   children: [
                                     if (_isLoadingOverdueTasks)
                                       Padding(
@@ -956,10 +807,6 @@ class HomeScreenState extends State<HomeScreen> {
                                   ],
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ],
                   ),
                 ),
