@@ -216,11 +216,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   TaskInstanceController taskController = sl<TaskInstanceController>();
   final EmployeeController employeeController = sl<EmployeeController>();
 
-  //create state variable to hold the scheduled time and period
-
-  String? _scheduledTimeValue;
-  String? _scheduledPeriodValue;
-
   // @override
   @override
   void initState() {
@@ -291,9 +286,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             _assignTimeEnabled = true;
           }
         }
-
-        _scheduledTimeValue = scheduledTime?.time;
-        _scheduledPeriodValue = scheduledTime?.period.toUpperCase();
 
         // Full edit access only when the current user is the one who
         // created/assigned this task; assignees who merely received it
@@ -493,6 +485,17 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     final m = _minute.toString().padLeft(2, '0');
     return '$h:$m ${_isAM ? 'AM' : 'PM'}';
   }
+
+  /// The live picker state (`_hour`/`_minute`/`_isAM`), formatted to match
+  /// what the server expects for `scheduledTime` — a separate 12-hour
+  /// "hh:mm" `time` and "AM"/"PM" `period`. Used on Save instead of the
+  /// stale `_scheduledTimeValue`/`_scheduledPeriodValue` (which were only
+  /// ever set once, from the server, in `_loadInstance()`, and never
+  /// updated when the user actually changes the picker).
+  String get _scheduledTimeForSave =>
+      '${_hour.toString().padLeft(2, '0')}:${_minute.toString().padLeft(2, '0')}';
+
+  String get _scheduledPeriodForSave => _isAM ? 'AM' : 'PM';
 
   String get _endTime {
     int h24 = _hour % 12;
@@ -2380,6 +2383,54 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     !_isAM,
                     () => setState(() => _isAM = false),
                   ),
+                  SizedBox(height: 10.h),
+                  // Minute stepper — the clock face only lets the user pick
+                  // an hour by dragging/tapping; there was previously no
+                  // way to change the minute at all.
+                  Row(
+                    children: [
+                      Text(
+                        'Min',
+                        style: GoogleFonts.inter(
+                          fontSize: 11.sp,
+                          color: _textColor,
+                        ),
+                      ),
+                      SizedBox(width: 6.w),
+                      GestureDetector(
+                        onTap: () =>
+                            setState(() => _minute = (_minute - 1 + 60) % 60),
+                        child: Icon(
+                          Icons.remove_circle_outline,
+                          size: 18.r,
+                          color: _primaryColor,
+                        ),
+                      ),
+                      SizedBox(width: 6.w),
+                      SizedBox(
+                        width: 22.w,
+                        child: Text(
+                          _minute.toString().padLeft(2, '0'),
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w700,
+                            color: _labelColor,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 6.w),
+                      GestureDetector(
+                        onTap: () =>
+                            setState(() => _minute = (_minute + 1) % 60),
+                        child: Icon(
+                          Icons.add_circle_outline,
+                          size: 18.r,
+                          color: _primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
                   SizedBox(height: 12.h),
                   RichText(
                     text: TextSpan(
@@ -2833,8 +2884,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                                 assigneeIds: _assigneeIds,
                                                 priority: _priority
                                                     .toLowerCase(),
-                                                time: _scheduledTimeValue,
-                                                period: _scheduledPeriodValue,
+                                                time: _assignTimeEnabled
+                                                    ? _scheduledTimeForSave
+                                                    : null,
+                                                period: _assignTimeEnabled
+                                                    ? _scheduledPeriodForSave
+                                                    : null,
 
                                                 scope: 'single',
                                               );
