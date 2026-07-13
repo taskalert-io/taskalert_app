@@ -260,9 +260,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         _status = _statusLabel(instance?.status ?? '');
 
         _assigneeIds = instance?.assignees ?? [];
-        _assignTo = _assigneeIds.isNotEmpty
-            ? _assigneeIds.map((id) => _employeeNameById(id)).join(', ')
-            : 'Unassigned';
+        final resolvedNames = _resolvedAssigneeNames;
+        _assignTo = resolvedNames.isNotEmpty
+            ? resolvedNames.join(', ')
+            : 'No assignees';
         _reportTo = (instance?.createdBy?.fullName.isNotEmpty ?? false)
             ? instance!.createdBy!.fullName
             : 'Unknown';
@@ -305,18 +306,31 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   String _titleCase(String s) =>
       s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
 
-  /// Resolves an assignee ID (the instance only carries raw user IDs) to a
-  /// display name via the employee directory; falls back to the raw ID if
-  /// the employee isn't found in the currently loaded list.
-  String _employeeNameById(String id) {
+  /// Resolves an assignee ID to a display name. Tries the instance's own
+  /// populated `assigneeRefs` first (sent straight from the backend, so
+  /// it's always in scope regardless of the separately-fetched employee
+  /// directory's coverage), then falls back to that employee directory.
+  /// Returns null if no name can be found anywhere — callers must never
+  /// fall back to showing the raw ID to the user.
+  String? _employeeNameById(String id) {
+    for (final ref in taskController.selectedInstance?.assigneeRefs ?? const []) {
+      if (ref.id == id && ref.fullName.isNotEmpty) {
+        return ref.fullName;
+      }
+    }
     for (final employee in employeeController.allEmployees) {
       if (employee.id == id) {
         final name = employee.fullName;
-        return name.isNotEmpty ? name : id;
+        if (name.isNotEmpty) return name;
       }
     }
-    return id;
+    return null;
   }
+
+  /// The resolved, displayable names for the current `_assigneeIds` —
+  /// unresolvable ids are dropped rather than ever showing a raw id.
+  List<String> get _resolvedAssigneeNames =>
+      _assigneeIds.map(_employeeNameById).whereType<String>().toList();
 
   String _statusLabel(String status) {
     switch (status) {
@@ -685,7 +699,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   // ── Assign to (multi-select, with chips) ──────────────────────────────────
   Widget _assignToTriggerCol() {
-    final selectedNames = _assigneeIds.map(_employeeNameById).toList();
+    final selectedNames = _resolvedAssigneeNames;
     return Expanded(
       child: GestureDetector(
         onTap: () => _showAssignToBottomSheet(employeeController.allEmployees),
@@ -713,7 +727,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             SizedBox(height: 4.h),
             selectedNames.isEmpty
                 ? Text(
-                    'Unassigned',
+                    'No assignees',
                     style: GoogleFonts.inter(fontSize: 11.sp, color: _labelColor),
                   )
                 : Wrap(
@@ -752,8 +766,33 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   /// `_assigneeIds` on "Confirm" (so search/mid-session toggles don't
   /// mutate state until the user is done picking).
   void _showAssignToBottomSheet(List<EmployeeModel> employees) {
+    // Some already-assigned employees might not be present in the fetched
+    // directory (e.g. a different department scope) — without this, they'd
+    // silently vanish from the list even though they're still selected,
+    // making the selection look broken. Splice in a placeholder row (using
+    // the name from the instance's own populated `assigneeRefs` when
+    // available) so they're visible and correctly checked.
+    final knownIds = employees.map((e) => e.id).whereType<String>().toSet();
+    final missingAssignees = _assigneeIds
+        .where((id) => !knownIds.contains(id))
+        .map((id) {
+          final ref = taskController.selectedInstance?.assigneeRefs
+              .where((r) => r.id == id)
+              .firstOrNull;
+          return EmployeeModel(
+            id: id,
+            // Never the raw id — if no name is resolvable at all, show a
+            // neutral placeholder instead.
+            firstName: (ref?.firstName.isNotEmpty ?? false)
+                ? ref!.firstName
+                : (_employeeNameById(id) ?? 'Unknown employee'),
+            lastName: ref?.lastName ?? '',
+          );
+        });
+    final allEmployeesForPicker = [...employees, ...missingAssignees];
+
     List<String> tempSelected = List.from(_assigneeIds);
-    List<EmployeeModel> filtered = List.from(employees);
+    List<EmployeeModel> filtered = List.from(allEmployeesForPicker);
     final searchCtrl = TextEditingController();
 
     showModalBottomSheet(
@@ -868,8 +907,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                       onChanged: (q) => ss(() {
                         final query = q.trim().toLowerCase();
                         filtered = query.isEmpty
-                            ? List.from(employees)
-                            : employees
+                            ? List.from(allEmployeesForPicker)
+                            : allEmployeesForPicker
                                   .where(
                                     (e) =>
                                         e.fullName.toLowerCase().contains(query) ||
@@ -1041,11 +1080,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                               onPressed: () {
                                 setState(() {
                                   _assigneeIds = List.from(tempSelected);
-                                  _assignTo = _assigneeIds.isNotEmpty
-                                      ? _assigneeIds
-                                            .map((id) => _employeeNameById(id))
-                                            .join(', ')
-                                      : 'Unassigned';
+                                  final resolvedNames = _resolvedAssigneeNames;
+                                  _assignTo = resolvedNames.isNotEmpty
+                                      ? resolvedNames.join(', ')
+                                      : 'No assignees';
                                 });
                                 Navigator.pop(ctx);
                               },
