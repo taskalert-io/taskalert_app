@@ -107,10 +107,17 @@ NotifFilter filterFromApi(String? raw) {
     case 'overdue':
     case 'task_overdue':
       return NotifFilter.overdue;
+    // Confirmed against real API data: a "due now" notification's `type`
+    // is 'reporting_time' (title "Task Due for Reporting"), not
+    // 'due_now'/'task_due' as originally guessed.
+    case 'reporting_time':
     case 'due_now':
     case 'dueNow':
     case 'task_due':
       return NotifFilter.dueNow;
+    // Confirmed: an "assigned" notification's `type` is 'task_created'
+    // (title "New Task Assigned"), not 'assigned'/'task_assigned'.
+    case 'task_created':
     case 'assigned':
     case 'task_assigned':
       return NotifFilter.assigned;
