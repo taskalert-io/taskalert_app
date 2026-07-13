@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -19,8 +20,7 @@ class OrganizationListScreen extends StatefulWidget {
   final String userId;
 
   @override
-  State<OrganizationListScreen> createState() =>
-      _OrganizationListScreenState();
+  State<OrganizationListScreen> createState() => _OrganizationListScreenState();
 }
 
 class _OrganizationListScreenState extends State<OrganizationListScreen> {
@@ -566,8 +566,9 @@ class _OrganizationListScreenState extends State<OrganizationListScreen> {
                                           ),
                                       itemBuilder: (context, index) {
                                         final organization = filtered[index];
-                                        final isChecked = _selectedIds
-                                            .contains(organization.id);
+                                        final isChecked = _selectedIds.contains(
+                                          organization.id,
+                                        );
 
                                         return Padding(
                                           padding: EdgeInsets.symmetric(
@@ -686,8 +687,7 @@ class _OrganizationListScreenState extends State<OrganizationListScreen> {
                                                               organization
                                                                   .phoneNumber,
                                                               style: GoogleFonts.inter(
-                                                                fontSize:
-                                                                    12.sp,
+                                                                fontSize: 12.sp,
                                                                 fontWeight:
                                                                     FontWeight
                                                                         .w500,
@@ -726,10 +726,9 @@ class _OrganizationListScreenState extends State<OrganizationListScreen> {
                                                                 style: GoogleFonts.inter(
                                                                   fontSize:
                                                                       12.sp,
-                                                                  color:
-                                                                      const Color(
-                                                                        0xFF667085,
-                                                                      ),
+                                                                  color: const Color(
+                                                                    0xFF667085,
+                                                                  ),
                                                                 ),
                                                               ),
                                                             ),
@@ -750,9 +749,10 @@ class _OrganizationListScreenState extends State<OrganizationListScreen> {
                                                                 CupertinoIcons
                                                                     .location_solid,
                                                                 size: 11.r,
-                                                                color: const Color(
-                                                                  0xFF9AA0AB,
-                                                                ),
+                                                                color:
+                                                                    const Color(
+                                                                      0xFF9AA0AB,
+                                                                    ),
                                                               ),
                                                               SizedBox(
                                                                 width: 4.w,
@@ -838,8 +838,7 @@ class _OrganizationListScreenState extends State<OrganizationListScreen> {
                                                     child: Row(
                                                       children: [
                                                         Icon(
-                                                          CupertinoIcons
-                                                              .pencil,
+                                                          CupertinoIcons.pencil,
                                                           size: 16.r,
                                                           color: const Color(
                                                             0xFF17C3B2,
@@ -848,12 +847,13 @@ class _OrganizationListScreenState extends State<OrganizationListScreen> {
                                                         SizedBox(width: 8.w),
                                                         Text(
                                                           "Edit",
-                                                          style: GoogleFonts.inter(
-                                                            fontSize: 12.sp,
-                                                            fontWeight:
-                                                                FontWeight
-                                                                    .w500,
-                                                          ),
+                                                          style:
+                                                              GoogleFonts.inter(
+                                                                fontSize: 12.sp,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                              ),
                                                         ),
                                                       ],
                                                     ),
@@ -863,18 +863,19 @@ class _OrganizationListScreenState extends State<OrganizationListScreen> {
                                                     child: Row(
                                                       children: [
                                                         Icon(
-                                                          CupertinoIcons
-                                                              .delete,
+                                                          CupertinoIcons.delete,
                                                           size: 16.r,
                                                           color: Colors.red,
                                                         ),
                                                         SizedBox(width: 8.w),
                                                         Text(
                                                           "Delete",
-                                                          style: GoogleFonts.inter(
-                                                            fontSize: 12.sp,
-                                                            color: Colors.red,
-                                                          ),
+                                                          style:
+                                                              GoogleFonts.inter(
+                                                                fontSize: 12.sp,
+                                                                color:
+                                                                    Colors.red,
+                                                              ),
                                                         ),
                                                       ],
                                                     ),
@@ -922,9 +923,7 @@ void openOrganizationFormDialog({
     text: existing?.address?.street ?? "",
   );
   final cityCtrl = TextEditingController(text: existing?.address?.city ?? "");
-  final stateCtrl = TextEditingController(
-    text: existing?.address?.state ?? "",
-  );
+  final stateCtrl = TextEditingController(text: existing?.address?.state ?? "");
   final countryCtrl = TextEditingController(
     text: existing?.address?.country ?? "",
   );
@@ -1112,6 +1111,13 @@ void openOrganizationFormDialog({
                       controller: phoneCtrl,
                       hint: "10-digit phone number",
                       keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        LengthLimitingTextInputFormatter(
+                          10,
+                        ), // Blocks input after 10 characters
+                        FilteringTextInputFormatter
+                            .digitsOnly, // Optional: Ensures only numbers can be typed
+                      ],
                       validator: (v) {
                         final digits = (v ?? "").trim();
                         if (digits.isEmpty) return "Enter phone number";
@@ -1121,6 +1127,21 @@ void openOrganizationFormDialog({
                         return null;
                       },
                     ),
+                    // _formField(
+                    //   label: "Phone",
+                    //   required: true,
+                    //   controller: phoneCtrl,
+                    //   hint: "10-digit phone number",
+                    //   keyboardType: TextInputType.number,
+                    //   validator: (v) {
+                    //     final digits = (v ?? "").trim();
+                    //     if (digits.isEmpty) return "Enter phone number";
+                    //     if (digits.length != 10) {
+                    //       return "Enter a valid 10-digit number";
+                    //     }
+                    //     return null;
+                    //   },
+                    // ),
                     SizedBox(height: 12.h),
 
                     // Street
@@ -1214,8 +1235,7 @@ void openOrganizationFormDialog({
                                           .handleCreateOrganization(
                                             name: nameCtrl.text.trim(),
                                             email: emailCtrl.text.trim(),
-                                            phoneNumber: phoneCtrl.text
-                                                .trim(),
+                                            phoneNumber: phoneCtrl.text.trim(),
                                             street: streetCtrl.text.trim(),
                                             city: cityCtrl.text.trim(),
                                             state: stateCtrl.text.trim(),
@@ -1230,8 +1250,7 @@ void openOrganizationFormDialog({
                                             id: existing.id,
                                             name: nameCtrl.text.trim(),
                                             email: emailCtrl.text.trim(),
-                                            phoneNumber: phoneCtrl.text
-                                                .trim(),
+                                            phoneNumber: phoneCtrl.text.trim(),
                                             street: streetCtrl.text.trim(),
                                             city: cityCtrl.text.trim(),
                                             state: stateCtrl.text.trim(),
@@ -1281,8 +1300,9 @@ void openOrganizationFormDialog({
                                           ),
                                           behavior: SnackBarBehavior.floating,
                                           shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(8.r),
+                                            borderRadius: BorderRadius.circular(
+                                              8.r,
+                                            ),
                                           ),
                                         ),
                                       );
@@ -1370,7 +1390,10 @@ Widget _orgImageUploadField({
           ),
           children: required
               ? const [
-                  TextSpan(text: " *", style: TextStyle(color: Colors.red)),
+                  TextSpan(
+                    text: " *",
+                    style: TextStyle(color: Colors.red),
+                  ),
                 ]
               : null,
         ),
@@ -1574,6 +1597,7 @@ Widget _formField({
   bool required = false,
   TextInputType keyboardType = TextInputType.text,
   String? Function(String?)? validator,
+  List<TextInputFormatter>? inputFormatters, // 1. Add this parameter
 }) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1588,7 +1612,10 @@ Widget _formField({
           ),
           children: required
               ? const [
-                  TextSpan(text: " *", style: TextStyle(color: Colors.red)),
+                  TextSpan(
+                    text: " *",
+                    style: TextStyle(color: Colors.red),
+                  ),
                 ]
               : null,
         ),
@@ -1597,6 +1624,7 @@ Widget _formField({
       TextFormField(
         controller: controller,
         keyboardType: keyboardType,
+        inputFormatters: inputFormatters, // 2. Pass it down here
         validator: validator,
         style: GoogleFonts.inter(
           fontSize: 12.sp,

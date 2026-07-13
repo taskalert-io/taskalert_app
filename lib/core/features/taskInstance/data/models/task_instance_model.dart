@@ -99,6 +99,10 @@ class TaskInstanceModel {
   final List<String> department;
   final String organization;
   final List<String> assignees; // Array of assignee user IDs
+  // Name/id pairs for each assignee, when the backend sends populated
+  // objects (not just raw ids) — lets the UI show real names without a
+  // separate, possibly-incomplete employee-directory lookup.
+  final List<CreatedByModel> assigneeRefs;
 
   final String? parentInstance;
   final CreatedByModel? completedBy;
@@ -142,6 +146,7 @@ class TaskInstanceModel {
     required this.department,
     required this.organization,
     required this.assignees,
+    this.assigneeRefs = const [],
     this.parentInstance,
     this.completedBy,
     this.completedAt,
@@ -196,6 +201,12 @@ class TaskInstanceModel {
               }
               return x.toString();
             }).toList()
+          : [],
+      assigneeRefs: json['assignees'] != null
+          ? (json['assignees'] as List)
+                .whereType<Map<String, dynamic>>()
+                .map((x) => CreatedByModel.fromJson(x))
+                .toList()
           : [],
       parentInstance: json['parentInstance'],
       completedBy: json['completedBy'] != null

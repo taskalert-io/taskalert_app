@@ -74,6 +74,12 @@ abstract class AuthRepository {
     required String newPassword,
   });
 
+  Future<ApiResult<BaseApiResponse<dynamic>>> registerOrganizationProfile({
+    required String email,
+    required String name,
+    required String phoneNumber,
+  });
+
   // --- Account Deletion ---
   Future<ApiResult<BaseApiResponse<dynamic>>> requestAccountDeletion();
 }
