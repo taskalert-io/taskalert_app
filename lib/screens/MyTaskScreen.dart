@@ -1355,6 +1355,13 @@ class MyTaskScreenState extends State<MyTaskScreen> {
 
           onPressed: () async {
             if (await userTaskPermission) {
+              // Individual accounts only ever create one-time tasks — no
+              // point offering a "Repetitive" workspace they can't use.
+              final accountType = await secureStorage.read(
+                key: 'user_account_type',
+              );
+              final isIndividual = accountType == 'individual';
+
               showModalBottomSheet(
                 context: context,
                 useSafeArea: true,
@@ -1438,63 +1445,64 @@ class MyTaskScreenState extends State<MyTaskScreen> {
 
                             SizedBox(height: 10.h),
 
-                            Container(
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8.r),
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFFD96CFF),
-                                    Color(0xFF5CE1E6),
-                                  ],
+                            if (!isIndividual) ...[
+                              Container(
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8.r),
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFFD96CFF),
+                                      Color(0xFF5CE1E6),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => CreateRepetitiveScreen(userId: ''),
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => CreateRepetitiveScreen(userId: ''),
+                                      ),
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    elevation: 0,
+                                    backgroundColor: Colors.transparent,
+                                    shadowColor: Colors.transparent,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 18.w,
+                                      vertical: 10.h,
                                     ),
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  elevation: 0,
-                                  backgroundColor: Colors.transparent,
-                                  shadowColor: Colors.transparent,
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 18.w,
-                                    vertical: 10.h,
+                                    minimumSize: Size.zero,
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8.r),
+                                    ),
                                   ),
-                                  minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8.r),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      "Repetitive",
-                                      style: GoogleFonts.inter(
-                                        fontSize: 14.sp,
-                                        fontWeight: FontWeight.w500,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        "Repetitive",
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14.sp,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      Icon(
+                                        Icons.arrow_forward,
+                                        size: 15.r,
                                         color: Colors.white,
                                       ),
-                                    ),
-                                    Icon(
-                                      Icons.arrow_forward,
-                                      size: 15.r,
-                                      color: Colors.white,
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-
-                            SizedBox(height: 10.h),
+                              SizedBox(height: 10.h),
+                            ],
 
                             Container(
                               width: double.infinity,
