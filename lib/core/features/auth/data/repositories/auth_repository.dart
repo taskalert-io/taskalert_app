@@ -61,11 +61,19 @@ abstract class AuthRepository {
   Future<ApiResult<BaseApiResponse<dynamic>>> updateProfile({
     required String firstName,
     required String lastName,
-    File? avatarFile,
+    String? phoneNumber,
+    String? email,
+    String? jobRole,
+    String? language,
+    String? languageCode,
+    File? imageFile,
   });
 
   Future<ApiResult<BaseApiResponse<dynamic>>> updatePassword({
     required String oldPassword,
     required String newPassword,
   });
+
+  // --- Account Deletion ---
+  Future<ApiResult<BaseApiResponse<dynamic>>> requestAccountDeletion();
 }

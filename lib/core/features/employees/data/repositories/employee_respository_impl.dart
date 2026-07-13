@@ -16,11 +16,11 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
   Future<ApiResult<BaseApiResponse<EmployeeModel>>> createEmployee({
     required String firstName,
     required String lastName,
-    required String email,
+    String? email,
     required String phoneNumber,
-    required String jobRole,
     required String gender,
-    required String department,
+    String? jobRole,
+    String? department,
     String? organization,
     String? location,
     String? dateOfBirth,
@@ -33,13 +33,26 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
       final Map<String, dynamic> map = {
         'firstName': firstName,
         'lastName': lastName,
-        'email': email,
+        // 'email': email,
         'phoneNumber': phoneNumber,
-        'jobRole': jobRole,
-        'gender': gender,
-        'department': department,
+        // 'gender': gender,
+        'location': location,
       };
 
+      if (email != null && email.isNotEmpty) {
+        map['email'] = email;
+      }
+
+      if (gender != null && gender.isNotEmpty) {
+        map['gender'] = gender;
+      }
+
+      if (jobRole != null && jobRole.isNotEmpty) {
+        map['jobRole'] = jobRole;
+      }
+      if (department != null && department.isNotEmpty) {
+        map['department'] = department;
+      }
       if (organization != null && organization.isNotEmpty) {
         map['organization'] = organization;
       }
@@ -171,10 +184,9 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
     required String lastName,
     required String email,
     required String phoneNumber,
-    required String jobRole,
-
     required String gender,
-    required String department,
+    String? jobRole,
+    String? department,
     String? organization,
     String? location,
     String? dateOfBirth,
@@ -188,11 +200,15 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
         'lastName': lastName,
         'email': email,
         'phoneNumber': phoneNumber,
-        'jobRole': jobRole,
         'gender': gender,
-        'department': department,
       };
 
+      if (jobRole != null && jobRole.isNotEmpty) {
+        map['jobRole'] = jobRole;
+      }
+      if (department != null && department.isNotEmpty) {
+        map['department'] = department;
+      }
       if (organization != null && organization.isNotEmpty) {
         map['organization'] = organization;
       }

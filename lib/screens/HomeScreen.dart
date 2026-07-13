@@ -102,6 +102,11 @@ class HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  /// Pull-to-refresh — reruns both list fetches together.
+  Future<void> _onRefresh() async {
+    await Future.wait([_loadTodoTasks(), _loadOverdueTasks()]);
+  }
+
   Future<bool> get userTaskPermission async {
     String? permission = await secureStorage.read(key: 'user_task_permission');
     return permission == 'true';
@@ -132,26 +137,17 @@ class HomeScreenState extends State<HomeScreen> {
     initialPage: 1000,
   );
 
-  final PageController _todoController = PageController();
-  final PageController _overdueController = PageController();
-
   /// Upcoming/recent to-do tasks shown in the Work List slider (max 3).
   List<Map<String, dynamic>> get _recentTasks => tasks.take(3).toList();
 
   final ValueNotifier<int> currentPageNotifier = ValueNotifier<int>(1000);
-  final ValueNotifier<int> todoCurrentPageNotifier = ValueNotifier<int>(0);
-  final ValueNotifier<int> overdueCurrentPageNotifier = ValueNotifier<int>(0);
   String selectedSort = "All";
   String selectedWorkspaceType = "";
 
   @override
   void dispose() {
     _pageController.dispose();
-    _todoController.dispose();
-    _overdueController.dispose();
     currentPageNotifier.dispose();
-    todoCurrentPageNotifier.dispose();
-    overdueCurrentPageNotifier.dispose();
     super.dispose();
   }
 
@@ -174,7 +170,9 @@ class HomeScreenState extends State<HomeScreen> {
         onTap: () {
           FocusScope.of(context).unfocus();
         },
-        child: SingleChildScrollView(
+        child: RefreshIndicator(
+          onRefresh: _onRefresh,
+          child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Container(
             color: const Color(0xFFF5F7FB),
@@ -481,22 +479,16 @@ class HomeScreenState extends State<HomeScreen> {
 
                       SizedBox(height: 18.h),
 
-                      /// SLIDER
-                      SizedBox(
-                        height: 300.h,
-                        child: PageView(
-                          controller: _todoController,
-                          onPageChanged: (index) {
-                            todoCurrentPageNotifier.value = index;
-                          },
-                          children: [
-                            /// PAGE 1
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: SingleChildScrollView(
-                                child: Column(
+                      /// TASK LIST — sized to its actual content (not a
+                      /// fixed height) so a handful of tasks doesn't leave
+                      /// a huge empty box, and a long list doesn't get
+                      /// clipped inside a fixed-height nested scroll view;
+                      /// the page itself is already scrollable.
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                        ),
+                        child: Column(
                                   children: [
                                     if (_isLoadingTasks)
                                       Padding(
@@ -652,133 +644,6 @@ class HomeScreenState extends State<HomeScreen> {
                                   ],
                                 ),
                               ),
-                            ),
-
-                            // /// PAGE 2
-                            // Padding(
-                            //   padding: const EdgeInsets.symmetric(
-                            //     horizontal: 16,
-                            //   ),
-                            //   child: Column(
-                            //     children: [
-                            //       GestureDetector(
-                            //         onTap: () {
-                            //           Navigator.push(
-                            //             context,
-                            //             MaterialPageRoute(
-                            //               builder: (context) =>
-                            //                   TaskDetailScreen(
-                            //                     userId: widget.userId,
-                            //                     taskId: '4',
-                            //                   ),
-                            //             ),
-                            //           );
-                            //         },
-                            //         child: _buildTodoItem(
-                            //           image: "https://i.pravatar.cc/150?img=30",
-                            //           title: "Office Cleaning",
-                            //           status: "Pending",
-                            //           statusColor: Colors.red,
-                            //           requestedBy: "Requested by Alex",
-                            //           priority: "Low",
-                            //           priorityColor: Colors.green,
-                            //         ),
-                            //       ),
-                            //       SizedBox(height: 14.h),
-                            //       Divider(color: Colors.grey.shade200),
-                            //       SizedBox(height: 14.h),
-                            //       GestureDetector(
-                            //         onTap: () {
-                            //           Navigator.push(
-                            //             context,
-                            //             MaterialPageRoute(
-                            //               builder: (context) =>
-                            //                   TaskDetailScreen(
-                            //                     userId: widget.userId,
-                            //                     taskId: '5',
-                            //                   ),
-                            //             ),
-                            //           );
-                            //         },
-                            //         child: _buildTodoItem(
-                            //           image: "https://i.pravatar.cc/150?img=35",
-                            //           title: "Electrical Repair",
-                            //           status: "In progress",
-                            //           statusColor: Colors.orange,
-                            //           requestedBy: "Requested by Smith",
-                            //           priority: "High",
-                            //           priorityColor: Colors.red,
-                            //         ),
-                            //       ),
-                            //     ],
-                            //   ),
-                            // ),
-
-                            // /// PAGE 3
-                            // Padding(
-                            //   padding: const EdgeInsets.symmetric(
-                            //     horizontal: 16,
-                            //   ),
-                            //   child: Column(
-                            //     children: [
-                            //       GestureDetector(
-                            //         onTap: () {
-                            //           Navigator.push(
-                            //             context,
-                            //             MaterialPageRoute(
-                            //               builder: (context) =>
-                            //                   TaskDetailScreen(
-                            //                     userId: widget.userId,
-                            //                     taskId: '6',
-                            //                   ),
-                            //             ),
-                            //           );
-                            //         },
-                            //         child: _buildTodoItem(
-                            //           image: "https://i.pravatar.cc/150?img=40",
-                            //           title: "Water Supply",
-                            //           status: "Done",
-                            //           statusColor: Colors.green,
-                            //           requestedBy: "Requested by Jacob",
-                            //           priority: "Low",
-                            //           priorityColor: Colors.green,
-                            //         ),
-                            //       ),
-                            //     ],
-                            //   ),
-                            // ),
-                          ],
-                        ),
-                      ),
-
-                      /// DOTS
-                      // ValueListenableBuilder<int>(
-                      //   valueListenable: todoCurrentPageNotifier,
-                      //   builder: (context, todoCurrentPage, child) {
-                      //     return Row(
-                      //       mainAxisAlignment: MainAxisAlignment.center,
-                      //       children: List.generate(
-                      //         3,
-                      //         (index) => GestureDetector(
-                      //           onTap: () {
-                      //             _todoController.animateToPage(
-                      //               index,
-                      //               duration: const Duration(milliseconds: 300),
-                      //               curve: Curves.easeInOut,
-                      //             );
-                      //             todoCurrentPageNotifier.value = index;
-                      //           },
-                      //           child: Padding(
-                      //             padding: const EdgeInsets.symmetric(
-                      //               horizontal: 3,
-                      //             ),
-                      //             child: _dot(todoCurrentPage == index),
-                      //           ),
-                      //         ),
-                      //       ),
-                      //     );
-                      //   },
-                      // ),
                     ],
                   ),
                 ),
@@ -825,21 +690,14 @@ class HomeScreenState extends State<HomeScreen> {
 
                       SizedBox(height: 18.h),
 
-                      /// SLIDER
-                      SizedBox(
-                        height: 300.h,
-                        child: PageView(
-                          controller: _overdueController,
-                          onPageChanged: (index) {
-                            overdueCurrentPageNotifier.value = index;
-                          },
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: SingleChildScrollView(
-                                child: Column(
+                      /// TASK LIST — sized to its actual content (not a
+                      /// fixed height), same reasoning as the To-do list
+                      /// section above.
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                        ),
+                        child: Column(
                                   children: [
                                     if (_isLoadingOverdueTasks)
                                       Padding(
@@ -949,10 +807,6 @@ class HomeScreenState extends State<HomeScreen> {
                                   ],
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -1126,6 +980,7 @@ class HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+          ),
         ),
       ),
 
@@ -1211,187 +1066,300 @@ class HomeScreenState extends State<HomeScreen> {
                             SizedBox(height: 10.h),
 
                             /// REPETITIVE
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      modalSetState(() {
-                                        selectedWorkspaceType =
-                                            selectedWorkspaceType ==
-                                                "Repetitive"
-                                            ? ""
-                                            : "Repetitive";
-                                      });
-                                    },
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 16.w,
-                                          height: 16.w,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: const Color(0xFF0A0258),
-                                              width: 1.3,
-                                            ),
-                                          ),
-                                          child: Center(
-                                            child: Container(
-                                              width: 10.w,
-                                              height: 10.w,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color:
-                                                    selectedWorkspaceType ==
-                                                        "Repetitive"
-                                                    ? const Color(0xFF24116A)
-                                                    : Colors.transparent,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(width: 10.w),
-                                        Text(
-                                          "Repetitive",
-                                          style: GoogleFonts.inter(
-                                            fontSize: 14.sp,
-                                            fontWeight: FontWeight.w500,
-                                            color: const Color(0xFF3F3F3F),
-                                          ),
-                                        ),
-                                      ],
+                            // Row(
+                            //   children: [
+                            //     Expanded(
+                            //       child: GestureDetector(
+                            //         onTap: () {
+                            //           modalSetState(() {
+                            //             selectedWorkspaceType =
+                            //                 selectedWorkspaceType ==
+                            //                     "Repetitive"
+                            //                 ? ""
+                            //                 : "Repetitive";
+                            //           });
+                            //         },
+                            //         child: Row(
+                            //           children: [
+                            //             Container(
+                            //               width: 16.w,
+                            //               height: 16.w,
+                            //               decoration: BoxDecoration(
+                            //                 shape: BoxShape.circle,
+                            //                 border: Border.all(
+                            //                   color: const Color(0xFF0A0258),
+                            //                   width: 1.3,
+                            //                 ),
+                            //               ),
+                            //               child: Center(
+                            //                 child: Container(
+                            //                   width: 10.w,
+                            //                   height: 10.w,
+                            //                   decoration: BoxDecoration(
+                            //                     shape: BoxShape.circle,
+                            //                     color:
+                            //                         selectedWorkspaceType ==
+                            //                             "Repetitive"
+                            //                         ? const Color(0xFF24116A)
+                            //                         : Colors.transparent,
+                            //                   ),
+                            //                 ),
+                            //               ),
+                            //             ),
+                            //             SizedBox(width: 10.w),
+                            //             Text(
+                            //               "Repetitive",
+                            //               style: GoogleFonts.inter(
+                            //                 fontSize: 14.sp,
+                            //                 fontWeight: FontWeight.w500,
+                            //                 color: const Color(0xFF3F3F3F),
+                            //               ),
+                            //             ),
+                            //           ],
+                            //         ),
+                            //       ),
+                            //     ),
+                            //     GestureDetector(
+                            //       onTap: selectedWorkspaceType == "Repetitive"
+                            //           ? () {
+                            //               Navigator.pop(context);
+                            //               Navigator.push(
+                            //                 context,
+                            //                 MaterialPageRoute(
+                            //                   builder: (context) =>
+                            //                       CreateRepetitiveScreen(
+                            //                         userId: '',
+                            //                       ),
+                            //                 ),
+                            //               );
+                            //             }
+                            //           : null,
+                            //       child: Container(
+                            //         width: 27.w,
+                            //         height: 27.w,
+                            //         decoration: BoxDecoration(
+                            //           color:
+                            //               selectedWorkspaceType == "Repetitive"
+                            //               ? const Color(0xFFE4E7EC)
+                            //               : const Color(0xFFF2F4F7),
+                            //           borderRadius: BorderRadius.circular(5.r),
+                            //         ),
+                            //         child: Icon(
+                            //           Icons.arrow_forward,
+                            //           size: 15.r,
+                            //           color:
+                            //               selectedWorkspaceType == "Repetitive"
+                            //               ? const Color(0xFF667085)
+                            //               : const Color(0xFF98A2B3),
+                            //         ),
+                            //       ),
+                            //     ),
+                            //   ],
+                            // ),
+
+                            Container(
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8.r),
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFFD96CFF),
+                                    Color(0xFF5CE1E6),
+                                  ],
+                                ),
+                              ),
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => CreateRepetitiveScreen(userId: ''),
                                     ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  elevation: 0,
+                                  backgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 18.w,
+                                    vertical: 10.h,
+                                  ),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8.r),
                                   ),
                                 ),
-                                GestureDetector(
-                                  onTap: selectedWorkspaceType == "Repetitive"
-                                      ? () {
-                                          Navigator.pop(context);
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  CreateRepetitiveScreen(
-                                                    userId: '',
-                                                  ),
-                                            ),
-                                          );
-                                        }
-                                      : null,
-                                  child: Container(
-                                    width: 27.w,
-                                    height: 27.w,
-                                    decoration: BoxDecoration(
-                                      color:
-                                          selectedWorkspaceType == "Repetitive"
-                                          ? const Color(0xFFE4E7EC)
-                                          : const Color(0xFFF2F4F7),
-                                      borderRadius: BorderRadius.circular(5.r),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      "Repetitive",
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white,
+                                      ),
                                     ),
-                                    child: Icon(
+                                    Icon(
                                       Icons.arrow_forward,
                                       size: 15.r,
-                                      color:
-                                          selectedWorkspaceType == "Repetitive"
-                                          ? const Color(0xFF667085)
-                                          : const Color(0xFF98A2B3),
+                                      color: Colors.white,
                                     ),
-                                  ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
 
                             SizedBox(height: 10.h),
 
                             /// ONE TIME
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      modalSetState(() {
-                                        selectedWorkspaceType =
-                                            selectedWorkspaceType == "One-time"
-                                            ? ""
-                                            : "One-time";
-                                      });
-                                    },
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 16.w,
-                                          height: 16.w,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: const Color(0xFF0A0258),
-                                              width: 1.3,
-                                            ),
-                                          ),
-                                          child: Center(
-                                            child: Container(
-                                              width: 10.w,
-                                              height: 10.w,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color:
-                                                    selectedWorkspaceType ==
-                                                        "One-time"
-                                                    ? const Color(0xFF24116A)
-                                                    : Colors.transparent,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(width: 10.w),
-                                        Text(
-                                          "One-time",
-                                          style: GoogleFonts.inter(
-                                            fontSize: 14.sp,
-                                            fontWeight: FontWeight.w500,
-                                            color: const Color(0xFF3F3F3F),
-                                          ),
-                                        ),
-                                      ],
+                            // Row(
+                            //   children: [
+                            //     Expanded(
+                            //       child: GestureDetector(
+                            //         onTap: () {
+                            //           modalSetState(() {
+                            //             selectedWorkspaceType =
+                            //                 selectedWorkspaceType == "One-time"
+                            //                 ? ""
+                            //                 : "One-time";
+                            //           });
+                            //         },
+                            //         child: Row(
+                            //           children: [
+                            //             Container(
+                            //               width: 16.w,
+                            //               height: 16.w,
+                            //               decoration: BoxDecoration(
+                            //                 shape: BoxShape.circle,
+                            //                 border: Border.all(
+                            //                   color: const Color(0xFF0A0258),
+                            //                   width: 1.3,
+                            //                 ),
+                            //               ),
+                            //               child: Center(
+                            //                 child: Container(
+                            //                   width: 10.w,
+                            //                   height: 10.w,
+                            //                   decoration: BoxDecoration(
+                            //                     shape: BoxShape.circle,
+                            //                     color:
+                            //                         selectedWorkspaceType ==
+                            //                             "One-time"
+                            //                         ? const Color(0xFF24116A)
+                            //                         : Colors.transparent,
+                            //                   ),
+                            //                 ),
+                            //               ),
+                            //             ),
+                            //             SizedBox(width: 10.w),
+                            //             Text(
+                            //               "One-time",
+                            //               style: GoogleFonts.inter(
+                            //                 fontSize: 14.sp,
+                            //                 fontWeight: FontWeight.w500,
+                            //                 color: const Color(0xFF3F3F3F),
+                            //               ),
+                            //             ),
+                            //           ],
+                            //         ),
+                            //       ),
+                            //     ),
+                            //     GestureDetector(
+                            //       onTap: selectedWorkspaceType == "One-time"
+                            //           ? () {
+                            //               Navigator.pop(context);
+                            //               Navigator.push(
+                            //                 context,
+                            //                 MaterialPageRoute(
+                            //                   builder: (context) =>
+                            //                       CreateOneTimeScreen(
+                            //                         userId: '',
+                            //                       ),
+                            //                 ),
+                            //               );
+                            //             }
+                            //           : null,
+                            //       child: Container(
+                            //         width: 27.w,
+                            //         height: 27.w,
+                            //         decoration: BoxDecoration(
+                            //           color: selectedWorkspaceType == "One-time"
+                            //               ? const Color(0xFFE4E7EC)
+                            //               : const Color(0xFFF2F4F7),
+                            //           borderRadius: BorderRadius.circular(5.r),
+                            //         ),
+                            //         child: Icon(
+                            //           Icons.arrow_forward,
+                            //           size: 15.r,
+                            //           color: selectedWorkspaceType == "One-time"
+                            //               ? const Color(0xFF667085)
+                            //               : const Color(0xFF98A2B3),
+                            //         ),
+                            //       ),
+                            //     ),
+                            //   ],
+                            // ),
+
+                            Container(
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8.r),
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFFD96CFF),
+                                    Color(0xFF5CE1E6),
+                                  ],
+                                ),
+                              ),
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => CreateOneTimeScreen(userId: ''),
                                     ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  elevation: 0,
+                                  backgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 18.w,
+                                    vertical: 10.h,
+                                  ),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8.r),
                                   ),
                                 ),
-                                GestureDetector(
-                                  onTap: selectedWorkspaceType == "One-time"
-                                      ? () {
-                                          Navigator.pop(context);
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  CreateOneTimeScreen(
-                                                    userId: '',
-                                                  ),
-                                            ),
-                                          );
-                                        }
-                                      : null,
-                                  child: Container(
-                                    width: 27.w,
-                                    height: 27.w,
-                                    decoration: BoxDecoration(
-                                      color: selectedWorkspaceType == "One-time"
-                                          ? const Color(0xFFE4E7EC)
-                                          : const Color(0xFFF2F4F7),
-                                      borderRadius: BorderRadius.circular(5.r),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      "One-time",
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white,
+                                      ),
                                     ),
-                                    child: Icon(
+                                    Icon(
                                       Icons.arrow_forward,
                                       size: 15.r,
-                                      color: selectedWorkspaceType == "One-time"
-                                          ? const Color(0xFF667085)
-                                          : const Color(0xFF98A2B3),
+                                      color: Colors.white,
                                     ),
-                                  ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
+
                             SizedBox(height: 15.h),
                           ],
                         ),

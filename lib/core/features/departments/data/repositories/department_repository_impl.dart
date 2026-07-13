@@ -15,11 +15,18 @@ class DepartmentRepositoryImpl implements DepartmentRepository {
   Future<ApiResult<BaseApiResponse<DepartmentModel>>> createDepartment({
     required String name,
     String? location,
+    List<String>? locationIds,
   }) async {
     try {
       final responseData = await _httpService.post(
         '/departments',
-        body: {'name': name, if (location != null) 'location': location},
+        body: {
+          'name': name,
+          if (locationIds != null)
+            'location': locationIds
+          else if (location != null)
+            'location': location,
+        },
       );
 
       final apiResponse = BaseApiResponse.fromJson(
@@ -29,7 +36,6 @@ class DepartmentRepositoryImpl implements DepartmentRepository {
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      _handleErrorEnvelope(apiResponse);
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -90,7 +96,6 @@ class DepartmentRepositoryImpl implements DepartmentRepository {
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      _handleErrorEnvelope(apiResponse);
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -119,11 +124,18 @@ class DepartmentRepositoryImpl implements DepartmentRepository {
     required String id,
     required String name,
     String? location,
+    List<String>? locationIds,
   }) async {
     try {
       final responseData = await _httpService.put(
         '/departments/$id',
-        body: {'name': name, if (location != null) 'location': location},
+        body: {
+          'name': name,
+          if (locationIds != null)
+            'location': locationIds
+          else if (location != null)
+            'location': location,
+        },
       );
 
       final apiResponse = BaseApiResponse.fromJson(
@@ -133,7 +145,6 @@ class DepartmentRepositoryImpl implements DepartmentRepository {
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      _handleErrorEnvelope(apiResponse);
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -172,7 +183,6 @@ class DepartmentRepositoryImpl implements DepartmentRepository {
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      _handleErrorEnvelope(apiResponse);
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -216,7 +226,6 @@ class DepartmentRepositoryImpl implements DepartmentRepository {
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      _handleErrorEnvelope(apiResponse);
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -254,7 +263,6 @@ class DepartmentRepositoryImpl implements DepartmentRepository {
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      _handleErrorEnvelope(apiResponse);
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -275,12 +283,5 @@ class DepartmentRepositoryImpl implements DepartmentRepository {
         ),
       );
     }
-  }
-
-  /// Centralized system response error logger fallback
-  void _handleErrorEnvelope(BaseApiResponse<dynamic> response) {
-    print(
-      "❌ Department API Operation Failed Error Message: ${response.message}",
-    );
   }
 }

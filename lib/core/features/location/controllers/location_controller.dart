@@ -39,12 +39,20 @@ class LocationController extends ChangeNotifier {
   // --- API Handlers ---
 
   /// 1. Fetch All Locations
-  Future<void> handleGetLocations() async {
+  Future<void> handleGetLocations({
+    String? department,
+    int? page,
+    int? limit,
+  }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
-    final result = await _repository.getLocations();
+    final result = await _repository.getLocations(
+      department: department,
+      page: page,
+      limit: limit,
+    );
     _isLoading = false;
 
     if (result is Success) {
@@ -86,6 +94,7 @@ class LocationController extends ChangeNotifier {
     required String state,
     required String pinCode,
     required String country,
+    List<String>? departmentIds,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -100,6 +109,7 @@ class LocationController extends ChangeNotifier {
       state: state,
       pinCode: pinCode,
       country: country,
+      departmentIds: departmentIds,
     );
 
     _isLoading = false;
@@ -133,6 +143,7 @@ class LocationController extends ChangeNotifier {
     required String state,
     required String pinCode,
     required String country,
+    List<String>? departmentIds,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -148,6 +159,7 @@ class LocationController extends ChangeNotifier {
       state: state,
       pinCode: pinCode,
       country: country,
+      departmentIds: departmentIds,
     );
 
     _isLoading = false;

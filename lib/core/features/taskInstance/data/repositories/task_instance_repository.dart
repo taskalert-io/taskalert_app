@@ -48,4 +48,13 @@ abstract class TaskInstanceRepository {
     required String instanceId,
     required List<File> proofFiles,
   });
+
+  /// Removes one or more already-uploaded proof files from an instance,
+  /// identified by their cloud storage `publicId`s.
+  Future<ApiResult<BaseApiResponse<TaskInstanceModel>>>
+  deleteInstanceProofFile({
+    required String taskId,
+    required String instanceId,
+    required List<String> publicIds,
+  });
 }

@@ -9,5 +9,5 @@ abstract class HttpService {
   });
   Future<dynamic> put(String path, {dynamic body});
   Future<dynamic> patch(String path, {dynamic body});
-  Future<dynamic> delete(String path);
+  Future<dynamic> delete(String path, {dynamic body});
 }

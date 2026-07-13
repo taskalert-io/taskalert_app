@@ -6,11 +6,11 @@ abstract class EmployeeRepository {
   Future<ApiResult<BaseApiResponse<EmployeeModel>>> createEmployee({
     required String firstName,
     required String lastName,
-    required String email,
+     String email,
     required String phoneNumber,
-    required String jobRole,
     required String gender, // 🌟 Added
-    required String department,
+    String? jobRole,
+    String? department,
     String? organization,
     String? location,
     String? dateOfBirth,
@@ -37,9 +37,9 @@ abstract class EmployeeRepository {
     required String lastName,
     required String email,
     required String phoneNumber,
-    required String jobRole,
     required String gender, // 🌟 Added
-    required String department,
+    String? jobRole,
+    String? department,
     String? organization,
     String? location,
     String? dateOfBirth,

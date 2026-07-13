@@ -130,7 +130,6 @@ class SignUpController extends ChangeNotifier {
 
   /// 3. Auxiliary Step: Resend Sign-Up OTP Code
   Future<bool> handleResendSignUpOtp() async {
-    print("Attempting to resend Sign-Up OTP for phone: $_currentPhoneNumber");
     if (_currentPhoneNumber == null) {
       _errorMessage = "Session expired. Please restart the sign up process.";
       notifyListeners();

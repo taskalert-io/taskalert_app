@@ -30,8 +30,8 @@ dependencies:
   cached_network_image: ^3.4.1
   intl: ^0.20.2
   image_picker: ^1.2.1
+  flutter_launcher_icons: ^0.14.4
 #  intl: ^0.20.3
-
 
 dev_dependencies:
   flutter_test:
@@ -56,7 +56,13 @@ flutter:
 
     - assets/images/main_logo.png
 
-
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/icon.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#0A0A1A" # matches your dark background
+  adaptive_icon_foreground: "assets/icon/icon.png"
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

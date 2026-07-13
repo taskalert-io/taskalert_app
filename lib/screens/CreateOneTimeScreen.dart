@@ -24,6 +24,9 @@ import '../core/features/employees/controllers/employee_controller.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
+import 'DepartmentListScreen.dart' show openDepartmentFormDialog;
+import 'LocationListScreen.dart' show openLocationFormDialog;
+import 'MyTaskScreen.dart';
 
 class CreateOneTimeScreen extends StatefulWidget {
   const CreateOneTimeScreen({super.key, required this.userId});
@@ -637,22 +640,14 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
       );
 
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              "Task created successfully!",
-              style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
-            ),
-            backgroundColor: const Color(0xFF0DA99E),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8.r),
-            ),
-          ),
+        // Land on a fresh MyTaskScreen instance (not just pop back) so its
+        // initState re-fetches the task list and the newly created task is
+        // immediately visible — also clears the create-flow screens off the
+        // stack instead of leaving a stale "Create New Workspace" trail.
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => MyTaskScreen(userId: '')),
+          (route) => false,
         );
-        Navigator.pop(
-          context,
-        ); // Go back to previous screen after successful creation
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -759,17 +754,12 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
             borderRadius: BorderRadius.circular(10.r),
             color: Colors.white,
             child: ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: 240.h),
-              child: ListView.separated(
-                padding: EdgeInsets.symmetric(vertical: 4.h),
-                shrinkWrap: true,
-                itemCount: _locationSuggestions.length,
-                separatorBuilder: (_, __) =>
-                    const Divider(height: 1, color: Color(0xFFE4E7EC)),
-                itemBuilder: (context, index) {
-                  final loc = _locationSuggestions[index];
-                  return InkWell(
-                    onTap: () => _selectLocationSuggestion(loc),
+              constraints: BoxConstraints(maxHeight: 280.h),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  InkWell(
+                    onTap: _openAddLocationDialog,
                     child: Padding(
                       padding: EdgeInsets.symmetric(
                         horizontal: 12.w,
@@ -778,38 +768,96 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                       child: Row(
                         children: [
                           Icon(
-                            CupertinoIcons.location_solid,
+                            CupertinoIcons.add_circled_solid,
                             size: 14.r,
-                            color: const Color(0xFF4338CA),
+                            color: const Color(0xFF0A0258),
                           ),
-                          SizedBox(width: 8.w),
+                          SizedBox(width: 6.w),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  loc.name,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13.sp,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF1D2939),
-                                  ),
-                                ),
-                                Text(
-                                  loc.address?.city ?? '',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11.sp,
-                                    color: const Color(0xFF667085),
-                                  ),
-                                ),
-                              ],
+                            child: Text(
+                              "Add Location",
+                              style: GoogleFonts.inter(
+                                fontSize: 12.5.sp,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF0A0258),
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  );
-                },
+                  ),
+                  const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                  if (_locationSuggestions.isEmpty)
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 14.h,
+                      ),
+                      child: Text(
+                        "No locations found",
+                        style: GoogleFonts.inter(
+                          fontSize: 12.5.sp,
+                          color: const Color(0xFF9AA0AB),
+                        ),
+                      ),
+                    )
+                  else
+                    Flexible(
+                      child: ListView.separated(
+                        padding: EdgeInsets.symmetric(vertical: 4.h),
+                        shrinkWrap: true,
+                        itemCount: _locationSuggestions.length,
+                        separatorBuilder: (_, __) =>
+                            const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                        itemBuilder: (context, index) {
+                          final loc = _locationSuggestions[index];
+                          return InkWell(
+                            onTap: () => _selectLocationSuggestion(loc),
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12.w,
+                                vertical: 10.h,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    CupertinoIcons.location_solid,
+                                    size: 14.r,
+                                    color: const Color(0xFF4338CA),
+                                  ),
+                                  SizedBox(width: 8.w),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          loc.name,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13.sp,
+                                            fontWeight: FontWeight.w600,
+                                            color: const Color(0xFF1D2939),
+                                          ),
+                                        ),
+                                        Text(
+                                          loc.address?.city ?? '',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11.sp,
+                                            color: const Color(0xFF667085),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
@@ -822,6 +870,20 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
   void _removeLocationSuggestionsOverlay() {
     _locationSuggestionsOverlay?.remove();
     _locationSuggestionsOverlay = null;
+  }
+
+  // Reuses the real Location create/edit form (see LocationListScreen.dart's
+  // `openLocationFormDialog`) instead of a simplified quick-add. Newly
+  // created locations are auto-selected the same way picking a suggestion
+  // from the list already works.
+  void _openAddLocationDialog() {
+    _removeLocationSuggestionsOverlay();
+    locationFocusNode.unfocus();
+    openLocationFormDialog(
+      context: context,
+      locationController: locationController,
+      onCreated: _selectLocationSuggestion,
+    );
   }
 
   void _selectLocationSuggestion(LocationModel location) {
@@ -2573,6 +2635,50 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                     ],
                   ),
                 ),
+
+                // Reuses the real Department create/edit form (see
+                // DepartmentListScreen.dart's `openDepartmentFormDialog`)
+                // instead of a simplified quick-add. Newly created
+                // departments are auto-added to the selection.
+                InkWell(
+                  onTap: () => openDepartmentFormDialog(
+                    context: ctx,
+                    departmentController: departmentController,
+                    locationController: locationController,
+                    onCreated: (dept) => ss(() {
+                      if (!tempSelected.any((d) => d.id == dept.id)) {
+                        tempSelected.add(dept);
+                      }
+                    }),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 16.w,
+                      vertical: 10.h,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          CupertinoIcons.add_circled_solid,
+                          size: 14.r,
+                          color: const Color(0xFF4338CA),
+                        ),
+                        SizedBox(width: 6.w),
+                        Expanded(
+                          child: Text(
+                            "Add Department",
+                            style: GoogleFonts.inter(
+                              fontSize: 12.5.sp,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF4338CA),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const Divider(height: 1, color: Color(0xFFE4E7EC)),
 
                 // Dynamic department list, re-renders on controller notify
                 Flexible(

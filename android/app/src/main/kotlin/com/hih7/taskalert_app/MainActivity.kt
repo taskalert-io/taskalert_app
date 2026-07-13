@@ -1,4 +1,4 @@
-package com.example.taskalert_app
+package com.hih7.taskalert_app
 
 import io.flutter.embedding.android.FlutterActivity
 
