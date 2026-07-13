@@ -106,7 +106,7 @@ class OrganizationController extends ChangeNotifier {
       state: state,
       country: country,
       pinCode: pinCode,
-      imageFilePath: imageFilePath,
+      imageFilePath: imageFilePath ?? '',
     );
 
     _isLoading = false;
@@ -238,7 +238,9 @@ class OrganizationController extends ChangeNotifier {
   }
 
   /// 7. Switch which organization the user's session is scoped to
-  Future<bool> handleSwitchOrganization({required String organizationId}) async {
+  Future<bool> handleSwitchOrganization({
+    required String organizationId,
+  }) async {
     _isLoading = true;
     _errorMessage = null;
     _successMessage = null;

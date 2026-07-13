@@ -1,3 +1,91 @@
+// import 'package:dio/dio.dart';
+// import 'package:taskalert_app/core/errors/network_exceptions.dart';
+// import 'http_service.dart';
+// import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+// import 'auth_interceptor.dart';
+
+// class DioHttpService implements HttpService {
+//   late final Dio _dio;
+
+//   DioHttpService(FlutterSecureStorage secureStorage) {
+//     _dio = Dio(
+//       BaseOptions(
+//         baseUrl: 'https://task-alert-backend.onrender.com/api/v1',
+//         connectTimeout: const Duration(seconds: 15),
+//         receiveTimeout: const Duration(seconds: 15),
+//         headers: {
+//           // 'Content-Type': 'application/json',
+//           'Accept': 'application/json',
+//         },
+//       ),
+//     );
+
+//     _dio.interceptors.add(AuthInterceptor(secureStorage, _dio));
+//     // We will add global Interceptors for auth and error mapping right here next!
+//   }
+
+//   @override
+//   Future<dynamic> get(String path, {Map<String, dynamic>? queryParams}) async {
+//     try {
+//       final response = await _dio.get(path, queryParameters: queryParams);
+//       return response.data;
+//     } on DioException catch (e) {
+//       throw NetworkException.fromDioError(e);
+//     }
+//   }
+
+//   @override
+//   Future<dynamic> post(
+//     String path, {
+//     dynamic body,
+//     Map<String, dynamic>? queryParams,
+//   }) async {
+//     try {
+//       final response = await _dio.post(
+//         path,
+//         data: body,
+//         queryParameters: queryParams,
+//         options: Options(
+//           headers: {if (body is! FormData) 'Content-Type': 'application/json'},
+//         ),
+//       );
+//       return response.data;
+//     } on DioException catch (e) {
+//       throw NetworkException.fromDioError(e);
+//     }
+//   }
+
+//   @override
+//   Future<dynamic> put(String path, {dynamic body}) async {
+//     try {
+//       final response = await _dio.put(path, data: body);
+//       return response.data;
+//     } on DioException catch (e) {
+//       throw NetworkException.fromDioError(e);
+//     }
+//   }
+
+//   @override
+//   Future<dynamic> patch(String path, {dynamic body}) async {
+//     try {
+//       final response = await _dio.patch(path, data: body);
+//       return response.data;
+//     } on DioException catch (e) {
+//       throw NetworkException.fromDioError(e);
+//     }
+//   }
+
+//   @override
+//   Future<dynamic> delete(String path, {dynamic body}) async {
+//     try {
+//       final response = await _dio.delete(path, data: body);
+//       return response.data;
+//     } on DioException catch (e) {
+//       throw NetworkException.fromDioError(e);
+//     }
+//   }
+// }
+
 import 'package:dio/dio.dart';
 import 'package:taskalert_app/core/errors/network_exceptions.dart';
 import 'http_service.dart';
@@ -14,14 +102,13 @@ class DioHttpService implements HttpService {
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 15),
         headers: {
-          'Content-Type': 'application/json',
+          // ❌ REMOVED 'Content-Type': 'application/json' from here
           'Accept': 'application/json',
         },
       ),
     );
 
     _dio.interceptors.add(AuthInterceptor(secureStorage, _dio));
-    // We will add global Interceptors for auth and error mapping right here next!
   }
 
   @override
@@ -45,6 +132,10 @@ class DioHttpService implements HttpService {
         path,
         data: body,
         queryParameters: queryParams,
+        //  Dynamically apply Content-Type header based on the body data type
+        options: Options(
+          headers: {if (body is! FormData) 'Content-Type': 'application/json'},
+        ),
       );
       return response.data;
     } on DioException catch (e) {
@@ -55,7 +146,13 @@ class DioHttpService implements HttpService {
   @override
   Future<dynamic> put(String path, {dynamic body}) async {
     try {
-      final response = await _dio.put(path, data: body);
+      final response = await _dio.put(
+        path,
+        data: body,
+        options: Options(
+          headers: {if (body is! FormData) 'Content-Type': 'application/json'},
+        ),
+      );
       return response.data;
     } on DioException catch (e) {
       throw NetworkException.fromDioError(e);
@@ -65,7 +162,13 @@ class DioHttpService implements HttpService {
   @override
   Future<dynamic> patch(String path, {dynamic body}) async {
     try {
-      final response = await _dio.patch(path, data: body);
+      final response = await _dio.patch(
+        path,
+        data: body,
+        options: Options(
+          headers: {if (body is! FormData) 'Content-Type': 'application/json'},
+        ),
+      );
       return response.data;
     } on DioException catch (e) {
       throw NetworkException.fromDioError(e);
@@ -75,7 +178,13 @@ class DioHttpService implements HttpService {
   @override
   Future<dynamic> delete(String path, {dynamic body}) async {
     try {
-      final response = await _dio.delete(path, data: body);
+      final response = await _dio.delete(
+        path,
+        data: body,
+        options: Options(
+          headers: {if (body is! FormData) 'Content-Type': 'application/json'},
+        ),
+      );
       return response.data;
     } on DioException catch (e) {
       throw NetworkException.fromDioError(e);
