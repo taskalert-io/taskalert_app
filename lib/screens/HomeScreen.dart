@@ -28,9 +28,13 @@ class HomeScreenState extends State<HomeScreen> {
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
 
   late final TaskInstanceController taskController;
+  late final TaskInstanceController overdueTaskController;
   String startDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
   String endDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
   List<Map<String, dynamic>> tasks = [];
+  bool _isLoadingTasks = true;
+  List<Map<String, dynamic>> overdueTasks = [];
+  bool _isLoadingOverdueTasks = true;
 
   @override
   void initState() {
@@ -38,42 +42,69 @@ class HomeScreenState extends State<HomeScreen> {
     // ✅ After HomeScreen is fully built and visible on screen,
     // check if we need to show the OrganizationSetupDialog.
     taskController = sl<TaskInstanceController>();
+    overdueTaskController = sl<TaskInstanceController>();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAndShowOrgDialog();
-
-      await taskController.handleGetAllInstances(
-        assigned: 'to_me',
-        status: 'todo',
-        // order: '',
-        // sortBy: '',
-        startDate: startDate,
-        endDate: endDate,
-      );
-
-      final mappedTasks = taskController.instances.map<Map<String, dynamic>>((
-        TaskInstanceModel task,
-      ) {
-        return {
-          "id": task.id,
-          "title": task.title,
-          "description": task.description,
-          "taskType": task.taskType,
-          "status": task.status,
-          "priority": task.priority,
-          "reportingDate": task.scheduledDate,
-          "reportingTime":
-              "${task.scheduledTime?.time} ${task.scheduledTime?.period}",
-
-          "createdBy":
-              "${task.createdBy?.firstName} ${task.createdBy?.lastName}",
-        };
-      }).toList();
-
-      setState(() {
-        tasks = mappedTasks;
-      });
+      _loadTodoTasks();
+      _loadOverdueTasks();
     });
+  }
+
+  List<Map<String, dynamic>> _mapInstancesToTasks(
+    List<TaskInstanceModel> instances,
+  ) {
+    return instances.map<Map<String, dynamic>>((task) {
+      return {
+        "id": task.id,
+        "instanceId": task.instanceId,
+        "title": task.title,
+        "description": task.description,
+        "taskType": task.taskType,
+        "status": task.status,
+        "priority": task.priority,
+        "reportingDate": task.scheduledDate,
+        "reportingTime":
+            "${task.scheduledTime?.time} ${task.scheduledTime?.period}",
+
+        "createdBy":
+            "${task.createdBy?.firstName} ${task.createdBy?.lastName}",
+      };
+    }).toList();
+  }
+
+  Future<void> _loadTodoTasks() async {
+    await taskController.handleGetAllInstances(
+      assigned: 'to_me',
+      status: 'todo',
+      startDate: startDate,
+      endDate: endDate,
+    );
+
+    setState(() {
+      tasks = _mapInstancesToTasks(taskController.instances);
+      _isLoadingTasks = false;
+    });
+  }
+
+  Future<void> _loadOverdueTasks() async {
+    // No date range here — overdue tasks are, by definition, ones whose
+    // scheduled date has already passed, so scoping to "today" would
+    // exclude them.
+    await overdueTaskController.handleGetAllInstances(
+      assigned: 'to_me',
+      overdue: true,
+    );
+
+    setState(() {
+      overdueTasks = _mapInstancesToTasks(overdueTaskController.instances);
+      _isLoadingOverdueTasks = false;
+    });
+  }
+
+  /// Pull-to-refresh — reruns both list fetches together.
+  Future<void> _onRefresh() async {
+    await Future.wait([_loadTodoTasks(), _loadOverdueTasks()]);
   }
 
   Future<bool> get userTaskPermission async {
@@ -106,26 +137,17 @@ class HomeScreenState extends State<HomeScreen> {
     initialPage: 1000,
   );
 
-  final PageController _todoController = PageController();
-
-  /// DATA LIST
-  final List<Map<String, String>> workList = [
-    {"number": "01", "title": "Pending\nWork List"},
-    {"number": "02", "title": "High Priority\nWork List"},
-    {"number": "03", "title": "Scheduled\nWork List"},
-  ];
+  /// Upcoming/recent to-do tasks shown in the Work List slider (max 3).
+  List<Map<String, dynamic>> get _recentTasks => tasks.take(3).toList();
 
   final ValueNotifier<int> currentPageNotifier = ValueNotifier<int>(1000);
-  final ValueNotifier<int> todoCurrentPageNotifier = ValueNotifier<int>(0);
   String selectedSort = "All";
   String selectedWorkspaceType = "";
 
   @override
   void dispose() {
     _pageController.dispose();
-    _todoController.dispose();
     currentPageNotifier.dispose();
-    todoCurrentPageNotifier.dispose();
     super.dispose();
   }
 
@@ -148,7 +170,9 @@ class HomeScreenState extends State<HomeScreen> {
         onTap: () {
           FocusScope.of(context).unfocus();
         },
-        child: SingleChildScrollView(
+        child: RefreshIndicator(
+          onRefresh: _onRefresh,
+          child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Container(
             color: const Color(0xFFF5F7FB),
@@ -163,7 +187,7 @@ class HomeScreenState extends State<HomeScreen> {
                     right: 15,
                     bottom: 15,
                   ),
-                  height: 185.h,
+                  height: 215.h,
                   width: double.infinity,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(24.r),
@@ -199,89 +223,154 @@ class HomeScreenState extends State<HomeScreen> {
 
                       SizedBox(height: 14.h),
 
-                      /// PAGEVIEW
-                      SizedBox(
-                        height: 105.h,
-                        child: ValueListenableBuilder<int>(
-                          valueListenable: currentPageNotifier,
-                          builder: (context, currentPage, child) {
-                            return PageView.builder(
-                              controller: _pageController,
-                              itemCount: null,
-                              onPageChanged: (index) {
-                                currentPageNotifier.value = index;
-                              },
-                              itemBuilder: (context, index) {
-                                final realIndex = index % workList.length;
-                                final item = workList[realIndex];
-                                return GestureDetector(
-                                  onTap: () {
-                                    _pageController.animateToPage(
-                                      index,
-                                      duration: const Duration(
-                                        milliseconds: 300,
+                      /// PAGEVIEW — upcoming/recent tasks, or empty state
+                      if (_isLoadingTasks)
+                        SizedBox(
+                          height: 135.h,
+                          child: Center(
+                            child: SizedBox(
+                              width: 24.w,
+                              height: 24.w,
+                              child: const CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Color(0xFF4338CA),
+                              ),
+                            ),
+                          ),
+                        )
+                      else if (_recentTasks.isEmpty)
+                        SizedBox(
+                          height: 135.h,
+                          child: Center(
+                            child: Text(
+                              "No recent works",
+                              style: GoogleFonts.inter(
+                                fontSize: 13.sp,
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFF7B7B95),
+                              ),
+                            ),
+                          ),
+                        )
+                      else ...[
+                        SizedBox(
+                          height: 135.h,
+                          child: ValueListenableBuilder<int>(
+                            valueListenable: currentPageNotifier,
+                            builder: (context, currentPage, child) {
+                              return PageView.builder(
+                                controller: _pageController,
+                                itemCount: null,
+                                onPageChanged: (index) {
+                                  currentPageNotifier.value = index;
+                                },
+                                itemBuilder: (context, index) {
+                                  final realIndex =
+                                      index % _recentTasks.length;
+                                  final item = _recentTasks[realIndex];
+                                  final isActive =
+                                      currentPage % _recentTasks.length ==
+                                      realIndex;
+                                  return GestureDetector(
+                                    onTap: () {
+                                      if (isActive) {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                TaskDetailScreen(
+                                                  userId: widget.userId,
+                                                  mainTaskId: item["id"],
+                                                  taskId: item["instanceId"],
+                                                ),
+                                          ),
+                                        );
+                                        return;
+                                      }
+                                      _pageController.animateToPage(
+                                        index,
+                                        duration: const Duration(
+                                          milliseconds: 300,
+                                        ),
+                                        curve: Curves.easeInOut,
+                                      );
+                                      currentPageNotifier.value = index;
+                                    },
+                                    child: Center(
+                                      child: _buildCard(
+                                        number: (realIndex + 1)
+                                            .toString()
+                                            .padLeft(2, '0'),
+                                        title: item["title"]?.toString() ?? '',
+                                        scheduledDate:
+                                            item["reportingDate"]
+                                                is DateTime
+                                            ? DateFormat('MMM d').format(
+                                                item["reportingDate"]
+                                                    as DateTime,
+                                              )
+                                            : '',
+                                        scheduledTime:
+                                            item["reportingTime"]
+                                                ?.toString() ??
+                                            '',
+                                        priority:
+                                            item["priority"]?.toString() ??
+                                            '',
+                                        isActive: isActive,
                                       ),
-                                      curve: Curves.easeInOut,
-                                    );
-                                    currentPageNotifier.value = index;
-                                  },
-                                  child: Center(
-                                    child: _buildCard(
-                                      number: item["number"]!,
-                                      title: item["title"]!,
-                                      isActive:
-                                          currentPage % workList.length ==
-                                          realIndex,
                                     ),
-                                  ),
-                                );
-                              },
-                            );
-                          },
+                                  );
+                                },
+                              );
+                            },
+                          ),
                         ),
-                      ),
 
-                      SizedBox(height: 15.h),
+                        SizedBox(height: 15.h),
 
-                      /// DOT INDICATOR
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: ValueListenableBuilder<int>(
-                          valueListenable: currentPageNotifier,
-                          builder: (context, currentPage, child) {
-                            return Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: List.generate(
-                                workList.length,
-                                (index) => GestureDetector(
-                                  onTap: () {
-                                    final targetPage =
-                                        currentPage -
-                                        (currentPage % workList.length) +
-                                        index;
-                                    _pageController.animateToPage(
-                                      targetPage,
-                                      duration: const Duration(
-                                        milliseconds: 300,
+                        /// DOT INDICATOR
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: ValueListenableBuilder<int>(
+                            valueListenable: currentPageNotifier,
+                            builder: (context, currentPage, child) {
+                              return Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: List.generate(
+                                  _recentTasks.length,
+                                  (index) => GestureDetector(
+                                    onTap: () {
+                                      final targetPage =
+                                          currentPage -
+                                          (currentPage %
+                                              _recentTasks.length) +
+                                          index;
+                                      _pageController.animateToPage(
+                                        targetPage,
+                                        duration: const Duration(
+                                          milliseconds: 300,
+                                        ),
+                                        curve: Curves.easeInOut,
+                                      );
+                                      currentPageNotifier.value = targetPage;
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 3,
                                       ),
-                                      curve: Curves.easeInOut,
-                                    );
-                                    currentPageNotifier.value = targetPage;
-                                  },
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 3,
-                                    ),
-                                    child: _dot(
-                                      currentPage % workList.length == index,
+                                      child: _dot(
+                                        currentPage % _recentTasks.length ==
+                                            index,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            );
-                          },
+                              );
+                            },
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -322,66 +411,278 @@ class HomeScreenState extends State<HomeScreen> {
                                 color: const Color(0xFF0D095B),
                               ),
                             ),
-                            Row(
-                              children: [
-                                Text(
-                                  "Sort By : ",
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12.sp,
-                                    fontWeight: FontWeight.w500,
-                                    color: const Color(0xFF324054),
-                                  ),
-                                ),
-                                DropdownButtonHideUnderline(
-                                  child: PopupMenuButton<String>(
-                                    padding: EdgeInsets.zero,
-                                    onSelected: (value) {
-                                      setState(() {
-                                        selectedSort = value;
-                                      });
-                                    },
-                                    itemBuilder: (context) => [
-                                      const PopupMenuItem(
-                                        value: "All",
-                                        child: Text("All"),
+
+                            // Row(
+                            //   children: [
+                            //     Text(
+                            //       "Sort By : ",
+                            //       style: GoogleFonts.inter(
+                            //         fontSize: 12.sp,
+                            //         fontWeight: FontWeight.w500,
+                            //         color: const Color(0xFF324054),
+                            //       ),
+                            //     ),
+                            //     DropdownButtonHideUnderline(
+                            //       child: PopupMenuButton<String>(
+                            //         padding: EdgeInsets.zero,
+                            //         onSelected: (value) {
+                            //           setState(() {
+                            //             selectedSort = value;
+                            //           });
+                            //         },
+                            //         itemBuilder: (context) => [
+                            //           const PopupMenuItem(
+                            //             value: "All",
+                            //             child: Text("All"),
+                            //           ),
+                            //           const PopupMenuItem(
+                            //             value: "Pending",
+                            //             child: Text("Pending"),
+                            //           ),
+                            //           const PopupMenuItem(
+                            //             value: "Done",
+                            //             child: Text("Done"),
+                            //           ),
+                            //           const PopupMenuItem(
+                            //             value: "High",
+                            //             child: Text("High"),
+                            //           ),
+                            //         ],
+                            //         child: Row(
+                            //           mainAxisSize: MainAxisSize.min,
+                            //           children: [
+                            //             Text(
+                            //               selectedSort,
+                            //               style: GoogleFonts.inter(
+                            //                 fontSize: 12.sp,
+                            //                 fontWeight: FontWeight.w700,
+                            //                 color: const Color(0xFF0A0258),
+                            //               ),
+                            //             ),
+                            //             Transform.translate(
+                            //               offset: const Offset(-2, 0),
+                            //               child: Icon(
+                            //                 Icons.keyboard_arrow_down,
+                            //                 size: 16.r,
+                            //                 color: const Color(0xFF16105D),
+                            //               ),
+                            //             ),
+                            //           ],
+                            //         ),
+                            //       ),
+                            //     ),
+                            //   ],
+                            // ),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(height: 18.h),
+
+                      /// TASK LIST — sized to its actual content (not a
+                      /// fixed height) so a handful of tasks doesn't leave
+                      /// a huge empty box, and a long list doesn't get
+                      /// clipped inside a fixed-height nested scroll view;
+                      /// the page itself is already scrollable.
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                        ),
+                        child: Column(
+                                  children: [
+                                    if (_isLoadingTasks)
+                                      Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 60.h,
+                                        ),
+                                        child: Center(
+                                          child: SizedBox(
+                                            width: 28.w,
+                                            height: 28.w,
+                                            child: const CircularProgressIndicator(
+                                              strokeWidth: 2.5,
+                                              color: Color(0xFF4338CA),
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    else if (tasks.isEmpty)
+                                      Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 60.h,
+                                        ),
+                                        child: Center(
+                                          child: Column(
+                                            children: [
+                                              Icon(
+                                                Icons.check_circle_outline,
+                                                size: 40.r,
+                                                color: const Color(0xFFB8BEC5),
+                                              ),
+                                              SizedBox(height: 8.h),
+                                              Text(
+                                                "No tasks assigned",
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 13.sp,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: const Color(
+                                                    0xFF9AA0AB,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      for (final task in tasks) ...[
+                                      GestureDetector(
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  TaskDetailScreen(
+                                                    userId: widget.userId,
+                                                    mainTaskId: task["id"],
+                                                    taskId: task["instanceId"],
+                                                  ),
+                                            ),
+                                          );
+                                        },
+                                        child: _buildTodoItem(
+                                          image: "",
+                                          title: task["title"],
+                                          status:
+                                              task["status"][0].toUpperCase() +
+                                              task["status"].substring(1),
+                                          statusColor: task["status"] == "todo"
+                                              ? Colors.red
+                                              : (task["status"] == "In progress"
+                                                    ? Colors.orange
+                                                    : Colors.green),
+                                          requestedBy:
+                                              "Assigned by ${task["createdBy"]}",
+                                          priority:
+                                              task["priority"][0]
+                                                  .toUpperCase() +
+                                              task["priority"].substring(1),
+                                          priorityColor:
+                                              task["priority"].toLowerCase() ==
+                                                  "high"
+                                              ? Colors.red
+                                              : Colors.green,
+                                          scheduledDate:
+                                              DateFormat('yyyy-MM-dd').format(
+                                                DateTime.parse(
+                                                  task['reportingDate']
+                                                          ?.toString() ??
+                                                      '',
+                                                ),
+                                              ),
+                                          scheduledTime:
+                                              task['reportingTime']
+                                                  ?.toString() ??
+                                              '',
+                                        ),
                                       ),
-                                      const PopupMenuItem(
-                                        value: "Pending",
-                                        child: Text("Pending"),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: "Done",
-                                        child: Text("Done"),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: "High",
-                                        child: Text("High"),
-                                      ),
+                                      SizedBox(height: 14.h),
+                                      Divider(color: Colors.grey.shade200),
                                     ],
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          selectedSort,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 12.sp,
-                                            fontWeight: FontWeight.w700,
-                                            color: const Color(0xFF0A0258),
-                                          ),
-                                        ),
-                                        Transform.translate(
-                                          offset: const Offset(-2, 0),
-                                          child: Icon(
-                                            Icons.keyboard_arrow_down,
-                                            size: 16.r,
-                                            color: const Color(0xFF16105D),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+
+                                    // SizedBox(height: 14.h),
+                                    // GestureDetector(
+                                    //   onTap: () {
+                                    //     Navigator.push(
+                                    //       context,
+                                    //       MaterialPageRoute(
+                                    //         builder: (context) =>
+                                    //             TaskDetailScreen(
+                                    //               userId: widget.userId,
+                                    //               taskId: '2',
+                                    //             ),
+                                    //       ),
+                                    //     );
+                                    //   },
+                                    //   child: _buildTodoItem(
+                                    //     image: "https://i.pravatar.cc/150?img=18",
+                                    //     title: "Yearly Food Service",
+                                    //     status: "In progress",
+                                    //     statusColor: Colors.orange,
+                                    //     requestedBy: "Requested by John Kyte",
+                                    //     priority: "High",
+                                    //     priorityColor: Colors.red,
+                                    //   ),
+                                    // ),
+                                    // SizedBox(height: 14.h),
+                                    // Divider(color: Colors.grey.shade200),
+                                    // SizedBox(height: 14.h),
+                                    // GestureDetector(
+                                    //   onTap: () {
+                                    //     Navigator.push(
+                                    //       context,
+                                    //       MaterialPageRoute(
+                                    //         builder: (context) =>
+                                    //             TaskDetailScreen(
+                                    //               userId: widget.userId,
+                                    //               taskId: '3',
+                                    //             ),
+                                    //       ),
+                                    //     );
+                                    //   },
+                                    //   child: _buildTodoItem(
+                                    //     image: "https://i.pravatar.cc/150?img=22",
+                                    //     title: "Manufacture PM",
+                                    //     status: "Done",
+                                    //     statusColor: Colors.green,
+                                    //     requestedBy:
+                                    //         "Requested by Guadalupe Miró",
+                                    //     priority: "Low",
+                                    //     priorityColor: Colors.green,
+                                    //   ),
+                                    // ),
+                                  ],
                                 ),
-                              ],
+                              ),
+                    ],
+                  ),
+                ),
+
+                Container(
+                  margin: EdgeInsets.only(left: 15, right: 15, bottom: 15),
+                  padding: const EdgeInsets.only(
+                    left: 10,
+                    right: 10,
+                    top: 18,
+                    bottom: 14,
+                  ),
+                  clipBehavior: Clip.hardEdge,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      /// TOP HEADER
+                      Padding(
+                        padding: EdgeInsets.only(left: 16, right: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Overdue",
+                              style: GoogleFonts.inter(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF0D095B),
+                              ),
                             ),
                           ],
                         ),
@@ -389,255 +690,123 @@ class HomeScreenState extends State<HomeScreen> {
 
                       SizedBox(height: 18.h),
 
-                      /// SLIDER
-                      SizedBox(
-                        height: 300.h,
-                        child: PageView(
-                          controller: _todoController,
-                          onPageChanged: (index) {
-                            todoCurrentPageNotifier.value = index;
-                          },
-                          children: [
-                            /// PAGE 1
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: Column(
-                                children: [
-                                  for (final task in tasks) ...[
-                                    GestureDetector(
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                TaskDetailScreen(
-                                                  userId: widget.userId,
-                                                  mainTaskId: task["id"],
-                                                  taskId: task["instanceId"],
-                                                ),
-                                          ),
-                                        );
-                                      },
-                                      child: _buildTodoItem(
-                                        image: "",
-                                        title: task["title"],
-                                        status:
-                                            task["status"][0].toUpperCase() +
-                                            task["status"].substring(1),
-                                        statusColor: task["status"] == "todo"
-                                            ? Colors.red
-                                            : (task["status"] == "In progress"
-                                                  ? Colors.orange
-                                                  : Colors.green),
-                                        requestedBy:
-                                            "Assigned by ${task["createdBy"]}",
-                                        priority:
-                                            task["priority"][0].toUpperCase() +
-                                            task["priority"].substring(1),
-                                        priorityColor:
-                                            task["priority"].toLowerCase() ==
-                                                "high"
-                                            ? Colors.red
-                                            : Colors.green,
-                                        scheduledDate: DateFormat('yyyy-MM-dd')
-                                            .format(
-                                              DateTime.parse(
-                                                task['reportingDate']
-                                                        ?.toString() ??
-                                                    '',
-                                              ),
-                                            ),
-                                        scheduledTime:
-                                            task['reportingTime']?.toString() ??
-                                            '',
-                                      ),
-                                    ),
-                                    SizedBox(height: 14.h),
-                                    Divider(color: Colors.grey.shade200),
-                                  ],
-
-                                  // SizedBox(height: 14.h),
-                                  // GestureDetector(
-                                  //   onTap: () {
-                                  //     Navigator.push(
-                                  //       context,
-                                  //       MaterialPageRoute(
-                                  //         builder: (context) =>
-                                  //             TaskDetailScreen(
-                                  //               userId: widget.userId,
-                                  //               taskId: '2',
-                                  //             ),
-                                  //       ),
-                                  //     );
-                                  //   },
-                                  //   child: _buildTodoItem(
-                                  //     image: "https://i.pravatar.cc/150?img=18",
-                                  //     title: "Yearly Food Service",
-                                  //     status: "In progress",
-                                  //     statusColor: Colors.orange,
-                                  //     requestedBy: "Requested by John Kyte",
-                                  //     priority: "High",
-                                  //     priorityColor: Colors.red,
-                                  //   ),
-                                  // ),
-                                  // SizedBox(height: 14.h),
-                                  // Divider(color: Colors.grey.shade200),
-                                  // SizedBox(height: 14.h),
-                                  // GestureDetector(
-                                  //   onTap: () {
-                                  //     Navigator.push(
-                                  //       context,
-                                  //       MaterialPageRoute(
-                                  //         builder: (context) =>
-                                  //             TaskDetailScreen(
-                                  //               userId: widget.userId,
-                                  //               taskId: '3',
-                                  //             ),
-                                  //       ),
-                                  //     );
-                                  //   },
-                                  //   child: _buildTodoItem(
-                                  //     image: "https://i.pravatar.cc/150?img=22",
-                                  //     title: "Manufacture PM",
-                                  //     status: "Done",
-                                  //     statusColor: Colors.green,
-                                  //     requestedBy:
-                                  //         "Requested by Guadalupe Miró",
-                                  //     priority: "Low",
-                                  //     priorityColor: Colors.green,
-                                  //   ),
-                                  // ),
-                                ],
-                              ),
-                            ),
-
-                            // /// PAGE 2
-                            // Padding(
-                            //   padding: const EdgeInsets.symmetric(
-                            //     horizontal: 16,
-                            //   ),
-                            //   child: Column(
-                            //     children: [
-                            //       GestureDetector(
-                            //         onTap: () {
-                            //           Navigator.push(
-                            //             context,
-                            //             MaterialPageRoute(
-                            //               builder: (context) =>
-                            //                   TaskDetailScreen(
-                            //                     userId: widget.userId,
-                            //                     taskId: '4',
-                            //                   ),
-                            //             ),
-                            //           );
-                            //         },
-                            //         child: _buildTodoItem(
-                            //           image: "https://i.pravatar.cc/150?img=30",
-                            //           title: "Office Cleaning",
-                            //           status: "Pending",
-                            //           statusColor: Colors.red,
-                            //           requestedBy: "Requested by Alex",
-                            //           priority: "Low",
-                            //           priorityColor: Colors.green,
-                            //         ),
-                            //       ),
-                            //       SizedBox(height: 14.h),
-                            //       Divider(color: Colors.grey.shade200),
-                            //       SizedBox(height: 14.h),
-                            //       GestureDetector(
-                            //         onTap: () {
-                            //           Navigator.push(
-                            //             context,
-                            //             MaterialPageRoute(
-                            //               builder: (context) =>
-                            //                   TaskDetailScreen(
-                            //                     userId: widget.userId,
-                            //                     taskId: '5',
-                            //                   ),
-                            //             ),
-                            //           );
-                            //         },
-                            //         child: _buildTodoItem(
-                            //           image: "https://i.pravatar.cc/150?img=35",
-                            //           title: "Electrical Repair",
-                            //           status: "In progress",
-                            //           statusColor: Colors.orange,
-                            //           requestedBy: "Requested by Smith",
-                            //           priority: "High",
-                            //           priorityColor: Colors.red,
-                            //         ),
-                            //       ),
-                            //     ],
-                            //   ),
-                            // ),
-
-                            // /// PAGE 3
-                            // Padding(
-                            //   padding: const EdgeInsets.symmetric(
-                            //     horizontal: 16,
-                            //   ),
-                            //   child: Column(
-                            //     children: [
-                            //       GestureDetector(
-                            //         onTap: () {
-                            //           Navigator.push(
-                            //             context,
-                            //             MaterialPageRoute(
-                            //               builder: (context) =>
-                            //                   TaskDetailScreen(
-                            //                     userId: widget.userId,
-                            //                     taskId: '6',
-                            //                   ),
-                            //             ),
-                            //           );
-                            //         },
-                            //         child: _buildTodoItem(
-                            //           image: "https://i.pravatar.cc/150?img=40",
-                            //           title: "Water Supply",
-                            //           status: "Done",
-                            //           statusColor: Colors.green,
-                            //           requestedBy: "Requested by Jacob",
-                            //           priority: "Low",
-                            //           priorityColor: Colors.green,
-                            //         ),
-                            //       ),
-                            //     ],
-                            //   ),
-                            // ),
-                          ],
+                      /// TASK LIST — sized to its actual content (not a
+                      /// fixed height), same reasoning as the To-do list
+                      /// section above.
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
                         ),
-                      ),
-
-                      /// DOTS
-                      // ValueListenableBuilder<int>(
-                      //   valueListenable: todoCurrentPageNotifier,
-                      //   builder: (context, todoCurrentPage, child) {
-                      //     return Row(
-                      //       mainAxisAlignment: MainAxisAlignment.center,
-                      //       children: List.generate(
-                      //         3,
-                      //         (index) => GestureDetector(
-                      //           onTap: () {
-                      //             _todoController.animateToPage(
-                      //               index,
-                      //               duration: const Duration(milliseconds: 300),
-                      //               curve: Curves.easeInOut,
-                      //             );
-                      //             todoCurrentPageNotifier.value = index;
-                      //           },
-                      //           child: Padding(
-                      //             padding: const EdgeInsets.symmetric(
-                      //               horizontal: 3,
-                      //             ),
-                      //             child: _dot(todoCurrentPage == index),
-                      //           ),
-                      //         ),
-                      //       ),
-                      //     );
-                      //   },
-                      // ),
+                        child: Column(
+                                  children: [
+                                    if (_isLoadingOverdueTasks)
+                                      Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 60.h,
+                                        ),
+                                        child: Center(
+                                          child: SizedBox(
+                                            width: 28.w,
+                                            height: 28.w,
+                                            child: const CircularProgressIndicator(
+                                              strokeWidth: 2.5,
+                                              color: Color(0xFF4338CA),
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    else if (overdueTasks.isEmpty)
+                                      Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 60.h,
+                                        ),
+                                        child: Center(
+                                          child: Column(
+                                            children: [
+                                              Icon(
+                                                Icons.check_circle_outline,
+                                                size: 40.r,
+                                                color: const Color(0xFFB8BEC5),
+                                              ),
+                                              SizedBox(height: 8.h),
+                                              Text(
+                                                "No overdue tasks",
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 13.sp,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: const Color(
+                                                    0xFF9AA0AB,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      for (final task in overdueTasks) ...[
+                                        GestureDetector(
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    TaskDetailScreen(
+                                                      userId: widget.userId,
+                                                      mainTaskId: task["id"],
+                                                      taskId:
+                                                          task["instanceId"],
+                                                    ),
+                                              ),
+                                            );
+                                          },
+                                          child: _buildTodoItem(
+                                            image: "",
+                                            title: task["title"],
+                                            status:
+                                                task["status"][0]
+                                                    .toUpperCase() +
+                                                task["status"].substring(1),
+                                            statusColor:
+                                                task["status"] == "todo"
+                                                ? Colors.red
+                                                : (task["status"] ==
+                                                          "In progress"
+                                                      ? Colors.orange
+                                                      : Colors.green),
+                                            requestedBy:
+                                                "Assigned by ${task["createdBy"]}",
+                                            priority:
+                                                task["priority"][0]
+                                                    .toUpperCase() +
+                                                task["priority"].substring(1),
+                                            priorityColor:
+                                                task["priority"]
+                                                        .toLowerCase() ==
+                                                    "high"
+                                                ? Colors.red
+                                                : Colors.green,
+                                            scheduledDate:
+                                                DateFormat('yyyy-MM-dd')
+                                                    .format(
+                                                      DateTime.parse(
+                                                        task['reportingDate']
+                                                                ?.toString() ??
+                                                            '',
+                                                      ),
+                                                    ),
+                                            scheduledTime:
+                                                task['reportingTime']
+                                                    ?.toString() ??
+                                                '',
+                                          ),
+                                        ),
+                                        SizedBox(height: 14.h),
+                                        Divider(color: Colors.grey.shade200),
+                                      ],
+                                  ],
+                                ),
+                              ),
                     ],
                   ),
                 ),
@@ -811,6 +980,7 @@ class HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+          ),
         ),
       ),
 
@@ -896,187 +1066,300 @@ class HomeScreenState extends State<HomeScreen> {
                             SizedBox(height: 10.h),
 
                             /// REPETITIVE
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      modalSetState(() {
-                                        selectedWorkspaceType =
-                                            selectedWorkspaceType ==
-                                                "Repetitive"
-                                            ? ""
-                                            : "Repetitive";
-                                      });
-                                    },
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 16.w,
-                                          height: 16.w,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: const Color(0xFF0A0258),
-                                              width: 1.3,
-                                            ),
-                                          ),
-                                          child: Center(
-                                            child: Container(
-                                              width: 10.w,
-                                              height: 10.w,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color:
-                                                    selectedWorkspaceType ==
-                                                        "Repetitive"
-                                                    ? const Color(0xFF24116A)
-                                                    : Colors.transparent,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(width: 10.w),
-                                        Text(
-                                          "Repetitive",
-                                          style: GoogleFonts.inter(
-                                            fontSize: 14.sp,
-                                            fontWeight: FontWeight.w500,
-                                            color: const Color(0xFF3F3F3F),
-                                          ),
-                                        ),
-                                      ],
+                            // Row(
+                            //   children: [
+                            //     Expanded(
+                            //       child: GestureDetector(
+                            //         onTap: () {
+                            //           modalSetState(() {
+                            //             selectedWorkspaceType =
+                            //                 selectedWorkspaceType ==
+                            //                     "Repetitive"
+                            //                 ? ""
+                            //                 : "Repetitive";
+                            //           });
+                            //         },
+                            //         child: Row(
+                            //           children: [
+                            //             Container(
+                            //               width: 16.w,
+                            //               height: 16.w,
+                            //               decoration: BoxDecoration(
+                            //                 shape: BoxShape.circle,
+                            //                 border: Border.all(
+                            //                   color: const Color(0xFF0A0258),
+                            //                   width: 1.3,
+                            //                 ),
+                            //               ),
+                            //               child: Center(
+                            //                 child: Container(
+                            //                   width: 10.w,
+                            //                   height: 10.w,
+                            //                   decoration: BoxDecoration(
+                            //                     shape: BoxShape.circle,
+                            //                     color:
+                            //                         selectedWorkspaceType ==
+                            //                             "Repetitive"
+                            //                         ? const Color(0xFF24116A)
+                            //                         : Colors.transparent,
+                            //                   ),
+                            //                 ),
+                            //               ),
+                            //             ),
+                            //             SizedBox(width: 10.w),
+                            //             Text(
+                            //               "Repetitive",
+                            //               style: GoogleFonts.inter(
+                            //                 fontSize: 14.sp,
+                            //                 fontWeight: FontWeight.w500,
+                            //                 color: const Color(0xFF3F3F3F),
+                            //               ),
+                            //             ),
+                            //           ],
+                            //         ),
+                            //       ),
+                            //     ),
+                            //     GestureDetector(
+                            //       onTap: selectedWorkspaceType == "Repetitive"
+                            //           ? () {
+                            //               Navigator.pop(context);
+                            //               Navigator.push(
+                            //                 context,
+                            //                 MaterialPageRoute(
+                            //                   builder: (context) =>
+                            //                       CreateRepetitiveScreen(
+                            //                         userId: '',
+                            //                       ),
+                            //                 ),
+                            //               );
+                            //             }
+                            //           : null,
+                            //       child: Container(
+                            //         width: 27.w,
+                            //         height: 27.w,
+                            //         decoration: BoxDecoration(
+                            //           color:
+                            //               selectedWorkspaceType == "Repetitive"
+                            //               ? const Color(0xFFE4E7EC)
+                            //               : const Color(0xFFF2F4F7),
+                            //           borderRadius: BorderRadius.circular(5.r),
+                            //         ),
+                            //         child: Icon(
+                            //           Icons.arrow_forward,
+                            //           size: 15.r,
+                            //           color:
+                            //               selectedWorkspaceType == "Repetitive"
+                            //               ? const Color(0xFF667085)
+                            //               : const Color(0xFF98A2B3),
+                            //         ),
+                            //       ),
+                            //     ),
+                            //   ],
+                            // ),
+
+                            Container(
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8.r),
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFFD96CFF),
+                                    Color(0xFF5CE1E6),
+                                  ],
+                                ),
+                              ),
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => CreateRepetitiveScreen(userId: ''),
                                     ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  elevation: 0,
+                                  backgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 18.w,
+                                    vertical: 10.h,
+                                  ),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8.r),
                                   ),
                                 ),
-                                GestureDetector(
-                                  onTap: selectedWorkspaceType == "Repetitive"
-                                      ? () {
-                                          Navigator.pop(context);
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  CreateRepetitiveScreen(
-                                                    userId: '',
-                                                  ),
-                                            ),
-                                          );
-                                        }
-                                      : null,
-                                  child: Container(
-                                    width: 27.w,
-                                    height: 27.w,
-                                    decoration: BoxDecoration(
-                                      color:
-                                          selectedWorkspaceType == "Repetitive"
-                                          ? const Color(0xFFE4E7EC)
-                                          : const Color(0xFFF2F4F7),
-                                      borderRadius: BorderRadius.circular(5.r),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      "Repetitive",
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white,
+                                      ),
                                     ),
-                                    child: Icon(
+                                    Icon(
                                       Icons.arrow_forward,
                                       size: 15.r,
-                                      color:
-                                          selectedWorkspaceType == "Repetitive"
-                                          ? const Color(0xFF667085)
-                                          : const Color(0xFF98A2B3),
+                                      color: Colors.white,
                                     ),
-                                  ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
 
                             SizedBox(height: 10.h),
 
                             /// ONE TIME
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      modalSetState(() {
-                                        selectedWorkspaceType =
-                                            selectedWorkspaceType == "One-time"
-                                            ? ""
-                                            : "One-time";
-                                      });
-                                    },
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 16.w,
-                                          height: 16.w,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: const Color(0xFF0A0258),
-                                              width: 1.3,
-                                            ),
-                                          ),
-                                          child: Center(
-                                            child: Container(
-                                              width: 10.w,
-                                              height: 10.w,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color:
-                                                    selectedWorkspaceType ==
-                                                        "One-time"
-                                                    ? const Color(0xFF24116A)
-                                                    : Colors.transparent,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(width: 10.w),
-                                        Text(
-                                          "One-time",
-                                          style: GoogleFonts.inter(
-                                            fontSize: 14.sp,
-                                            fontWeight: FontWeight.w500,
-                                            color: const Color(0xFF3F3F3F),
-                                          ),
-                                        ),
-                                      ],
+                            // Row(
+                            //   children: [
+                            //     Expanded(
+                            //       child: GestureDetector(
+                            //         onTap: () {
+                            //           modalSetState(() {
+                            //             selectedWorkspaceType =
+                            //                 selectedWorkspaceType == "One-time"
+                            //                 ? ""
+                            //                 : "One-time";
+                            //           });
+                            //         },
+                            //         child: Row(
+                            //           children: [
+                            //             Container(
+                            //               width: 16.w,
+                            //               height: 16.w,
+                            //               decoration: BoxDecoration(
+                            //                 shape: BoxShape.circle,
+                            //                 border: Border.all(
+                            //                   color: const Color(0xFF0A0258),
+                            //                   width: 1.3,
+                            //                 ),
+                            //               ),
+                            //               child: Center(
+                            //                 child: Container(
+                            //                   width: 10.w,
+                            //                   height: 10.w,
+                            //                   decoration: BoxDecoration(
+                            //                     shape: BoxShape.circle,
+                            //                     color:
+                            //                         selectedWorkspaceType ==
+                            //                             "One-time"
+                            //                         ? const Color(0xFF24116A)
+                            //                         : Colors.transparent,
+                            //                   ),
+                            //                 ),
+                            //               ),
+                            //             ),
+                            //             SizedBox(width: 10.w),
+                            //             Text(
+                            //               "One-time",
+                            //               style: GoogleFonts.inter(
+                            //                 fontSize: 14.sp,
+                            //                 fontWeight: FontWeight.w500,
+                            //                 color: const Color(0xFF3F3F3F),
+                            //               ),
+                            //             ),
+                            //           ],
+                            //         ),
+                            //       ),
+                            //     ),
+                            //     GestureDetector(
+                            //       onTap: selectedWorkspaceType == "One-time"
+                            //           ? () {
+                            //               Navigator.pop(context);
+                            //               Navigator.push(
+                            //                 context,
+                            //                 MaterialPageRoute(
+                            //                   builder: (context) =>
+                            //                       CreateOneTimeScreen(
+                            //                         userId: '',
+                            //                       ),
+                            //                 ),
+                            //               );
+                            //             }
+                            //           : null,
+                            //       child: Container(
+                            //         width: 27.w,
+                            //         height: 27.w,
+                            //         decoration: BoxDecoration(
+                            //           color: selectedWorkspaceType == "One-time"
+                            //               ? const Color(0xFFE4E7EC)
+                            //               : const Color(0xFFF2F4F7),
+                            //           borderRadius: BorderRadius.circular(5.r),
+                            //         ),
+                            //         child: Icon(
+                            //           Icons.arrow_forward,
+                            //           size: 15.r,
+                            //           color: selectedWorkspaceType == "One-time"
+                            //               ? const Color(0xFF667085)
+                            //               : const Color(0xFF98A2B3),
+                            //         ),
+                            //       ),
+                            //     ),
+                            //   ],
+                            // ),
+
+                            Container(
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8.r),
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFFD96CFF),
+                                    Color(0xFF5CE1E6),
+                                  ],
+                                ),
+                              ),
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => CreateOneTimeScreen(userId: ''),
                                     ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  elevation: 0,
+                                  backgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 18.w,
+                                    vertical: 10.h,
+                                  ),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8.r),
                                   ),
                                 ),
-                                GestureDetector(
-                                  onTap: selectedWorkspaceType == "One-time"
-                                      ? () {
-                                          Navigator.pop(context);
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  CreateOneTimeScreen(
-                                                    userId: '',
-                                                  ),
-                                            ),
-                                          );
-                                        }
-                                      : null,
-                                  child: Container(
-                                    width: 27.w,
-                                    height: 27.w,
-                                    decoration: BoxDecoration(
-                                      color: selectedWorkspaceType == "One-time"
-                                          ? const Color(0xFFE4E7EC)
-                                          : const Color(0xFFF2F4F7),
-                                      borderRadius: BorderRadius.circular(5.r),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      "One-time",
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white,
+                                      ),
                                     ),
-                                    child: Icon(
+                                    Icon(
                                       Icons.arrow_forward,
                                       size: 15.r,
-                                      color: selectedWorkspaceType == "One-time"
-                                          ? const Color(0xFF667085)
-                                          : const Color(0xFF98A2B3),
+                                      color: Colors.white,
                                     ),
-                                  ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
+
                             SizedBox(height: 15.h),
                           ],
                         ),
@@ -1121,10 +1404,10 @@ class HomeScreenState extends State<HomeScreen> {
           children: [
             CircleAvatar(
               radius: 18.r,
-              backgroundImage: image.isNotEmpty
-                  ? NetworkImage(image)
-                  : const AssetImage("assets/images/profile.png")
-                        as ImageProvider,
+              backgroundImage: image.isNotEmpty ? NetworkImage(image) : null,
+              child: image.isEmpty
+                  ? Icon(Icons.person, size: 18.r, color: Colors.white70)
+                  : null,
             ),
             Positioned(
               right: 0,
@@ -1198,32 +1481,55 @@ class HomeScreenState extends State<HomeScreen> {
               SizedBox(height: 10.h),
 
               /// DATE TIME PRIORITY
+              // The date/time group is Expanded (fills remaining width after
+              // the fixed-size priority chip, same job `Spacer()` used to do)
+              // with each Text wrapped in Flexible + ellipsis, so a long
+              // date/time string truncates instead of overflowing the Row —
+              // this was previously unconstrained and could overflow.
               Row(
                 children: [
-                  Icon(
-                    Icons.calendar_today_outlined,
-                    size: 14.r,
-                    color: Color(0xFF324054),
-                  ),
-                  SizedBox(width: 4.w),
-                  Text(
-                    scheduledDate,
-                    style: GoogleFonts.inter(
-                      fontSize: 12.sp,
-                      color: Color(0xFF324054),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          size: 14.r,
+                          color: Color(0xFF324054),
+                        ),
+                        SizedBox(width: 4.w),
+                        Flexible(
+                          child: Text(
+                            scheduledDate,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            style: GoogleFonts.inter(
+                              fontSize: 12.sp,
+                              color: Color(0xFF324054),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 14.w),
+                        Icon(
+                          Icons.access_time,
+                          size: 14.r,
+                          color: Color(0xFF324054),
+                        ),
+                        SizedBox(width: 4.w),
+                        Flexible(
+                          child: Text(
+                            scheduledTime,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            style: GoogleFonts.inter(
+                              fontSize: 12.sp,
+                              color: Color(0xFF324054),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  SizedBox(width: 14.w),
-                  Icon(Icons.access_time, size: 14.r, color: Color(0xFF324054)),
-                  SizedBox(width: 4.w),
-                  Text(
-                    scheduledTime,
-                    style: GoogleFonts.inter(
-                      fontSize: 12.sp,
-                      color: Color(0xFF324054),
-                    ),
-                  ),
-                  const Spacer(),
+                  SizedBox(width: 8.w),
                   Container(
                     height: 7.h,
                     width: 7.w,
@@ -1250,9 +1556,25 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   /// CARD WIDGET
+  /// Arrow icon + color reflecting task priority — high points up (urgent,
+  /// red), low points down (green), anything else stays neutral (orange).
+  Icon _priorityArrowIcon(String priority) {
+    switch (priority.toLowerCase()) {
+      case 'high':
+        return Icon(Icons.arrow_upward, size: 12.r, color: Colors.red);
+      case 'low':
+        return Icon(Icons.arrow_downward, size: 12.r, color: Colors.green);
+      default:
+        return Icon(Icons.arrow_forward, size: 12.r, color: Colors.orange);
+    }
+  }
+
   Widget _buildCard({
     required String number,
     required String title,
+    required String scheduledDate,
+    required String scheduledTime,
+    required String priority,
     required bool isActive,
   }) {
     return Container(
@@ -1267,7 +1589,7 @@ class HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          /// TOP ROW
+          /// TOP ROW — position number + priority arrow badge
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1279,30 +1601,27 @@ class HomeScreenState extends State<HomeScreen> {
                   color: isActive ? const Color(0xFF000000) : Colors.grey,
                 ),
               ),
-              if (isActive)
-                Container(
-                  height: 20.h,
-                  width: 20.w,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(.05),
-                        blurRadius: 4,
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    Icons.arrow_upward,
-                    size: 12.r,
-                    color: Colors.red,
-                  ),
+              Container(
+                height: 20.h,
+                width: 20.w,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: isActive
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(.05),
+                            blurRadius: 4,
+                          ),
+                        ]
+                      : null,
                 ),
+                child: _priorityArrowIcon(priority),
+              ),
             ],
           ),
 
-          /// TITLE
+          /// TASK NAME
           Text(
             title,
             maxLines: 2,
@@ -1313,6 +1632,45 @@ class HomeScreenState extends State<HomeScreen> {
               fontWeight: FontWeight.w700,
               color: isActive ? const Color(0xFF0A0258) : Colors.grey,
             ),
+          ),
+
+          /// SCHEDULE DATE + TIME
+          Row(
+            children: [
+              Icon(
+                Icons.calendar_today_outlined,
+                size: 11.r,
+                color: isActive ? const Color(0xFF16105D) : Colors.grey,
+              ),
+              SizedBox(width: 4.w),
+              Flexible(
+                child: Text(
+                  scheduledDate,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 11.sp,
+                    color: isActive ? const Color(0xFF16105D) : Colors.grey,
+                  ),
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Icon(
+                Icons.access_time,
+                size: 11.r,
+                color: isActive ? const Color(0xFF16105D) : Colors.grey,
+              ),
+              SizedBox(width: 4.w),
+              Flexible(
+                child: Text(
+                  scheduledTime,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 11.sp,
+                    color: isActive ? const Color(0xFF16105D) : Colors.grey,
+                  ),
+                ),
+              ),
+            ],
           ),
 
           /// BOTTOM ICON

@@ -1,16 +1,19 @@
 // ignore_for_file: use_build_context_synchronously
 import 'dart:io';
 import 'dart:math' as math;
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
-// TODO: add these to pubspec.yaml -> file_picker: ^8.x.x , image_picker: ^1.x.x
-import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:taskalert_app/core/features/employees/controllers/employee_controller.dart';
+import 'package:taskalert_app/core/features/employees/data/models/employee_model.dart';
 import 'package:taskalert_app/core/features/taskInstance/controllers/task_instance_controller.dart';
+import 'package:taskalert_app/core/features/taskInstance/data/models/task_instance_model.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
@@ -28,7 +31,6 @@ class TaskDetail {
   final String? assignDate; // "YYYY-MM-DD" or null
   final String? assignTime; // "HH:mm" 24h or null
   final int durationHours;
-  final String timeZone;
   final String priority;
   final String status;
 
@@ -40,7 +42,6 @@ class TaskDetail {
     this.assignDate,
     this.assignTime,
     required this.durationHours,
-    required this.timeZone,
     required this.priority,
     required this.status,
   });
@@ -54,7 +55,6 @@ class TaskDetail {
     assignDate: json['assign_date'] as String?,
     assignTime: json['assign_time'] as String?,
     durationHours: (json['duration_hours'] as num?)?.toInt() ?? 5,
-    timeZone: json['time_zone'] as String? ?? 'Kolkata',
     priority: json['priority'] as String? ?? 'Low',
     status: json['status'] as String? ?? 'Pending',
   );
@@ -68,7 +68,6 @@ class TaskDetail {
     'assign_date': assignDate,
     'assign_time': assignTime,
     'duration_hours': durationHours,
-    'time_zone': timeZone,
     'priority': priority,
     'status': status,
   };
@@ -82,7 +81,6 @@ class TaskDetail {
     String? assignDate,
     String? assignTime,
     int? durationHours,
-    String? timeZone,
     String? priority,
     String? status,
   }) => TaskDetail(
@@ -93,7 +91,6 @@ class TaskDetail {
     assignDate: assignDate, // allow clearing with null
     assignTime: assignTime,
     durationHours: durationHours ?? this.durationHours,
-    timeZone: timeZone ?? this.timeZone,
     priority: priority ?? this.priority,
     status: status ?? this.status,
   );
@@ -107,15 +104,12 @@ class TaskDetailScreen extends StatefulWidget {
   final String userId;
   final String? taskId; // pass null for create, an id for edit/view
   final String? mainTaskId; // optional main task ID for context
-  final bool?
-  taskAssignedToUser; // optional flag to indicate if the task is assigned to the user
 
   const TaskDetailScreen({
     super.key,
     required this.userId,
     required this.mainTaskId,
     this.taskId,
-    this.taskAssignedToUser,
   });
 
   @override
@@ -157,7 +151,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   // ── UI-only toggle visibility flags ───────────────────────────────────────
   // These are purely UI — not sent to API.
-  bool _showCalendar = false;
   bool _showTimePicker = false;
 
   // ── Toggle enable states (drive API fields) ────────────────────────────────
@@ -183,6 +176,22 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   // Files the user has confirmed as "proof" attachments for this task.
   final List<PlatformFile> _uploadedProofFiles = [];
 
+  // Id of the currently logged-in user, used to gate the "uploaded proofs"
+  // list to only assignees (not just anyone who happens to open the task).
+  String? _currentUserId;
+
+  bool get _isAssignedToMe =>
+      _currentUserId != null &&
+      _currentUserId!.isNotEmpty &&
+      _assigneeIds.contains(_currentUserId);
+
+  /// Whether this task type collects proof at all — reused for both the
+  /// "Upload Proof" button and the "Uploaded Proofs" list below.
+  bool get _proofAllowed =>
+      taskController.selectedInstance?.proofSubmission?.proofTypes
+          .isNotEmpty ??
+      false;
+
   // ── Editable fields (all API-mapped) ──────────────────────────────────────
   String _title = 'Retail Market';
   String _description =
@@ -190,71 +199,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       "text ever since the 1500s, when an unknown printer "
       "took a galley of type.";
   String _assignTo = 'Guadalupe Mró';
+  List<String> _assigneeIds = []; // Raw IDs — used when saving, not display
   String _reportTo = 'Guadalupe Mró';
   String _priority = 'Low';
-  String _status = 'Pending';
-  String _timeZone = 'Kolkata';
+  String _status = 'To Do';
 
   // ── Static option lists ────────────────────────────────────────────────────
-  static const _assignToItems = [
-    'Alice Johnson',
-    'Bob Smith',
-    'Carol White',
-    'David Brown',
-    'Eva Martinez',
-    'Frank Lee',
-    'Grace Kim',
-    'Guadalupe Mró',
-    'Henry Wilson',
-    'Irene Taylor',
-  ];
-  static const _reportToItems = [
-    'Manager',
-    'Team Lead',
-    'Director',
-    'HR',
-    'Guadalupe Mró',
-    'Alice Johnson',
-    'Bob Smith',
-  ];
   static const _priorityItems = ['Low', 'Medium', 'High'];
-  static const _statusItems = [
-    'Pending',
-    'In Progress',
-    'Completed',
-    'Cancelled',
-  ];
-  static const _timeZoneItems = [
-    'Kolkata',
-    'Mumbai',
-    'Delhi',
-    'Chennai',
-    'Bangalore',
-    'London',
-    'New York',
-    'Los Angeles',
-    'Dubai',
-    'Singapore',
-    'Tokyo',
-    'Sydney',
-    'Paris',
-    'Berlin',
-    'Toronto',
-  ];
-  static const _monthNames = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
+  static const _statusItems = ['To Do', 'In Progress', 'Completed'];
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Lifecycle
@@ -262,6 +214,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   // late final TaskInstanceController taskController;
   TaskInstanceController taskController = sl<TaskInstanceController>();
+  final EmployeeController employeeController = sl<EmployeeController>();
 
   // @override
   @override
@@ -274,53 +227,107 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     // taskController = sl<TaskInstanceController>();
 
     if (widget.taskId != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        await taskController.handleGetInstanceById(instanceId: widget.taskId!);
+      // Show a loader instead of the placeholder/mock field values while
+      // the real instance data is being fetched.
+      _isLoading = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadInstance());
+    }
+  }
 
-        if (mounted) {
-          setState(() {
-            _title = taskController.selectedInstance?.title ?? '';
-            _description = taskController.selectedInstance?.description ?? '';
+  /// Fetches the task instance (+ employee directory) and populates all the
+  /// local form fields from it. Used both for the initial load and for
+  /// pull-to-refresh.
+  Future<void> _loadInstance() async {
+    if (widget.taskId == null) return;
 
-            _titleCtrl.text = _title;
-            _descCtrl.text = _description;
-            // _assignTo = taskController.selectedInstance?.assigneeName ?? '';
-            if (widget.taskAssignedToUser == true) {
-              print(
-                'Task is assigned to the user. Disabling editing for certain fields.',
-              );
-              // If the task is assigned to the user, disable editing for certain fields
-              if (widget.taskAssignedToUser == true) {
-                // If the task is assigned to the user, disable editing for certain fields
-                _isReadOnly = true;
-                // _titleReadOnly = true;
-                // _descReadOnly = true;
-                // _assignDateEnabled = false;
-                // _assignTimeEnabled = false;
-                // _selectDurationEnabled = false;
-                // _priority = _priority;
-                // _assignTo = _assignTo;
-                // _reportTo = _reportTo;
-                // _durationHours = _durationHours;
-                // _timeZone = _timeZone;
-              } else {
-                // Allow editing for all fields
-                _isReadOnly = false;
-                // _titleReadOnly = false;
-                // _descReadOnly = false;
-                // _assignDateEnabled = true;
-                // _assignTimeEnabled = true;
-                // _selectDurationEnabled = true;
-                // _priority = '';
-                _assignTo = '';
-                _reportTo = '';
-                _durationHours = 0;
-                _timeZone = '';
-              }
-            }
-          });
+    await Future.wait([
+      taskController.handleGetInstanceById(instanceId: widget.taskId!),
+      employeeController.handleGetEmployees(),
+    ]);
+    final currentUserId = await secureStorage.read(key: 'user_id');
+
+    if (mounted) {
+      final instance = taskController.selectedInstance;
+      setState(() {
+        _currentUserId = currentUserId;
+        _title = instance?.title ?? '';
+        _description = instance?.description ?? '';
+
+        _titleCtrl.text = _title;
+        _descCtrl.text = _description;
+
+        _priority = _titleCase(instance?.priority ?? _priority);
+        _status = _statusLabel(instance?.status ?? '');
+
+        _assigneeIds = instance?.assignees ?? [];
+        _assignTo = _assigneeIds.isNotEmpty
+            ? _assigneeIds.map((id) => _employeeNameById(id)).join(', ')
+            : 'Unassigned';
+        _reportTo = (instance?.createdBy?.fullName.isNotEmpty ?? false)
+            ? instance!.createdBy!.fullName
+            : 'Unknown';
+
+        final scheduledDate = instance?.scheduledDate;
+        if (scheduledDate != null) {
+          _calendarYear = scheduledDate.year;
+          _calendarMonth = scheduledDate.month;
+          _selectedDay = scheduledDate.day;
+          _assignDateEnabled = true;
         }
+
+        final scheduledTime = instance?.scheduledTime;
+        if (scheduledTime != null && scheduledTime.time.isNotEmpty) {
+          final parts = scheduledTime.time.split(':');
+          if (parts.length == 2) {
+            final h = int.tryParse(parts[0]) ?? _hour;
+            _hour = h == 0 ? 12 : h;
+            _minute = int.tryParse(parts[1]) ?? _minute;
+            _isAM = scheduledTime.period.toUpperCase() != 'PM';
+            _assignTimeEnabled = true;
+          }
+        }
+
+        // Full edit access only when the current user is the one who
+        // created/assigned this task; assignees who merely received it
+        // may only update its status (see the unlocked Status card
+        // below, which sits outside the AbsorbPointer this flag gates).
+        final isCreatedByCurrentUser =
+            currentUserId != null &&
+            currentUserId.isNotEmpty &&
+            instance?.createdBy?.id == currentUserId;
+        _isReadOnly = !isCreatedByCurrentUser;
+
+        _isLoading = false;
       });
+    }
+  }
+
+  String _titleCase(String s) =>
+      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
+  /// Resolves an assignee ID (the instance only carries raw user IDs) to a
+  /// display name via the employee directory; falls back to the raw ID if
+  /// the employee isn't found in the currently loaded list.
+  String _employeeNameById(String id) {
+    for (final employee in employeeController.allEmployees) {
+      if (employee.id == id) {
+        final name = employee.fullName;
+        return name.isNotEmpty ? name : id;
+      }
+    }
+    return id;
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'todo':
+        return 'To Do';
+      case 'inProgress':
+        return 'In Progress';
+      case 'completed':
+        return 'Completed';
+      default:
+        return _titleCase(status);
     }
   }
 
@@ -406,7 +413,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       _reportTo = m.reportingTo;
       _priority = m.priority;
       _status = m.status;
-      _timeZone = m.timeZone;
       _durationHours = m.durationHours;
 
       // Parse assign_date "YYYY-MM-DD"
@@ -417,7 +423,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           _calendarMonth = int.tryParse(p[1]) ?? _calendarMonth;
           _selectedDay = int.tryParse(p[2]);
           _assignDateEnabled = true;
-          _showCalendar = false;
         }
       }
 
@@ -466,7 +471,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       assignDate: assignDate,
       assignTime: startTime,
       durationHours: _durationHours,
-      timeZone: _timeZone,
       priority: _priority,
       status: _status,
     );
@@ -481,6 +485,17 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     final m = _minute.toString().padLeft(2, '0');
     return '$h:$m ${_isAM ? 'AM' : 'PM'}';
   }
+
+  /// The live picker state (`_hour`/`_minute`/`_isAM`), formatted to match
+  /// what the server expects for `scheduledTime` — a separate 12-hour
+  /// "hh:mm" `time` and "AM"/"PM" `period`. Used on Save instead of the
+  /// stale `_scheduledTimeValue`/`_scheduledPeriodValue` (which were only
+  /// ever set once, from the server, in `_loadInstance()`, and never
+  /// updated when the user actually changes the picker).
+  String get _scheduledTimeForSave =>
+      '${_hour.toString().padLeft(2, '0')}:${_minute.toString().padLeft(2, '0')}';
+
+  String get _scheduledPeriodForSave => _isAM ? 'AM' : 'PM';
 
   String get _endTime {
     int h24 = _hour % 12;
@@ -509,9 +524,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     ];
     return '${m[_calendarMonth - 1]} $_selectedDay, $_calendarYear';
   }
-
-  int _daysInMonth(int m, int y) => DateTime(y, m + 1, 0).day;
-  int _firstWeekday(int m, int y) => DateTime(y, m, 1).weekday % 7;
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Reusable UI components
@@ -610,6 +622,30 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     ),
   );
 
+  // ── Static (non-editable) info row — e.g. Schedule Date ───────────────────
+  Widget _staticInfoRow({required String label, required String value}) =>
+      Padding(
+        padding: EdgeInsets.symmetric(vertical: 10.h),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w600,
+                color: _textColor,
+              ),
+            ),
+            SizedBox(height: 2.h),
+            Text(
+              value,
+              style: GoogleFonts.inter(fontSize: 11.sp, color: _labelColor),
+            ),
+          ],
+        ),
+      );
+
   // ── Dropdown row (Priority / Status / Time Zone) ──────────────────────────
   Widget _dropdownField({
     required String label,
@@ -647,38 +683,423 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     ),
   );
 
-  // ── Assign col (Assign to / Reporting to) ────────────────────────────────
-  Widget _assignCol(String label, String val, VoidCallback onTap) => Expanded(
-    child: GestureDetector(
-      onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w600,
+  // ── Assign to (multi-select, with chips) ──────────────────────────────────
+  Widget _assignToTriggerCol() {
+    final selectedNames = _assigneeIds.map(_employeeNameById).toList();
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _showAssignToBottomSheet(employeeController.allEmployees),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  'Assign to',
+                  style: GoogleFonts.inter(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF4A4A4A),
+                  ),
+                ),
+                SizedBox(width: 2.w),
+                Icon(
+                  Icons.keyboard_arrow_down,
+                  size: 15.r,
                   color: const Color(0xFF4A4A4A),
                 ),
-              ),
-              SizedBox(width: 2.w),
-              Icon(
-                Icons.keyboard_arrow_down,
-                size: 15.r,
-                color: const Color(0xFF4A4A4A),
-              ),
-            ],
-          ),
-          SizedBox(height: 3.h),
-          Text(
-            val,
-            style: GoogleFonts.inter(fontSize: 11.sp, color: _labelColor),
-          ),
-        ],
+              ],
+            ),
+            SizedBox(height: 4.h),
+            selectedNames.isEmpty
+                ? Text(
+                    'Unassigned',
+                    style: GoogleFonts.inter(fontSize: 11.sp, color: _labelColor),
+                  )
+                : Wrap(
+                    spacing: 4.w,
+                    runSpacing: 4.h,
+                    children: selectedNames
+                        .map((name) => _assigneeChip(name))
+                        .toList(),
+                  ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _assigneeChip(String name) => Container(
+    padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+    decoration: BoxDecoration(
+      color: const Color(0xFFEEF0FF),
+      borderRadius: BorderRadius.circular(20.r),
+      border: Border.all(color: const Color(0xFF4338CA)),
+    ),
+    child: Text(
+      name.split(' ').first,
+      style: GoogleFonts.inter(
+        fontSize: 10.sp,
+        fontWeight: FontWeight.w500,
+        color: const Color(0xFF0A0258),
+      ),
+    ),
+  );
+
+  /// Multi-select "Assign To" bottom sheet — lists every employee (not
+  /// scoped to a department, unlike the Create*Screen forms) with search,
+  /// pre-checks whoever is already assigned, and only commits back to
+  /// `_assigneeIds` on "Confirm" (so search/mid-session toggles don't
+  /// mutate state until the user is done picking).
+  void _showAssignToBottomSheet(List<EmployeeModel> employees) {
+    List<String> tempSelected = List.from(_assigneeIds);
+    List<EmployeeModel> filtered = List.from(employees);
+    final searchCtrl = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, ss) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.12),
+                  blurRadius: 10.r,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36.w,
+                      height: 4.h,
+                      margin: EdgeInsets.symmetric(vertical: 10.h),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD9DEE5),
+                        borderRadius: BorderRadius.circular(4.r),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Assign To',
+                              style: GoogleFonts.inter(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w700,
+                                color: _primaryColor,
+                              ),
+                            ),
+                            Text(
+                              '${tempSelected.length} selected',
+                              style: GoogleFonts.inter(
+                                fontSize: 11.sp,
+                                color: _labelColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(ctx),
+                          child: Icon(Icons.close, size: 20.r, color: _labelColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 10.h),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    child: TextField(
+                      controller: searchCtrl,
+                      style: GoogleFonts.inter(fontSize: 12.sp),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        hintText: 'Search employees',
+                        hintStyle: GoogleFonts.inter(
+                          fontSize: 12.sp,
+                          color: const Color(0xFFB8BEC5),
+                        ),
+                        prefixIcon: Icon(
+                          CupertinoIcons.search,
+                          size: 16.r,
+                          color: const Color(0xFF9AA0AB),
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFFF9FAFC),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 10.w,
+                          vertical: 10.h,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.r),
+                          borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.r),
+                          borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.r),
+                          borderSide: const BorderSide(color: Color(0xFF0A0258)),
+                        ),
+                      ),
+                      onChanged: (q) => ss(() {
+                        final query = q.trim().toLowerCase();
+                        filtered = query.isEmpty
+                            ? List.from(employees)
+                            : employees
+                                  .where(
+                                    (e) =>
+                                        e.fullName.toLowerCase().contains(query) ||
+                                        (e.jobRole ?? '').toLowerCase().contains(
+                                          query,
+                                        ),
+                                  )
+                                  .toList();
+                      }),
+                    ),
+                  ),
+                  SizedBox(height: 8.h),
+                  Flexible(
+                    child: filtered.isEmpty
+                        ? Padding(
+                            padding: EdgeInsets.symmetric(vertical: 30.h),
+                            child: Center(
+                              child: Text(
+                                'No employees found',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.sp,
+                                  color: _labelColor,
+                                ),
+                              ),
+                            ),
+                          )
+                        : ListView.separated(
+                            shrinkWrap: true,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 16.w,
+                              vertical: 8.h,
+                            ),
+                            itemCount: filtered.length,
+                            separatorBuilder: (_, __) =>
+                                const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                            itemBuilder: (context, index) {
+                              final employee = filtered[index];
+                              final empId = employee.id ?? '';
+                              final name = employee.fullName.isEmpty
+                                  ? 'No Name'
+                                  : employee.fullName;
+                              final role = (employee.jobRole?.isEmpty ?? true)
+                                  ? 'No Role Assigned'
+                                  : employee.jobRole!;
+                              final isChecked = tempSelected.contains(empId);
+                              return InkWell(
+                                onTap: () => ss(() {
+                                  if (isChecked) {
+                                    tempSelected.remove(empId);
+                                  } else {
+                                    tempSelected.add(empId);
+                                  }
+                                }),
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 10.h),
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 18.r,
+                                        backgroundColor: isChecked
+                                            ? _primaryColor
+                                            : const Color(0xFFEFF0FF),
+                                        child: Text(
+                                          name.isNotEmpty
+                                              ? name[0].toUpperCase()
+                                              : '?',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13.sp,
+                                            fontWeight: FontWeight.w700,
+                                            color: isChecked
+                                                ? Colors.white
+                                                : const Color(0xFF4338CA),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(width: 10.w),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              name,
+                                              style: GoogleFonts.inter(
+                                                fontSize: 13.sp,
+                                                fontWeight: FontWeight.w600,
+                                                color: const Color(0xFF1D2939),
+                                              ),
+                                            ),
+                                            Text(
+                                              role,
+                                              style: GoogleFonts.inter(
+                                                fontSize: 11.sp,
+                                                color: _labelColor,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 150,
+                                        ),
+                                        width: 20.r,
+                                        height: 20.r,
+                                        decoration: BoxDecoration(
+                                          color: isChecked
+                                              ? _primaryColor
+                                              : Colors.white,
+                                          borderRadius: BorderRadius.circular(
+                                            5.r,
+                                          ),
+                                          border: Border.all(
+                                            color: isChecked
+                                                ? _primaryColor
+                                                : const Color(0xFFD0D5DD),
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                        child: isChecked
+                                            ? Icon(
+                                                Icons.check,
+                                                size: 14.r,
+                                                color: Colors.white,
+                                              )
+                                            : null,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 16.h),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => ss(() => tempSelected.clear()),
+                            style: OutlinedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(vertical: 12.h),
+                              side: const BorderSide(color: Color(0xFFD9DEE5)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.r),
+                              ),
+                            ),
+                            child: Text(
+                              'Clear All',
+                              style: GoogleFonts.inter(
+                                fontSize: 13.sp,
+                                fontWeight: FontWeight.w600,
+                                color: _accentColor,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 10.w),
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8.r),
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFD96CFF), Color(0xFF5CE1E6)],
+                              ),
+                            ),
+                            child: ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _assigneeIds = List.from(tempSelected);
+                                  _assignTo = _assigneeIds.isNotEmpty
+                                      ? _assigneeIds
+                                            .map((id) => _employeeNameById(id))
+                                            .join(', ')
+                                      : 'Unassigned';
+                                });
+                                Navigator.pop(ctx);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                elevation: 0,
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                padding: EdgeInsets.symmetric(vertical: 12.h),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8.r),
+                                ),
+                              ),
+                              child: Text(
+                                'Confirm (${tempSelected.length})',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Static col (non-editable) — e.g. Assigned By ──────────────────────────
+  Widget _staticCol(String label, String val) => Expanded(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF4A4A4A),
+          ),
+        ),
+        SizedBox(height: 3.h),
+        Text(
+          val,
+          style: GoogleFonts.inter(fontSize: 11.sp, color: _labelColor),
+        ),
+      ],
     ),
   );
 
@@ -897,6 +1318,269 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     ),
   );
 
+  // ── Uploaded proofs list (already-submitted files, from the server) ──────
+
+  static const _viewableProofExts = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+
+  String _proofFileExt(ProofFileModel proof) {
+    final url = proof.file?.originalUrl ?? '';
+    final dot = url.lastIndexOf('.');
+    if (dot == -1 || dot == url.length - 1) return '';
+    return url.substring(dot + 1).toLowerCase();
+  }
+
+  Widget _buildUploadedProofsSection() {
+    final files = taskController.selectedInstance?.proofSubmission?.files ??
+        const <ProofFileModel>[];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel('Uploaded Proofs'),
+        _card(
+          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+          child: files.isEmpty
+              ? Padding(
+                  padding: EdgeInsets.symmetric(vertical: 14.h),
+                  child: Center(
+                    child: Text(
+                      'No proof uploaded yet',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.sp,
+                        color: _labelColor,
+                      ),
+                    ),
+                  ),
+                )
+              : Column(
+                  children: [
+                    for (int i = 0; i < files.length; i++) ...[
+                      if (i != 0) _divider(),
+                      _proofFileRow(files[i]),
+                    ],
+                  ],
+                ),
+        ),
+        SizedBox(height: 16.h),
+      ],
+    );
+  }
+
+  Widget _proofFileRow(ProofFileModel proof) {
+    final ext = _proofFileExt(proof);
+    final isImage = _viewableProofExts.contains(ext);
+    final thumbnailUrl = proof.file?.thumbnailUrl;
+
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8.h),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6.r),
+            child: (isImage && thumbnailUrl != null && thumbnailUrl.isNotEmpty)
+                ? Image.network(
+                    thumbnailUrl,
+                    width: 36.w,
+                    height: 36.w,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _proofFileIcon(),
+                  )
+                : _proofFileIcon(),
+          ),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Text(
+              proof.fileType.isNotEmpty
+                  ? proof.fileType
+                  : (ext.isNotEmpty ? 'Proof file (.$ext)' : 'Proof file'),
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(
+                fontSize: 12.5.sp,
+                fontWeight: FontWeight.w500,
+                color: _accentColor,
+              ),
+            ),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: Icon(Icons.visibility_outlined, size: 18.r, color: _primaryColor),
+            onPressed: () => _viewProofFile(proof),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: Icon(Icons.delete_outline, size: 18.r, color: Colors.red),
+            onPressed: () => _confirmDeleteProofFile(proof),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _proofFileIcon() => Container(
+    width: 36.w,
+    height: 36.w,
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      color: const Color(0xFFF6F5FE),
+      borderRadius: BorderRadius.circular(6.r),
+    ),
+    child: Icon(Icons.insert_drive_file_outlined, size: 18.r, color: _labelColor),
+  );
+
+  void _viewProofFile(ProofFileModel proof) {
+    final url = proof.file?.originalUrl ?? '';
+    final ext = _proofFileExt(proof);
+    final isImage = _viewableProofExts.contains(ext);
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.7),
+      builder: (dialogCtx) => Dialog(
+        backgroundColor: Colors.white,
+        insetPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 40.h),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
+        child: Padding(
+          padding: EdgeInsets.all(14.w),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      proof.fileType.isNotEmpty ? proof.fileType : 'Proof file',
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w700,
+                        color: _primaryColor,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(dialogCtx),
+                    child: Icon(Icons.close, size: 20.r, color: _labelColor),
+                  ),
+                ],
+              ),
+              SizedBox(height: 12.h),
+              if (isImage && url.isNotEmpty)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8.r),
+                  child: Image.network(
+                    url,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => _previewFallback(),
+                  ),
+                )
+              else
+                _previewFallback(
+                  message: url.isEmpty
+                      ? 'This file is no longer available.'
+                      : 'Preview not available for this file type — tap Open to view it.',
+                ),
+              if (!isImage && url.isNotEmpty) ...[
+                SizedBox(height: 12.h),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final uri = Uri.tryParse(url);
+                      if (uri != null) {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primaryColor,
+                    ),
+                    child: Text(
+                      'Open',
+                      style: GoogleFonts.inter(color: Colors.white, fontSize: 13.sp),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteProofFile(ProofFileModel proof) async {
+    final publicId = proof.file?.publicId ?? '';
+    if (publicId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'This proof file is missing an id and cannot be deleted.',
+            style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
+        title: Text(
+          'Delete Proof',
+          style: GoogleFonts.inter(
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w700,
+            color: _primaryColor,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to delete this proof file?',
+          style: GoogleFonts.inter(fontSize: 13.sp, color: _accentColor),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: Text('Cancel', style: GoogleFonts.inter(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: Text('Delete', style: GoogleFonts.inter(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete != true) return;
+    if (!mounted) return;
+
+    final success = await taskController.handleDeleteInstanceProofFile(
+      taskId: widget.mainTaskId ?? '',
+      instanceId: widget.taskId ?? '',
+      publicId: publicId,
+    );
+
+    if (!mounted) return;
+    setState(() {});
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? (taskController.successMessage ?? 'Proof deleted')
+              : (taskController.errorMessage ?? 'Could not delete proof'),
+          style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
+        ),
+        backgroundColor: success ? const Color(0xFF0DA99E) : Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   /// Bottom sheet with the two entry points: Upload File / Use Camera.
   void _showUploadProofOptions() {
     showModalBottomSheet(
@@ -979,19 +1663,44 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     ),
   );
 
-  /// "Use Camera" flow — captures a single photo and adds it to the proof list.
+  /// "Use Camera" flow — captures a single photo and uploads it as proof.
   Future<void> _captureProofWithCamera() async {
-    // TODO: wire captured file to your proof-upload API
     final picker = ImagePicker();
     final XFile? shot = await picker.pickImage(source: ImageSource.camera);
     if (shot == null) return;
-    final size = await File(shot.path).length();
-    if (mounted) {
+
+    final success = await taskController.handleUploadInstanceProofFiles(
+      taskId: widget.mainTaskId ?? '',
+      instanceId: widget.taskId ?? '',
+      proofFiles: [File(shot.path)],
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+      final size = await File(shot.path).length();
       setState(() {
         _uploadedProofFiles.add(
           PlatformFile(name: shot.name, size: size, path: shot.path),
         );
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Proof uploaded successfully'),
+          backgroundColor: _greenOn,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            taskController.errorMessage ?? 'Failed to upload proof',
+          ),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -1001,6 +1710,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     String activeTab = 'upload'; // 'upload' | 'webcam'
     List<PlatformFile> pendingFiles = [];
     String? pendingFilesError;
+    bool isUploadingProof = false;
 
     showDialog(
       context: context,
@@ -1291,30 +2001,79 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     color: Colors.transparent,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(8.r),
-                      onTap: pendingFiles.isEmpty || pendingFilesError != null
+                      onTap:
+                          pendingFiles.isEmpty ||
+                              pendingFilesError != null ||
+                              isUploadingProof
                           ? null
-                          : () {
-                              // TODO: wire to real proof-upload API call
-                              setState(
-                                () => _uploadedProofFiles.addAll(pendingFiles),
-                              );
-                              Navigator.pop(ctx);
+                          : () async {
+                              setModalState(() => isUploadingProof = true);
+
+                              final files = pendingFiles
+                                  .where((f) => f.path != null)
+                                  .map((f) => File(f.path!))
+                                  .toList();
+
+                              final success = await taskController
+                                  .handleUploadInstanceProofFiles(
+                                    taskId: widget.mainTaskId ?? '',
+                                    instanceId: widget.taskId ?? '',
+                                    proofFiles: files,
+                                  );
+
+                              if (!mounted) return;
+
+                              if (success) {
+                                setState(
+                                  () => _uploadedProofFiles.addAll(
+                                    pendingFiles,
+                                  ),
+                                );
+                                Navigator.pop(ctx);
+                                ScaffoldMessenger.of(
+                                  context,
+                                ).showSnackBar(
+                                  SnackBar(
+                                    content: const Text(
+                                      'Proof uploaded successfully',
+                                    ),
+                                    backgroundColor: _greenOn,
+                                    duration: const Duration(seconds: 3),
+                                  ),
+                                );
+                              } else {
+                                setModalState(() {
+                                  isUploadingProof = false;
+                                  pendingFilesError =
+                                      taskController.errorMessage ??
+                                      'Failed to upload proof';
+                                });
+                              }
                             },
                       child: Padding(
                         padding: EdgeInsets.symmetric(vertical: 12.h),
                         child: Center(
-                          child: Text(
-                            'Upload',
-                            style: GoogleFonts.inter(
-                              fontSize: 13.sp,
-                              fontWeight: FontWeight.w700,
-                              color:
-                                  (pendingFiles.isEmpty ||
-                                      pendingFilesError != null)
-                                  ? Colors.white.withOpacity(0.7)
-                                  : Colors.white,
-                            ),
-                          ),
+                          child: isUploadingProof
+                              ? SizedBox(
+                                  width: 16.w,
+                                  height: 16.h,
+                                  child: const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  'Upload',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w700,
+                                    color:
+                                        (pendingFiles.isEmpty ||
+                                            pendingFilesError != null)
+                                        ? Colors.white.withOpacity(0.7)
+                                        : Colors.white,
+                                  ),
+                                ),
                         ),
                       ),
                     ),
@@ -1554,287 +2313,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           padding: EdgeInsets.symmetric(vertical: 8.h),
           child: Row(
             children: [
-              _assignCol(
-                'Assign to',
-                _assignTo,
-                () => _showSearchableSheet(
-                  title: 'Assign To',
-                  items: _assignToItems,
-                  selected: _assignTo,
-                  onSelect: (v) => setState(() => _assignTo = v),
-                ),
-              ),
-              _assignCol(
-                'Reporting to',
-                _reportTo,
-                () => _showSearchableSheet(
-                  title: 'Reporting To',
-                  items: _reportToItems,
-                  selected: _reportTo,
-                  onSelect: (v) => setState(() => _reportTo = v),
-                ),
-              ),
+              _assignToTriggerCol(),
+              _staticCol('Assigned By', _reportTo),
             ],
           ),
         ),
       ],
     ),
   );
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Calendar widget
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Widget _buildCalendar() {
-    final days = _daysInMonth(_calendarMonth, _calendarYear);
-    final firstDay = _firstWeekday(_calendarMonth, _calendarYear);
-    final now = DateTime.now();
-    final isNowMonth = _calendarMonth == now.month && _calendarYear == now.year;
-
-    return _card(
-      child: Column(
-        children: [
-          // Header
-          Row(
-            children: [
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: BoxConstraints(minWidth: 28.w, minHeight: 28.h),
-                icon: Icon(Icons.chevron_left, size: 20.r, color: _accentColor),
-                onPressed: () => setState(() {
-                  if (_calendarYear > now.year ||
-                      (_calendarYear == now.year &&
-                          _calendarMonth > now.month)) {
-                    if (--_calendarMonth < 1) {
-                      _calendarMonth = 12;
-                      _calendarYear--;
-                    }
-                  }
-                }),
-              ),
-              Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _calDropdown(
-                      _monthNames[_calendarMonth - 1].substring(0, 3),
-                      _showMonthPicker,
-                    ),
-                    SizedBox(width: 6.w),
-                    _calDropdown('$_calendarYear', _showYearPicker),
-                  ],
-                ),
-              ),
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: BoxConstraints(minWidth: 28.w, minHeight: 28.h),
-                icon: Icon(
-                  Icons.chevron_right,
-                  size: 20.r,
-                  color: _accentColor,
-                ),
-                onPressed: () => setState(() {
-                  if (++_calendarMonth > 12) {
-                    _calendarMonth = 1;
-                    _calendarYear++;
-                  }
-                }),
-              ),
-            ],
-          ),
-          SizedBox(height: 8.h),
-          // Day headers
-          Row(
-            children: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-                .map(
-                  (d) => Expanded(
-                    child: Center(
-                      child: Text(
-                        d,
-                        style: GoogleFonts.inter(
-                          fontSize: 10.sp,
-                          fontWeight: FontWeight.w600,
-                          color: _textColor,
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-                .toList(),
-          ),
-          SizedBox(height: 4.h),
-          // Day grid
-          ...() {
-            final rows = <Widget>[];
-            int day = 1;
-            final totalRows = ((firstDay + days) / 7).ceil();
-            for (int r = 0; r < totalRows; r++) {
-              final cells = <Widget>[];
-              for (int c = 0; c < 7; c++) {
-                final idx = r * 7 + c;
-                if (idx < firstDay || day > days) {
-                  cells.add(Expanded(child: SizedBox(height: 30.h)));
-                } else {
-                  final d = day;
-                  final isToday = isNowMonth && d == now.day;
-                  final isSel = _selectedDay == d;
-                  final isPast =
-                      _calendarYear < now.year ||
-                      (_calendarYear == now.year &&
-                          _calendarMonth < now.month) ||
-                      (_calendarYear == now.year &&
-                          _calendarMonth == now.month &&
-                          d < now.day);
-                  cells.add(
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: isPast
-                            ? null
-                            : () => setState(() => _selectedDay = d),
-                        child: Container(
-                          height: 30.h,
-                          margin: EdgeInsets.all(1.w),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isSel
-                                ? _primaryColor
-                                : isToday
-                                ? const Color(0xFFE8E6F5)
-                                : Colors.transparent,
-                          ),
-                          child: Center(
-                            child: Text(
-                              '$d',
-                              style: GoogleFonts.inter(
-                                fontSize: 11.sp,
-                                fontWeight: isToday || isSel
-                                    ? FontWeight.w700
-                                    : FontWeight.w400,
-                                color: isPast
-                                    ? const Color(0xFFCCCCCC)
-                                    : isSel
-                                    ? Colors.white
-                                    : isToday
-                                    ? _primaryColor
-                                    : _labelColor,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                  day++;
-                }
-              }
-              rows.add(Row(children: cells));
-              if (r < totalRows - 1) rows.add(SizedBox(height: 2.h));
-            }
-            return rows;
-          }(),
-        ],
-      ),
-    );
-  }
-
-  Widget _calDropdown(String text, VoidCallback onTap) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-      decoration: BoxDecoration(
-        border: Border.all(color: _dividerColor),
-        borderRadius: BorderRadius.circular(6.r),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            text,
-            style: GoogleFonts.inter(
-              fontSize: 12.sp,
-              fontWeight: FontWeight.w600,
-              color: _labelColor,
-            ),
-          ),
-          Icon(Icons.keyboard_arrow_down, size: 14.r, color: _textColor),
-        ],
-      ),
-    ),
-  );
-
-  void _showMonthPicker() {
-    final now = DateTime.now();
-    showModalBottomSheet(
-      context: context,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
-      ),
-      builder: (_) => ListView.builder(
-        shrinkWrap: true,
-        itemCount: 12,
-        itemBuilder: (_, i) {
-          final month = i + 1;
-          final isDisabled = _calendarYear == now.year && month < now.month;
-          return ListTile(
-            enabled: !isDisabled,
-            title: Text(
-              _monthNames[i],
-              style: GoogleFonts.inter(
-                fontSize: 13.sp,
-                color: isDisabled ? const Color(0xFFCCCCCC) : _labelColor,
-              ),
-            ),
-            trailing: _calendarMonth == month
-                ? Icon(Icons.check, color: _primaryColor, size: 16.r)
-                : null,
-            onTap: isDisabled
-                ? null
-                : () {
-                    setState(() => _calendarMonth = month);
-                    Navigator.pop(context);
-                  },
-          );
-        },
-      ),
-    );
-  }
-
-  void _showYearPicker() {
-    final now = DateTime.now();
-    final years = List.generate(2100 - now.year + 1, (i) => now.year + i);
-    showModalBottomSheet(
-      context: context,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
-      ),
-      builder: (_) => ListView(
-        shrinkWrap: true,
-        children: years
-            .map(
-              (y) => ListTile(
-                title: Text(
-                  '$y',
-                  style: GoogleFonts.inter(fontSize: 13.sp, color: _labelColor),
-                ),
-                trailing: _calendarYear == y
-                    ? Icon(Icons.check, color: _primaryColor, size: 16.r)
-                    : null,
-                onTap: () {
-                  setState(() {
-                    _calendarYear = y;
-                    if (_calendarYear == now.year &&
-                        _calendarMonth < now.month) {
-                      _calendarMonth = now.month;
-                    }
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-            )
-            .toList(),
-      ),
-    );
-  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Time picker widget
@@ -1896,6 +2382,54 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     'PM',
                     !_isAM,
                     () => setState(() => _isAM = false),
+                  ),
+                  SizedBox(height: 10.h),
+                  // Minute stepper — the clock face only lets the user pick
+                  // an hour by dragging/tapping; there was previously no
+                  // way to change the minute at all.
+                  Row(
+                    children: [
+                      Text(
+                        'Min',
+                        style: GoogleFonts.inter(
+                          fontSize: 11.sp,
+                          color: _textColor,
+                        ),
+                      ),
+                      SizedBox(width: 6.w),
+                      GestureDetector(
+                        onTap: () =>
+                            setState(() => _minute = (_minute - 1 + 60) % 60),
+                        child: Icon(
+                          Icons.remove_circle_outline,
+                          size: 18.r,
+                          color: _primaryColor,
+                        ),
+                      ),
+                      SizedBox(width: 6.w),
+                      SizedBox(
+                        width: 22.w,
+                        child: Text(
+                          _minute.toString().padLeft(2, '0'),
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w700,
+                            color: _labelColor,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 6.w),
+                      GestureDetector(
+                        onTap: () =>
+                            setState(() => _minute = (_minute + 1) % 60),
+                        child: Icon(
+                          Icons.add_circle_outline,
+                          size: 18.r,
+                          color: _primaryColor,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 12.h),
                   RichText(
@@ -2174,7 +2708,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
                   // Scrollable body
                   Expanded(
-                    child: SingleChildScrollView(
+                    child: RefreshIndicator(
+                      onRefresh: _loadInstance,
+                      child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
                       keyboardDismissBehavior:
                           ScrollViewKeyboardDismissBehavior.onDrag,
                       padding: EdgeInsets.only(
@@ -2203,42 +2740,25 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                     vertical: 2.h,
                                   ),
                                   child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      // Assign Date toggle
-                                      _toggleRow(
-                                        label: 'Assign Date',
-                                        sub: _selectedDateLabel,
-                                        value: _assignDateEnabled,
-                                        onTap: () => setState(() {
-                                          _assignDateEnabled =
-                                              !_assignDateEnabled;
-                                          _showCalendar = _assignDateEnabled;
-                                          if (_assignDateEnabled) {
-                                            _assignTimeEnabled = false;
-                                            _showTimePicker = false;
-                                          }
-                                        }),
+                                      // Schedule Date — read-only, never editable
+                                      _staticInfoRow(
+                                        label: 'Schedule Date',
+                                        value: _selectedDateLabel,
                                       ),
-                                      if (_showCalendar) ...[
-                                        SizedBox(height: 6.h),
-                                        _buildCalendar(),
-                                        SizedBox(height: 8.h),
-                                      ],
                                       _divider(),
 
-                                      // Assign Time toggle
+                                      // Schedule Time toggle
                                       _toggleRow(
-                                        label: 'Assign Time',
+                                        label: 'Schedule Time',
                                         sub: _formattedTime,
                                         value: _assignTimeEnabled,
                                         onTap: () => setState(() {
                                           _assignTimeEnabled =
                                               !_assignTimeEnabled;
                                           _showTimePicker = _assignTimeEnabled;
-                                          if (_assignTimeEnabled) {
-                                            _assignDateEnabled = false;
-                                            _showCalendar = false;
-                                          }
                                         }),
                                       ),
                                       if (_showTimePicker) ...[
@@ -2246,21 +2766,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                         _buildTimePicker(),
                                         SizedBox(height: 8.h),
                                       ],
-                                      _divider(),
-
-                                      // Time Zone
-                                      _dropdownField(
-                                        label: 'Time Zone',
-                                        value: _timeZone,
-                                        valueColor: _labelColor,
-                                        onTap: () => _showSearchableSheet(
-                                          title: 'Time Zone',
-                                          items: _timeZoneItems,
-                                          selected: _timeZone,
-                                          onSelect: (v) =>
-                                              setState(() => _timeZone = v),
-                                        ),
-                                      ),
                                     ],
                                   ),
                                 ),
@@ -2314,8 +2819,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                     items: _statusItems,
                                     selected: _status,
                                     onSelect: (v) =>
-                                        print('Selected status: $v'),
-                                    // setState(() => _status = v),
+                                        setState(() => _status = v),
                                   ),
                                 ),
                               ],
@@ -2324,10 +2828,18 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
                           SizedBox(height: 24.h),
 
-                          // 🔓 UNLOCKED UPLOAD PROOF BUTTON
-                          _buildUploadProofButton(),
+                          // 🔓 UNLOCKED UPLOAD PROOF BUTTON — only shown when
+                          // the instance actually requires proof types.
+                          if (_proofAllowed) ...[
+                            _buildUploadProofButton(),
+                            SizedBox(height: 16.h),
+                          ],
 
-                          SizedBox(height: 16.h),
+                          // 🔓 UPLOADED PROOFS LIST — only shown for tasks
+                          // that collect proof AND are assigned to the
+                          // current user (not just anyone viewing the task).
+                          if (_proofAllowed && _isAssignedToMe)
+                            _buildUploadedProofsSection(),
 
                           // 🔓 UNLOCKED SAVE BUTTON
                           Row(
@@ -2352,10 +2864,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                       onTap: () async {
                                         if (!_isSaving &&
                                             await userTaskPermission) {
-                                          print(_status);
                                           String statusAfterUpdate = 'todo';
 
-                                          if (_status == 'Pending') {
+                                          if (_status == 'To Do') {
                                             statusAfterUpdate = 'todo';
                                           } else if (_status == 'In Progress') {
                                             statusAfterUpdate = 'inProgress';
@@ -2363,30 +2874,49 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                             statusAfterUpdate = 'completed';
                                           }
 
-                                          print(
-                                            'Status after update: $statusAfterUpdate',
-                                          );
-                                          // await taskController
-                                          //     .handleUpdateInstanceConfiguration(
-                                          //       taskId: widget.mainTaskId ?? '',
-                                          //       instanceId: widget.taskId ?? '',
-                                          //       status: statusAfterUpdate,
-                                          //       scope: 'single', // optional
-                                          //       // priority: _priority,
-                                          //       // assigneeIds: _assignToItems
-                                          //       //     .where(
-                                          //       //       (e) => e['id'] == _assignTo,
-                                          //       //     )
-                                          //       //     .map((e) => e['id'] as String)
-                                          //       // .toList(),
-                                          //       // scheduledTime: {
-                                          //       //   'date': _selectedDateLabel,
-                                          //       //   'time': _formattedTime,
-                                          //       //   'timezone': _timeZone,
-                                          //       // },
-                                          //     );
+                                          setState(() => _isSaving = true);
 
-                                          // _saveTask();
+                                          final success = await taskController
+                                              .handleUpdateInstanceConfiguration(
+                                                taskId: widget.mainTaskId ?? '',
+                                                instanceId: widget.taskId ?? '',
+                                                status: statusAfterUpdate,
+                                                assigneeIds: _assigneeIds,
+                                                priority: _priority
+                                                    .toLowerCase(),
+                                                time: _assignTimeEnabled
+                                                    ? _scheduledTimeForSave
+                                                    : null,
+                                                period: _assignTimeEnabled
+                                                    ? _scheduledPeriodForSave
+                                                    : null,
+
+                                                scope: 'single',
+                                              );
+
+                                          if (!mounted) return;
+
+                                          setState(() => _isSaving = false);
+
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                success
+                                                    ? 'Task updated successfully'
+                                                    : (taskController
+                                                              .errorMessage ??
+                                                          'Failed to update task'),
+                                              ),
+                                              backgroundColor: success
+                                                  ? _greenOn
+                                                  : Colors.redAccent,
+                                              duration: const Duration(
+                                                seconds: 3,
+                                              ),
+                                            ),
+                                          );
                                         } else {
                                           ScaffoldMessenger.of(
                                             context,
@@ -2439,13 +2969,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                           SizedBox(height: 24.h),
                         ],
                       ),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
 
-      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 1),
+      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: -1),
     );
   }
 }

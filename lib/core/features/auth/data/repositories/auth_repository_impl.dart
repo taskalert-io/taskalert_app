@@ -142,6 +142,27 @@ class AuthRepositoryImpl implements AuthRepository {
             key: 'user_requires_organization',
             value: user.requiresOrganization.toString(),
           );
+          await _secureStorage.write(
+            key: 'user_gender',
+            value: user.gender ?? '',
+          );
+          await _secureStorage.write(
+            key: 'user_dob',
+            value: user.dateOfBirth?.toIso8601String() ?? '',
+          );
+          await _secureStorage.write(key: 'user_role', value: user.role ?? '');
+          await _secureStorage.write(
+            key: 'user_organization',
+            value: user.organization?.name ?? '',
+          );
+          await _secureStorage.write(
+            key: 'user_active_organization',
+            value: user.activeOrganization?.name ?? '',
+          );
+          await _secureStorage.write(
+            key: 'user_active_organization_id',
+            value: user.activeOrganization?.id ?? '',
+          );
         }
         return ApiResult.success(apiResponse);
       }
@@ -280,6 +301,27 @@ class AuthRepositoryImpl implements AuthRepository {
             key: 'user_requires_organization',
             value: user.requiresOrganization.toString(),
           );
+          await _secureStorage.write(
+            key: 'user_gender',
+            value: user.gender ?? '',
+          );
+          await _secureStorage.write(
+            key: 'user_dob',
+            value: user.dateOfBirth?.toIso8601String() ?? '',
+          );
+          await _secureStorage.write(key: 'user_role', value: user.role ?? '');
+          await _secureStorage.write(
+            key: 'user_organization',
+            value: user.organization?.name ?? '',
+          );
+          await _secureStorage.write(
+            key: 'user_active_organization',
+            value: user.activeOrganization?.name ?? '',
+          );
+          await _secureStorage.write(
+            key: 'user_active_organization_id',
+            value: user.activeOrganization?.id ?? '',
+          );
         }
         return ApiResult.success(apiResponse);
       }
@@ -332,7 +374,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }) async {
     try {
       final responseData = await _httpService.post(
-        '/auth/refresh-token',
+        '/auth/access-token',
         body: {'refreshToken': currentRefreshToken},
       );
       final apiResponse = BaseApiResponse.fromJson(
@@ -478,25 +520,37 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<ApiResult<BaseApiResponse<dynamic>>> updateProfile({
     required String firstName,
     required String lastName,
-    File? avatarFile,
+    String? phoneNumber,
+    String? email,
+    String? jobRole,
+    String? language,
+    String? languageCode,
+    File? imageFile,
   }) async {
     try {
       // Use Multi-part construction for form-data support
       final Map<String, dynamic> formMap = {
         'firstName': firstName,
         'lastName': lastName,
+        if (phoneNumber != null && phoneNumber.isNotEmpty)
+          'phoneNumber': phoneNumber,
+        if (email != null && email.isNotEmpty) 'email': email,
+        if (jobRole != null && jobRole.isNotEmpty) 'jobRole': jobRole,
+        if (language != null && language.isNotEmpty) 'language': language,
+        if (languageCode != null && languageCode.isNotEmpty)
+          'languageCode': languageCode,
       };
 
-      if (avatarFile != null) {
-        formMap['avatar'] = await dio.MultipartFile.fromFile(
-          avatarFile.path,
-          filename: avatarFile.path.split('/').last,
+      if (imageFile != null) {
+        formMap['image'] = await dio.MultipartFile.fromFile(
+          imageFile.path,
+          filename: imageFile.path.split('/').last,
         );
       }
 
       final formData = dio.FormData.fromMap(formMap);
-      final responseData = await _httpService.post(
-        '/auth/profile/update',
+      final responseData = await _httpService.put(
+        '/auth/update-profile',
         body: formData,
       );
       final apiResponse = BaseApiResponse.fromJson(
@@ -526,8 +580,32 @@ class AuthRepositoryImpl implements AuthRepository {
   }) async {
     try {
       final responseData = await _httpService.put(
-        '/auth/profile/password',
+        '/auth/update-password',
         body: {'oldPassword': oldPassword, 'newPassword': newPassword},
+      );
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData,
+        (json) => json,
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+      _handleErrorEnvelope(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    }
+  }
+
+  @override
+  Future<ApiResult<BaseApiResponse<dynamic>>> requestAccountDeletion() async {
+    try {
+      final responseData = await _httpService.post(
+        '/auth/delete-account/request',
       );
       final apiResponse = BaseApiResponse.fromJson(
         responseData,

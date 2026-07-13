@@ -141,12 +141,20 @@ class MyTaskScreenState extends State<MyTaskScreen> {
 
   int _selectedTab = 0;
 
+  // ── Assignment filter: "My Tasks" (to_me) vs "Assigned by Me" (by_me) ──────
+  String _assignedFilter = 'to_me';
+  final List<Map<String, String>> _assignmentFilters = [
+    {'label': 'My Tasks', 'value': 'to_me'},
+    {'label': 'Assigned by Me', 'value': 'by_me'},
+  ];
+
   // ── Tab data: label + key (for API mapping) + count ────────────────────────
   List<Map<String, dynamic>> _tabs = [
     {'label': 'Today', 'key': 'today', 'count': 0},
     {'label': 'Next Day', 'key': 'next_day', 'count': 0},
     {'label': 'This Week', 'key': 'this_week', 'count': 0},
     {'label': 'Next Week', 'key': 'next_week', 'count': 0},
+    {'label': 'Overdue', 'key': 'overdue', 'count': 0},
   ];
 
   // ── Expand/collapse state per section ───────────────────────────────────────
@@ -163,6 +171,14 @@ class MyTaskScreenState extends State<MyTaskScreen> {
 
   late final TaskInstanceController taskController;
 
+  // Dedicated controller + count just for the "Overdue" filter badge — the
+  // backend's counts object (today/tomorrow/thisWeek/nextWeek) has no
+  // overdue field, so its total is fetched separately via `overdue: true`
+  // (same approach HomeScreen uses for its own overdue section) rather than
+  // derived from `taskCounts`.
+  late final TaskInstanceController _overdueCountController;
+  int _overdueCount = 0;
+
   List<Map<String, dynamic>> tasks = [];
   Map<String, dynamic> taskCounts = {};
   Map<String, dynamic> categorizedTasks = {};
@@ -170,8 +186,14 @@ class MyTaskScreenState extends State<MyTaskScreen> {
   String sortBy = 'scheduledDate';
   String order = 'asc';
 
-  String startDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
-  String endDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+  String? startDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+  String? endDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+  // Set only when the "Overdue" filter is selected — that filter isn't
+  // bound to a date window, so startDate/endDate are cleared and this flag
+  // does the filtering server-side instead. Kept as a field (not a local
+  // var) so pull-to-refresh and the sort dropdown can preserve it.
+  bool? _overdueFilter;
 
   @override
   void initState() {
@@ -179,19 +201,79 @@ class MyTaskScreenState extends State<MyTaskScreen> {
     _fetchTabCounts();
 
     taskController = sl<TaskInstanceController>();
+    _overdueCountController = sl<TaskInstanceController>();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      loadTasks('to_me', order, sortBy, startDate, endDate);
+      loadTasks(
+        _assignedFilter,
+        order,
+        sortBy,
+        startDate,
+        endDate,
+        overdue: _overdueFilter,
+      );
+      _loadOverdueCount();
     });
   }
 
-  Future<void> loadTasks(assigned, order, sortBy, startDate, endDate) async {
+  /// Fetches just the overdue total (via `pagination.total`, so it isn't
+  /// capped by page size) to back the "Overdue" filter's count badge —
+  /// independent of whichever date-range tab/sort is currently selected.
+  Future<void> _loadOverdueCount() async {
+    await _overdueCountController.handleGetAllInstances(
+      assigned: _assignedFilter,
+      overdue: true,
+    );
+    if (!mounted) return;
+    setState(() {
+      _overdueCount =
+          _overdueCountController.pagination?.total ??
+          _overdueCountController.instances.length;
+    });
+  }
+
+  void _onAssignmentFilterChanged(String value) {
+    if (_assignedFilter == value) return;
+    setState(() => _assignedFilter = value);
+    loadTasks(
+      _assignedFilter,
+      order,
+      sortBy,
+      startDate,
+      endDate,
+      overdue: _overdueFilter,
+    );
+    _loadOverdueCount();
+  }
+
+  /// Pull-to-refresh — reruns the fetch with whatever filters are active.
+  Future<void> _onRefresh() => Future.wait([
+    loadTasks(
+      _assignedFilter,
+      order,
+      sortBy,
+      startDate,
+      endDate,
+      overdue: _overdueFilter,
+    ),
+    _loadOverdueCount(),
+  ]);
+
+  Future<void> loadTasks(
+    assigned,
+    order,
+    sortBy,
+    startDate,
+    endDate, {
+    bool? overdue,
+  }) async {
     await taskController.handleGetAllInstances(
       assigned: assigned,
       order: order,
       sortBy: sortBy,
       startDate: startDate,
       endDate: endDate,
+      overdue: overdue,
     );
 
     if (!mounted) return;
@@ -258,6 +340,10 @@ class MyTaskScreenState extends State<MyTaskScreen> {
           'key': 'next_week',
           'count': taskCounts['nextWeek'],
         },
+        // Not in the backend's counts object — its badge reads from
+        // `_overdueCount` (fetched separately by `_loadOverdueCount`),
+        // this placeholder is never displayed.
+        {'label': 'Overdue', 'key': 'overdue', 'count': 0},
       ];
     });
 
@@ -300,8 +386,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
 
         for (final task in tasks) {
           // if (task['status'] == 'todo') {
-
-          print('task : ${task}');
 
           var taskStatus = task['status'];
           if (taskStatus == 'completed') {
@@ -387,62 +471,234 @@ class MyTaskScreenState extends State<MyTaskScreen> {
     }).toList();
   }
 
-  // ── Tab widget (gradient underline style) ───────────────────────────────────
-  Widget _buildTab(String label, int count, bool isSelected) {
-    return IntrinsicWidth(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w700,
-                  color: isSelected ? _primaryColor : const Color(0xFF8B8C8E),
-                ),
-              ),
-              SizedBox(width: 7.w),
-              Container(
-                width: 20.w,
-                height: 20.w,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE4E7EC),
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  '$count',
-                  style: GoogleFonts.inter(
-                    fontSize: 11.sp,
-                    fontWeight: FontWeight.w700,
-                    color: isSelected ? _primaryColor : const Color(0xFF8B8C8E),
+  // ── Date-range/period filter (Today / Next Day / This Week / Next Week /
+  // Overdue), computes the request window for whichever tab was picked and
+  // reloads the task list. ────────────────────────────────────────────────
+  void _selectFilterTab(int i) {
+    if (_selectedTab == i) return;
+    setState(() => _selectedTab = i);
+
+    final now = DateTime.now();
+    final formatter = DateFormat('yyyy-MM-dd');
+
+    DateTime? startDateVal;
+    DateTime? endDateVal;
+    bool? overdueVal;
+
+    switch (_tabs[i]['key']) {
+      case 'today':
+        startDateVal = now;
+        endDateVal = now;
+        break;
+
+      case 'next_day':
+        startDateVal = now.add(const Duration(days: 1));
+        endDateVal = startDateVal;
+        break;
+
+      case 'this_week':
+        startDateVal = now;
+        // End of current week (Sunday)
+        endDateVal = now.add(Duration(days: 7 - now.weekday));
+        break;
+
+      case 'next_week':
+        // Start of next week (Monday)
+        startDateVal = now.add(Duration(days: 8 - now.weekday));
+        // End of next week (Sunday)
+        endDateVal = startDateVal.add(const Duration(days: 6));
+        break;
+
+      case 'overdue':
+        // Overdue isn't bound to a date window — the `overdue` flag does
+        // the filtering server-side instead, so no date range is sent.
+        startDateVal = null;
+        endDateVal = null;
+        overdueVal = true;
+        break;
+
+      default:
+        startDateVal = now;
+        endDateVal = now;
+    }
+
+    startDate = startDateVal != null ? formatter.format(startDateVal) : null;
+    endDate = endDateVal != null ? formatter.format(endDateVal) : null;
+    _overdueFilter = overdueVal;
+
+    loadTasks(
+      _assignedFilter,
+      order,
+      sortBy,
+      startDate,
+      endDate,
+      overdue: _overdueFilter,
+    );
+  }
+
+  Future<void> _openTaskFilterSheet() async {
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Container(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(height: 10.h),
+                Center(
+                  child: Container(
+                    width: 36.w,
+                    height: 4.h,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE4E7EC),
+                      borderRadius: BorderRadius.circular(4.r),
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: 3.h),
-          Container(
-            width: double.infinity,
-            height: 3.h,
-            decoration: BoxDecoration(
-              gradient: isSelected
-                  ? const LinearGradient(
-                      colors: [
-                        Color(0xFFE040FB),
-                        Color(0xFF40C4FF),
-                        Color(0xFF64FFDA),
-                      ],
-                    )
-                  : null,
-              color: isSelected ? null : const Color(0xFFE5E5E5),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 8.h),
+                  child: Text(
+                    'Filter by',
+                    style: GoogleFonts.inter(
+                      fontSize: 15.sp,
+                      fontWeight: FontWeight.w700,
+                      color: _primaryColor,
+                    ),
+                  ),
+                ),
+                ...List.generate(_tabs.length, (i) {
+                  final selected = _selectedTab == i;
+                  final tab = _tabs[i];
+                  // The backend's counts object has no overdue field, so
+                  // that badge is backed by `_overdueCount` (fetched
+                  // separately) instead of `tab['count']`.
+                  final count = tab['key'] == 'overdue'
+                      ? _overdueCount
+                      : tab['count'] as int;
+                  return InkWell(
+                    onTap: () => Navigator.pop(sheetContext, i),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 20.w,
+                        vertical: 12.h,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              tab['label'] as String,
+                              style: GoogleFonts.inter(
+                                fontSize: 14.sp,
+                                fontWeight: selected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                color: selected
+                                    ? _primaryColor
+                                    : const Color(0xFF1D2433),
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8.w,
+                              vertical: 2.h,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEDE9FE),
+                              borderRadius: BorderRadius.circular(10.r),
+                            ),
+                            child: Text(
+                              '$count',
+                              style: GoogleFonts.inter(
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w600,
+                                color: _primaryColor,
+                              ),
+                            ),
+                          ),
+                          if (selected) ...[
+                            SizedBox(width: 10.w),
+                            Icon(
+                              Icons.check_circle,
+                              size: 18.r,
+                              color: _primaryColor,
+                            ),
+                          ] else
+                            SizedBox(width: 28.r),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+                SizedBox(height: 8.h),
+              ],
             ),
           ),
-        ],
+        );
+      },
+    );
+    if (picked != null) _selectFilterTab(picked);
+  }
+
+  Widget _buildFilterDropdown() {
+    final selected = _tabs[_selectedTab];
+    final count = selected['key'] == 'overdue'
+        ? _overdueCount
+        : selected['count'] as int;
+    return InkWell(
+      onTap: _openTaskFilterSheet,
+      borderRadius: BorderRadius.circular(20.r),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 9.h),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F4F9),
+          borderRadius: BorderRadius.circular(20.r),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              selected['label'] as String,
+              style: GoogleFonts.inter(
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w700,
+                color: _primaryColor,
+              ),
+            ),
+            SizedBox(width: 7.w),
+            Container(
+              width: 20.w,
+              height: 20.w,
+              decoration: const BoxDecoration(
+                color: Color(0xFFE4E7EC),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                '$count',
+                style: GoogleFonts.inter(
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w700,
+                  color: _primaryColor,
+                ),
+              ),
+            ),
+            SizedBox(width: 6.w),
+            Icon(Icons.keyboard_arrow_down, size: 18.r, color: _primaryColor),
+          ],
+        ),
       ),
     );
   }
@@ -716,7 +972,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                       userId: widget.userId,
                       taskId: items[i].id ?? '',
                       mainTaskId: items[i].mainTaskId ?? '',
-                      taskAssignedToUser: true,
                     ),
                   ),
                 );
@@ -839,31 +1094,21 @@ class MyTaskScreenState extends State<MyTaskScreen> {
               SizedBox(height: 10.h),
 
               /// DATE TIME PRIORITY
+              // Each chip is a direct Wrap child (not nested inside one more
+              // Row) so the Wrap can actually do its job — dropping a chip
+              // to a new line when the three of them together don't fit the
+              // available width, instead of a single min-sized Row forcing
+              // all three to their natural width and overflowing.
               Wrap(
+                spacing: 12.w,
+                runSpacing: 6.h,
                 children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (item.date.isNotEmpty)
-                        _buildInfoChip(
-                          Icons.calendar_today_outlined,
-                          item.date,
-                        ),
-
-                      if (item.date.isNotEmpty && item.time.isNotEmpty)
-                        SizedBox(width: 12.w),
-
-                      if (item.time.isNotEmpty)
-                        _buildInfoChip(Icons.access_time, item.time),
-
-                      if ((item.date.isNotEmpty || item.time.isNotEmpty) &&
-                          item.priority.isNotEmpty)
-                        SizedBox(width: 12.w),
-
-                      if (item.priority.isNotEmpty)
-                        _buildPriorityChip(item.priority),
-                    ],
-                  ),
+                  if (item.date.isNotEmpty)
+                    _buildInfoChip(Icons.calendar_today_outlined, item.date),
+                  if (item.time.isNotEmpty)
+                    _buildInfoChip(Icons.access_time, item.time),
+                  if (item.priority.isNotEmpty)
+                    _buildPriorityChip(item.priority),
                 ],
               ),
             ],
@@ -892,89 +1137,55 @@ class MyTaskScreenState extends State<MyTaskScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(height: 10.h),
-            SizedBox(
-              height: 40.h,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: EdgeInsets.symmetric(horizontal: 15.w),
-                child: Row(
-                  children: List.generate(_tabs.length, (i) {
-                    return Padding(
-                      padding: EdgeInsets.only(
-                        right: i < _tabs.length - 1 ? 10.w : 0,
-                      ),
-                      child: GestureDetector(
-                        onTap: () {
-                          if (_selectedTab == i) return;
-                          setState(() => _selectedTab = i);
-                          // print(_tabs[i]["label"]);
-
-                          final now = DateTime.now();
-                          final formatter = DateFormat('yyyy-MM-dd');
-
-                          DateTime startDateVal;
-                          DateTime endDateVal;
-
-                          switch (_tabs[i]["label"]) {
-                            case 'Today':
-                              startDateVal = now;
-                              endDateVal = now;
-                              break;
-
-                            case 'Next Day':
-                              startDateVal = now.add(const Duration(days: 1));
-                              endDateVal = startDateVal;
-                              break;
-
-                            case 'This Week':
-                              startDateVal = now;
-
-                              // End of current week (Sunday)
-                              endDateVal = now.add(
-                                Duration(days: 7 - now.weekday),
-                              );
-                              break;
-
-                            case 'Next Week':
-                              // Start of next week (Monday)
-                              startDateVal = now.add(
-                                Duration(days: 8 - now.weekday),
-                              );
-
-                              // End of next week (Sunday)
-                              endDateVal = startDateVal.add(
-                                const Duration(days: 6),
-                              );
-                              break;
-
-                            default:
-                              startDateVal = now;
-                              endDateVal = now;
-                          }
-
-                          // startDate = formatter.format(startDate);
-                          // endDate = formatter.format(endDate);
-
-                          startDate = DateFormat(
-                            'yyyy-MM-dd',
-                          ).format(startDateVal);
-
-                          endDate = DateFormat('yyyy-MM-dd').format(endDateVal);
-
-                          loadTasks('to_me', order, sortBy, startDate, endDate);
-
-                          // _fetchTodoItems();
-                        },
-                        child: _buildTab(
-                          _tabs[i]['label'] as String,
-                          _tabs[i]['count'] as int,
-                          _selectedTab == i,
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 15.w),
+              child: Row(
+                children: _assignmentFilters.map((f) {
+                  final isSelected = _assignedFilter == f['value'];
+                  return Padding(
+                    padding: EdgeInsets.only(right: 10.w),
+                    child: GestureDetector(
+                      onTap: () =>
+                          _onAssignmentFilterChanged(f['value']!),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 14.w,
+                          vertical: 8.h,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: isSelected
+                              ? const LinearGradient(
+                                  colors: [
+                                    Color(0xFF0A0258),
+                                    Color(0xFF4338CA),
+                                  ],
+                                )
+                              : null,
+                          color: isSelected
+                              ? null
+                              : const Color(0xFFF1F4F9),
+                          borderRadius: BorderRadius.circular(20.r),
+                        ),
+                        child: Text(
+                          f['label']!,
+                          style: GoogleFonts.inter(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected
+                                ? Colors.white
+                                : const Color(0xFF667085),
+                          ),
                         ),
                       ),
-                    );
-                  }),
-                ),
+                    ),
+                  );
+                }).toList(),
               ),
+            ),
+            SizedBox(height: 12.h),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 15.w),
+              child: _buildFilterDropdown(),
             ),
             SizedBox(height: 14.h),
 
@@ -1017,7 +1228,14 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                           order = 'desc';
                         }
 
-                        loadTasks('to_me', order, sortBy, startDate, endDate);
+                        loadTasks(
+                          _assignedFilter,
+                          order,
+                          sortBy,
+                          startDate,
+                          endDate,
+                          overdue: _overdueFilter,
+                        );
 
                         // _fetchTodoItems();
                       },
@@ -1071,7 +1289,9 @@ class MyTaskScreenState extends State<MyTaskScreen> {
 
             /// CONTENT
             Expanded(
-              child: SingleChildScrollView(
+              child: RefreshIndicator(
+                onRefresh: _onRefresh,
+                child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(
                   children: [
@@ -1119,6 +1339,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                     ),
                   ],
                 ),
+              ),
               ),
             ),
           ],
@@ -1205,10 +1426,8 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                             /// SELECT TEXT
                             Align(
                               alignment: Alignment.centerLeft,
-
                               child: Text(
                                 "Select one",
-
                                 style: GoogleFonts.inter(
                                   fontSize: 12.sp,
                                   fontWeight: FontWeight.w500,
@@ -1219,229 +1438,120 @@ class MyTaskScreenState extends State<MyTaskScreen> {
 
                             SizedBox(height: 10.h),
 
-                            /// =========================
-                            /// REPETITIVE
-                            /// =========================
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      modalSetState(() {
-                                        if (selectedWorkspaceType ==
-                                            "Repetitive") {
-                                          selectedWorkspaceType = "";
-                                        } else {
-                                          selectedWorkspaceType = "Repetitive";
-                                        }
-                                      });
-                                    },
-
-                                    child: Row(
-                                      children: [
-                                        /// RADIO
-                                        Container(
-                                          width: 16.w,
-                                          height: 16.w,
-
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: const Color(0xFF0A0258),
-                                              width: 1.3,
-                                            ),
-                                          ),
-
-                                          child: Center(
-                                            child: Container(
-                                              width: 10.w,
-                                              height: 10.w,
-
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color:
-                                                    selectedWorkspaceType ==
-                                                        "Repetitive"
-                                                    ? const Color(0xFF24116A)
-                                                    : Colors.transparent,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-
-                                        SizedBox(width: 10.w),
-
-                                        /// TITLE
-                                        Text(
-                                          "Repetitive",
-
-                                          style: GoogleFonts.inter(
-                                            fontSize: 14.sp,
-                                            fontWeight: FontWeight.w500,
-                                            color: const Color(0xFF3F3F3F),
-                                          ),
-                                        ),
-                                      ],
+                            Container(
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8.r),
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFFD96CFF),
+                                    Color(0xFF5CE1E6),
+                                  ],
+                                ),
+                              ),
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => CreateRepetitiveScreen(userId: ''),
                                     ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  elevation: 0,
+                                  backgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 18.w,
+                                    vertical: 10.h,
+                                  ),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8.r),
                                   ),
                                 ),
-
-                                /// ARROW BUTTON
-                                GestureDetector(
-                                  onTap: selectedWorkspaceType == "Repetitive"
-                                      ? () {
-                                          Navigator.pop(context);
-
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  CreateRepetitiveScreen(
-                                                    userId: '',
-                                                  ),
-                                            ),
-                                          );
-                                        }
-                                      : null,
-
-                                  child: Container(
-                                    width: 27.w,
-                                    height: 27.w,
-
-                                    decoration: BoxDecoration(
-                                      color:
-                                          selectedWorkspaceType == "Repetitive"
-                                          ? const Color(0xFFE4E7EC)
-                                          : const Color(0xFFF2F4F7),
-
-                                      borderRadius: BorderRadius.circular(5.r),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      "Repetitive",
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white,
+                                      ),
                                     ),
-
-                                    child: Icon(
+                                    Icon(
                                       Icons.arrow_forward,
                                       size: 15.r,
-
-                                      color:
-                                          selectedWorkspaceType == "Repetitive"
-                                          ? const Color(0xFF667085)
-                                          : const Color(0xFF98A2B3),
+                                      color: Colors.white,
                                     ),
-                                  ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
 
                             SizedBox(height: 10.h),
 
-                            /// =========================
-                            /// ONE TIME
-                            /// =========================
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      modalSetState(() {
-                                        if (selectedWorkspaceType ==
-                                            "One-time") {
-                                          selectedWorkspaceType = "";
-                                        } else {
-                                          selectedWorkspaceType = "One-time";
-                                        }
-                                      });
-                                    },
-
-                                    child: Row(
-                                      children: [
-                                        /// RADIO
-                                        Container(
-                                          width: 16.w,
-                                          height: 16.w,
-
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: const Color(0xFF0A0258),
-                                              width: 1.3,
-                                            ),
-                                          ),
-
-                                          child: Center(
-                                            child: Container(
-                                              width: 10.w,
-                                              height: 10.w,
-
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color:
-                                                    selectedWorkspaceType ==
-                                                        "One-time"
-                                                    ? const Color(0xFF24116A)
-                                                    : Colors.transparent,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-
-                                        SizedBox(width: 10.w),
-
-                                        /// TITLE
-                                        Text(
-                                          "One-time",
-
-                                          style: GoogleFonts.inter(
-                                            fontSize: 14.sp,
-                                            fontWeight: FontWeight.w500,
-                                            color: const Color(0xFF3F3F3F),
-                                          ),
-                                        ),
-                                      ],
+                            Container(
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8.r),
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFFD96CFF),
+                                    Color(0xFF5CE1E6),
+                                  ],
+                                ),
+                              ),
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => CreateOneTimeScreen(userId: ''),
                                     ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  elevation: 0,
+                                  backgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 18.w,
+                                    vertical: 10.h,
+                                  ),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8.r),
                                   ),
                                 ),
-
-                                /// ARROW BUTTON
-                                GestureDetector(
-                                  onTap: selectedWorkspaceType == "One-time"
-                                      ? () {
-                                          Navigator.pop(context);
-
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  CreateOneTimeScreen(
-                                                    userId: '',
-                                                  ),
-                                            ),
-                                          );
-                                        }
-                                      : null,
-
-                                  child: Container(
-                                    width: 27.w,
-                                    height: 27.w,
-
-                                    decoration: BoxDecoration(
-                                      color: selectedWorkspaceType == "One-time"
-                                          ? const Color(0xFFE4E7EC)
-                                          : const Color(0xFFF2F4F7),
-
-                                      borderRadius: BorderRadius.circular(5.r),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      "One-time",
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white,
+                                      ),
                                     ),
-
-                                    child: Icon(
+                                    Icon(
                                       Icons.arrow_forward,
                                       size: 15.r,
-
-                                      color: selectedWorkspaceType == "One-time"
-                                          ? const Color(0xFF667085)
-                                          : const Color(0xFF98A2B3),
+                                      color: Colors.white,
                                     ),
-                                  ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
+
                             SizedBox(height: 15.h),
                           ],
                         ),

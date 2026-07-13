@@ -80,14 +80,40 @@ class EmployeeController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 2. Create Employee
+  /// 2. Fetch Single Employee
+  Future<void> handleGetEmployeeById({required String id}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    final result = await _employeeRepository.getEmployeeById(id: id);
+
+    _isLoading = false;
+
+    if (result is Success) {
+      final apiResponse =
+          (result as Success).data as BaseApiResponse<EmployeeModel>;
+      _selectedEmployee = apiResponse.data;
+    } else if (result is Failure) {
+      _errorMessage = (result as Failure).exception.userMessage;
+    }
+    notifyListeners();
+  }
+
+  /// 3. Create Employee
   Future<bool> handleCreateEmployee({
     required String firstName,
     required String lastName,
-    required String email,
+    String? email,
     required String phoneNumber,
-    required String jobRole,
+    String? jobRole,
     String? department,
+    String? gender,
+    String? organization,
+    String? location,
+    String? dateOfBirth,
+    bool? taskPermission,
+    String? taskType,
     String? imageFilePath,
   }) async {
     _isLoading = true;
@@ -98,12 +124,17 @@ class EmployeeController extends ChangeNotifier {
     final result = await _employeeRepository.createEmployee(
       firstName: firstName,
       lastName: lastName,
-      email: email,
+      email: email ?? '',
       phoneNumber: phoneNumber,
       jobRole: jobRole,
       imageFilePath: imageFilePath,
-      gender: '',
-      department: department ?? '',
+      gender: gender ?? '',
+      department: department,
+      organization: organization,
+      location: location,
+      dateOfBirth: dateOfBirth,
+      taskPermission: taskPermission,
+      taskType: taskType,
     );
 
     _isLoading = false;
@@ -130,15 +161,21 @@ class EmployeeController extends ChangeNotifier {
     return false;
   }
 
-  /// 3. Update Employee
+  /// 4. Update Employee
   Future<bool> handleUpdateEmployee({
     required String id,
     required String firstName,
     required String lastName,
     required String email,
     required String phoneNumber,
-    required String jobRole,
+    String? jobRole,
     String? department,
+    String? gender,
+    String? organization,
+    String? location,
+    String? dateOfBirth,
+    bool? taskPermission,
+    String? taskType,
     String? imageFilePath,
   }) async {
     _isLoading = true;
@@ -154,8 +191,13 @@ class EmployeeController extends ChangeNotifier {
       phoneNumber: phoneNumber,
       jobRole: jobRole,
       imageFilePath: imageFilePath,
-      gender: '',
-      department: department ?? '',
+      gender: gender ?? '',
+      department: department,
+      organization: organization,
+      location: location,
+      dateOfBirth: dateOfBirth,
+      taskPermission: taskPermission,
+      taskType: taskType,
     );
 
     _isLoading = false;
@@ -184,7 +226,7 @@ class EmployeeController extends ChangeNotifier {
     return false;
   }
 
-  /// 4. Delete Employee
+  /// 5. Delete Employee
   Future<bool> handleDeleteEmployee({required String id}) async {
     _isLoading = true;
     _errorMessage = null;
@@ -209,7 +251,7 @@ class EmployeeController extends ChangeNotifier {
     return false;
   }
 
-  /// 5. Live Recommendations Real-Time Text Query
+  /// 6. Live Recommendations Real-Time Text Query
   Future<void> handleGetRecommendations({
     required String query,
     String? jobRole,
@@ -231,5 +273,34 @@ class EmployeeController extends ChangeNotifier {
       _recommendations = apiResponse.data ?? [];
     }
     notifyListeners();
+  }
+
+  /// 7. Look Up Employee By Email Or Phone
+  Future<EmployeeModel?> handleFindEmployeeByEmailOrPhone({
+    String? email,
+    String? phoneNumber,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    final result = await _employeeRepository.findEmployeeByEmailOrPhone(
+      email: email,
+      phoneNumber: phoneNumber,
+    );
+
+    _isLoading = false;
+
+    if (result is Success) {
+      final apiResponse =
+          (result as Success).data as BaseApiResponse<EmployeeModel>;
+      notifyListeners();
+      return apiResponse.data;
+    } else if (result is Failure) {
+      _errorMessage = (result as Failure).exception.userMessage;
+      notifyListeners();
+      return null;
+    }
+    return null;
   }
 }

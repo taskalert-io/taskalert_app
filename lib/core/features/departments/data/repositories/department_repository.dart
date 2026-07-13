@@ -7,6 +7,7 @@ abstract class DepartmentRepository {
   Future<ApiResult<BaseApiResponse<DepartmentModel>>> createDepartment({
     required String name,
     String? location,
+    List<String>? locationIds,
   });
   Future<ApiResult<BaseApiResponse<List<DepartmentModel>>>> getDepartments({
     String? search,
@@ -15,6 +16,7 @@ abstract class DepartmentRepository {
     required String id,
     required String name,
     String? location,
+    List<String>? locationIds,
   });
   Future<ApiResult<BaseApiResponse<dynamic>>> deleteDepartment({
     required String id,

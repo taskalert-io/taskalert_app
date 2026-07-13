@@ -3,10 +3,12 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:taskalert_app/core/features/auth/controllers/login_controller.dart';
-import 'package:taskalert_app/screens/DashboardPage.dart';
 import 'package:taskalert_app/screens/DepartmentListScreen.dart';
 import 'package:taskalert_app/screens/HomeScreen.dart';
 import 'package:taskalert_app/screens/LocationListScreen.dart';
+import 'package:taskalert_app/screens/MoreScreen.dart';
+import 'package:taskalert_app/screens/OrganizationListScreen.dart';
+import 'package:taskalert_app/screens/ProfileSetting.dart';
 import 'package:taskalert_app/screens/SignInScreen.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
 
@@ -39,9 +41,12 @@ class _CustomDrawerState extends State<CustomDrawer> {
   @override
   void initState() {
     super.initState();
+    // Set synchronously so the correct tile is already highlighted on the
+    // very first frame, instead of relying on a later setState (e.g. from
+    // loadUserData) to incidentally pick up the value.
+    activeTile = widget.activeTile;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        activeTile = widget.activeTile;
         _loginController.handleGetProfile();
         loadUserData();
       }
@@ -80,11 +85,22 @@ class _CustomDrawerState extends State<CustomDrawer> {
         child: InkWell(
           borderRadius: BorderRadius.circular(12.r),
           onTap: () {
+            // Already on this tile's screen — just close the drawer instead
+            // of pushing a duplicate instance of the same screen.
+            if (title == widget.activeTile) {
+              Navigator.pop(context);
+              return;
+            }
+
             setState(() {
               activeTile = title;
             });
 
             widget.onTileTap(title);
+
+            // Resolve the messenger before popping the drawer so it's safe
+            // to use even after this widget's context is torn down.
+            final messenger = ScaffoldMessenger.of(context);
 
             Navigator.pop(context);
 
@@ -92,6 +108,13 @@ class _CustomDrawerState extends State<CustomDrawer> {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => destinationScreen),
+              );
+            } else {
+              messenger.showSnackBar(
+                SnackBar(
+                  content: Text('$title is under development'),
+                  behavior: SnackBarBehavior.floating,
+                ),
               );
             }
           },
@@ -282,27 +305,16 @@ class _CustomDrawerState extends State<CustomDrawer> {
                 ),
 
                 buildDrawerItem(
-                  title: "Work Space",
-                  icon: Icons.dashboard_outlined,
-                  destinationScreen: DashboardPage(userId: ''),
+                  title: "User",
+                  icon: Icons.person_outline,
+                  destinationScreen: ProfileSetting(userId: ''),
                 ),
-
-                buildDrawerItem(title: "Work Flow", icon: Icons.show_chart),
-
-                buildDrawerItem(title: "User", icon: Icons.person_outline),
 
                 buildDrawerItem(
                   title: "Employees",
                   icon: Icons.supervised_user_circle_outlined,
                   destinationScreen: EmployeesScreen(userId: ''),
                 ),
-
-                buildDrawerItem(
-                  title: "Reporting",
-                  icon: Icons.receipt_long_outlined,
-                ),
-
-                buildDrawerItem(title: "Category", icon: Icons.layers_outlined),
 
                 buildDrawerItem(
                   title: "Department",
@@ -317,11 +329,22 @@ class _CustomDrawerState extends State<CustomDrawer> {
                 ),
 
                 buildDrawerItem(
-                  title: "Settings",
-                  icon: Icons.settings_outlined,
+                  title: "Organizations",
+                  icon: Icons.business_outlined,
+                  destinationScreen: OrganizationListScreen(userId: ''),
                 ),
 
-                buildDrawerItem(title: "Help", icon: Icons.help_outline),
+                buildDrawerItem(
+                  title: "Settings",
+                  icon: Icons.settings_outlined,
+                  destinationScreen: MoreScreen(userId: ''),
+                ),
+
+                buildDrawerItem(
+                  title: "Help",
+                  icon: Icons.help_outline,
+                  destinationScreen: MoreScreen(userId: ''),
+                ),
                 SizedBox(height: 10.h),
 
                 Padding(

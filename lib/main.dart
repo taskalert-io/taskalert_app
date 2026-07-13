@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:taskalert_app/screens/DashboardPage.dart';
+import 'package:taskalert_app/screens/HomeScreen.dart';
 import 'package:taskalert_app/screens/SignInScreen.dart';
 import 'package:taskalert_app/screens/SplashScreen.dart';
 import 'package:taskalert_app/utils/injection_container.dart' as di;
@@ -36,11 +36,14 @@ class _MyAppState extends State<MyApp> {
 
   Future<Widget> _getInitialScreen() async {
     final storage = di.sl<FlutterSecureStorage>();
-    String? isLoggedIn = await storage.read(key: 'isLoggedIn');
-    String? token = await storage.read(key: 'accessToken');
+    // 'auth_token' is the key actually written on successful login/signup
+    // (see AuthRepositoryImpl) and read by AuthInterceptor on every request,
+    // so its presence is the source of truth for an active session.
+    final token = await storage.read(key: 'auth_token');
+    final userId = await storage.read(key: 'user_id');
 
-    if (isLoggedIn == 'true' && token != null) {
-      return DashboardPage(userId: '');
+    if (token != null && token.isNotEmpty) {
+      return HomeScreen(userId: userId ?? '');
     } else {
       return const SplashScreen();
     }
@@ -60,6 +63,7 @@ class _MyAppState extends State<MyApp> {
           ).copyWith(textScaler: const TextScaler.linear(1.0)),
 
           child: MaterialApp(
+            title: 'taskalert.io',
             debugShowCheckedModeBanner: false,
 
             navigatorObservers: [routeObserver],

@@ -4,7 +4,7 @@ class DepartmentModel {
   final List<dynamic>?
   user; // Kept as dynamic since it's an empty array for now
   final String? organization;
-  final DepartmentLocationModel? location;
+  final List<DepartmentLocationModel> location;
   final bool? isDeleted;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -15,7 +15,7 @@ class DepartmentModel {
     this.name,
     this.user,
     this.organization,
-    this.location,
+    this.location = const [],
     this.isDeleted,
     this.createdAt,
     this.updatedAt,
@@ -30,7 +30,7 @@ class DepartmentModel {
           ? List<dynamic>.from(json['user'] as List)
           : null,
       organization: _extractRefId(json['organization']),
-      location: DepartmentLocationModel.fromDynamic(json['location']),
+      location: _parseLocationList(json['location']),
       isDeleted: json['isDeleted'] as bool?,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
@@ -51,6 +51,21 @@ class DepartmentModel {
     return null;
   }
 
+  /// `location` now comes back as an array of populated objects
+  /// (`[{"_id": ..., "name": ...}]`). Also tolerates a single object or
+  /// plain ID string, in case an older endpoint still sends that shape.
+  static List<DepartmentLocationModel> _parseLocationList(dynamic value) {
+    if (value == null) return [];
+    if (value is List) {
+      return value
+          .map((e) => DepartmentLocationModel.fromDynamic(e))
+          .whereType<DepartmentLocationModel>()
+          .toList();
+    }
+    final single = DepartmentLocationModel.fromDynamic(value);
+    return single != null ? [single] : [];
+  }
+
   /// Serialization payload builder for POST / PUT bodies
   Map<String, dynamic> toJson() {
     return {
@@ -58,7 +73,8 @@ class DepartmentModel {
       if (name != null) 'name': name,
       if (user != null) 'user': user,
       if (organization != null) 'organization': organization,
-      if (location != null) 'location': location?.toJson(),
+      if (location.isNotEmpty)
+        'location': location.map((l) => l.toJson()).toList(),
       if (isDeleted != null) 'isDeleted': isDeleted,
       if (createdAt != null) 'createdAt': createdAt?.toIso8601String(),
       if (updatedAt != null) 'updatedAt': updatedAt?.toIso8601String(),

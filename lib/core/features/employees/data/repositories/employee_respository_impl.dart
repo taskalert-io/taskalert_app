@@ -16,11 +16,16 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
   Future<ApiResult<BaseApiResponse<EmployeeModel>>> createEmployee({
     required String firstName,
     required String lastName,
-    required String email,
+    String? email,
     required String phoneNumber,
-    required String jobRole,
     required String gender,
-    required String department,
+    String? jobRole,
+    String? department,
+    String? organization,
+    String? location,
+    String? dateOfBirth,
+    bool? taskPermission,
+    String? taskType,
     String? imageFilePath,
   }) async {
     try {
@@ -28,12 +33,41 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
       final Map<String, dynamic> map = {
         'firstName': firstName,
         'lastName': lastName,
-        'email': email,
+        // 'email': email,
         'phoneNumber': phoneNumber,
-        'jobRole': jobRole,
-        'gender': gender,
-        'department': department,
+        // 'gender': gender,
+        'location': location,
       };
+
+      if (email != null && email.isNotEmpty) {
+        map['email'] = email;
+      }
+
+      if (gender != null && gender.isNotEmpty) {
+        map['gender'] = gender;
+      }
+
+      if (jobRole != null && jobRole.isNotEmpty) {
+        map['jobRole'] = jobRole;
+      }
+      if (department != null && department.isNotEmpty) {
+        map['department'] = department;
+      }
+      if (organization != null && organization.isNotEmpty) {
+        map['organization'] = organization;
+      }
+      if (location != null && location.isNotEmpty) {
+        map['location'] = location;
+      }
+      if (dateOfBirth != null && dateOfBirth.isNotEmpty) {
+        map['dateOfBirth'] = dateOfBirth;
+      }
+      if (taskPermission != null) {
+        map['taskPermission'] = taskPermission.toString();
+      }
+      if (taskType != null && taskType.isNotEmpty) {
+        map['taskType'] = taskType;
+      }
 
       if (imageFilePath != null && imageFilePath.isNotEmpty) {
         final String fileName = imageFilePath.split('/').last;
@@ -150,10 +184,14 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
     required String lastName,
     required String email,
     required String phoneNumber,
-    required String jobRole,
-
     required String gender,
-    required String department,
+    String? jobRole,
+    String? department,
+    String? organization,
+    String? location,
+    String? dateOfBirth,
+    bool? taskPermission,
+    String? taskType,
     String? imageFilePath,
   }) async {
     try {
@@ -162,10 +200,30 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
         'lastName': lastName,
         'email': email,
         'phoneNumber': phoneNumber,
-        'jobRole': jobRole,
         'gender': gender,
-        'department': department,
       };
+
+      if (jobRole != null && jobRole.isNotEmpty) {
+        map['jobRole'] = jobRole;
+      }
+      if (department != null && department.isNotEmpty) {
+        map['department'] = department;
+      }
+      if (organization != null && organization.isNotEmpty) {
+        map['organization'] = organization;
+      }
+      if (location != null && location.isNotEmpty) {
+        map['location'] = location;
+      }
+      if (dateOfBirth != null && dateOfBirth.isNotEmpty) {
+        map['dateOfBirth'] = dateOfBirth;
+      }
+      if (taskPermission != null) {
+        map['taskPermission'] = taskPermission.toString();
+      }
+      if (taskType != null && taskType.isNotEmpty) {
+        map['taskType'] = taskType;
+      }
 
       if (imageFilePath != null && imageFilePath.isNotEmpty) {
         final String fileName = imageFilePath.split('/').last;
@@ -256,6 +314,41 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
           }
           return <EmployeeModel>[];
         },
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    }
+  }
+
+  /// 8. POST: Look up an employee by email or phone number
+  @override
+  Future<ApiResult<BaseApiResponse<EmployeeModel>>> findEmployeeByEmailOrPhone({
+    String? email,
+    String? phoneNumber,
+  }) async {
+    try {
+      final Map<String, dynamic> body = {};
+      if (email != null && email.isNotEmpty) body['email'] = email;
+      if (phoneNumber != null && phoneNumber.isNotEmpty) {
+        body['phoneNumber'] = phoneNumber;
+      }
+
+      final responseData = await _httpService.post(
+        '/employees/find-by-email-or-phone',
+        body: body,
+      );
+
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData as Map<String, dynamic>,
+        (json) => EmployeeModel.fromJson(json as Map<String, dynamic>),
       );
 
       if (apiResponse.success) return ApiResult.success(apiResponse);

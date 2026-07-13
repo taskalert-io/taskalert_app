@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:dio/dio.dart';
 import 'package:taskalert_app/core/features/taskInstance/data/models/task_instances_response.dart';
 
 import '../../../../network/api_result.dart';
@@ -23,6 +26,7 @@ class TaskInstanceRepositoryImpl implements TaskInstanceRepository {
     String? status,
     String? sortBy,
     String? order,
+    bool? overdue,
   }) async {
     try {
       final Map<String, dynamic> queryParameters = {};
@@ -34,6 +38,7 @@ class TaskInstanceRepositoryImpl implements TaskInstanceRepository {
       if (status != null) queryParameters['status'] = status;
       if (sortBy != null) queryParameters['sortBy'] = sortBy;
       if (order != null) queryParameters['order'] = order;
+      if (overdue != null) queryParameters['overdue'] = overdue;
 
       final responseData = await _httpService.get(
         '/tasks/instances',
@@ -55,6 +60,17 @@ class TaskInstanceRepositoryImpl implements TaskInstanceRepository {
       );
     } on NetworkException catch (e) {
       return ApiResult.failure(e);
+    } catch (e) {
+      // Guards against unexpected response shapes (e.g. a field the backend
+      // returns differently than expected) so a parsing bug surfaces as a
+      // normal failure instead of an uncaught exception that leaves the
+      // caller's loading state stuck forever.
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
     }
   }
 
@@ -82,6 +98,17 @@ class TaskInstanceRepositoryImpl implements TaskInstanceRepository {
       );
     } on NetworkException catch (e) {
       return ApiResult.failure(e);
+    } catch (e) {
+      // Guards against unexpected response shapes (e.g. a field the backend
+      // returns differently than expected) so a parsing bug surfaces as a
+      // normal failure instead of an uncaught exception that leaves the
+      // caller's loading state stuck forever.
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
     }
   }
 
@@ -125,6 +152,17 @@ class TaskInstanceRepositoryImpl implements TaskInstanceRepository {
       );
     } on NetworkException catch (e) {
       return ApiResult.failure(e);
+    } catch (e) {
+      // Guards against unexpected response shapes (e.g. a field the backend
+      // returns differently than expected) so a parsing bug surfaces as a
+      // normal failure instead of an uncaught exception that leaves the
+      // caller's loading state stuck forever.
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
     }
   }
 
@@ -163,6 +201,110 @@ class TaskInstanceRepositoryImpl implements TaskInstanceRepository {
       );
     } on NetworkException catch (e) {
       return ApiResult.failure(e);
+    } catch (e) {
+      // Guards against unexpected response shapes (e.g. a field the backend
+      // returns differently than expected) so a parsing bug surfaces as a
+      // normal failure instead of an uncaught exception that leaves the
+      // caller's loading state stuck forever.
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
+    }
+  }
+
+  /// 5. PUT: Upload Proof Files for an Instance (multipart Form-Data)
+  @override
+  Future<ApiResult<BaseApiResponse<TaskInstanceModel>>>
+  uploadInstanceProofFiles({
+    required String taskId,
+    required String instanceId,
+    required List<File> proofFiles,
+  }) async {
+    try {
+      final List<MultipartFile> multipartFiles = [];
+      for (var file in proofFiles) {
+        multipartFiles.add(
+          await MultipartFile.fromFile(
+            file.path,
+            filename: file.path.split('/').last,
+          ),
+        );
+      }
+
+      final formData = FormData.fromMap({'proofFiles': multipartFiles});
+
+      final responseData = await _httpService.put(
+        '/tasks/$taskId/instances/$instanceId/proof',
+        body: formData,
+      );
+
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData as Map<String, dynamic>,
+        (json) => TaskInstanceModel.fromJson(json as Map<String, dynamic>),
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    } catch (e) {
+      // Guards against unexpected response shapes (e.g. a field the backend
+      // returns differently than expected) so a parsing bug surfaces as a
+      // normal failure instead of an uncaught exception that leaves the
+      // caller's loading state stuck forever.
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
+    }
+  }
+
+  /// 6. DELETE: Remove one or more already-uploaded proof files from an
+  /// instance, identified by their cloud storage `publicId`s.
+  @override
+  Future<ApiResult<BaseApiResponse<TaskInstanceModel>>>
+  deleteInstanceProofFile({
+    required String taskId,
+    required String instanceId,
+    required List<String> publicIds,
+  }) async {
+    try {
+      final responseData = await _httpService.delete(
+        '/tasks/$taskId/instances/$instanceId/proof',
+        body: {'publicId': publicIds},
+      );
+
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData as Map<String, dynamic>,
+        (json) => TaskInstanceModel.fromJson(json as Map<String, dynamic>),
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    } catch (e) {
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
     }
   }
 }

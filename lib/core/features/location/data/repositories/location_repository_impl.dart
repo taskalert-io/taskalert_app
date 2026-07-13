@@ -12,9 +12,21 @@ class LocationRepositoryImpl implements LocationRepository {
 
   /// 1. GET: Fetch all locations
   @override
-  Future<ApiResult<BaseApiResponse<List<LocationModel>>>> getLocations() async {
+  Future<ApiResult<BaseApiResponse<List<LocationModel>>>> getLocations({
+    String? department,
+    int? page,
+    int? limit,
+  }) async {
     try {
-      final responseData = await _httpService.get('/locations');
+      final Map<String, dynamic> queryParameters = {};
+      if (department != null) queryParameters['department'] = department;
+      if (page != null) queryParameters['page'] = page;
+      if (limit != null) queryParameters['limit'] = limit;
+
+      final responseData = await _httpService.get(
+        '/locations',
+        queryParams: queryParameters.isEmpty ? null : queryParameters,
+      );
 
       final apiResponse = BaseApiResponse.fromJson(
         responseData as Map<String, dynamic>,
@@ -33,7 +45,6 @@ class LocationRepositoryImpl implements LocationRepository {
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      print("\u274c Location API Operation Failed Error Message: ${apiResponse.message}");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -47,7 +58,6 @@ class LocationRepositoryImpl implements LocationRepository {
       // backend populates differently than expected) so a parsing bug
       // surfaces as a normal failure instead of an uncaught exception
       // that leaves the controller's loading state stuck forever.
-      print("\u274c Location API Operation Failed: $e");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -72,7 +82,6 @@ class LocationRepositoryImpl implements LocationRepository {
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      print("\u274c Location API Operation Failed Error Message: ${apiResponse.message}");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -86,7 +95,6 @@ class LocationRepositoryImpl implements LocationRepository {
       // backend populates differently than expected) so a parsing bug
       // surfaces as a normal failure instead of an uncaught exception
       // that leaves the controller's loading state stuck forever.
-      print("\u274c Location API Operation Failed: $e");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -106,6 +114,7 @@ class LocationRepositoryImpl implements LocationRepository {
     required String state,
     required String pinCode,
     required String country,
+    List<String>? departmentIds,
   }) async {
     try {
       final Map<String, dynamic> body = {
@@ -118,6 +127,7 @@ class LocationRepositoryImpl implements LocationRepository {
           "pinCode": pinCode,
           "country": country,
         },
+        if (departmentIds != null) "department": departmentIds,
       };
 
       final responseData = await _httpService.post('/locations', body: body);
@@ -129,7 +139,6 @@ class LocationRepositoryImpl implements LocationRepository {
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      print("\u274c Location API Operation Failed Error Message: ${apiResponse.message}");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -143,7 +152,6 @@ class LocationRepositoryImpl implements LocationRepository {
       // backend populates differently than expected) so a parsing bug
       // surfaces as a normal failure instead of an uncaught exception
       // that leaves the controller's loading state stuck forever.
-      print("\u274c Location API Operation Failed: $e");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -164,6 +172,7 @@ class LocationRepositoryImpl implements LocationRepository {
     required String state,
     required String pinCode,
     required String country,
+    List<String>? departmentIds,
   }) async {
     try {
       final Map<String, dynamic> body = {
@@ -176,6 +185,7 @@ class LocationRepositoryImpl implements LocationRepository {
           "pinCode": pinCode,
           "country": country,
         },
+        if (departmentIds != null) "department": departmentIds,
       };
 
       final responseData = await _httpService.put(
@@ -190,7 +200,6 @@ class LocationRepositoryImpl implements LocationRepository {
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      print("\u274c Location API Operation Failed Error Message: ${apiResponse.message}");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -204,7 +213,6 @@ class LocationRepositoryImpl implements LocationRepository {
       // backend populates differently than expected) so a parsing bug
       // surfaces as a normal failure instead of an uncaught exception
       // that leaves the controller's loading state stuck forever.
-      print("\u274c Location API Operation Failed: $e");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -229,7 +237,6 @@ class LocationRepositoryImpl implements LocationRepository {
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
 
-      print("\u274c Location API Operation Failed Error Message: ${apiResponse.message}");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -243,7 +250,6 @@ class LocationRepositoryImpl implements LocationRepository {
       // backend populates differently than expected) so a parsing bug
       // surfaces as a normal failure instead of an uncaught exception
       // that leaves the controller's loading state stuck forever.
-      print("\u274c Location API Operation Failed: $e");
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,

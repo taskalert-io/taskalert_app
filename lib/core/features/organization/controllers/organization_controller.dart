@@ -25,6 +25,9 @@ class OrganizationController extends ChangeNotifier {
   OrganizationModel? _selectedOrganization;
   OrganizationModel? get selectedOrganization => _selectedOrganization;
 
+  OrganizationModel? _myOrganization;
+  OrganizationModel? get myOrganization => _myOrganization;
+
   PaginationModel? _pagination;
   PaginationModel? get pagination => _pagination;
 
@@ -82,6 +85,11 @@ class OrganizationController extends ChangeNotifier {
     required String name,
     required String email,
     required String phoneNumber,
+    String? street,
+    String? city,
+    String? state,
+    String? country,
+    String? pinCode,
     String? imageFilePath,
   }) async {
     _isLoading = true;
@@ -93,6 +101,11 @@ class OrganizationController extends ChangeNotifier {
       name: name,
       email: email,
       phoneNumber: phoneNumber,
+      street: street,
+      city: city,
+      state: state,
+      country: country,
+      pinCode: pinCode,
       imageFilePath: imageFilePath,
     );
 
@@ -103,8 +116,6 @@ class OrganizationController extends ChangeNotifier {
           (result as Success).data as BaseApiResponse<OrganizationModel>;
       _successMessage = apiResponse.message;
 
-      print(_successMessage);
-
       if (apiResponse.data != null) {
         _organizations.insert(0, apiResponse.data!); // Optimistically prepend
       }
@@ -112,7 +123,6 @@ class OrganizationController extends ChangeNotifier {
       return true;
     } else if (result is Failure) {
       _errorMessage = (result as Failure).exception.userMessage;
-      print(_errorMessage);
 
       notifyListeners();
       return false;
@@ -126,6 +136,11 @@ class OrganizationController extends ChangeNotifier {
     required String name,
     required String email,
     required String phoneNumber,
+    String? street,
+    String? city,
+    String? state,
+    String? country,
+    String? pinCode,
     String? imageFilePath,
   }) async {
     _isLoading = true;
@@ -138,6 +153,11 @@ class OrganizationController extends ChangeNotifier {
       name: name,
       email: email,
       phoneNumber: phoneNumber,
+      street: street,
+      city: city,
+      state: state,
+      country: country,
+      pinCode: pinCode,
       imageFilePath: imageFilePath,
     );
 
@@ -187,6 +207,52 @@ class OrganizationController extends ChangeNotifier {
         _selectedOrganization = null;
       }
 
+      notifyListeners();
+      return true;
+    } else if (result is Failure) {
+      _errorMessage = (result as Failure).exception.userMessage;
+      notifyListeners();
+      return false;
+    }
+    return false;
+  }
+
+  /// 6. Fetch the organization currently scoped to this session
+  Future<void> handleGetMyOrganization() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    final result = await _organizationRepository.getMyOrganization();
+
+    _isLoading = false;
+
+    if (result is Success) {
+      final apiResponse =
+          (result as Success).data as BaseApiResponse<OrganizationModel>;
+      _myOrganization = apiResponse.data;
+    } else if (result is Failure) {
+      _errorMessage = (result as Failure).exception.userMessage;
+    }
+    notifyListeners();
+  }
+
+  /// 7. Switch which organization the user's session is scoped to
+  Future<bool> handleSwitchOrganization({required String organizationId}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _successMessage = null;
+    notifyListeners();
+
+    final result = await _organizationRepository.switchOrganization(
+      organizationId: organizationId,
+    );
+
+    _isLoading = false;
+
+    if (result is Success) {
+      final apiResponse = (result as Success).data as BaseApiResponse<dynamic>;
+      _successMessage = apiResponse.message;
       notifyListeners();
       return true;
     } else if (result is Failure) {

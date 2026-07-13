@@ -14,6 +14,8 @@ import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 import 'package:taskalert_app/core/features/departments/controllers/department_controller.dart';
 import 'package:taskalert_app/core/features/departments/data/models/department_model.dart';
 import 'package:taskalert_app/core/features/employees/data/models/employee_model.dart';
+import 'package:taskalert_app/core/features/location/controllers/location_controller.dart';
+import 'package:taskalert_app/core/features/location/data/models/location_model.dart';
 import 'package:taskalert_app/core/features/tasks/controllers/task_controller.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
 
@@ -22,22 +24,9 @@ import '../core/features/employees/controllers/employee_controller.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
-
-/// ─────────────────────────────────────────────────────────────────────────
-/// MOCK MODEL — Location option used for the autocomplete search field.
-/// Swap for your real LocationModel / LocationController.locations once
-/// that repository is wired up (mirrors the DepartmentModel pattern).
-/// ─────────────────────────────────────────────────────────────────────────
-class LocationOptionModel {
-  final String id;
-  final String name;
-  final String city;
-  LocationOptionModel({
-    required this.id,
-    required this.name,
-    required this.city,
-  });
-}
+import 'DepartmentListScreen.dart' show openDepartmentFormDialog;
+import 'LocationListScreen.dart' show openLocationFormDialog;
+import 'MyTaskScreen.dart';
 
 class CreateOneTimeScreen extends StatefulWidget {
   const CreateOneTimeScreen({super.key, required this.userId});
@@ -65,16 +54,10 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
   final FocusNode locationFocusNode = FocusNode();
   final LayerLink locationLayerLink = LayerLink();
   OverlayEntry? _locationSuggestionsOverlay;
-  List<LocationOptionModel> _locationSuggestions = [];
-  LocationOptionModel? selectedLocation;
+  List<LocationModel> _locationSuggestions = [];
+  LocationModel? selectedLocation;
   String? _locationError;
   final GlobalKey _locationFieldKey = GlobalKey();
-
-  // Mock — swap for LocationController.locations once wired up
-  final List<LocationOptionModel> _mockLocations = [
-    LocationOptionModel(id: "1", name: "Second Office", city: "Kolkata"),
-    LocationOptionModel(id: "2", name: "Head Office", city: "Kolkata"),
-  ];
 
   // ── New Department (searchable multi-select, scoped to selected Location) ─
   List<DepartmentModel> selectedNewDepartments = [];
@@ -443,11 +426,6 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     );
   }
 
-  // ── Department (searchable single-select) ─────────────────────────────────
-  String? _departmentError;
-
-  DepartmentModel? selectedDepartment;
-
   List<String> selectedAssignees = [];
 
   String selectedPriority = "High";
@@ -478,9 +456,9 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
   final FocusNode monthFocus = FocusNode();
   final FocusNode yearFocus = FocusNode();
 
-  late final DepartmentController departmentController;
   late final EmployeeController employeeController;
   late final TaskController taskController;
+  late final LocationController locationController;
 
   // ── INIT ───────────────────────────────────────────────────────────────────
   @override
@@ -503,15 +481,14 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     locationSearchController.addListener(_onLocationSearchChanged);
     locationFocusNode.addListener(_onLocationFocusChanged);
 
-    // get departments for dropdown
-
-    departmentController = sl<DepartmentController>();
     employeeController = sl<EmployeeController>();
     taskController = sl<TaskController>();
+    locationController = sl<LocationController>();
+    locationController.addListener(_onLocationsChanged);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      departmentController.handleGetDepartments();
       employeeController.handleGetEmployees();
+      locationController.handleGetLocations();
     });
   }
 
@@ -535,6 +512,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     locationSearchController.dispose();
     locationFocusNode.removeListener(_onLocationFocusChanged);
     locationFocusNode.dispose();
+    locationController.removeListener(_onLocationsChanged);
     _removeLocationSuggestionsOverlay();
 
     super.dispose();
@@ -551,11 +529,13 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
       setState(() => _locationError = null);
     }
 
-    if (selectedDepartment == null) {
-      setState(() => _departmentError = "Please select department");
+    if (selectedNewDepartments.isEmpty) {
+      setState(
+        () => _newDepartmentError = "Please select at least one department",
+      );
       valid = false;
     } else {
-      setState(() => _departmentError = null);
+      setState(() => _newDepartmentError = null);
     }
 
     // Reporting To
@@ -632,9 +612,8 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
           "title": titleNameController.text.trim(),
           "description": descriptionController.text.trim(),
           "location": selectedLocation?.id,
-          "department": selectedDepartment?.id,
-          "newDepartments": jsonEncode(
-            selectedNewDepartments.map((d) => d.id).toList(),
+          "department": jsonEncode(
+            selectedNewDepartments.map((d) => d.id).whereType<String>().toList(),
           ),
           "priority": selectedPriority.toLowerCase(),
           "reportingDate": assignSelectedDate != null
@@ -661,22 +640,14 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
       );
 
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              "Task created successfully!",
-              style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
-            ),
-            backgroundColor: const Color(0xFF0DA99E),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8.r),
-            ),
-          ),
+        // Land on a fresh MyTaskScreen instance (not just pop back) so its
+        // initState re-fetches the task list and the newly created task is
+        // immediately visible — also clears the create-flow screens off the
+        // stack instead of leaving a stale "Create New Workspace" trail.
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => MyTaskScreen(userId: '')),
+          (route) => false,
         );
-        Navigator.pop(
-          context,
-        ); // Go back to previous screen after successful creation
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -742,15 +713,21 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     }
   }
 
+  void _onLocationsChanged() {
+    if (!mounted) return;
+    _updateLocationSuggestions(locationSearchController.text);
+  }
+
   void _updateLocationSuggestions(String query) {
     final q = query.trim().toLowerCase();
+    final allLocations = locationController.locations;
     _locationSuggestions = q.isEmpty
-        ? List.from(_mockLocations)
-        : _mockLocations
+        ? List.from(allLocations)
+        : allLocations
               .where(
                 (l) =>
                     l.name.toLowerCase().contains(q) ||
-                    l.city.toLowerCase().contains(q),
+                    (l.address?.city.toLowerCase().contains(q) ?? false),
               )
               .toList();
 
@@ -777,17 +754,12 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
             borderRadius: BorderRadius.circular(10.r),
             color: Colors.white,
             child: ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: 240.h),
-              child: ListView.separated(
-                padding: EdgeInsets.symmetric(vertical: 4.h),
-                shrinkWrap: true,
-                itemCount: _locationSuggestions.length,
-                separatorBuilder: (_, __) =>
-                    const Divider(height: 1, color: Color(0xFFE4E7EC)),
-                itemBuilder: (context, index) {
-                  final loc = _locationSuggestions[index];
-                  return InkWell(
-                    onTap: () => _selectLocationSuggestion(loc),
+              constraints: BoxConstraints(maxHeight: 280.h),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  InkWell(
+                    onTap: _openAddLocationDialog,
                     child: Padding(
                       padding: EdgeInsets.symmetric(
                         horizontal: 12.w,
@@ -796,38 +768,96 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                       child: Row(
                         children: [
                           Icon(
-                            CupertinoIcons.location_solid,
+                            CupertinoIcons.add_circled_solid,
                             size: 14.r,
-                            color: const Color(0xFF4338CA),
+                            color: const Color(0xFF0A0258),
                           ),
-                          SizedBox(width: 8.w),
+                          SizedBox(width: 6.w),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  loc.name,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13.sp,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF1D2939),
-                                  ),
-                                ),
-                                Text(
-                                  loc.city,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11.sp,
-                                    color: const Color(0xFF667085),
-                                  ),
-                                ),
-                              ],
+                            child: Text(
+                              "Add Location",
+                              style: GoogleFonts.inter(
+                                fontSize: 12.5.sp,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF0A0258),
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  );
-                },
+                  ),
+                  const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                  if (_locationSuggestions.isEmpty)
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 14.h,
+                      ),
+                      child: Text(
+                        "No locations found",
+                        style: GoogleFonts.inter(
+                          fontSize: 12.5.sp,
+                          color: const Color(0xFF9AA0AB),
+                        ),
+                      ),
+                    )
+                  else
+                    Flexible(
+                      child: ListView.separated(
+                        padding: EdgeInsets.symmetric(vertical: 4.h),
+                        shrinkWrap: true,
+                        itemCount: _locationSuggestions.length,
+                        separatorBuilder: (_, __) =>
+                            const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                        itemBuilder: (context, index) {
+                          final loc = _locationSuggestions[index];
+                          return InkWell(
+                            onTap: () => _selectLocationSuggestion(loc),
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12.w,
+                                vertical: 10.h,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    CupertinoIcons.location_solid,
+                                    size: 14.r,
+                                    color: const Color(0xFF4338CA),
+                                  ),
+                                  SizedBox(width: 8.w),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          loc.name,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13.sp,
+                                            fontWeight: FontWeight.w600,
+                                            color: const Color(0xFF1D2939),
+                                          ),
+                                        ),
+                                        Text(
+                                          loc.address?.city ?? '',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11.sp,
+                                            color: const Color(0xFF667085),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
@@ -842,7 +872,21 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     _locationSuggestionsOverlay = null;
   }
 
-  void _selectLocationSuggestion(LocationOptionModel location) {
+  // Reuses the real Location create/edit form (see LocationListScreen.dart's
+  // `openLocationFormDialog`) instead of a simplified quick-add. Newly
+  // created locations are auto-selected the same way picking a suggestion
+  // from the list already works.
+  void _openAddLocationDialog() {
+    _removeLocationSuggestionsOverlay();
+    locationFocusNode.unfocus();
+    openLocationFormDialog(
+      context: context,
+      locationController: locationController,
+      onCreated: _selectLocationSuggestion,
+    );
+  }
+
+  void _selectLocationSuggestion(LocationModel location) {
     locationSearchController.removeListener(_onLocationSearchChanged);
     locationSearchController.text = location.name;
     locationSearchController.selection = TextSelection.fromPosition(
@@ -1011,7 +1055,6 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
 
     // 2. Check dropdown selections / object entities
     if (selectedLocation != null) return true;
-    if (selectedDepartment != null) return true;
     if (selectedNewDepartments.isNotEmpty) return true;
 
     // Assuming "Low" or "Medium" is your default selectedPriority fallback,
@@ -1316,7 +1359,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                 // New Department — searchable multi-select,
                                 // scoped to whichever Location is selected
                                 // above. Locked until a Location is chosen.
-                                _buildLabel("New Department"),
+                                _buildLabel("Department"),
                                 SizedBox(height: 3.h),
                                 IgnorePointer(
                                   ignoring: selectedLocation == null,
@@ -1414,56 +1457,6 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
 
                                 SizedBox(height: 8.h),
 
-                                // Department — searchable single-select
-                                _buildLabel("Department"),
-                                SizedBox(height: 3.h),
-
-                                _buildSearchableDropdownField(
-                                  // If a department is selected, display its real name, otherwise display your placeholder hint
-                                  value:
-                                      selectedDepartment?.name ??
-                                      "Select Department",
-                                  hint: "Select Department",
-
-                                  onTap: () => _showSearchableBottomSheet(
-                                    context: context,
-                                    title: "Select Department",
-                                    selectedValue: selectedDepartment,
-                                    onSelected:
-                                        (DepartmentModel departmentModel) {
-                                          setState(() {
-                                            selectedDepartment =
-                                                departmentModel;
-                                            _departmentError = null;
-
-                                            // print(selectedDepartment);
-
-                                            // employeeController
-                                            //     .handleGetEmployees(
-                                            //       department:
-                                            //           selectedDepartment?.id,
-                                            //     );
-                                          });
-                                        },
-                                  ),
-                                  errorText: _departmentError,
-                                ),
-
-                                if (_departmentError != null)
-                                  Padding(
-                                    padding: EdgeInsets.only(
-                                      top: 4.h,
-                                      left: 4.w,
-                                    ),
-                                    child: Text(
-                                      _departmentError!,
-                                      style: GoogleFonts.inter(
-                                        color: Colors.red,
-                                        fontSize: 10.sp,
-                                      ),
-                                    ),
-                                  ),
-
                                 // Remove the code block that displays the error message on screen load
                                 SizedBox(height: 8.h),
 
@@ -1485,13 +1478,9 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
 
                                 GestureDetector(
                                   onTap: () {
-                                    final activeEmployees = employeeController
-                                        .employees
-                                        .toList();
-
                                     _showAssignToBottomSheet(
                                       context,
-                                      activeEmployees,
+                                      _employeesForSelectedDepartments(),
                                     );
                                   },
                                   child: Container(
@@ -1530,7 +1519,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                                   ) {
                                                     // Match selected IDs back to names for display chips
                                                     final emp = employeeController
-                                                        .employees
+                                                        .allEmployees
                                                         .firstWhere(
                                                           (e) => e.id == id,
                                                           orElse: () =>
@@ -2084,7 +2073,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
             },
           ),
         ),
-        bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 0),
+        bottomNavigationBar: const CustomBottomNavBar(selectedIndex: -1),
       ),
     );
   }
@@ -2505,163 +2494,6 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     ),
   );
 
-  // ── Searchable single-select field ─────────────────────────────────────────
-
-  Widget _buildSearchableDropdownField({
-    required String value,
-    required String hint,
-    required VoidCallback onTap,
-    String? errorText,
-  }) {
-    final isPlaceholder =
-        value == hint ||
-        value == "Select User" ||
-        value == "Select Users" ||
-        value == "Select Department";
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF9FAFC),
-          borderRadius: BorderRadius.circular(8.r),
-          border: Border.all(
-            color: errorText != null ? Colors.red : const Color(0xFFD9DEE5),
-          ),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                value,
-                style: GoogleFonts.inter(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w400,
-                  color: isPlaceholder
-                      ? const Color(0xFFB8BEC5)
-                      : const Color(0xFF6C7278),
-                ),
-              ),
-            ),
-            Icon(
-              CupertinoIcons.chevron_down,
-              size: 11.r,
-              color: const Color(0xFF6C7278),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showSearchableBottomSheet({
-    required BuildContext context,
-    required String title,
-    required DepartmentModel? selectedValue,
-    required Function(DepartmentModel) onSelected,
-  }) {
-    // Grab the factory instance straight out of your service locator container
-    final departmentController = sl<DepartmentController>();
-    departmentController.handleGetDepartments(search: "");
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-      builder: (context) {
-        // Use ListenableBuilder (built straight into Flutter) to re-render when the controller notifies
-        return ListenableBuilder(
-          listenable: departmentController,
-          builder: (context, child) {
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.75,
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        title,
-                        style: GoogleFonts.inter(
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 10.h),
-                  TextField(
-                    onChanged: (value) {
-                      departmentController.handleGetDepartments(
-                        search: value.trim(),
-                      );
-                    },
-                    decoration: InputDecoration(
-                      hintText: "Search...",
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 16.h),
-                  Expanded(
-                    child: departmentController.isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : departmentController.departments.isEmpty
-                        ? const Center(child: Text("No departments found"))
-                        : ListView.builder(
-                            itemCount: departmentController.departments.length,
-                            itemBuilder: (context, index) {
-                              final department =
-                                  departmentController.departments[index];
-                              final isSelected =
-                                  department.id == selectedValue?.id;
-
-                              return ListTile(
-                                title: Text(
-                                  department.name ?? "",
-                                  style: GoogleFonts.inter(
-                                    fontWeight: isSelected
-                                        ? FontWeight.w600
-                                        : FontWeight.w400,
-                                  ),
-                                ),
-                                trailing: isSelected
-                                    ? const Icon(
-                                        Icons.check,
-                                        color: Colors.blue,
-                                      )
-                                    : null,
-                                onTap: () {
-                                  onSelected(department);
-                                  Navigator.pop(context);
-
-                                  // print(department.name);
-                                  employeeController.handleGetEmployees(
-                                    department: department.name,
-                                  );
-                                },
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
   // ── New Department multi-select bottom sheet ───────────────────────────────
 
   void _showNewDepartmentBottomSheet(BuildContext context) {
@@ -2804,6 +2636,50 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                   ),
                 ),
 
+                // Reuses the real Department create/edit form (see
+                // DepartmentListScreen.dart's `openDepartmentFormDialog`)
+                // instead of a simplified quick-add. Newly created
+                // departments are auto-added to the selection.
+                InkWell(
+                  onTap: () => openDepartmentFormDialog(
+                    context: ctx,
+                    departmentController: departmentController,
+                    locationController: locationController,
+                    onCreated: (dept) => ss(() {
+                      if (!tempSelected.any((d) => d.id == dept.id)) {
+                        tempSelected.add(dept);
+                      }
+                    }),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 16.w,
+                      vertical: 10.h,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          CupertinoIcons.add_circled_solid,
+                          size: 14.r,
+                          color: const Color(0xFF4338CA),
+                        ),
+                        SizedBox(width: 6.w),
+                        Expanded(
+                          child: Text(
+                            "Add Department",
+                            style: GoogleFonts.inter(
+                              fontSize: 12.5.sp,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF4338CA),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const Divider(height: 1, color: Color(0xFFE4E7EC)),
+
                 // Dynamic department list, re-renders on controller notify
                 Flexible(
                   child: ListenableBuilder(
@@ -2815,7 +2691,13 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                           child: Center(child: CircularProgressIndicator()),
                         );
                       }
-                      final departments = departmentController.departments;
+                      final departments = departmentController.departments
+                          .where(
+                            (d) => d.location.any(
+                              (l) => l.id == selectedLocation?.id,
+                            ),
+                          )
+                          .toList();
                       if (departments.isEmpty) {
                         return Padding(
                           padding: EdgeInsets.symmetric(vertical: 24.h),
@@ -2857,7 +2739,6 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                               padding: EdgeInsets.symmetric(vertical: 10.h),
                               child: Row(
                                 children: [
-
                                   SizedBox(width: 10.w),
                                   Expanded(
                                     child: Text(
@@ -2945,11 +2826,25 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                             child: ElevatedButton(
                               onPressed: () {
                                 setState(() {
+                                  final oldIds = selectedNewDepartments
+                                      .map((d) => d.id)
+                                      .toSet();
+                                  final newIds = tempSelected
+                                      .map((d) => d.id)
+                                      .toSet();
+                                  final departmentsChanged =
+                                      oldIds.length != newIds.length ||
+                                      !oldIds.containsAll(newIds);
                                   selectedNewDepartments = List.from(
                                     tempSelected,
                                   );
                                   if (selectedNewDepartments.isNotEmpty) {
                                     _newDepartmentError = null;
+                                  }
+                                  // Previously selected assignees may not
+                                  // belong to the newly chosen department(s).
+                                  if (departmentsChanged) {
+                                    selectedAssignees = [];
                                   }
                                 });
                                 Navigator.pop(ctx);
@@ -3027,6 +2922,19 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
   );
 
   // ── Assign To multi-select bottom sheet ────────────────────────────────────
+
+  /// Employees belonging to any of the currently selected "New Department"
+  /// entries — the Assign To dropdown is scoped to this list.
+  List<EmployeeModel> _employeesForSelectedDepartments() {
+    if (selectedNewDepartments.isEmpty) return [];
+    final departmentNames = selectedNewDepartments
+        .map((d) => d.name)
+        .whereType<String>()
+        .toSet();
+    return employeeController.allEmployees
+        .where((e) => departmentNames.contains(e.department))
+        .toList();
+  }
 
   void _showAssignToBottomSheet(
     BuildContext context,

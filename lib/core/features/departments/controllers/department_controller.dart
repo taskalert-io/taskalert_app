@@ -60,6 +60,7 @@ class DepartmentController extends ChangeNotifier {
   Future<bool> handleCreateDepartment({
     required String name,
     String? location,
+    List<String>? locationIds,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -69,6 +70,7 @@ class DepartmentController extends ChangeNotifier {
     final result = await _departmentRepository.createDepartment(
       name: name,
       location: location,
+      locationIds: locationIds,
     );
     _isLoading = false;
 
@@ -96,6 +98,7 @@ class DepartmentController extends ChangeNotifier {
     required String id,
     required String name,
     String? location,
+    List<String>? locationIds,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -106,6 +109,7 @@ class DepartmentController extends ChangeNotifier {
       id: id,
       name: name,
       location: location,
+      locationIds: locationIds,
     );
     _isLoading = false;
 

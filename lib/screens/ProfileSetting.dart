@@ -164,8 +164,6 @@ class ProfileSettingState extends State<ProfileSetting> {
     String? storedJobRole = await storage.read(key: "user_job");
     String? storedDepartment = await storage.read(key: "user_department");
 
-    print(storedJobRole);
-
     setState(() {
       userName = storedName ?? "User";
       userEmail = storedEmail ?? "";
@@ -1664,7 +1662,7 @@ class ProfileSettingState extends State<ProfileSetting> {
         showLeading: true,
         onBackPressed: () => Navigator.pop(context),
       ),
-      drawer: CustomDrawer(activeTile: "Home", onTileTap: (value) {}),
+      drawer: CustomDrawer(activeTile: "User", onTileTap: (value) {}),
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => FocusScope.of(context).unfocus(),
@@ -1794,7 +1792,7 @@ class ProfileSettingState extends State<ProfileSetting> {
           ],
         ),
       ),
-      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 0),
+      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: -1),
     );
   }
 }

@@ -6,11 +6,16 @@ abstract class EmployeeRepository {
   Future<ApiResult<BaseApiResponse<EmployeeModel>>> createEmployee({
     required String firstName,
     required String lastName,
-    required String email,
+     String email,
     required String phoneNumber,
-    required String jobRole,
     required String gender, // 🌟 Added
-    required String department,
+    String? jobRole,
+    String? department,
+    String? organization,
+    String? location,
+    String? dateOfBirth,
+    bool? taskPermission,
+    String? taskType,
     String? imageFilePath, // Path to local file picked from gallery/camera
   });
 
@@ -32,9 +37,14 @@ abstract class EmployeeRepository {
     required String lastName,
     required String email,
     required String phoneNumber,
-    required String jobRole,
     required String gender, // 🌟 Added
-    required String department,
+    String? jobRole,
+    String? department,
+    String? organization,
+    String? location,
+    String? dateOfBirth,
+    bool? taskPermission,
+    String? taskType,
     String? imageFilePath,
   });
 
@@ -47,5 +57,10 @@ abstract class EmployeeRepository {
     required String search,
     String? jobRole,
     int? page,
+  });
+
+  Future<ApiResult<BaseApiResponse<EmployeeModel>>> findEmployeeByEmailOrPhone({
+    String? email,
+    String? phoneNumber,
   });
 }
