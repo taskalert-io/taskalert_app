@@ -626,6 +626,41 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<ApiResult<BaseApiResponse<dynamic>>> registerOrganizationProfile({
+    required String email,
+    required String name,
+    required String phoneNumber,
+  }) async {
+    try {
+      final Map<String, dynamic> body = {
+        "email": email,
+        "name": name,
+        "phoneNumber": phoneNumber,
+      };
+
+      final responseData = await _httpService.post(
+        '/auth/create-organization',
+        body: body,
+      );
+
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData as Map<String, dynamic>,
+        (json) => json,
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    }
+  }
+
+  @override
   Future<void> logout() async {
     await _secureStorage.deleteAll();
   }

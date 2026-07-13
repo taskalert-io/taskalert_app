@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:taskalert_app/core/features/auth/controllers/login_controller.dart';
 import 'package:taskalert_app/core/features/organization/controllers/organization_controller.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
 
@@ -30,7 +31,7 @@ class _OrganizationSetupDialogState extends State<OrganizationSetupDialog> {
   // After first submit: errors show and clear in real-time as user fixes them.
   bool _autoValidate = false;
 
-  final _organizationController = sl<OrganizationController>();
+  final _loginController = sl<LoginController>();
 
   @override
   void dispose() {
@@ -403,7 +404,7 @@ class _OrganizationSetupDialogState extends State<OrganizationSetupDialog> {
                         // Create Organization
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: _organizationController.isLoading
+                            onPressed: _loginController.isLoading
                                 ? null
                                 : () async {
                                     // ✅ Enable real-time validation on first submit tap
@@ -425,8 +426,18 @@ class _OrganizationSetupDialogState extends State<OrganizationSetupDialog> {
 
                                     try {
                                       final isOrgSet =
-                                          await _organizationController
-                                              .handleCreateOrganization(
+                                          // await _loginController
+                                          //     .handleCreateOrganization(
+                                          //       name: _orgNameController.text
+                                          //           .trim(),
+                                          //       phoneNumber: _phoneController
+                                          //           .text
+                                          //           .trim(),
+                                          //       email: _emailController.text
+                                          //           .trim(),
+                                          //     );
+                                          await _loginController
+                                              .handleRegisterOrganizationProfile(
                                                 name: _orgNameController.text
                                                     .trim(),
                                                 phoneNumber: _phoneController
@@ -436,8 +447,7 @@ class _OrganizationSetupDialogState extends State<OrganizationSetupDialog> {
                                                     .trim(),
                                               );
                                       if (isOrgSet) {
-                                        if (_organizationController
-                                                .successMessage !=
+                                        if (_loginController.successMessage !=
                                             null) {
                                           Navigator.pop(context);
                                           ScaffoldMessenger.of(
@@ -445,13 +455,13 @@ class _OrganizationSetupDialogState extends State<OrganizationSetupDialog> {
                                           ).showSnackBar(
                                             SnackBar(
                                               content: Text(
-                                                _organizationController
+                                                _loginController
                                                     .successMessage!,
                                               ),
                                               backgroundColor: Colors.green,
                                             ),
                                           );
-                                        } else if (_organizationController
+                                        } else if (_loginController
                                                 .errorMessage !=
                                             null) {
                                           showDialog(
@@ -461,7 +471,7 @@ class _OrganizationSetupDialogState extends State<OrganizationSetupDialog> {
                                               return AlertDialog(
                                                 title: Text('Error'),
                                                 content: Text(
-                                                  _organizationController
+                                                  _loginController
                                                       .errorMessage!,
                                                 ),
                                                 actions: [
@@ -497,8 +507,7 @@ class _OrganizationSetupDialogState extends State<OrganizationSetupDialog> {
                                             return AlertDialog(
                                               title: Text('Error'),
                                               content: Text(
-                                                _organizationController
-                                                    .errorMessage!,
+                                                _loginController.errorMessage!,
                                               ),
                                               actions: [
                                                 TextButton(

@@ -279,4 +279,38 @@ class LoginController extends ChangeNotifier {
     }
     return false;
   }
+
+  /// Coordinates registering a company structure profile right after user registration succeeds
+  Future<bool> handleRegisterOrganizationProfile({
+    required String email,
+    required String name,
+    required String phoneNumber,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _successMessage = null;
+    notifyListeners();
+
+    final result = await _authRepository.registerOrganizationProfile(
+      email: email,
+      name: name,
+      phoneNumber: phoneNumber,
+    );
+
+    _isLoading = false;
+
+    if (result is Success) {
+      final apiResponse = (result as Success).data as BaseApiResponse<dynamic>;
+      _successMessage = apiResponse.message;
+      notifyListeners();
+      return true;
+    } else if (result is Failure) {
+      _errorMessage = (result as Failure).exception.userMessage;
+      notifyListeners();
+      return false;
+    }
+
+    notifyListeners();
+    return false;
+  }
 }

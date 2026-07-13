@@ -13,7 +13,8 @@ abstract class OrganizationRepository {
     String? state,
     String? country,
     String? pinCode,
-    String? imageFilePath, // Path to local file if picked from gallery/camera
+    required String
+    imageFilePath, // Path to local file if picked from gallery/camera
   });
 
   Future<ApiResult<BaseApiResponse<List<OrganizationModel>>>>

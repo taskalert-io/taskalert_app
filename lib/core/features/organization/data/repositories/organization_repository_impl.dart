@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' hide MultipartFile;
 import '../../../../network/api_result.dart';
 import '../../../../network/base_api_response.dart';
 import '../../../../network/http_service.dart';
@@ -17,61 +18,84 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
   OrganizationRepositoryImpl(this._httpService);
 
   /// 1. POST: Create Organization (with optional multi-part logo image file)
+  ///
+  ///
+  ///
   @override
   Future<ApiResult<BaseApiResponse<OrganizationModel>>> createOrganization({
     required String name,
     required String email,
     required String phoneNumber,
+    required String imageFilePath,
     String? street,
     String? city,
     String? state,
     String? country,
     String? pinCode,
-    String? imageFilePath,
   }) async {
     try {
-      final Map<String, dynamic> map = {
-        'name': name,
-        'email': email,
-        'phoneNumber': phoneNumber,
-      };
+      // 1. Initialize an empty FormData object
+      final formData = FormData();
 
-      final address = _buildAddressMap(
-        street: street,
-        city: city,
-        state: state,
-        country: country,
-        pinCode: pinCode,
+      // 2. Add text fields FIRST (Crucial for sequential backend parsing)
+      formData.fields.addAll([
+        MapEntry('name', name),
+        MapEntry('email', email),
+        MapEntry('phoneNumber', phoneNumber),
+      ]);
+
+      // // Flatten and add optional address strings sequentially
+      // if (street != null && street.isNotEmpty) {
+      //   formData.fields.add(MapEntry('street', street));
+      // }
+      // if (city != null && city.isNotEmpty) {
+      //   formData.fields.add(MapEntry('city', city));
+      // }
+      // if (state != null && state.isNotEmpty) {
+      //   formData.fields.add(MapEntry('state', state));
+      // }
+      // if (country != null && country.isNotEmpty) {
+      //   formData.fields.add(MapEntry('country', country));
+      // }
+      // if (pinCode != null && pinCode.isNotEmpty) {
+      //   formData.fields.add(MapEntry('pinCode', pinCode));
+      // }
+
+      final Map<String, dynamic> addressMap = {};
+      if (street != null && street.isNotEmpty) addressMap['street'] = street;
+      if (city != null && city.isNotEmpty) addressMap['city'] = city;
+      if (state != null && state.isNotEmpty) addressMap['state'] = state;
+      if (country != null && country.isNotEmpty) {
+        addressMap['country'] = country;
+      }
+      if (pinCode != null && pinCode.isNotEmpty) {
+        addressMap['pinCode'] = pinCode;
+      }
+
+      // Only add the address field if at least one parameter was provided
+      if (addressMap.isNotEmpty) {
+        formData.fields.add(MapEntry('address', jsonEncode(addressMap)));
+      }
+
+      // 3. Attach the mandatory file payload LAST
+      final String fileName = imageFilePath.split('/').last;
+      formData.files.add(
+        MapEntry(
+          'image',
+          await MultipartFile.fromFile(imageFilePath, filename: fileName),
+        ),
       );
 
-      // A logo is now mandatory from the admin create-organization form, so
-      // this request is (in practice) always multipart. Previously `map`
-      // (which can hold a `MultipartFile`) was passed straight through as
-      // the JSON body — Dio only auto-encodes multipart for an actual
-      // `FormData` instance, so a `MultipartFile` value inside a plain Map
-      // silently failed to serialize, and with it, every other field
-      // (including address). Only switch to `FormData` when there's
-      // actually a file to send, so the no-image case (e.g. the onboarding
-      // setup dialog) keeps going out as plain JSON exactly as before.
-      final hasImage = imageFilePath != null && imageFilePath.isNotEmpty;
+      // Debugging: View exactly how many text fields and files are queued
+      print(
+        'FormData Fields: ${formData.fields.map((e) => "${e.key}: ${e.value}").toList()}',
+      );
+      print('FormData Files: ${formData.files.map((e) => e.key).toList()}');
 
-      if (address != null) {
-        // `FormData.fromMap` doesn't recurse into nested Maps — send the
-        // address as a JSON string on the multipart path, same as update().
-        map['address'] = hasImage ? jsonEncode(address) : address;
-      }
-
-      if (hasImage) {
-        final String fileName = imageFilePath.split('/').last;
-        map['image'] = await MultipartFile.fromFile(
-          imageFilePath,
-          filename: fileName,
-        );
-      }
-
+      // 4. Send the request
       final responseData = await _httpService.post(
-        '/auth/create-organization',
-        body: hasImage ? FormData.fromMap(map) : map,
+        '/organizations',
+        body: formData,
       );
 
       final apiResponse = BaseApiResponse.fromJson(
@@ -87,7 +111,6 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
         return ApiResult.success(apiResponse);
       }
 
-      // if (apiResponse.success) return ApiResult.success(apiResponse);
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,
@@ -98,6 +121,316 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
       return ApiResult.failure(e);
     }
   }
+  // @override
+  // Future<ApiResult<BaseApiResponse<OrganizationModel>>> createOrganization({
+  //   required String name,
+  //   required String email,
+  //   required String phoneNumber,
+  //   required String imageFilePath,
+  //   String? street,
+  //   String? city,
+  //   String? state,
+  //   String? country,
+  //   String? pinCode,
+  // }) async {
+  //   try {
+  //     final formData = FormData();
+  //     // 1. Initialize with core fields (all flat strings)
+  //     final Map<String, dynamic> map = {
+  //       'name': name,
+  //       'email': email,
+  //       'phoneNumber': phoneNumber,
+  //     };
+
+  //     // 2. FLATTEN THE ADDRESS KEYS directly into the main map structure
+  //     // instead of using _buildAddressMap and jsonEncode!
+  //     if (street != null && street.isNotEmpty) map['street'] = street;
+  //     if (city != null && city.isNotEmpty) map['city'] = city;
+  //     if (state != null && state.isNotEmpty) map['state'] = state;
+  //     if (country != null && country.isNotEmpty) map['country'] = country;
+  //     if (pinCode != null && pinCode.isNotEmpty) map['pinCode'] = pinCode;
+
+  //     // 3. Attach the mandatory file payload
+  //     final String fileName = imageFilePath.split('/').last;
+  //     map['image'] = await MultipartFile.fromFile(
+  //       imageFilePath,
+  //       filename: fileName,
+  //     );
+
+  //     // 4. Wrap everything inside a FormData instance
+  //     final formData = FormData.fromMap(map);
+
+  //     print('FormData map: $map'); // Debugging: Print the FormData map
+
+  //     // 5. Send the request
+  //     final responseData = await _httpService.post(
+  //       '/auth/create-organization',
+  //       body: formData,
+  //     );
+
+  //     final apiResponse = BaseApiResponse.fromJson(
+  //       responseData as Map<String, dynamic>,
+  //       (json) => OrganizationModel.fromJson(json as Map<String, dynamic>),
+  //     );
+
+  //     if (apiResponse.success && apiResponse.data != null) {
+  //       await _secureStorage.write(
+  //         key: 'user_requires_organization',
+  //         value: 'false',
+  //       );
+  //       return ApiResult.success(apiResponse);
+  //     }
+
+  //     return ApiResult.failure(
+  //       NetworkException(
+  //         errorType: NetworkErrorType.unknown,
+  //         userMessage: apiResponse.message,
+  //       ),
+  //     );
+  //   } on NetworkException catch (e) {
+  //     return ApiResult.failure(e);
+  //   }
+  // }
+
+  /// @override
+  // @override
+  // Future<ApiResult<BaseApiResponse<OrganizationModel>>> createOrganization({
+  //   required String name,
+  //   required String email,
+  //   required String phoneNumber,
+  //   required String imageFilePath, // Made required and non-nullable
+  //   String? street,
+  //   String? city,
+  //   String? state,
+  //   String? country,
+  //   String? pinCode,
+  // }) async {
+  //   try {
+  //     // 1. Initialize the map with core fields
+  //     final Map<String, dynamic> map = {
+  //       'name': name,
+  //       'email': email,
+  //       'phoneNumber': phoneNumber,
+  //     };
+
+  //     // 2. Build and encode the address if present
+  //     final address = _buildAddressMap(
+  //       street: street,
+  //       city: city,
+  //       state: state,
+  //       country: country,
+  //       pinCode: pinCode,
+  //     );
+
+  //     if (address != null) {
+  //       map['address'] = jsonEncode(address);
+  //     }
+
+  //     // 3. Attach the mandatory file payload with explicit MediaType
+  //     final String fileName = imageFilePath.split('/').last;
+  //     final String extension = fileName.split('.').last.toLowerCase();
+
+  //     // Normalize common image extension patterns to valid mime subtypes
+  //     String mimeSubtype = 'jpeg';
+  //     if (extension == 'png') mimeSubtype = 'png';
+  //     if (extension == 'jpg' || extension == 'jpeg') mimeSubtype = 'jpeg';
+
+  //     map['image'] = await MultipartFile.fromFile(
+  //       imageFilePath,
+  //       filename: fileName,
+  //       contentType: MediaType(
+  //         'image',
+  //         mimeSubtype,
+  //       ), // Ensures the backend middleware identifies the stream correctly
+  //     );
+
+  //     // 4. Wrap everything inside a FormData instance
+  //     final formData = FormData.fromMap(map);
+
+  //     // 5. Send the request
+  //     final responseData = await _httpService.post(
+  //       '/auth/create-organization',
+  //       body: formData,
+  //     );
+
+  //     final apiResponse = BaseApiResponse.fromJson(
+  //       responseData as Map<String, dynamic>,
+  //       (json) => OrganizationModel.fromJson(json as Map<String, dynamic>),
+  //     );
+
+  //     if (apiResponse.success && apiResponse.data != null) {
+  //       await _secureStorage.write(
+  //         key: 'user_requires_organization',
+  //         value: 'false',
+  //       );
+  //       return ApiResult.success(apiResponse);
+  //     }
+
+  //     return ApiResult.failure(
+  //       NetworkException(
+  //         errorType: NetworkErrorType.unknown,
+  //         userMessage: apiResponse.message,
+  //       ),
+  //     );
+  //   } on NetworkException catch (e) {
+  //     return ApiResult.failure(e);
+  //   }
+  // }
+
+  // @override
+  // Future<ApiResult<BaseApiResponse<OrganizationModel>>> createOrganization({
+  //   required String name,
+  //   required String email,
+  //   required String phoneNumber,
+  //   required String imageFilePath, // Made required and non-nullable
+  //   String? street,
+  //   String? city,
+  //   String? state,
+  //   String? country,
+  //   String? pinCode,
+  // }) async {
+  //   try {
+  //     // 1. Initialize the map with core fields
+  //     final Map<String, dynamic> map = {
+  //       'name': name,
+  //       'email': email,
+  //       'phoneNumber': phoneNumber,
+  //     };
+
+  //     // 2. Build and encode the address if present
+  //     final address = _buildAddressMap(
+  //       street: street,
+  //       city: city,
+  //       state: state,
+  //       country: country,
+  //       pinCode: pinCode,
+  //     );
+
+  //     if (address != null) {
+  //       map['address'] = jsonEncode(address);
+  //     }
+
+  //     // 3. Attach the mandatory file payload
+  //     final String fileName = imageFilePath.split('/').last;
+  //     map['image'] = await MultipartFile.fromFile(
+  //       imageFilePath,
+  //       filename: fileName,
+  //     );
+
+  //     // 4. Wrap everything inside a FormData instance
+  //     final formData = FormData.fromMap(map);
+
+  //     // 5. Send the request
+  //     final responseData = await _httpService.post(
+  //       '/auth/create-organization',
+  //       body: formData,
+  //     );
+
+  //     final apiResponse = BaseApiResponse.fromJson(
+  //       responseData as Map<String, dynamic>,
+  //       (json) => OrganizationModel.fromJson(json as Map<String, dynamic>),
+  //     );
+
+  //     if (apiResponse.success && apiResponse.data != null) {
+  //       await _secureStorage.write(
+  //         key: 'user_requires_organization',
+  //         value: 'false',
+  //       );
+  //       return ApiResult.success(apiResponse);
+  //     }
+
+  //     return ApiResult.failure(
+  //       NetworkException(
+  //         errorType: NetworkErrorType.unknown,
+  //         userMessage: apiResponse.message,
+  //       ),
+  //     );
+  //   } on NetworkException catch (e) {
+  //     return ApiResult.failure(e);
+  //   }
+  // }
+
+  // @override
+  // Future<ApiResult<BaseApiResponse<OrganizationModel>>> createOrganization({
+  //   required String name,
+  //   required String email,
+  //   required String phoneNumber,
+  //   String? street,
+  //   String? city,
+  //   String? state,
+  //   String? country,
+  //   String? pinCode,
+  //   String? imageFilePath,
+  // }) async {
+  //   try {
+  //     final Map<String, dynamic> map = {
+  //       'name': name,
+  //       'email': email,
+  //       'phoneNumber': phoneNumber,
+  //     };
+
+  //     final address = _buildAddressMap(
+  //       street: street,
+  //       city: city,
+  //       state: state,
+  //       country: country,
+  //       pinCode: pinCode,
+  //     );
+
+  //     // A logo is now mandatory from the admin create-organization form, so
+  //     // this request is (in practice) always multipart. Previously `map`
+  //     // (which can hold a `MultipartFile`) was passed straight through as
+  //     // the JSON body — Dio only auto-encodes multipart for an actual
+  //     // `FormData` instance, so a `MultipartFile` value inside a plain Map
+  //     // silently failed to serialize, and with it, every other field
+  //     // (including address). Only switch to `FormData` when there's
+  //     // actually a file to send, so the no-image case (e.g. the onboarding
+  //     // setup dialog) keeps going out as plain JSON exactly as before.
+  //     final hasImage = imageFilePath != null && imageFilePath.isNotEmpty;
+
+  //     if (address != null) {
+  //       // `FormData.fromMap` doesn't recurse into nested Maps — send the
+  //       // address as a JSON string on the multipart path, same as update().
+  //       map['address'] = hasImage ? jsonEncode(address) : address;
+  //     }
+
+  //     if (hasImage) {
+  //       final String fileName = imageFilePath.split('/').last;
+  //       map['image'] = await MultipartFile.fromFile(
+  //         imageFilePath,
+  //         filename: fileName,
+  //       );
+  //     }
+
+  //     final responseData = await _httpService.post(
+  //       '/auth/create-organization',
+  //       body: hasImage ? FormData.fromMap(map) : map,
+  //     );
+
+  //     final apiResponse = BaseApiResponse.fromJson(
+  //       responseData as Map<String, dynamic>,
+  //       (json) => OrganizationModel.fromJson(json as Map<String, dynamic>),
+  //     );
+
+  //     if (apiResponse.success && apiResponse.data != null) {
+  //       await _secureStorage.write(
+  //         key: 'user_requires_organization',
+  //         value: 'false',
+  //       );
+  //       return ApiResult.success(apiResponse);
+  //     }
+
+  //     // if (apiResponse.success) return ApiResult.success(apiResponse);
+  //     return ApiResult.failure(
+  //       NetworkException(
+  //         errorType: NetworkErrorType.unknown,
+  //         userMessage: apiResponse.message,
+  //       ),
+  //     );
+  //   } on NetworkException catch (e) {
+  //     return ApiResult.failure(e);
+  //   }
+  // }
 
   /// 2. GET: Fetch all organizations
   @override
