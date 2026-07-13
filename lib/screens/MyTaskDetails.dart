@@ -284,7 +284,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             _hour = h == 0 ? 12 : h;
             _minute = int.tryParse(parts[1]) ?? _minute;
             _isAM = scheduledTime.period.toUpperCase() != 'PM';
-            _assignTimeEnabled = true;
+            // Note: the "Schedule Time" toggle itself intentionally stays
+            // off by default even when a time already exists — _hour/
+            // _minute/_isAM are still populated here so the toggle row's
+            // subtitle shows the current value; the picker only opens (and
+            // becomes editable) once someone with edit access switches it
+            // on themselves.
           }
         }
 
