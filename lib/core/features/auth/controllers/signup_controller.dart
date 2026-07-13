@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:taskalert_app/core/features/auth/data/models/user_model.dart';
 import 'package:taskalert_app/core/network/base_api_response.dart';
@@ -55,7 +56,10 @@ class SignUpController extends ChangeNotifier {
     if (result is Success) {
       _currentPhoneNumber = phoneNumber;
       final apiResponse = (result as Success).data;
-      _otp = apiResponse.data['otp']?.toString();
+      // Only surface the dev/test backend's echoed OTP in debug builds — a
+      // release build must never read or display this, regardless of what
+      // the backend returns.
+      _otp = kDebugMode ? apiResponse.data['otp']?.toString() : null;
       _successMessage = _otp != null
           ? '${apiResponse.message} Your OTP is: $_otp'
           : apiResponse.message;
@@ -149,7 +153,7 @@ class SignUpController extends ChangeNotifier {
 
     if (result is Success) {
       final apiResponse = (result as Success).data as BaseApiResponse<dynamic>;
-      _otp = apiResponse.data['otp']?.toString();
+      _otp = kDebugMode ? apiResponse.data['otp']?.toString() : null;
       if (_otp != null) {
         _successMessage = " Your new OTP is: $_otp";
       } else {

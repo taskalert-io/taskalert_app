@@ -28,6 +28,61 @@ class AuthRepositoryImpl implements AuthRepository {
     );
   }
 
+  /// Persists a freshly-issued session (sign-up or sign-in OTP verification)
+  /// to secure storage. Both call sites wrote this same set of keys
+  /// independently before — kept as one place so they can't drift apart.
+  Future<void> _persistUserSession(UserModel user) async {
+    await _secureStorage.write(key: 'auth_token', value: user.token!);
+    await _secureStorage.write(
+      key: 'refresh_token',
+      value: user.refreshToken ?? '',
+    );
+    await _secureStorage.write(key: 'user_id', value: user.id);
+    await _secureStorage.write(key: 'user_email', value: user.email);
+    await _secureStorage.write(key: 'user_phone', value: user.phoneNumber);
+    await _secureStorage.write(
+      key: 'user_account_type',
+      value: user.accountType,
+    );
+    await _secureStorage.write(
+      key: 'user_task_permission',
+      value: user.taskPermission?.toString() ?? '',
+    );
+    await _secureStorage.write(key: 'user_task_type', value: user.taskType);
+    await _secureStorage.write(key: 'user_first_name', value: user.firstName);
+    await _secureStorage.write(key: 'user_last_name', value: user.lastName);
+    await _secureStorage.write(
+      key: 'user_avatar_original',
+      value: user.originalAvatarUrl ?? '',
+    );
+    await _secureStorage.write(
+      key: 'user_avatar_thumbnail',
+      value: user.thumbnailAvatarUrl ?? '',
+    );
+    await _secureStorage.write(
+      key: 'user_requires_organization',
+      value: user.requiresOrganization.toString(),
+    );
+    await _secureStorage.write(key: 'user_gender', value: user.gender ?? '');
+    await _secureStorage.write(
+      key: 'user_dob',
+      value: user.dateOfBirth?.toIso8601String() ?? '',
+    );
+    await _secureStorage.write(key: 'user_role', value: user.role ?? '');
+    await _secureStorage.write(
+      key: 'user_organization',
+      value: user.organization?.name ?? '',
+    );
+    await _secureStorage.write(
+      key: 'user_active_organization',
+      value: user.activeOrganization?.name ?? '',
+    );
+    await _secureStorage.write(
+      key: 'user_active_organization_id',
+      value: user.activeOrganization?.id ?? '',
+    );
+  }
+
   // =========================================================================
   // SIGN UP FLOW
   // =========================================================================
@@ -98,71 +153,7 @@ class AuthRepositoryImpl implements AuthRepository {
         final user = apiResponse.data!;
 
         if (user.token != null) {
-          await _secureStorage.write(key: 'auth_token', value: user.token!);
-          await _secureStorage.write(
-            key: 'refresh_token',
-            value: user.refreshToken ?? '',
-          );
-
-          await _secureStorage.write(key: 'user_id', value: user.id);
-          await _secureStorage.write(key: 'user_email', value: user.email);
-          await _secureStorage.write(
-            key: 'user_phone',
-            value: user.phoneNumber,
-          );
-          await _secureStorage.write(
-            key: 'user_account_type',
-            value: user.accountType,
-          );
-          await _secureStorage.write(
-            key: 'user_task_permission',
-            value: user.taskPermission?.toString() ?? '',
-          );
-          await _secureStorage.write(
-            key: 'user_task_type',
-            value: user.taskType,
-          );
-          await _secureStorage.write(
-            key: 'user_first_name',
-            value: user.firstName,
-          );
-          await _secureStorage.write(
-            key: 'user_last_name',
-            value: user.lastName,
-          );
-          await _secureStorage.write(
-            key: 'user_avatar_original',
-            value: user.originalAvatarUrl ?? '',
-          );
-          await _secureStorage.write(
-            key: 'user_avatar_thumbnail',
-            value: user.thumbnailAvatarUrl ?? '',
-          );
-          await _secureStorage.write(
-            key: 'user_requires_organization',
-            value: user.requiresOrganization.toString(),
-          );
-          await _secureStorage.write(
-            key: 'user_gender',
-            value: user.gender ?? '',
-          );
-          await _secureStorage.write(
-            key: 'user_dob',
-            value: user.dateOfBirth?.toIso8601String() ?? '',
-          );
-          await _secureStorage.write(key: 'user_role', value: user.role ?? '');
-          await _secureStorage.write(
-            key: 'user_organization',
-            value: user.organization?.name ?? '',
-          );
-          await _secureStorage.write(
-            key: 'user_active_organization',
-            value: user.activeOrganization?.name ?? '',
-          );
-          await _secureStorage.write(
-            key: 'user_active_organization_id',
-            value: user.activeOrganization?.id ?? '',
-          );
+          await _persistUserSession(user);
         }
         return ApiResult.success(apiResponse);
       }
@@ -256,72 +247,7 @@ class AuthRepositoryImpl implements AuthRepository {
         final user = apiResponse.data!;
         // NOTE: Securely storing accessToken upon verification sequence success
         if (user.token != null) {
-          await _secureStorage.write(key: 'auth_token', value: user.token!);
-          await _secureStorage.write(
-            key: 'refresh_token',
-            value: user.refreshToken ?? '',
-          );
-
-          await _secureStorage.write(key: 'user_id', value: user.id);
-          await _secureStorage.write(key: 'user_email', value: user.email);
-          await _secureStorage.write(
-            key: 'user_phone',
-            value: user.phoneNumber,
-          );
-          await _secureStorage.write(
-            key: 'user_first_name',
-            value: user.firstName,
-          );
-          await _secureStorage.write(
-            key: 'user_last_name',
-            value: user.lastName,
-          );
-          await _secureStorage.write(
-            key: 'user_account_type',
-            value: user.accountType,
-          );
-          await _secureStorage.write(
-            key: 'user_task_permission',
-            value: user.taskPermission?.toString() ?? '',
-          );
-          await _secureStorage.write(
-            key: 'user_task_type',
-            value: user.taskType,
-          );
-          await _secureStorage.write(
-            key: 'user_avatar_original',
-            value: user.originalAvatarUrl ?? '',
-          );
-          await _secureStorage.write(
-            key: 'user_avatar_thumbnail',
-            value: user.thumbnailAvatarUrl ?? '',
-          );
-
-          await _secureStorage.write(
-            key: 'user_requires_organization',
-            value: user.requiresOrganization.toString(),
-          );
-          await _secureStorage.write(
-            key: 'user_gender',
-            value: user.gender ?? '',
-          );
-          await _secureStorage.write(
-            key: 'user_dob',
-            value: user.dateOfBirth?.toIso8601String() ?? '',
-          );
-          await _secureStorage.write(key: 'user_role', value: user.role ?? '');
-          await _secureStorage.write(
-            key: 'user_organization',
-            value: user.organization?.name ?? '',
-          );
-          await _secureStorage.write(
-            key: 'user_active_organization',
-            value: user.activeOrganization?.name ?? '',
-          );
-          await _secureStorage.write(
-            key: 'user_active_organization_id',
-            value: user.activeOrganization?.id ?? '',
-          );
+          await _persistUserSession(user);
         }
         return ApiResult.success(apiResponse);
       }
@@ -662,6 +588,19 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<void> logout() async {
-    await _secureStorage.deleteAll();
+    final refreshToken = await _secureStorage.read(key: 'refresh_token');
+    try {
+      if (refreshToken != null && refreshToken.isNotEmpty) {
+        await _httpService.post(
+          '/auth/logout',
+          body: {'refreshToken': refreshToken},
+        );
+      }
+    } catch (_) {
+      // Best-effort — the local session is cleared below regardless, so the
+      // user is signed out on this device even if the revoke call fails.
+    } finally {
+      await _secureStorage.deleteAll();
+    }
   }
 }
