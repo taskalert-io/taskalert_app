@@ -683,6 +683,9 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                             Expanded(
                               child: _imageUploadField(
                                 imageFile: selectedImageFile,
+                                existingImageUrl:
+                                    existing?.image?.thumbnailUrl ??
+                                    existing?.image?.originalUrl,
                                 onTap: () => _pickImage(
                                   onPicked: (file) =>
                                       ss(() => selectedImageFile = file),
@@ -1389,7 +1392,14 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     required File? imageFile,
     required VoidCallback onTap,
     VoidCallback? onRemove,
+    // Shown when editing and no new local file has been picked yet — the
+    // employee's current photo URL from the server.
+    String? existingImageUrl,
   }) {
+    final hasExistingImage =
+        imageFile == null &&
+        existingImageUrl != null &&
+        existingImageUrl.isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1419,8 +1429,31 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                       borderRadius: BorderRadius.circular(8.r),
                       border: Border.all(color: const Color(0xFFD9DEE5)),
                     ),
-                    child: imageFile == null
-                        ? Column(
+                    child: imageFile != null
+                        ? Image.file(imageFile, fit: BoxFit.cover)
+                        : hasExistingImage
+                        ? Image.network(
+                            existingImageUrl,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, progress) {
+                              if (progress == null) return child;
+                              return const Center(
+                                child: SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) => Icon(
+                              Icons.broken_image_outlined,
+                              size: 20.r,
+                              color: const Color(0xFF9AA0AB),
+                            ),
+                          )
+                        : Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
@@ -1438,8 +1471,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                 textAlign: TextAlign.center,
                               ),
                             ],
-                          )
-                        : Image.file(imageFile, fit: BoxFit.cover),
+                          ),
                   ),
                   if (imageFile != null && onRemove != null)
                     Positioned(
