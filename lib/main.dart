@@ -10,9 +10,9 @@ import 'package:taskalert_app/utils/injection_container.dart' as di;
 final RouteObserver<ModalRoute<void>> routeObserver =
     RouteObserver<ModalRoute<void>>();
 
-void main() {
-  di.init(); // Initialize dependency injection
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await di.init(); // Initialize dependency injection
   runApp(const MyApp());
 }
 

@@ -337,10 +337,6 @@ class AuthRepositoryImpl implements AuthRepository {
         (json) => ProfileModel.fromJson(json as Map<String, dynamic>),
       );
 
-      // if (apiResponse.success) {
-      //   // return ApiResult.success(apiResponse);
-      // }
-
       if (apiResponse.success && apiResponse.data != null) {
         final user = apiResponse.data!;
 
@@ -416,31 +412,6 @@ class AuthRepositoryImpl implements AuthRepository {
       return ApiResult.failure(e);
     }
   }
-
-  // @override
-  // Future<ApiResult<BaseApiResponse<dynamic>>> getProfile() async {
-  //   try {
-  //     final responseData = await _httpService.get('/auth/profile');
-
-  //     final apiResponse = BaseApiResponse.fromJson(
-  //       responseData,
-  //       (json) => UserModel.fromJson(json),
-  //     );
-
-  //     if (apiResponse.success && apiResponse.data != null) {
-  //       return ApiResult.success(apiResponse.data! as BaseApiResponse<dynamic>);
-  //     }
-  //     _handleErrorEnvelope(apiResponse);
-  //     return ApiResult.failure(
-  //       NetworkException(
-  //         errorType: NetworkErrorType.unknown,
-  //         userMessage: apiResponse.message,
-  //       ),
-  //     );
-  //   } on NetworkException catch (e) {
-  //     return ApiResult.failure(e);
-  //   }
-  // }
 
   @override
   Future<ApiResult<BaseApiResponse<dynamic>>> updateProfile({

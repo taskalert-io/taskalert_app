@@ -945,7 +945,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     }
 
     if (selectedReportingList.isEmpty) {
-      //print('selectedReportingList: $selectedReportingList');
       setState(() => _reportingToError = "Please select a user");
       valid = false;
     } else {
@@ -1031,7 +1030,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     }
 
     if (isProofEnabled) {
-      // //print("Before Validation -> $selectedProofTypes");
       if (selectedProofTypes.isEmpty) {
         setState(() {
           _proofTypeError = "Please select at least one proof type";
@@ -1041,8 +1039,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
         setState(() {
           _proofTypeError = null;
         });
-        //print("Proof Types Count: ${selectedProofTypes.length}");
-        //print("Proof Types Values: $selectedProofTypes");
       }
 
       // AI Validation is optional
@@ -1090,19 +1086,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       return;
     }
 
-    if (selectedEndType == "end_by") {
-      //print("End Date: ${endDateController.text}");
-    } else {
-      //print("Occurrences: $occurrencesCount");
-    }
-
-    //print("Ai enabled: $isProofEnabled");
-    //print("Proof Type: $selectedProofTypes");
-    if (selectedProofTypes.isNotEmpty) {
-      //print("AI Validation: $selectedProofRadioType");
-    }
-    //print("Selected Files: $selectedFiles");
-
     if (_validateSections() && _formKey.currentState!.validate()) {
       taskController.clearMessages();
 
@@ -1145,8 +1128,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       }
 
       if (selectedEndType == 'end_by') {
-        //print('end by active');
-        // formData['endByDate'] = endDateController.text;
         formData['endByDate'] = DateTime(
           int.parse(endDateController.text.split('-')[2]),
           int.parse(endDateController.text.split('-')[1]),
@@ -1155,9 +1136,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       } else if (selectedEndType == 'end_after') {
         formData['endAfterCount'] = occurrencesCount;
       }
-
-      //print('Form Data');
-      //print(formData);
 
       if (isProofEnabled) {
         formData['proofTypes'] = jsonEncode(selectedProofTypes);
@@ -1213,19 +1191,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       );
     }
 
-    // //print("Selected AI Proof Type: $")
-
-    // ScaffoldMessenger.of(context).showSnackBar(
-    //   SnackBar(
-    //     content: Text(
-    //       "Form submitted successfully!",
-    //       style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
-    //     ),
-    //     backgroundColor: Colors.green,
-    //     behavior: SnackBarBehavior.floating,
-    //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
-    //   ),
-    // );
   }
 
   // ── LOCATION AUTOCOMPLETE ────────────────────────────────────────────────

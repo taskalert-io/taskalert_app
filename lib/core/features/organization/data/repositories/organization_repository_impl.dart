@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:http/http.dart' hide MultipartFile;
 import '../../../../network/api_result.dart';
 import '../../../../network/base_api_response.dart';
 import '../../../../network/http_service.dart';

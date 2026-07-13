@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:intl/intl.dart';
 
 import 'package:flutter/material.dart';
@@ -12,19 +11,10 @@ import 'package:taskalert_app/utils/injection_container.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
-import 'package:http/http.dart' as http;
 
 import 'CreateOneTimeScreen.dart';
 import 'CreateRepetitiveScreen.dart';
 import 'MyTaskDetails.dart';
-
-// ── API configuration ─────────────────────────────────────────────────────
-class TaskApiConfig {
-  static const String baseUrl = 'https://your-api.example.com';
-
-  static const String tabCountsEndpoint = '$baseUrl/tasks/counts';
-  static const String todoListEndpoint = '$baseUrl/tasks';
-}
 
 // ── Model ────────────────────────────────────────────────────────────────
 class TodoItem {
@@ -65,59 +55,6 @@ class TodoItem {
   }
 }
 
-// ── API service ──────────────────────────────────────────────────────────
-class TaskApiService {
-  final FlutterSecureStorage secureStorage;
-
-  TaskApiService(this.secureStorage);
-
-  Future<Map<String, String>> _headers() async {
-    // final token = await secureStorage.read(key: 'auth_token');
-    return {
-      'Content-Type': 'application/json',
-      // 'Authorization': 'Bearer $token',
-    };
-  }
-
-  /// Fetch counts for each tab.
-  /// Expected response: { "today": 3, "next_day": 1, "this_week": 7, "next_week": 2 }
-  Future<Map<String, int>> getTabCounts() async {
-    final headers = await _headers();
-    final response = await http.get(
-      Uri.parse(TaskApiConfig.tabCountsEndpoint),
-      headers: headers,
-    );
-
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> data = jsonDecode(response.body);
-      return data.map((key, value) => MapEntry(key, (value as num).toInt()));
-    }
-    throw Exception('Failed to load tab counts (${response.statusCode})');
-  }
-
-  /// Fetch to-do list items for a given tab/range and sort filter.
-  /// Expected response: List of items matching [TodoItem.fromJson].
-  Future<List<TodoItem>> getTodoItems({
-    required String range,
-    required String sort,
-  }) async {
-    final headers = await _headers();
-    final uri = Uri.parse(
-      TaskApiConfig.todoListEndpoint,
-    ).replace(queryParameters: {'range': range, 'sort': sort});
-
-    final response = await http.get(uri, headers: headers);
-
-    if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data
-          .map((e) => TodoItem.fromJson(e as Map<String, dynamic>))
-          .toList();
-    }
-    throw Exception('Failed to load tasks (${response.statusCode})');
-  }
-}
-
 // ── Screen ───────────────────────────────────────────────────────────────
 class MyTaskScreen extends StatefulWidget {
   final String userId;
@@ -134,8 +71,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
     String? permission = await secureStorage.read(key: 'user_task_permission');
     return permission == 'true';
   }
-
-  late final TaskApiService _api = TaskApiService(secureStorage);
 
   static const _primaryColor = Color(0xFF0A0258);
 
@@ -198,7 +133,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchTabCounts();
 
     taskController = sl<TaskInstanceController>();
     _overdueCountController = sl<TaskInstanceController>();
@@ -355,20 +289,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
     super.dispose();
   }
 
-  // ── Fetch tab counts from API ──────────────────────────────────────────────
-  Future<void> _fetchTabCounts() async {
-    try {
-      // final counts = await _api.getTabCounts();
-      // setState(() {
-      //   for (var tab in _tabs) {
-      //     tab['count'] = counts[tab['key']] ?? 0;
-      //   }
-      // });
-    } catch (e) {
-      debugPrint('Failed to fetch tab counts: $e');
-    }
-  }
-
   // ── Fetch to-do list items for the selected tab ─────────────────────────────
   // Called on init, on tab change, and when sort changes.
   Future<void> _fetchTodoItems() async {
@@ -420,7 +340,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
 
       _todoItems = todoItems;
     } catch (e) {
-      // print(e);
       _todoError = 'Something went wrong';
     } finally {
       if (mounted) {
@@ -710,8 +629,6 @@ class MyTaskScreenState extends State<MyTaskScreen> {
     required VoidCallback onToggleExpand,
   }) {
     final items = _itemsForSection(sectionKey);
-
-    // print(items);
 
     return Container(
       margin: EdgeInsets.only(left: 15.w, right: 15.w, bottom: 15.h),
