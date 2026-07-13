@@ -1161,9 +1161,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
       if (isProofEnabled) {
         formData['proofTypes'] = jsonEncode(selectedProofTypes);
-        formData["aiValidationEnabled"] = selectedProofRadioType == "Yes"
-            ? true
-            : false;
+        formData["proofEnabled"] = selectedProofRadioType;
       }
 
       final bool success = await taskController.handleCreateTask(
@@ -3477,7 +3475,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                "AI Validation (Optional)",
+                                                "Proof Description",
                                                 style: GoogleFonts.inter(
                                                   color: const Color(
                                                     0xFF3F3F3F,
@@ -3492,27 +3490,31 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                                 runSpacing: 10.h,
                                                 children: [
                                                   _buildProoftypeOption(
-                                                    "Yes",
-                                                    "Yes",
+                                                    "Live",
+                                                    "live",
                                                   ),
                                                   _buildProoftypeOption(
-                                                    "No",
-                                                    "No",
+                                                    "Upload",
+                                                    "upload",
+                                                  ),
+                                                  _buildProoftypeOption(
+                                                    "Both",
+                                                    "both",
                                                   ),
                                                 ],
                                               ),
                                               // DELETED: the _proofRadioError Padding widget
                                               SizedBox(height: 8.h),
-                                              Text(
-                                                'If enabled, the system uses Vision AI to scan the uploaded image to ensure it matches the task.',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 11.sp,
-                                                  fontWeight: FontWeight.w400,
-                                                  color: const Color(
-                                                    0xFF797979,
-                                                  ),
-                                                ),
-                                              ),
+                                              // Text(
+                                              //   'If enabled, the system uses Vision AI to scan the uploaded image to ensure it matches the task.',
+                                              //   style: GoogleFonts.inter(
+                                              //     fontSize: 11.sp,
+                                              //     fontWeight: FontWeight.w400,
+                                              //     color: const Color(
+                                              //       0xFF797979,
+                                              //     ),
+                                              //   ),
+                                              // ),
                                             ],
                                           ),
 

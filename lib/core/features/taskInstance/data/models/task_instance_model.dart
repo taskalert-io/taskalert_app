@@ -5,14 +5,16 @@ class ProofSubmissionModel {
   final List<ProofFileModel> files;
   final String note;
   final List<String> proofTypes;
-  final String? aiValidationResult;
+  final String proofEnabled;
+  // final String? aiValidationResult;
 
   ProofSubmissionModel({
     this.submittedAt,
     required this.files,
     required this.note,
     required this.proofTypes,
-    this.aiValidationResult,
+    required this.proofEnabled,
+    // this.aiValidationResult,
   });
 
   factory ProofSubmissionModel.fromJson(Map<String, dynamic> json) {
@@ -36,7 +38,8 @@ class ProofSubmissionModel {
       proofTypes: json['proofTypes'] != null
           ? List<String>.from(json['proofTypes'])
           : [],
-      aiValidationResult: json['aiValidationResult']?.toString(),
+      proofEnabled: json['proofEnabled'] ?? '',
+      // aiValidationResult: json['aiValidationResult']?.toString(),
     );
   }
 }

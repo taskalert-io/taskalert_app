@@ -188,13 +188,15 @@ class RecurrenceModel {
 
 class ProofConfigModel {
   final List<String> proofTypes;
-  final bool aiValidationEnabled;
+  // final bool aiValidationEnabled;
   final String id;
+  final String proofEnabled;
 
   ProofConfigModel({
     required this.proofTypes,
-    required this.aiValidationEnabled,
+    // required this.aiValidationEnabled,
     required this.id,
+    required this.proofEnabled,
   });
 
   factory ProofConfigModel.fromJson(Map<String, dynamic> json) {
@@ -202,8 +204,9 @@ class ProofConfigModel {
       proofTypes: json['proofTypes'] != null
           ? List<String>.from(json['proofTypes'])
           : [],
-      aiValidationEnabled: json['aiValidationEnabled'] ?? false,
+      // aiValidationEnabled: json['aiValidationEnabled'] ?? false,
       id: json['_id'] ?? '',
+      proofEnabled: json['proofEnabled'] ?? '',
     );
   }
 }
