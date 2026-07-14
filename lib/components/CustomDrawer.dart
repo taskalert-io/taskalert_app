@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:taskalert_app/core/features/auth/controllers/login_controller.dart';
 import 'package:taskalert_app/screens/DepartmentListScreen.dart';
 import 'package:taskalert_app/screens/HomeScreen.dart';
+import 'package:taskalert_app/screens/InvitationScreen.dart';
 import 'package:taskalert_app/screens/LocationListScreen.dart';
 import 'package:taskalert_app/screens/MoreScreen.dart';
 import 'package:taskalert_app/screens/OrganizationListScreen.dart';
@@ -332,6 +333,12 @@ class _CustomDrawerState extends State<CustomDrawer> {
                   title: "Organizations",
                   icon: Icons.business_outlined,
                   destinationScreen: OrganizationListScreen(userId: ''),
+                ),
+
+                buildDrawerItem(
+                  title: "Invitations",
+                  icon: Icons.mail_outline,
+                  destinationScreen: InvitationScreen(userId: ''),
                 ),
 
                 buildDrawerItem(
