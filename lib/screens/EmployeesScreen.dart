@@ -68,6 +68,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
@@ -485,6 +486,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     // the fetch and keep using the list-sourced `existing` for everything
     // else to avoid showing raw ids instead of names.
     DateTime? fetchedDateOfBirth;
+    String? fetchedGender;
     if (existing?.id != null) {
       showDialog(
         context: context,
@@ -500,9 +502,11 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       Navigator.of(context, rootNavigator: true).pop(); // close loader
 
       fetchedDateOfBirth = employeeController.selectedEmployee?.dateOfBirth;
+      fetchedGender = employeeController.selectedEmployee?.gender;
     }
 
     final dateOfBirth = fetchedDateOfBirth ?? existing?.dateOfBirth;
+    final gender = fetchedGender ?? existing?.gender;
 
     final formKey = GlobalKey<FormState>();
     final firstNameCtrl = TextEditingController(
@@ -532,7 +536,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     );
 
     final genderMatches = _genderOptions.where(
-      (g) => g.toLowerCase() == (existing?.gender ?? '').toLowerCase(),
+      (g) => g.toLowerCase() == (gender ?? '').toLowerCase(),
     );
     String? selectedGender = genderMatches.isNotEmpty
         ? genderMatches.first
@@ -1013,7 +1017,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                         //           ?.toIso8601String();
 
                                         final genderValue =
-                                            (selectedGender ?? existing?.gender)
+                                            (selectedGender ?? gender)
                                                 ?.toLowerCase();
                                         // Organization is no longer a form
                                         // field — every employee is created
@@ -1071,6 +1075,22 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                                     selectedImageFile?.path,
                                               );
                                         } else {
+                                          // Re-attach the existing photo when
+                                          // no new one was picked — the
+                                          // update endpoint clears it
+                                          // otherwise.
+                                          final imagePath =
+                                              selectedImageFile?.path ??
+                                              (await _downloadExistingEmployeeImage(
+                                                existing
+                                                        .image
+                                                        ?.thumbnailUrl ??
+                                                    existing
+                                                        .image
+                                                        ?.originalUrl ??
+                                                    '',
+                                              ))?.path;
+
                                           success = await employeeController
                                               .handleUpdateEmployee(
                                                 id: existing.id ?? '',
@@ -1091,8 +1111,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                                 taskType: _taskTypeApiValue(
                                                   selectedTaskType,
                                                 ),
-                                                imageFilePath:
-                                                    selectedImageFile?.path,
+                                                imageFilePath: imagePath,
                                               );
                                         }
 
@@ -1973,6 +1992,30 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
           behavior: SnackBarBehavior.floating,
         ),
       );
+    }
+  }
+
+  /// Downloads the currently-saved employee photo so it can be re-sent on
+  /// an update that didn't pick a new one — the update endpoint clears the
+  /// photo whenever the "image" field is absent from the request, even if
+  /// one was already set. Returns null (silently) on any failure; the
+  /// update still proceeds, just without the image field, same as before
+  /// this fix.
+  Future<File?> _downloadExistingEmployeeImage(String url) async {
+    if (url.isEmpty || !url.startsWith('http')) return null;
+
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode != 200) return null;
+
+      final extension = url.split('.').last.split('?').first;
+      final tempFile = File(
+        '${Directory.systemTemp.path}/employee_photo_${DateTime.now().millisecondsSinceEpoch}.$extension',
+      );
+      await tempFile.writeAsBytes(response.bodyBytes);
+      return tempFile;
+    } catch (_) {
+      return null;
     }
   }
 

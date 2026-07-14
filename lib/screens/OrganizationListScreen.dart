@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
 import '../components/CustomAppBar.dart';
@@ -904,6 +905,29 @@ class _OrganizationListScreenState extends State<OrganizationListScreen> {
   }
 }
 
+// Downloads the currently-saved organization logo so it can be re-sent on
+// an update that didn't pick a new one — the update endpoint clears the
+// logo whenever the "image" field is absent from the request, even if one
+// was already set. Returns null (silently) on any failure; the update
+// still proceeds, just without the image field, same as before this fix.
+Future<File?> _downloadExistingOrgImage(String url) async {
+  if (url.isEmpty || !url.startsWith('http')) return null;
+
+  try {
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode != 200) return null;
+
+    final extension = url.split('.').last.split('?').first;
+    final tempFile = File(
+      '${Directory.systemTemp.path}/org_logo_${DateTime.now().millisecondsSinceEpoch}.$extension',
+    );
+    await tempFile.writeAsBytes(response.bodyBytes);
+    return tempFile;
+  } catch (_) {
+    return null;
+  }
+}
+
 // ── Reusable Organization create/edit dialog ────────────────────────────
 //
 // Extracted to a top-level function (not a State method), matching the
@@ -1245,6 +1269,17 @@ void openOrganizationFormDialog({
                                                 selectedImageFile?.path,
                                           );
                                     } else {
+                                      // Re-attach the existing logo when no
+                                      // new one was picked — the update
+                                      // endpoint clears it otherwise.
+                                      final imagePath =
+                                          selectedImageFile?.path ??
+                                          (await _downloadExistingOrgImage(
+                                            existing.image?.thumbnailUrl ??
+                                                existing.image?.originalUrl ??
+                                                '',
+                                          ))?.path;
+
                                       success = await organizationController
                                           .handleUpdateOrganization(
                                             id: existing.id,
@@ -1256,8 +1291,7 @@ void openOrganizationFormDialog({
                                             state: stateCtrl.text.trim(),
                                             country: countryCtrl.text.trim(),
                                             pinCode: pincodeCtrl.text.trim(),
-                                            imageFilePath:
-                                                selectedImageFile?.path,
+                                            imageFilePath: imagePath,
                                           );
                                     }
 
