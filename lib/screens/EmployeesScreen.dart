@@ -1907,7 +1907,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         showLeading: true,
         onBackPressed: () => Navigator.pop(context),
       ),
-      drawer: CustomDrawer(activeTile: "Users", onTileTap: (value) {}),
+      drawer: CustomDrawer(activeTile: "Employees", onTileTap: (value) {}),
       body: ListenableBuilder(
         listenable: employeeController,
         builder: (context, _) {

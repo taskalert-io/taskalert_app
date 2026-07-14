@@ -592,7 +592,7 @@ class _InvitationScreenState extends State<InvitationScreen> {
         showLeading: true,
         onBackPressed: () => Navigator.pop(context),
       ),
-      drawer: CustomDrawer(activeTile: "Home", onTileTap: (value) {}),
+      drawer: CustomDrawer(activeTile: "Invitations", onTileTap: (value) {}),
       body: ListenableBuilder(
         listenable: invitationController,
         builder: (context, _) {
