@@ -1189,7 +1189,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
         ),
       );
     }
-
   }
 
   // ── LOCATION AUTOCOMPLETE ────────────────────────────────────────────────
@@ -1742,9 +1741,9 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Back + page title
-                          IconButton(
-                            onPressed: () => Navigator.maybePop(context),
-                            icon: Icon(
+                          // IconButton(
+                          // onPressed: () => Navigator.maybePop(context),
+                          // icon: Icon(
                           // GestureDetector(
                           //   onTap: () => Navigator.maybePop(context),
                           //   child: Icon(
@@ -1764,9 +1763,9 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                             splashRadius: 22.r,
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
-                            splashRadius: 22.r,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
+                            // splashRadius: 22.r,
+                            // padding: EdgeInsets.zero,
+                            // constraints: const BoxConstraints(),
                           ),
                           Text(
                             "Core Identity & Media",

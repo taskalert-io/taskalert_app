@@ -260,7 +260,15 @@ class HomeScreenState extends State<HomeScreen> {
                             builder: (context, currentPage, child) {
                               return PageView.builder(
                                 controller: _pageController,
-                                itemCount: null,
+                                // Infinite modulo-wrap looping only makes
+                                // sense with more than one card — with just
+                                // one, it let you swipe forever and see the
+                                // same card again, which read as a bug.
+                                // Bounding itemCount when there's <= 1 task
+                                // makes that single card static instead.
+                                itemCount: _recentTasks.length <= 1
+                                    ? _recentTasks.length
+                                    : null,
                                 onPageChanged: (index) {
                                   currentPageNotifier.value = index;
                                 },

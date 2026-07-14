@@ -271,18 +271,38 @@ class _CustomDrawerState extends State<CustomDrawer> {
                 SizedBox(width: 10.w),
 
                 /// CLOSE BUTTON
-                InkWell(
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
-                  borderRadius: BorderRadius.circular(100.r),
-                  child: Container(
+                // InkWell(
+                //   onTap: () {
+                //     Navigator.pop(context);
+                //   },
+                //   borderRadius: BorderRadius.circular(100.r),
+                //   child: Container(
+                //     width: 26.w,
+                //     height: 26.h,
+                //     decoration: const BoxDecoration(
+                //       shape: BoxShape.circle,
+                //       color: Color(0xFFF4F4F4),
+                //     ),
+                //     child: Icon(
+                //       Icons.close,
+                //       size: 15.sp,
+                //       color: const Color(0xFF0A0258),
+                //     ),
+                //   ),
+                // ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  splashRadius: 24.r,
+                  padding: EdgeInsets.zero,
+                  constraints: BoxConstraints(minWidth: 48.w, minHeight: 48.h),
+                  icon: Container(
                     width: 26.w,
                     height: 26.h,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
                       color: Color(0xFFF4F4F4),
                     ),
+                    alignment: Alignment.center,
                     child: Icon(
                       Icons.close,
                       size: 15.sp,

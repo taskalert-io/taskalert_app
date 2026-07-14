@@ -201,8 +201,18 @@ class RelativeTime {
 
   static String shortDate(DateTime dt) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[dt.month - 1]} ${dt.day}';
   }
@@ -849,14 +859,42 @@ class _NotificationStartState extends State<NotificationStart> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(height: 4.h),
-            Text(
-              'Notifications',
-              style: GoogleFonts.inter(
-                fontSize: 15.sp,
-                fontWeight: FontWeight.w700,
-                color: _C.title,
+            Container(
+              padding: EdgeInsets.fromLTRB(15.w, 10.h, 15.w, 0.h),
+
+              child: Row(
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: InkWell(
+                      onTap: () => Navigator.pop(context),
+                      child: Icon(
+                        Icons.arrow_back,
+                        size: 20.r,
+                        color: const Color(0xFF1D1B20),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    'Notifications',
+                    style: GoogleFonts.inter(
+                      fontSize: 15.sp,
+                      fontWeight: FontWeight.w700,
+                      color: _C.title,
+                    ),
+                  ).paddingHorizontal(16.w),
+                ],
               ),
-            ).paddingHorizontal(16.w),
+            ),
+
+            // Text(
+            //   'Notifications',
+            //   style: GoogleFonts.inter(
+            //     fontSize: 15.sp,
+            //     fontWeight: FontWeight.w700,
+            //     color: _C.title,
+            //   ),
+            // ).paddingHorizontal(16.w),
             SizedBox(height: 10.h),
             Divider(height: 1, color: _C.cardBorder),
             SizedBox(height: 10.h),

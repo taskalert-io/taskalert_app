@@ -334,9 +334,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                   borderRadius: BorderRadius.circular(10.r),
                   color: Colors.white,
                   child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxHeight: placement.maxHeight,
-                    ),
+                    constraints: BoxConstraints(maxHeight: placement.maxHeight),
                     child: _suggestions.isEmpty
                         ? Padding(
                             padding: EdgeInsets.symmetric(
@@ -385,24 +383,18 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                               CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              name.isEmpty
-                                                  ? "(No name)"
-                                                  : name,
+                                              name.isEmpty ? "(No name)" : name,
                                               style: GoogleFonts.inter(
                                                 fontSize: 13.sp,
                                                 fontWeight: FontWeight.w600,
-                                                color: const Color(
-                                                  0xFF1D2939,
-                                                ),
+                                                color: const Color(0xFF1D2939),
                                               ),
                                             ),
                                             Text(
                                               "${s.jobRole ?? '-'} • ${s.email ?? ''}",
                                               style: GoogleFonts.inter(
                                                 fontSize: 11.sp,
-                                                color: const Color(
-                                                  0xFF667085,
-                                                ),
+                                                color: const Color(0xFF667085),
                                               ),
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -1565,9 +1557,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       if (day != null && month != null && year != null) {
         try {
           initialDate = DateTime(year, month, day);
-        } catch (_) {
-          // keep fallback above if the stored text isn't a valid date
-        }
+        } catch (_) {}
       }
     }
     if (initialDate.isAfter(now)) initialDate = now;
@@ -1578,6 +1568,20 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       firstDate: DateTime(1900),
       lastDate: now,
       helpText: "Select date of birth",
+      // 14.07.2026 — Flutter's date picker internally clamps text scaling to
+      // 1.0–1.3x. If the simulator/device's accessibility text-size setting
+      // (combined with our ScreenUtil setup) pushes the ambient scale factor
+      // outside that band, `maxScale > minScale` fails inside text_scaler.dart.
+      // Pinning the scaler to a fixed 1.0 for just the picker's subtree avoids
+      // that clash without affecting text scaling anywhere else in the app.
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(1.0)),
+          child: child!,
+        );
+      },
     );
 
     if (picked != null) {
@@ -1590,6 +1594,49 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       onPicked(picked);
     }
   }
+
+  // Future<void> _pickDobDate({
+  //   required BuildContext context,
+  //   required void Function(void Function()) setState,
+  //   required TextEditingController dobCtrl,
+  //   required ValueChanged<DateTime> onPicked,
+  // }) async {
+  //   final now = DateTime.now();
+  //   DateTime initialDate = DateTime(now.year - 18, now.month, now.day);
+
+  //   final parts = dobCtrl.text.trim().split('-');
+  //   if (parts.length == 3) {
+  //     final day = int.tryParse(parts[0]);
+  //     final month = int.tryParse(parts[1]);
+  //     final year = int.tryParse(parts[2]);
+  //     if (day != null && month != null && year != null) {
+  //       try {
+  //         initialDate = DateTime(year, month, day);
+  //       } catch (_) {
+  //         // keep fallback above if the stored text isn't a valid date
+  //       }
+  //     }
+  //   }
+  //   if (initialDate.isAfter(now)) initialDate = now;
+
+  //   final picked = await showDatePicker(
+  //     context: context,
+  //     initialDate: initialDate,
+  //     firstDate: DateTime(1900),
+  //     lastDate: now,
+  //     helpText: "Select date of birth",
+  //   );
+
+  //   if (picked != null) {
+  //     setState(() {
+  //       dobCtrl.text =
+  //           "${picked.day.toString().padLeft(2, '0')}-"
+  //           "${picked.month.toString().padLeft(2, '0')}-"
+  //           "${picked.year}";
+  //     });
+  //     onPicked(picked);
+  //   }
+  // }
 
   /// Opens Flutter's built-in Material date picker and, on a selection,
   /// fills the day/month/year controllers together.

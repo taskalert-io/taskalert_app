@@ -81,9 +81,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
               ),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(20.r),
-                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
               ),
               child: SafeArea(
                 top: false,
@@ -105,7 +103,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
                     Padding(
                       padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 8.h),
                       child: Text(
-                        "Switch Organization",
+                        "My Organizations",
                         style: GoogleFonts.inter(
                           fontSize: 15.sp,
                           fontWeight: FontWeight.w700,
@@ -116,9 +114,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
                     if (_organizationController.isLoading && orgs.isEmpty)
                       Padding(
                         padding: EdgeInsets.symmetric(vertical: 30.h),
-                        child: const Center(
-                          child: CircularProgressIndicator(),
-                        ),
+                        child: const Center(child: CircularProgressIndicator()),
                       )
                     else if (orgs.isEmpty)
                       Padding(
@@ -183,14 +179,15 @@ class _CustomAppBarState extends State<CustomAppBar> {
                                         // everything is to tear down the
                                         // whole navigation stack and land
                                         // on a brand-new Home screen.
-                                        Navigator.of(context)
-                                            .pushAndRemoveUntil(
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    HomeScreen(userId: ''),
-                                              ),
-                                              (route) => false,
-                                            );
+                                        Navigator.of(
+                                          context,
+                                        ).pushAndRemoveUntil(
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                HomeScreen(userId: ''),
+                                          ),
+                                          (route) => false,
+                                        );
                                       } else {
                                         ScaffoldMessenger.of(
                                           sheetCtx,
@@ -206,8 +203,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
                                               ),
                                             ),
                                             backgroundColor: Colors.red,
-                                            behavior:
-                                                SnackBarBehavior.floating,
+                                            behavior: SnackBarBehavior.floating,
                                           ),
                                         );
                                       }
@@ -221,9 +217,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
                                   children: [
                                     CircleAvatar(
                                       radius: 16.r,
-                                      backgroundColor: const Color(
-                                        0xFFEFF0FF,
-                                      ),
+                                      backgroundColor: const Color(0xFFEFF0FF),
                                       backgroundImage:
                                           (thumbnailUrl != null &&
                                               thumbnailUrl.isNotEmpty)
@@ -294,7 +288,12 @@ class _CustomAppBarState extends State<CustomAppBar> {
       child: GestureDetector(
         onTap: _openOrganizationSwitcher,
         child: Container(
-          padding: EdgeInsets.only(left: 4.w, right: 8.w, top: 3.h, bottom: 3.h),
+          padding: EdgeInsets.only(
+            left: 4.w,
+            right: 8.w,
+            top: 3.h,
+            bottom: 3.h,
+          ),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20.r),
@@ -367,29 +366,29 @@ class _CustomAppBarState extends State<CustomAppBar> {
 
         child: widget.showLeading
             ? IconButton(
-          icon:  Icon(
-            Icons.menu_rounded,
-            color: Color(0xFF0A0258),
-            size: 24.r,
-          ),
+                icon: Icon(
+                  Icons.menu_rounded,
+                  color: Color(0xFF0A0258),
+                  size: 24.r,
+                ),
 
-          onPressed: () {
-            widget.scaffoldKey.currentState?.openDrawer();
-          },
-        )
+                onPressed: () {
+                  widget.scaffoldKey.currentState?.openDrawer();
+                },
+              )
             : IconButton(
-          icon:  Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFF0A0258),
-            size: 20.r,
-          ),
+                icon: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: Color(0xFF0A0258),
+                  size: 20.r,
+                ),
 
-          onPressed:
-          widget.onBackPressed ??
-                  () {
-                Navigator.pop(context);
-              },
-        ),
+                onPressed:
+                    widget.onBackPressed ??
+                    () {
+                      Navigator.pop(context);
+                    },
+              ),
       ),
 
       titleSpacing: 0,
@@ -397,10 +396,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
       title: SizedBox(
         width: 120.w,
 
-        child: Image.asset(
-          'assets/images/main_logo.png',
-          fit: BoxFit.contain,
-        ),
+        child: Image.asset('assets/images/main_logo.png', fit: BoxFit.contain),
       ),
 
       actions: [_organizationAvatarButton()],

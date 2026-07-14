@@ -43,6 +43,11 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _autoValidate = false;
 
+  // Individual accounts have no org structure (no locations/departments/
+  // other employees), so Location, Department, Assign To and Reporting To
+  // don't apply — hidden and skipped from validation/submission for them.
+  bool _isIndividual = false;
+
   // ── Section error strings ──────────────────────────────────────────────────
   String? _assignToError;
   String? _dueDateError;
@@ -486,9 +491,14 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     locationController = sl<LocationController>();
     locationController.addListener(_onLocationsChanged);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       employeeController.handleGetEmployees();
       locationController.handleGetLocations();
+
+      final accountType = await secureStorage.read(key: 'user_account_type');
+      if (mounted) {
+        setState(() => _isIndividual = accountType == 'individual');
+      }
     });
   }
 
@@ -522,36 +532,41 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
   bool _validateSections() {
     bool valid = true;
 
-    if (selectedLocation == null) {
-      setState(() => _locationError = "Please select a location");
-      valid = false;
-    } else {
-      setState(() => _locationError = null);
-    }
+    // Individual accounts have no org structure to assign these against.
+    if (!_isIndividual) {
+      if (selectedLocation == null) {
+        setState(() => _locationError = "Please select a location");
+        valid = false;
+      } else {
+        setState(() => _locationError = null);
+      }
 
-    if (selectedNewDepartments.isEmpty) {
-      setState(
-        () => _newDepartmentError = "Please select at least one department",
-      );
-      valid = false;
-    } else {
-      setState(() => _newDepartmentError = null);
-    }
+      if (selectedNewDepartments.isEmpty) {
+        setState(
+          () => _newDepartmentError = "Please select at least one department",
+        );
+        valid = false;
+      } else {
+        setState(() => _newDepartmentError = null);
+      }
 
-    // Reporting To
-    if (selectedReportingList.isEmpty) {
-      setState(() => _reportingToError = "Please select a user");
-      valid = false;
-    } else {
-      setState(() => _reportingToError = null);
-    }
+      // Reporting To
+      if (selectedReportingList.isEmpty) {
+        setState(() => _reportingToError = "Please select a user");
+        valid = false;
+      } else {
+        setState(() => _reportingToError = null);
+      }
 
-    // Assign To
-    if (selectedAssignees.isEmpty) {
-      setState(() => _assignToError = "Please select at least one assignee");
-      valid = false;
-    } else {
-      setState(() => _assignToError = null);
+      // Assign To
+      if (selectedAssignees.isEmpty) {
+        setState(
+          () => _assignToError = "Please select at least one assignee",
+        );
+        valid = false;
+      } else {
+        setState(() => _assignToError = null);
+      }
     }
 
     // Cross-field: due date must not be before assign date
@@ -611,13 +626,17 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
           "taskType": taskType,
           "title": titleNameController.text.trim(),
           "description": descriptionController.text.trim(),
-          "location": selectedLocation?.id,
-          "department": jsonEncode(
-            selectedNewDepartments
-                .map((d) => d.id)
-                .whereType<String>()
-                .toList(),
-          ),
+          // Individual accounts have no org structure — leave these out
+          // entirely rather than sending null/empty ref ids the backend
+          // would reject.
+          if (!_isIndividual) "location": selectedLocation?.id,
+          if (!_isIndividual)
+            "department": jsonEncode(
+              selectedNewDepartments
+                  .map((d) => d.id)
+                  .whereType<String>()
+                  .toList(),
+            ),
           "priority": selectedPriority.toLowerCase(),
           "reportingDate": assignSelectedDate != null
               ? "${assignSelectedDate!.year}-"
@@ -629,11 +648,12 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
             "period": assignSelectedAmPm,
           },
 
-          "assignees": jsonEncode(
-            selectedAssignees,
-          ), // Convert list to string for API; repository should handle conversion back to list
+          if (!_isIndividual)
+            "assignees": jsonEncode(
+              selectedAssignees,
+            ), // Convert list to string for API; repository should handle conversion back to list
 
-          "reportingTo": jsonEncode(selectedReportingList),
+          if (!_isIndividual) "reportingTo": jsonEncode(selectedReportingList),
           // "attachments":
           //     selectedFiles, // This would typically be handled as multipart form data in the repository layer
         },
@@ -1240,6 +1260,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
 
                                 SizedBox(height: 8.h),
 
+                                if (!_isIndividual) ...[
                                 // Location — autocomplete search, same UX as
                                 // LocationListScreen's search field.
                                 _buildLabel("Location"),
@@ -1358,9 +1379,11 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                       ),
                                     ),
                                   ),
+                                ],
 
                                 SizedBox(height: 8.h),
 
+                                if (!_isIndividual) ...[
                                 // New Department — searchable multi-select,
                                 // scoped to whichever Location is selected
                                 // above. Locked until a Location is chosen.
@@ -1459,6 +1482,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                       ),
                                     ),
                                   ),
+                                ],
 
                                 SizedBox(height: 8.h),
 
@@ -1477,6 +1501,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
 
                                 SizedBox(height: 8.h),
 
+                                if (!_isIndividual) ...[
                                 // Assign To — multi-select
                                 _buildLabel("Assign To"),
                                 SizedBox(height: 3.h),
@@ -1649,6 +1674,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                       ),
                                     ),
                                   ),
+                                ],
 
                                 // Reporting To — searchable single-select
                                 SizedBox(height: 8.h),
