@@ -1074,6 +1074,7 @@ void openOrganizationFormDialog({
                     ],
 
                     _orgImageUploadField(
+                      context: ctx,
                       imageFile: selectedImageFile,
                       existingImageUrl:
                           existing?.image?.thumbnailUrl ??
@@ -1398,6 +1399,7 @@ void openOrganizationFormDialog({
 }
 
 Widget _orgImageUploadField({
+  required BuildContext context,
   required File? imageFile,
   required VoidCallback onTap,
   VoidCallback? onRemove,
@@ -1514,6 +1516,30 @@ Widget _orgImageUploadField({
                       ),
                     ),
                   ),
+                if (imageFile != null || hasExistingImage)
+                  Positioned(
+                    bottom: -6,
+                    right: -6,
+                    child: GestureDetector(
+                      onTap: () => _showOrgImagePreviewDialog(
+                        context,
+                        imageFile: imageFile,
+                        imageUrl: existingImageUrl,
+                      ),
+                      child: Container(
+                        padding: EdgeInsets.all(3.r),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF0A0258),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.remove_red_eye,
+                          size: 11.r,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -1537,6 +1563,100 @@ Widget _orgImageUploadField({
         ),
       ],
     ],
+  );
+}
+
+/// Full-size preview popup for the organization logo — either the locally
+/// picked file (not yet uploaded) or the existing server image.
+void _showOrgImagePreviewDialog(
+  BuildContext context, {
+  required File? imageFile,
+  String? imageUrl,
+}) {
+  showDialog(
+    context: context,
+    barrierColor: Colors.black.withOpacity(0.7),
+    builder: (dialogCtx) => Dialog(
+      backgroundColor: Colors.white,
+      insetPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 40.h),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
+      child: Padding(
+        padding: EdgeInsets.all(14.w),
+        child: SingleChildScrollView(
+          // A tall/portrait image (or a small screen) can push this past
+          // the Dialog's fixed insetPadding height — scroll instead of
+          // overflowing.
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Image Preview',
+                    style: GoogleFonts.inter(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF0A0258),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(dialogCtx),
+                    child: Icon(
+                      Icons.close,
+                      size: 20.r,
+                      color: const Color(0xFF6C7278),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 12.h),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.55,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8.r),
+                  child: imageFile != null
+                      ? Image.file(imageFile, fit: BoxFit.contain)
+                      : Image.network(
+                          imageUrl ?? '',
+                          fit: BoxFit.contain,
+                          loadingBuilder: (context, child, progress) {
+                            if (progress == null) return child;
+                            return SizedBox(
+                              height: 200.h,
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: const Color(0xFF0A0258),
+                                  value: progress.expectedTotalBytes != null
+                                      ? progress.cumulativeBytesLoaded /
+                                            progress.expectedTotalBytes!
+                                      : null,
+                                ),
+                              ),
+                            );
+                          },
+                          errorBuilder: (_, __, ___) => SizedBox(
+                            height: 120.h,
+                            child: Center(
+                              child: Icon(
+                                Icons.broken_image_outlined,
+                                size: 32.r,
+                                color: const Color(0xFF9AA0AB),
+                              ),
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
   );
 }
 
