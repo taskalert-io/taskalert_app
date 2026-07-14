@@ -37,6 +37,8 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
   OverlayEntry? _suggestionsOverlay;
   List<DepartmentModel> _suggestions = [];
 
+  final GlobalKey _searchBoxKey = GlobalKey();
+
   bool _matchesQuery(DepartmentModel d, String q) =>
       (d.name ?? "").toLowerCase().contains(q) ||
       d.location.any((l) => (l.name ?? "").toLowerCase().contains(q));
@@ -117,10 +119,47 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
     _showSuggestionsOverlay();
   }
 
+  double _availableHeightBelow({
+    required BuildContext? fieldContext,
+    required double fallbackFieldHeight,
+    required double maxCap,
+    double minCap = 120,
+  }) {
+    final box = fieldContext?.findRenderObject() as RenderBox?;
+    final fieldHeight = box?.size.height ?? fallbackFieldHeight;
+    final fieldTopGlobal = box?.localToGlobal(Offset.zero).dy ?? 0;
+
+    final mq = MediaQuery.of(context);
+    // Prefer the keyboard inset when it's up (it eats more space than the
+    // static safe-area), otherwise fall back to the bottom safe-area/nav
+    // bar inset.
+    final bottomInset = mq.viewInsets.bottom > 0
+        ? mq.viewInsets.bottom
+        : mq.padding.bottom;
+    final gap = 6.h; // matches the follower's vertical offset below
+    const bottomMargin = 12.0; // small breathing room from the edge
+
+    final spaceBelow =
+        mq.size.height -
+        bottomInset -
+        (fieldTopGlobal + fieldHeight) -
+        gap -
+        bottomMargin;
+
+    return spaceBelow.clamp(minCap, maxCap);
+  }
+
   void _showSuggestionsOverlay() {
     _removeSuggestionsOverlay();
 
     final overlay = Overlay.of(context);
+
+    final maxOverlayHeight = _availableHeightBelow(
+      fieldContext: _searchBoxKey.currentContext,
+      fallbackFieldHeight: _searchBoxHeight,
+      maxCap: 260.h,
+    );
+
     _suggestionsOverlay = OverlayEntry(
       builder: (context) => Positioned(
         width: _searchBoxWidth,
@@ -133,7 +172,8 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
             borderRadius: BorderRadius.circular(10.r),
             color: Colors.white,
             child: ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: 260.h),
+              // constraints: BoxConstraints(maxHeight: 260.h),
+              constraints: BoxConstraints(maxHeight: maxOverlayHeight),
               child: ListView.separated(
                 padding: EdgeInsets.symmetric(vertical: 4.h),
                 shrinkWrap: true,
@@ -204,7 +244,6 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
   double get _searchBoxHeight => 42.h;
   double get _searchBoxWidth =>
       MediaQuery.of(context).size.width - 15.w * 2 - 10.w - 150.w;
-
 
   // ── DELETE ────────────────────────────────────────────────────────────────
   Future<void> _confirmDelete(DepartmentModel department) async {
@@ -349,6 +388,7 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
                     children: [
                       Expanded(
                         child: CompositedTransformTarget(
+                          key: _searchBoxKey,
                           link: _searchLayerLink,
                           child: TextField(
                             controller: _searchController,
@@ -478,114 +518,122 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
                           : RefreshIndicator(
                               onRefresh: _onRefresh,
                               child: ListView.builder(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 8.w,
-                                vertical: 4.h,
-                              ),
-                              itemCount: filtered.length,
-                              itemBuilder: (context, index) {
-                                final department = filtered[index];
-                                final isEven = index % 2 == 0;
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 8.w,
+                                  vertical: 4.h,
+                                ),
+                                itemCount: filtered.length,
+                                itemBuilder: (context, index) {
+                                  final department = filtered[index];
+                                  final isEven = index % 2 == 0;
 
-                                return Container(
-                                  margin: EdgeInsets.only(bottom: 6.h),
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 14.w,
-                                    vertical: 12.h,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isEven
-                                        ? const Color(0xFFF5F7FB)
-                                        : Colors.white,
-                                    borderRadius: BorderRadius.circular(10.r),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              department.name ?? "",
-                                              style: GoogleFonts.inter(
-                                                fontSize: 13.5.sp,
-                                                fontWeight: FontWeight.w600,
-                                                color: const Color(0xFF1D2939),
-                                              ),
-                                            ),
-                                            if (department
-                                                .location
-                                                .isNotEmpty) ...[
-                                              SizedBox(height: 4.h),
-                                              Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Icon(
-                                                    CupertinoIcons
-                                                        .location_solid,
-                                                    size: 11.r,
-                                                    color: const Color(
-                                                      0xFF9AA0AB,
-                                                    ),
+                                  return Container(
+                                    margin: EdgeInsets.only(bottom: 6.h),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 14.w,
+                                      vertical: 12.h,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isEven
+                                          ? const Color(0xFFF5F7FB)
+                                          : Colors.white,
+                                      borderRadius: BorderRadius.circular(10.r),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                department.name ?? "",
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 13.5.sp,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: const Color(
+                                                    0xFF1D2939,
                                                   ),
-                                                  SizedBox(width: 4.w),
-                                                  Flexible(
-                                                    child: Text(
-                                                      department.location
-                                                          .map(
-                                                            (l) => l.name ?? '',
-                                                          )
-                                                          .where(
-                                                            (n) => n.isNotEmpty,
-                                                          )
-                                                          .join(', '),
-                                                      overflow: TextOverflow
-                                                          .ellipsis,
-                                                      style: GoogleFonts.inter(
-                                                        fontSize: 11.5.sp,
-                                                        color: const Color(
-                                                          0xFF667085,
-                                                        ),
+                                                ),
+                                              ),
+                                              if (department
+                                                  .location
+                                                  .isNotEmpty) ...[
+                                                SizedBox(height: 4.h),
+                                                Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      CupertinoIcons
+                                                          .location_solid,
+                                                      size: 11.r,
+                                                      color: const Color(
+                                                        0xFF9AA0AB,
                                                       ),
                                                     ),
-                                                  ),
-                                                ],
-                                              ),
+                                                    SizedBox(width: 4.w),
+                                                    Flexible(
+                                                      child: Text(
+                                                        department.location
+                                                            .map(
+                                                              (l) =>
+                                                                  l.name ?? '',
+                                                            )
+                                                            .where(
+                                                              (n) =>
+                                                                  n.isNotEmpty,
+                                                            )
+                                                            .join(', '),
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                        style:
+                                                            GoogleFonts.inter(
+                                                              fontSize: 11.5.sp,
+                                                              color:
+                                                                  const Color(
+                                                                    0xFF667085,
+                                                                  ),
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
                                             ],
-                                          ],
+                                          ),
                                         ),
-                                      ),
-                                      GestureDetector(
-                                        onTap: () => openDepartmentFormDialog(
-                                          context: context,
-                                          departmentController:
-                                              departmentController,
-                                          locationController:
-                                              locationController,
-                                          existing: department,
+                                        GestureDetector(
+                                          onTap: () => openDepartmentFormDialog(
+                                            context: context,
+                                            departmentController:
+                                                departmentController,
+                                            locationController:
+                                                locationController,
+                                            existing: department,
+                                          ),
+                                          child: Icon(
+                                            CupertinoIcons.pencil,
+                                            size: 16.r,
+                                            color: const Color(0xFF344054),
+                                          ),
                                         ),
-                                        child: Icon(
-                                          CupertinoIcons.pencil,
-                                          size: 16.r,
-                                          color: const Color(0xFF344054),
+                                        SizedBox(width: 16.w),
+                                        GestureDetector(
+                                          onTap: () =>
+                                              _confirmDelete(department),
+                                          child: Icon(
+                                            CupertinoIcons.delete,
+                                            size: 16.r,
+                                            color: Colors.red,
+                                          ),
                                         ),
-                                      ),
-                                      SizedBox(width: 16.w),
-                                      GestureDetector(
-                                        onTap: () => _confirmDelete(department),
-                                        child: Icon(
-                                          CupertinoIcons.delete,
-                                          size: 16.r,
-                                          color: Colors.red,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
                     ),
                   ),
@@ -643,10 +691,7 @@ void openDepartmentFormDialog({
       builder: (ctx, ss) {
         return Dialog(
           backgroundColor: Colors.white,
-          insetPadding: EdgeInsets.symmetric(
-            horizontal: 24.w,
-            vertical: 24.h,
-          ),
+          insetPadding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 24.h),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14.r),
             side: const BorderSide(color: Color(0xFFE4E7EC)),
@@ -879,21 +924,17 @@ void openDepartmentFormDialog({
                                           .departments
                                           .where(
                                             (d) =>
-                                                d.name ==
-                                                nameCtrl.text.trim(),
+                                                d.name == nameCtrl.text.trim(),
                                           )
                                           .firstOrNull;
                                       if (created != null) {
                                         onCreated(created);
                                       }
                                     }
-                                    ScaffoldMessenger.of(
-                                      context,
-                                    ).showSnackBar(
+                                    ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                          departmentController
-                                                  .successMessage ??
+                                          departmentController.successMessage ??
                                               (existing == null
                                                   ? "Department created successfully!"
                                                   : "Department updated successfully!"),
@@ -920,12 +961,9 @@ void openDepartmentFormDialog({
                                     // name would show blank until the next
                                     // fetch. Refresh now so it reflects the
                                     // fully populated data immediately.
-                                    departmentController
-                                        .handleGetDepartments();
+                                    departmentController.handleGetDepartments();
                                   } else {
-                                    ScaffoldMessenger.of(
-                                      context,
-                                    ).showSnackBar(
+                                    ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
                                           departmentController.errorMessage ??
@@ -1035,8 +1073,7 @@ class _LocationMultiSelectField extends StatefulWidget {
       _LocationMultiSelectFieldState();
 }
 
-class _LocationMultiSelectFieldState
-    extends State<_LocationMultiSelectField> {
+class _LocationMultiSelectFieldState extends State<_LocationMultiSelectField> {
   final FocusNode _focusNode = FocusNode();
   final LayerLink _layerLink = LayerLink();
   final GlobalKey _fieldKey = GlobalKey();
@@ -1159,12 +1196,36 @@ class _LocationMultiSelectFieldState
     );
   }
 
+  double _availableOverlayHeight() {
+    final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+    final fieldHeight = box?.size.height ?? 44.h;
+    final fieldTopGlobal = box?.localToGlobal(Offset.zero).dy ?? 0;
+
+    final mq = MediaQuery.of(context);
+    final bottomInset = mq.viewInsets.bottom > 0
+        ? mq.viewInsets.bottom
+        : mq.padding.bottom;
+    final gap = 6.h; // matches the follower's vertical offset below
+    const bottomMargin = 12.0; // small breathing room from the edge
+
+    final spaceBelow =
+        mq.size.height -
+        bottomInset -
+        (fieldTopGlobal + fieldHeight) -
+        gap -
+        bottomMargin;
+
+    return spaceBelow.clamp(120.0, 200.h);
+  }
+
   void _showOverlay() {
     _removeOverlay();
 
     final overlay = Overlay.of(context);
     final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
     final width = box?.size.width ?? 260.w;
+
+    final maxOverlayHeight = _availableOverlayHeight();
 
     _overlayEntry = OverlayEntry(
       builder: (context) => Positioned(
@@ -1180,7 +1241,7 @@ class _LocationMultiSelectFieldState
               borderRadius: BorderRadius.circular(10.r),
               color: Colors.white,
               child: ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: 300.h),
+                constraints: BoxConstraints(maxHeight: maxOverlayHeight),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -1251,8 +1312,7 @@ class _LocationMultiSelectFieldState
                         child: ListView.separated(
                           padding: EdgeInsets.symmetric(vertical: 4.h),
                           shrinkWrap: true,
-                          itemCount:
-                              widget.locationController.locations.length,
+                          itemCount: widget.locationController.locations.length,
                           separatorBuilder: (_, __) => const Divider(
                             height: 1,
                             color: Color(0xFFE4E7EC),
@@ -1272,8 +1332,7 @@ class _LocationMultiSelectFieldState
                                   children: [
                                     Icon(
                                       isChecked
-                                          ? CupertinoIcons
-                                                .checkmark_square_fill
+                                          ? CupertinoIcons.checkmark_square_fill
                                           : CupertinoIcons.square,
                                       size: 16.r,
                                       color: isChecked

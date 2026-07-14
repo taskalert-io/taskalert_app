@@ -226,6 +226,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         return "Both";
     }
   }
+
   @override
   void initState() {
     super.initState();
@@ -451,7 +452,33 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   }
 
   // ── CREATE / EDIT ─────────────────────────────────────────────────────────
-  void _openEmployeeForm({EmployeeModel? existing}) {
+  Future<void> _openEmployeeForm({EmployeeModel? existing}) async {
+    // The employees list doesn't return dateOfBirth, so fetch the full
+    // record to get it. Location/department/jobRole come back as
+    // unpopulated ref IDs on the detail endpoint though (unlike the list,
+    // which has them pre-resolved to names) — so only take dateOfBirth from
+    // the fetch and keep using the list-sourced `existing` for everything
+    // else to avoid showing raw ids instead of names.
+    DateTime? fetchedDateOfBirth;
+    if (existing?.id != null) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(
+          child: CircularProgressIndicator(color: Color(0xFF0A0258)),
+        ),
+      );
+
+      await employeeController.handleGetEmployeeById(id: existing!.id!);
+
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // close loader
+
+      fetchedDateOfBirth = employeeController.selectedEmployee?.dateOfBirth;
+    }
+
+    final dateOfBirth = fetchedDateOfBirth ?? existing?.dateOfBirth;
+
     final formKey = GlobalKey<FormState>();
     final firstNameCtrl = TextEditingController(
       text: existing?.firstName ?? "",
@@ -460,14 +487,23 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     final emailCtrl = TextEditingController(text: existing?.email ?? "");
     final phoneCtrl = TextEditingController(text: existing?.phoneNumber ?? "");
 
+    final dobCtrl = TextEditingController(
+      text: dateOfBirth != null
+          ? "${dateOfBirth.day.toString().padLeft(2, '0')}-"
+                "${dateOfBirth.month.toString().padLeft(2, '0')}-"
+                "${dateOfBirth.year}"
+          : "",
+    );
+    DateTime? selectedDob = dateOfBirth;
+
     final dobDayCtrl = TextEditingController(
-      text: existing?.dateOfBirth?.day.toString().padLeft(2, '0') ?? "",
+      text: dateOfBirth?.day.toString().padLeft(2, '0') ?? "",
     );
     final dobMonthCtrl = TextEditingController(
-      text: existing?.dateOfBirth?.month.toString().padLeft(2, '0') ?? "",
+      text: dateOfBirth?.month.toString().padLeft(2, '0') ?? "",
     );
     final dobYearCtrl = TextEditingController(
-      text: existing?.dateOfBirth?.year.toString() ?? "",
+      text: dateOfBirth?.year.toString() ?? "",
     );
 
     final genderMatches = _genderOptions.where(
@@ -631,14 +667,40 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
-                              child: _dobField(
-                                context: ctx,
-                                setState: ss,
-                                dayCtrl: dobDayCtrl,
-                                monthCtrl: dobMonthCtrl,
-                                yearCtrl: dobYearCtrl,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    "Date of birth",
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF3F3F3F),
+                                    ),
+                                  ),
+                                  SizedBox(height: 2.h),
+                                  _buildDateField(
+                                    controller: dobCtrl,
+                                    onTap: () => _pickDobDate(
+                                      context: ctx,
+                                      setState: ss,
+                                      dobCtrl: dobCtrl,
+                                      onPicked: (d) => selectedDob = d,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
+                            // Expanded(
+                            //   child: _dobField(
+                            //     context: ctx,
+                            //     setState: ss,
+                            //     dayCtrl: dobDayCtrl,
+                            //     monthCtrl: dobMonthCtrl,
+                            //     yearCtrl: dobYearCtrl,
+                            //   ),
+                            // ),
                             SizedBox(width: 5.w),
                             Expanded(
                               child: _dropdownFormField(
@@ -830,8 +892,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                             MaterialTapTargetSize.shrinkWrap,
                                         visualDensity: VisualDensity.compact,
                                         onChanged: (v) => ss(
-                                          () =>
-                                              selectedTaskType = v ?? level,
+                                          () => selectedTaskType = v ?? level,
                                         ),
                                       ),
                                       SizedBox(width: 2.w),
@@ -884,17 +945,48 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
                                         ss(() => isSubmitting = true);
 
-                                        final dobText =
-                                            dobDayCtrl.text.trim().isNotEmpty &&
-                                                dobMonthCtrl.text
-                                                    .trim()
-                                                    .isNotEmpty &&
-                                                dobYearCtrl.text
-                                                    .trim()
-                                                    .isNotEmpty
-                                            ? "${dobYearCtrl.text.trim()}-${dobMonthCtrl.text.trim().padLeft(2, '0')}-${dobDayCtrl.text.trim().padLeft(2, '0')}"
-                                            : existing?.dateOfBirth
-                                                  ?.toIso8601String();
+                                        String? dobText;
+                                        if (selectedDob != null) {
+                                          dobText = selectedDob!
+                                              .toIso8601String();
+                                        } else {
+                                          final parts = dobCtrl.text
+                                              .trim()
+                                              .split('-');
+                                          if (parts.length == 3) {
+                                            final day = int.tryParse(parts[0]);
+                                            final month = int.tryParse(
+                                              parts[1],
+                                            );
+                                            final year = int.tryParse(parts[2]);
+                                            if (day != null &&
+                                                month != null &&
+                                                year != null) {
+                                              try {
+                                                dobText = DateTime(
+                                                  year,
+                                                  month,
+                                                  day,
+                                                ).toIso8601String();
+                                              } catch (_) {}
+                                            }
+                                          }
+                                          dobText ??= dateOfBirth
+                                              ?.toIso8601String();
+                                        }
+
+                                        // final dobText =
+                                        //     dobDayCtrl.text.trim().isNotEmpty &&
+                                        //         dobMonthCtrl.text
+                                        //             .trim()
+                                        //             .isNotEmpty &&
+                                        //         dobYearCtrl.text
+                                        //             .trim()
+                                        //             .isNotEmpty
+                                        //     ? "${dobYearCtrl.text.trim()}-${dobMonthCtrl.text.trim().padLeft(2, '0')}-${dobDayCtrl.text.trim().padLeft(2, '0')}"
+                                        //     : existing?.dateOfBirth
+                                        //           ?.toIso8601String();
+
                                         final genderValue =
                                             (selectedGender ?? existing?.gender)
                                                 ?.toLowerCase();
@@ -1241,130 +1333,208 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
   /// Day / Month / Year date-of-birth field grouped inside one bordered
   /// container, matching the design.
-  Widget _dobField({
-    required BuildContext context,
-    required void Function(void Function()) setState,
-    required TextEditingController dayCtrl,
-    required TextEditingController monthCtrl,
-    required TextEditingController yearCtrl,
-  }) {
-    InputDecoration cellDecoration(String hint) => InputDecoration(
-      isDense: true,
-      hintText: hint,
-      hintStyle: GoogleFonts.inter(
-        fontSize: 12.sp,
-        color: const Color(0xFFB8BEC5),
+  // Widget _dobField({
+  //   required BuildContext context,
+  //   required void Function(void Function()) setState,
+  //   required TextEditingController dayCtrl,
+  //   required TextEditingController monthCtrl,
+  //   required TextEditingController yearCtrl,
+  // }) {
+  //   InputDecoration cellDecoration(String hint) => InputDecoration(
+  //     isDense: true,
+  //     hintText: hint,
+  //     hintStyle: GoogleFonts.inter(
+  //       fontSize: 12.sp,
+  //       color: const Color(0xFFB8BEC5),
+  //     ),
+  //     border: InputBorder.none,
+  //     contentPadding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
+  //   );
+
+  //   return Column(
+  //     crossAxisAlignment: CrossAxisAlignment.start,
+  //     children: [
+  //       Text(
+  //         "Date of birth",
+  //         style: GoogleFonts.inter(
+  //           fontSize: 13.sp,
+  //           fontWeight: FontWeight.w600,
+  //           color: const Color(0xFF3F3F3F),
+  //         ),
+  //       ),
+  //       SizedBox(height: 4.h),
+  //       Container(
+  //         decoration: BoxDecoration(
+  //           color: const Color(0xFFF9FAFC),
+  //           borderRadius: BorderRadius.circular(8.r),
+  //           border: Border.all(color: const Color(0xFFD9DEE5)),
+  //         ),
+  //         child: Row(
+  //           children: [
+  //             Expanded(
+  //               child: TextFormField(
+  //                 controller: dayCtrl,
+  //                 keyboardType: TextInputType.number,
+  //                 inputFormatters: [
+  //                   FilteringTextInputFormatter.digitsOnly,
+  //                   LengthLimitingTextInputFormatter(2),
+  //                 ],
+  //                 style: GoogleFonts.inter(fontSize: 12.sp),
+  //                 decoration: cellDecoration("Day"),
+  //               ),
+  //             ),
+  //             Container(width: 1, height: 20.h, color: const Color(0xFFD9DEE5)),
+  //             Expanded(
+  //               child: TextFormField(
+  //                 controller: monthCtrl,
+  //                 keyboardType: TextInputType.number,
+  //                 inputFormatters: [
+  //                   FilteringTextInputFormatter.digitsOnly,
+  //                   LengthLimitingTextInputFormatter(2),
+  //                 ],
+  //                 style: GoogleFonts.inter(fontSize: 12.sp),
+  //                 decoration: cellDecoration("Month"),
+  //               ),
+  //             ),
+  //             Container(width: 1, height: 20.h, color: const Color(0xFFD9DEE5)),
+  //             Expanded(
+  //               child: TextFormField(
+  //                 controller: yearCtrl,
+  //                 keyboardType: TextInputType.number,
+  //                 inputFormatters: [
+  //                   FilteringTextInputFormatter.digitsOnly,
+  //                   LengthLimitingTextInputFormatter(4),
+  //                 ],
+  //                 style: GoogleFonts.inter(fontSize: 12.sp),
+  //                 decoration: cellDecoration("Year"),
+  //               ),
+  //             ),
+  //             // Opens a native calendar picker as an alternative to typing
+  //             // the day/month/year in manually — selecting a date fills
+  //             // all three fields at once.
+  //             InkWell(
+  //               borderRadius: BorderRadius.circular(6.r),
+  //               onTap: () => _pickDobDate(
+  //                 context: context,
+  //                 setState: setState,
+  //                 dayCtrl: dayCtrl,
+  //                 monthCtrl: monthCtrl,
+  //                 yearCtrl: yearCtrl,
+  //               ),
+  //               child: Padding(
+  //                 padding: EdgeInsets.symmetric(horizontal: 8.w),
+  //                 child: Icon(
+  //                   CupertinoIcons.calendar,
+  //                   size: 16.r,
+  //                   color: const Color(0xFF9AA0AB),
+  //                 ),
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //       ),
+  //     ],
+  //   );
+  // }
+
+  Widget _buildDateField({
+    required TextEditingController controller,
+    required VoidCallback onTap,
+    String? Function(String?)? validator,
+    String? errorText,
+  }) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      GestureDetector(
+        onTap: onTap,
+        child: AbsorbPointer(
+          child: TextFormField(
+            controller: controller,
+            validator: validator,
+            style: GoogleFonts.inter(
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w400,
+              color: const Color(0xFF6C7278),
+            ),
+            decoration: InputDecoration(
+              hintText: "dd-mm-yyyy",
+              hintStyle: GoogleFonts.inter(
+                fontSize: 12.sp,
+                color: const Color(0xFFB8BEC5),
+              ),
+              isDense: true,
+              filled: true,
+              fillColor: const Color(0xFFF9FAFC),
+              errorStyle: TextStyle(fontSize: 10.sp),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 10.w,
+                vertical: 11.5.h,
+              ),
+              suffixIcon: Padding(
+                padding: EdgeInsets.only(right: 10.w),
+                child: Icon(
+                  CupertinoIcons.calendar,
+                  size: 18.r,
+                  color: const Color(0xFF4338CA),
+                ),
+              ),
+              suffixIconConstraints: BoxConstraints(minWidth: 30.w),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10.r),
+                borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10.r),
+                borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10.r),
+                borderSide: const BorderSide(color: Color(0xFF0A0258)),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10.r),
+                borderSide: const BorderSide(color: Colors.red),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10.r),
+                borderSide: const BorderSide(color: Colors.red),
+              ),
+            ),
+          ),
+        ),
       ),
-      border: InputBorder.none,
-      contentPadding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
-    );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "Date of birth",
-          style: GoogleFonts.inter(
-            fontSize: 13.sp,
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFF3F3F3F),
+      if (errorText != null)
+        Padding(
+          padding: EdgeInsets.only(top: 4.h, left: 4.w),
+          child: Text(
+            errorText,
+            style: GoogleFonts.inter(color: Colors.red, fontSize: 10.sp),
           ),
         ),
-        SizedBox(height: 4.h),
-        Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFFF9FAFC),
-            borderRadius: BorderRadius.circular(8.r),
-            border: Border.all(color: const Color(0xFFD9DEE5)),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: dayCtrl,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(2),
-                  ],
-                  style: GoogleFonts.inter(fontSize: 12.sp),
-                  decoration: cellDecoration("Day"),
-                ),
-              ),
-              Container(width: 1, height: 20.h, color: const Color(0xFFD9DEE5)),
-              Expanded(
-                child: TextFormField(
-                  controller: monthCtrl,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(2),
-                  ],
-                  style: GoogleFonts.inter(fontSize: 12.sp),
-                  decoration: cellDecoration("Month"),
-                ),
-              ),
-              Container(width: 1, height: 20.h, color: const Color(0xFFD9DEE5)),
-              Expanded(
-                child: TextFormField(
-                  controller: yearCtrl,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(4),
-                  ],
-                  style: GoogleFonts.inter(fontSize: 12.sp),
-                  decoration: cellDecoration("Year"),
-                ),
-              ),
-              // Opens a native calendar picker as an alternative to typing
-              // the day/month/year in manually — selecting a date fills
-              // all three fields at once.
-              InkWell(
-                borderRadius: BorderRadius.circular(6.r),
-                onTap: () => _pickDobDate(
-                  context: context,
-                  setState: setState,
-                  dayCtrl: dayCtrl,
-                  monthCtrl: monthCtrl,
-                  yearCtrl: yearCtrl,
-                ),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8.w),
-                  child: Icon(
-                    CupertinoIcons.calendar,
-                    size: 16.r,
-                    color: const Color(0xFF9AA0AB),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+    ],
+  );
 
-  /// Opens Flutter's built-in Material date picker and, on a selection,
-  /// fills the day/month/year controllers together.
   Future<void> _pickDobDate({
     required BuildContext context,
     required void Function(void Function()) setState,
-    required TextEditingController dayCtrl,
-    required TextEditingController monthCtrl,
-    required TextEditingController yearCtrl,
+    required TextEditingController dobCtrl,
+    required ValueChanged<DateTime> onPicked,
   }) async {
     final now = DateTime.now();
-    final day = int.tryParse(dayCtrl.text.trim());
-    final month = int.tryParse(monthCtrl.text.trim());
-    final year = int.tryParse(yearCtrl.text.trim());
-
     DateTime initialDate = DateTime(now.year - 18, now.month, now.day);
-    if (day != null && month != null && year != null) {
-      try {
-        initialDate = DateTime(year, month, day);
-      } catch (_) {
-        // Keep the fallback above if the typed values don't form a valid date.
+
+    final parts = dobCtrl.text.trim().split('-');
+    if (parts.length == 3) {
+      final day = int.tryParse(parts[0]);
+      final month = int.tryParse(parts[1]);
+      final year = int.tryParse(parts[2]);
+      if (day != null && month != null && year != null) {
+        try {
+          initialDate = DateTime(year, month, day);
+        } catch (_) {
+          // keep fallback above if the stored text isn't a valid date
+        }
       }
     }
     if (initialDate.isAfter(now)) initialDate = now;
@@ -1379,12 +1549,55 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
     if (picked != null) {
       setState(() {
-        dayCtrl.text = picked.day.toString().padLeft(2, '0');
-        monthCtrl.text = picked.month.toString().padLeft(2, '0');
-        yearCtrl.text = picked.year.toString();
+        dobCtrl.text =
+            "${picked.day.toString().padLeft(2, '0')}-"
+            "${picked.month.toString().padLeft(2, '0')}-"
+            "${picked.year}";
       });
+      onPicked(picked);
     }
   }
+
+  /// Opens Flutter's built-in Material date picker and, on a selection,
+  /// fills the day/month/year controllers together.
+  // Future<void> _pickDobDate({
+  //   required BuildContext context,
+  //   required void Function(void Function()) setState,
+  //   required TextEditingController dayCtrl,
+  //   required TextEditingController monthCtrl,
+  //   required TextEditingController yearCtrl,
+  // }) async {
+  //   final now = DateTime.now();
+  //   final day = int.tryParse(dayCtrl.text.trim());
+  //   final month = int.tryParse(monthCtrl.text.trim());
+  //   final year = int.tryParse(yearCtrl.text.trim());
+
+  //   DateTime initialDate = DateTime(now.year - 18, now.month, now.day);
+  //   if (day != null && month != null && year != null) {
+  //     try {
+  //       initialDate = DateTime(year, month, day);
+  //     } catch (_) {
+  //       // Keep the fallback above if the typed values don't form a valid date.
+  //     }
+  //   }
+  //   if (initialDate.isAfter(now)) initialDate = now;
+
+  //   final picked = await showDatePicker(
+  //     context: context,
+  //     initialDate: initialDate,
+  //     firstDate: DateTime(1900),
+  //     lastDate: now,
+  //     helpText: "Select date of birth",
+  //   );
+
+  //   if (picked != null) {
+  //     setState(() {
+  //       dayCtrl.text = picked.day.toString().padLeft(2, '0');
+  //       monthCtrl.text = picked.month.toString().padLeft(2, '0');
+  //       yearCtrl.text = picked.year.toString();
+  //     });
+  //   }
+  // }
 
   /// Upload box + helper hint text, matching the "Image" field in the
   /// design. Wire up `image_picker` inside `onTap` to make it functional.
@@ -2246,7 +2459,7 @@ class _LocationSearchableFieldState extends State<_LocationSearchableField> {
     final placement = _overlayPlacement(
       context: context,
       fieldKey: _fieldKey,
-      preferredMaxHeight: 240,
+      preferredMaxHeight: 150,
     );
 
     final q = _controller.text.trim().toLowerCase();
@@ -2631,9 +2844,8 @@ class _JobRoleSearchableFieldState extends State<_JobRoleSearchableField> {
                   borderRadius: BorderRadius.circular(8.r),
                 ),
               ),
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? "Enter a job title"
-                  : null,
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? "Enter a job title" : null,
             ),
           ),
           actions: [
@@ -2645,8 +2857,7 @@ class _JobRoleSearchableFieldState extends State<_JobRoleSearchableField> {
               onPressed: submitting
                   ? null
                   : () async {
-                      if (!(dialogFormKey.currentState?.validate() ??
-                          false)) {
+                      if (!(dialogFormKey.currentState?.validate() ?? false)) {
                         return;
                       }
                       dss(() => submitting = true);
