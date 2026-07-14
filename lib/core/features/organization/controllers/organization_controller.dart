@@ -43,21 +43,23 @@ class OrganizationController extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    final result = await _organizationRepository.getOrganizations();
+    try {
+      final result = await _organizationRepository.getOrganizations();
 
-    _isLoading = false;
+      if (result is Success) {
+        final apiResponse = (result as Success).data
+            as BaseApiResponse<List<OrganizationModel>>;
 
-    if (result is Success) {
-      final apiResponse =
-          (result as Success).data as BaseApiResponse<List<OrganizationModel>>;
-
-      _organizations = apiResponse.data ?? [];
-      _pagination =
-          apiResponse.pagination; // Capture automatic pagination fields
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
+        _organizations = apiResponse.data ?? [];
+        _pagination =
+            apiResponse.pagination; // Capture automatic pagination fields
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+      }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   /// 2. Fetch Single Organization By ID
@@ -66,18 +68,22 @@ class OrganizationController extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    final result = await _organizationRepository.getOrganizationById(id: id);
+    try {
+      final result = await _organizationRepository.getOrganizationById(
+        id: id,
+      );
 
-    _isLoading = false;
-
-    if (result is Success) {
-      final apiResponse =
-          (result as Success).data as BaseApiResponse<OrganizationModel>;
-      _selectedOrganization = apiResponse.data;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<OrganizationModel>;
+        _selectedOrganization = apiResponse.data;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+      }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   /// 3. Create Organization
@@ -97,37 +103,40 @@ class OrganizationController extends ChangeNotifier {
     _successMessage = null;
     notifyListeners();
 
-    final result = await _organizationRepository.createOrganization(
-      name: name,
-      email: email,
-      phoneNumber: phoneNumber,
-      street: street,
-      city: city,
-      state: state,
-      country: country,
-      pinCode: pinCode,
-      imageFilePath: imageFilePath ?? '',
-    );
+    try {
+      final result = await _organizationRepository.createOrganization(
+        name: name,
+        email: email,
+        phoneNumber: phoneNumber,
+        street: street,
+        city: city,
+        state: state,
+        country: country,
+        pinCode: pinCode,
+        imageFilePath: imageFilePath ?? '',
+      );
 
-    _isLoading = false;
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<OrganizationModel>;
+        _successMessage = apiResponse.message;
 
-    if (result is Success) {
-      final apiResponse =
-          (result as Success).data as BaseApiResponse<OrganizationModel>;
-      _successMessage = apiResponse.message;
-
-      if (apiResponse.data != null) {
-        _organizations.insert(0, apiResponse.data!); // Optimistically prepend
+        if (apiResponse.data != null) {
+          _organizations.insert(
+            0,
+            apiResponse.data!,
+          ); // Optimistically prepend
+        }
+        return true;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+        return false;
       }
-      notifyListeners();
-      return true;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
-
-      notifyListeners();
       return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    return false;
   }
 
   /// 4. Update Organization
@@ -148,44 +157,47 @@ class OrganizationController extends ChangeNotifier {
     _successMessage = null;
     notifyListeners();
 
-    final result = await _organizationRepository.updateOrganization(
-      id: id,
-      name: name,
-      email: email,
-      phoneNumber: phoneNumber,
-      street: street,
-      city: city,
-      state: state,
-      country: country,
-      pinCode: pinCode,
-      imageFilePath: imageFilePath,
-    );
+    try {
+      final result = await _organizationRepository.updateOrganization(
+        id: id,
+        name: name,
+        email: email,
+        phoneNumber: phoneNumber,
+        street: street,
+        city: city,
+        state: state,
+        country: country,
+        pinCode: pinCode,
+        imageFilePath: imageFilePath,
+      );
 
-    _isLoading = false;
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<OrganizationModel>;
+        _successMessage = apiResponse.message;
 
-    if (result is Success) {
-      final apiResponse =
-          (result as Success).data as BaseApiResponse<OrganizationModel>;
-      _successMessage = apiResponse.message;
+        final index = _organizations.indexWhere(
+          (element) => element.id == id,
+        );
+        if (index != -1 && apiResponse.data != null) {
+          _organizations[index] = apiResponse.data!;
+        }
 
-      final index = _organizations.indexWhere((element) => element.id == id);
-      if (index != -1 && apiResponse.data != null) {
-        _organizations[index] = apiResponse.data!;
+        // Keep selected detail model in sync if viewing it
+        if (_selectedOrganization?.id == id) {
+          _selectedOrganization = apiResponse.data;
+        }
+
+        return true;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+        return false;
       }
-
-      // Keep selected detail model in sync if viewing it
-      if (_selectedOrganization?.id == id) {
-        _selectedOrganization = apiResponse.data;
-      }
-
-      notifyListeners();
-      return true;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
-      notifyListeners();
       return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    return false;
   }
 
   /// 5. Delete Organization
@@ -195,26 +207,31 @@ class OrganizationController extends ChangeNotifier {
     _successMessage = null;
     notifyListeners();
 
-    final result = await _organizationRepository.deleteOrganization(id: id);
-    _isLoading = false;
+    try {
+      final result = await _organizationRepository.deleteOrganization(
+        id: id,
+      );
 
-    if (result is Success) {
-      final apiResponse = (result as Success).data as BaseApiResponse<dynamic>;
-      _successMessage = apiResponse.message;
-      _organizations.removeWhere((element) => element.id == id);
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<dynamic>;
+        _successMessage = apiResponse.message;
+        _organizations.removeWhere((element) => element.id == id);
 
-      if (_selectedOrganization?.id == id) {
-        _selectedOrganization = null;
+        if (_selectedOrganization?.id == id) {
+          _selectedOrganization = null;
+        }
+
+        return true;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+        return false;
       }
-
-      notifyListeners();
-      return true;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
-      notifyListeners();
       return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    return false;
   }
 
   /// 6. Fetch the organization currently scoped to this session
@@ -223,18 +240,20 @@ class OrganizationController extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    final result = await _organizationRepository.getMyOrganization();
+    try {
+      final result = await _organizationRepository.getMyOrganization();
 
-    _isLoading = false;
-
-    if (result is Success) {
-      final apiResponse =
-          (result as Success).data as BaseApiResponse<OrganizationModel>;
-      _myOrganization = apiResponse.data;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<OrganizationModel>;
+        _myOrganization = apiResponse.data;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+      }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   /// 7. Switch which organization the user's session is scoped to
@@ -246,22 +265,24 @@ class OrganizationController extends ChangeNotifier {
     _successMessage = null;
     notifyListeners();
 
-    final result = await _organizationRepository.switchOrganization(
-      organizationId: organizationId,
-    );
+    try {
+      final result = await _organizationRepository.switchOrganization(
+        organizationId: organizationId,
+      );
 
-    _isLoading = false;
-
-    if (result is Success) {
-      final apiResponse = (result as Success).data as BaseApiResponse<dynamic>;
-      _successMessage = apiResponse.message;
-      notifyListeners();
-      return true;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
-      notifyListeners();
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<dynamic>;
+        _successMessage = apiResponse.message;
+        return true;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+        return false;
+      }
       return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    return false;
   }
 }

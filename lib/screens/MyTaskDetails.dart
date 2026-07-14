@@ -13,11 +13,14 @@ import 'package:taskalert_app/core/features/employees/controllers/employee_contr
 import 'package:taskalert_app/core/features/employees/data/models/employee_model.dart';
 import 'package:taskalert_app/core/features/taskInstance/controllers/task_instance_controller.dart';
 import 'package:taskalert_app/core/features/taskInstance/data/models/task_instance_model.dart';
+import 'package:taskalert_app/screens/panel_right_close_icon.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
+import '../components/ToggleSwitch.dart';
+import 'activity_bottom_sheet.dart';
 import 'package:taskalert_app/screens/panel_right_close_icon.dart';
 import 'activity_bottom_sheet.dart';
 // ═══════════════════════════════════════════════════════════════════════════
@@ -619,34 +622,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   // Reusable UI components
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildToggle({required bool value, required VoidCallback onTap}) =>
-      GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          width: 30.w,
-          height: 15.h,
-          padding: EdgeInsets.all(1.w),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(30.r),
-            border: Border.all(color: value ? _greenOn : _greyOff, width: 1.2),
-          ),
-          child: AnimatedAlign(
-            duration: const Duration(milliseconds: 250),
-            alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-            child: Container(
-              width: 14.w,
-              height: 14.h,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: value ? _greenOn : _greyOff,
-              ),
-            ),
-          ),
-        ),
-      );
-
   Widget _card({required Widget child, EdgeInsets? padding}) => Container(
     width: double.infinity,
     decoration: BoxDecoration(
@@ -707,7 +682,13 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             ],
           ),
         ),
-        _buildToggle(value: value, onTap: onTap),
+        ToggleSwitch(
+          value: value,
+          activeColor: _greenOn,
+          inactiveColor: _greyOff,
+          semanticLabel: label,
+          onTap: onTap,
+        ),
       ],
     ),
   );
@@ -2495,8 +2476,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 ),
               ),
             ),
-            _buildToggle(
+            ToggleSwitch(
               value: _selectDurationEnabled,
+              semanticLabel: 'Select Duration & Time',
               onTap: () => setState(
                 () => _selectDurationEnabled = !_selectDurationEnabled,
               ),

@@ -50,12 +50,20 @@ class AuthInterceptor extends Interceptor {
       return handler.next(err);
     }
 
-    final newToken = await _refreshAccessToken();
+    String? newToken;
+    try {
+      newToken = await _refreshAccessToken();
+    } on DioException {
+      // The refresh call itself failed for a transient reason (network drop,
+      // timeout, 5xx) — leave the stored session alone so the user can just
+      // retry, instead of forcing a logout over a blip.
+      return handler.next(err);
+    }
 
     if (newToken == null) {
-      // Refresh token missing, expired, or the refresh call itself failed —
-      // there's no way to recover this session silently. Same fallback as
-      // before: wipe it so the user lands back on sign-in.
+      // Refresh token missing, or the refresh endpoint explicitly rejected it
+      // (401/403) — this session is genuinely unrecoverable, wipe it so the
+      // user lands back on sign-in.
       await _secureStorage.deleteAll();
       return handler.next(err);
     }
@@ -86,11 +94,15 @@ class AuthInterceptor extends Interceptor {
     return future;
   }
 
+  /// Returns the new access token, `null` if the refresh token is missing or
+  /// was definitively rejected (session is unrecoverable), or rethrows a
+  /// [DioException] for a transient failure (network/timeout/5xx) so the
+  /// caller knows not to wipe an otherwise-still-valid session.
   Future<String?> _doRefresh() async {
-    try {
-      final refreshToken = await _secureStorage.read(key: 'refresh_token');
-      if (refreshToken == null || refreshToken.isEmpty) return null;
+    final refreshToken = await _secureStorage.read(key: 'refresh_token');
+    if (refreshToken == null || refreshToken.isEmpty) return null;
 
+    try {
       final response = await _refreshDio.post(
         '/auth/access-token',
         data: {'refreshToken': refreshToken},
@@ -104,8 +116,12 @@ class AuthInterceptor extends Interceptor {
       final tokenString = newAccessToken.toString();
       await _secureStorage.write(key: 'auth_token', value: tokenString);
       return tokenString;
-    } catch (_) {
-      return null;
+    } on DioException catch (e) {
+      final status = e.response?.statusCode;
+      if (status == 401 || status == 403) {
+        return null; // refresh token itself was rejected
+      }
+      rethrow; // transient — let the caller preserve the session
     }
   }
 }

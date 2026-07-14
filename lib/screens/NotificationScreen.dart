@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
+import '../components/ToggleSwitch.dart';
 
 // ── Notification toggle keys (use these as API field names) ─────────────────
 // Communications
@@ -309,38 +310,6 @@ class _NotificationSettingState extends State<NotificationSetting> {
 
   // ── Widgets ────────────────────────────────────────────────────────────────
 
-  Widget _buildToggle({required bool value, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        width: 30.w,
-        height: 15.h,
-        padding: EdgeInsets.all(1.w),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(30.r),
-          border: Border.all(
-            color: value ? const Color(0xFF1DC230) : const Color(0xFF676299),
-            width: 1.2,
-          ),
-        ),
-        child: AnimatedAlign(
-          duration: const Duration(milliseconds: 250),
-          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            width: 14.w,
-            height: 14.h,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: value ? const Color(0xFF1DC230) : const Color(0xFF676299),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildTab(String label, bool isSelected) {
     return IntrinsicWidth(
       child: Column(
@@ -425,7 +394,11 @@ class _NotificationSettingState extends State<NotificationSetting> {
                 ),
               ),
               SizedBox(width: 10.w),
-              _buildToggle(value: value, onTap: () => _toggleValue(item.key)),
+              ToggleSwitch(
+                value: value,
+                semanticLabel: item.title,
+                onTap: () => _toggleValue(item.key),
+              ),
             ],
           ),
         ),

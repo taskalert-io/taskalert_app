@@ -1193,15 +1193,6 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Back + page title
-                          // GestureDetector(
-                          //   onTap: () => Navigator.maybePop(context),
-                          //   child: Icon(
-                          //     Icons.arrow_back,
-                          //     size: 17.r,
-                          //     color: const Color(0xFF0A0258),
-                          //   ),
-                          // ),
-                          // SizedBox(height: 5.h),
                           IconButton(
                             onPressed: () => Navigator.maybePop(context),
                             icon: Icon(

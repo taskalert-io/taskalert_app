@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:http/http.dart' hide MultipartFile;
 import '../../../../network/api_result.dart';
 import '../../../../network/base_api_response.dart';
 import '../../../../network/http_service.dart';
@@ -119,6 +118,17 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
       );
     } on NetworkException catch (e) {
       return ApiResult.failure(e);
+    } catch (e) {
+      // Guards against unexpected response shapes (e.g. a ref field the
+      // backend populates differently than expected) so a parsing bug
+      // surfaces as a normal failure instead of an uncaught exception
+      // that leaves the controller's loading state stuck forever.
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
     }
   }
   // @override
@@ -463,6 +473,17 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
       );
     } on NetworkException catch (e) {
       return ApiResult.failure(e);
+    } catch (e) {
+      // Guards against unexpected response shapes (e.g. a ref field the
+      // backend populates differently than expected) so a parsing bug
+      // surfaces as a normal failure instead of an uncaught exception
+      // that leaves the controller's loading state stuck forever.
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
     }
   }
 
@@ -488,6 +509,17 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
       );
     } on NetworkException catch (e) {
       return ApiResult.failure(e);
+    } catch (e) {
+      // Guards against unexpected response shapes (e.g. a ref field the
+      // backend populates differently than expected) so a parsing bug
+      // surfaces as a normal failure instead of an uncaught exception
+      // that leaves the controller's loading state stuck forever.
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
     }
   }
 
@@ -553,6 +585,17 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
       );
     } on NetworkException catch (e) {
       return ApiResult.failure(e);
+    } catch (e) {
+      // Guards against unexpected response shapes (e.g. a ref field the
+      // backend populates differently than expected) so a parsing bug
+      // surfaces as a normal failure instead of an uncaught exception
+      // that leaves the controller's loading state stuck forever.
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
     }
   }
 
@@ -578,19 +621,51 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
       );
     } on NetworkException catch (e) {
       return ApiResult.failure(e);
+    } catch (e) {
+      // Guards against unexpected response shapes (e.g. a ref field the
+      // backend populates differently than expected) so a parsing bug
+      // surfaces as a normal failure instead of an uncaught exception
+      // that leaves the controller's loading state stuck forever.
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
     }
   }
 
   /// 6. GET: Fetch the organization currently scoped to this session
+  ///
+  /// The backend returns every organization the user belongs to as a list
+  /// (each entry flagged with `isActive`), not a single object — pick the
+  /// active one out rather than assuming `data` is already a single map.
   @override
   Future<ApiResult<BaseApiResponse<OrganizationModel>>>
   getMyOrganization() async {
     try {
       final responseData = await _httpService.get('/organizations/me');
+      final envelope = responseData as Map<String, dynamic>;
+      final rawData = envelope['data'];
 
-      final apiResponse = BaseApiResponse.fromJson(
-        responseData as Map<String, dynamic>,
-        (json) => OrganizationModel.fromJson(json as Map<String, dynamic>),
+      Map<String, dynamic>? activeOrgJson;
+      if (rawData is List) {
+        final orgs = rawData.cast<Map<String, dynamic>>();
+        activeOrgJson = orgs.firstWhere(
+          (o) => o['isActive'] == true,
+          orElse: () => orgs.isNotEmpty ? orgs.first : <String, dynamic>{},
+        );
+        if (activeOrgJson.isEmpty) activeOrgJson = null;
+      } else if (rawData is Map<String, dynamic>) {
+        activeOrgJson = rawData; // tolerate a single-object response too
+      }
+
+      final apiResponse = BaseApiResponse<OrganizationModel>(
+        success: envelope['success'] ?? false,
+        message: envelope['message'] ?? '',
+        data: activeOrgJson != null
+            ? OrganizationModel.fromJson(activeOrgJson)
+            : null,
       );
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
@@ -602,6 +677,17 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
       );
     } on NetworkException catch (e) {
       return ApiResult.failure(e);
+    } catch (e) {
+      // Guards against unexpected response shapes (e.g. a ref field the
+      // backend populates differently than expected) so a parsing bug
+      // surfaces as a normal failure instead of an uncaught exception
+      // that leaves the controller's loading state stuck forever.
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
     }
   }
 
@@ -655,6 +741,17 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
       );
     } on NetworkException catch (e) {
       return ApiResult.failure(e);
+    } catch (e) {
+      // Guards against unexpected response shapes (e.g. a ref field the
+      // backend populates differently than expected) so a parsing bug
+      // surfaces as a normal failure instead of an uncaught exception
+      // that leaves the controller's loading state stuck forever.
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
     }
   }
 
