@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:taskalert_app/core/features/auth/data/models/profile_model.dart';
 import 'package:taskalert_app/core/features/auth/data/models/user_model.dart';
@@ -40,32 +41,36 @@ class LoginController extends ChangeNotifier {
     _otp = null;
     notifyListeners();
 
-    // 1. Fire the request through our decoupled repository contract
-    // Note: We use a placeholder string for password since your UI screenshot is currently passwordless
-    final result = await _authRepository.signIn(
-      phoneNumber: phoneNumber, // Mapping phone to the unique credential field
-    );
+    try {
+      // 1. Fire the request through our decoupled repository contract
+      // Note: We use a placeholder string for password since your UI screenshot is currently passwordless
+      final result = await _authRepository.signIn(
+        phoneNumber: phoneNumber, // Mapping phone to the unique credential field
+      );
 
-    _isLoading = false;
+      // 2. Unpack the clean functional pattern result
+      if (result is Success) {
+        _currentPhoneNumber = phoneNumber; // Cache the identifier locally
+        final apiResponse = (result as Success).data;
+        // Only surface the dev/test backend's echoed OTP in debug builds — a
+        // release build must never read or display this, regardless of what
+        // the backend returns.
+        _otp = kDebugMode ? apiResponse.data['otp']?.toString() : null;
+        _successMessage = _otp != null
+            ? '${apiResponse.message} Your OTP is: $_otp'
+            : apiResponse.message ?? 'OTP sent successfully to $phoneNumber';
+        return true; // Tells the UI it's safe to push the OTP verification screen
+      } else if (result is Failure) {
+        // Automatically captures our clean, obfuscated or backend validation message
+        _errorMessage = (result as Failure).exception.userMessage;
+        return false;
+      }
 
-    // 2. Unpack the clean functional pattern result
-    if (result is Success) {
-      _currentPhoneNumber = phoneNumber; // Cache the identifier locally
-      final apiResponse = (result as Success).data;
-      _otp = apiResponse.data['otp']?.toString();
-      _successMessage = _otp != null
-          ? '${apiResponse.message} Your OTP is: $_otp'
-          : apiResponse.message ?? 'OTP sent successfully to $phoneNumber';
-      notifyListeners();
-      return true; // Tells the UI it's safe to push the OTP verification screen
-    } else if (result is Failure) {
-      // Automatically captures our clean, obfuscated or backend validation message
-      _errorMessage = (result as Failure).exception.userMessage;
-      notifyListeners();
       return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-
-    return false;
   }
 
   Future<UserModel?> handleVerifyOtp({required String otp}) async {
@@ -80,34 +85,31 @@ class LoginController extends ChangeNotifier {
     _successMessage = null;
     notifyListeners();
 
-    // 1. Fire the repository method
-    final result = await _authRepository.verifySignInOtp(
-      phoneNumber: _currentPhoneNumber!,
-      otpCode: otp,
-    );
+    try {
+      // 1. Fire the repository method
+      final result = await _authRepository.verifySignInOtp(
+        phoneNumber: _currentPhoneNumber!,
+        otpCode: otp,
+      );
 
-    _isLoading = false;
+      // 2. Unpack the clean functional pattern result safely
+      if (result is Success) {
+        // result.data gives you what AuthRepositoryImpl returned: a parsed UserModel object!
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<UserModel>;
 
-    // 2. Unpack the clean functional pattern result safely
-    if (result is Success) {
-      // print("OTP verification successful, unpacking user data...{$result}");
-      // result.data gives you what AuthRepositoryImpl returned: a parsed UserModel object!
-      final apiResponse =
-          (result as Success).data as BaseApiResponse<UserModel>;
-
-      // Second, extract the clean nested UserModel payload from inside it
-      final user = apiResponse.data;
-      // print all securestorage keys and values for debugging
-
-      // print("$user");
-      notifyListeners();
-      return user;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
-      notifyListeners();
+        // Second, extract the clean nested UserModel payload from inside it
+        final user = apiResponse.data;
+        return user;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+        return null;
+      }
       return null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    return null;
   }
 
   Future<bool> handleResendOtp() async {
@@ -118,44 +120,47 @@ class LoginController extends ChangeNotifier {
     _successMessage = null;
     notifyListeners();
 
-    final result = await _authRepository.resendSignInOtp(
-      phoneNumber: _currentPhoneNumber!,
-    );
+    try {
+      final result = await _authRepository.resendSignInOtp(
+        phoneNumber: _currentPhoneNumber!,
+      );
 
-    _isLoading = false;
+      if (result is Success) {
+        final apiResponse = (result as Success).data;
+        // _successMessage = apiResponse.message;
+        _otp = kDebugMode ? apiResponse.data['otp']?.toString() : null;
+        if (_otp != null) {
+          _successMessage = " Your new OTP is: $_otp";
+        } else {
+          _successMessage = " OTP resent successfully to ${_currentPhoneNumber!}";
+        }
 
-    if (result is Success) {
-      final apiResponse = (result as Success).data;
-      // _successMessage = apiResponse.message;
-      _otp = apiResponse.data['otp']?.toString();
-      if (_otp != null) {
-        _successMessage = " Your new OTP is: $_otp";
-      } else {
-        _successMessage = " OTP resent successfully to ${_currentPhoneNumber!}";
+        return true;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+        return false;
       }
-
-      notifyListeners();
-      return true;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
-      notifyListeners();
       return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    return false;
   }
 
   Future<void> handleLogout() async {
     _isLoading = true;
     notifyListeners();
 
-    await _authRepository.logout();
+    try {
+      await _authRepository.logout();
 
-    _currentPhoneNumber = null;
-    _successMessage = null;
-    _errorMessage = null;
-
-    _isLoading = false;
-    notifyListeners();
+      _currentPhoneNumber = null;
+      _successMessage = null;
+      _errorMessage = null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<bool> handleGetProfile() async {
@@ -164,27 +169,27 @@ class LoginController extends ChangeNotifier {
     _successMessage = null;
     notifyListeners();
 
-    final result = await _authRepository.getProfile();
-    bool isSuccess = false;
+    try {
+      final result = await _authRepository.getProfile();
+      bool isSuccess = false;
 
-    _isLoading = false;
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<ProfileModel>;
 
-    if (result is Success) {
-      final apiResponse =
-          (result as Success).data as BaseApiResponse<ProfileModel>;
+        _profile = apiResponse.data;
+        _successMessage = apiResponse.message;
+        isSuccess = true;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+        isSuccess = false;
+      }
 
-      _profile = apiResponse.data;
-      _successMessage = apiResponse.message;
-      isSuccess = true;
-
-      // print(_profile?.dateOfBirth);
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
-      isSuccess = false;
+      return isSuccess;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-
-    notifyListeners();
-    return isSuccess;
   }
 
   Future<bool> handleUpdateProfile({
@@ -202,30 +207,32 @@ class LoginController extends ChangeNotifier {
     _successMessage = null;
     notifyListeners();
 
-    final result = await _authRepository.updateProfile(
-      firstName: firstName,
-      lastName: lastName,
-      phoneNumber: phoneNumber,
-      email: email,
-      jobRole: jobRole,
-      language: language,
-      languageCode: languageCode,
-      imageFile: imageFile,
-    );
+    try {
+      final result = await _authRepository.updateProfile(
+        firstName: firstName,
+        lastName: lastName,
+        phoneNumber: phoneNumber,
+        email: email,
+        jobRole: jobRole,
+        language: language,
+        languageCode: languageCode,
+        imageFile: imageFile,
+      );
 
-    _isLoading = false;
-
-    if (result is Success) {
-      final apiResponse = (result as Success).data as BaseApiResponse<dynamic>;
-      _successMessage = apiResponse.message;
-      notifyListeners();
-      return true;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
-      notifyListeners();
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<dynamic>;
+        _successMessage = apiResponse.message;
+        return true;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+        return false;
+      }
       return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    return false;
   }
 
   Future<bool> handleUpdatePassword({
@@ -237,24 +244,26 @@ class LoginController extends ChangeNotifier {
     _successMessage = null;
     notifyListeners();
 
-    final result = await _authRepository.updatePassword(
-      oldPassword: oldPassword,
-      newPassword: newPassword,
-    );
+    try {
+      final result = await _authRepository.updatePassword(
+        oldPassword: oldPassword,
+        newPassword: newPassword,
+      );
 
-    _isLoading = false;
-
-    if (result is Success) {
-      final apiResponse = (result as Success).data as BaseApiResponse<dynamic>;
-      _successMessage = apiResponse.message;
-      notifyListeners();
-      return true;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
-      notifyListeners();
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<dynamic>;
+        _successMessage = apiResponse.message;
+        return true;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+        return false;
+      }
       return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    return false;
   }
 
   Future<bool> handleRequestAccountDeletion() async {
@@ -263,21 +272,23 @@ class LoginController extends ChangeNotifier {
     _successMessage = null;
     notifyListeners();
 
-    final result = await _authRepository.requestAccountDeletion();
+    try {
+      final result = await _authRepository.requestAccountDeletion();
 
-    _isLoading = false;
-
-    if (result is Success) {
-      final apiResponse = (result as Success).data as BaseApiResponse<dynamic>;
-      _successMessage = apiResponse.message;
-      notifyListeners();
-      return true;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
-      notifyListeners();
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<dynamic>;
+        _successMessage = apiResponse.message;
+        return true;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+        return false;
+      }
       return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    return false;
   }
 
   /// Coordinates registering a company structure profile right after user registration succeeds
@@ -291,26 +302,27 @@ class LoginController extends ChangeNotifier {
     _successMessage = null;
     notifyListeners();
 
-    final result = await _authRepository.registerOrganizationProfile(
-      email: email,
-      name: name,
-      phoneNumber: phoneNumber,
-    );
+    try {
+      final result = await _authRepository.registerOrganizationProfile(
+        email: email,
+        name: name,
+        phoneNumber: phoneNumber,
+      );
 
-    _isLoading = false;
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<dynamic>;
+        _successMessage = apiResponse.message;
+        return true;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+        return false;
+      }
 
-    if (result is Success) {
-      final apiResponse = (result as Success).data as BaseApiResponse<dynamic>;
-      _successMessage = apiResponse.message;
-      notifyListeners();
-      return true;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
-      notifyListeners();
       return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-
-    notifyListeners();
-    return false;
   }
 }

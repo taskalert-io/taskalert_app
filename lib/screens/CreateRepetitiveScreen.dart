@@ -23,6 +23,7 @@ import 'package:taskalert_app/utils/injection_container.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
+import '../components/ToggleSwitch.dart';
 import 'DepartmentListScreen.dart' show openDepartmentFormDialog;
 import 'LocationListScreen.dart' show openLocationFormDialog;
 import 'MyTaskScreen.dart';
@@ -945,7 +946,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     }
 
     if (selectedReportingList.isEmpty) {
-      //print('selectedReportingList: $selectedReportingList');
       setState(() => _reportingToError = "Please select a user");
       valid = false;
     } else {
@@ -1031,7 +1031,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
     }
 
     if (isProofEnabled) {
-      // //print("Before Validation -> $selectedProofTypes");
       if (selectedProofTypes.isEmpty) {
         setState(() {
           _proofTypeError = "Please select at least one proof type";
@@ -1041,8 +1040,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
         setState(() {
           _proofTypeError = null;
         });
-        //print("Proof Types Count: ${selectedProofTypes.length}");
-        //print("Proof Types Values: $selectedProofTypes");
       }
 
       // AI Validation is optional
@@ -1090,19 +1087,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       return;
     }
 
-    if (selectedEndType == "end_by") {
-      //print("End Date: ${endDateController.text}");
-    } else {
-      //print("Occurrences: $occurrencesCount");
-    }
-
-    //print("Ai enabled: $isProofEnabled");
-    //print("Proof Type: $selectedProofTypes");
-    if (selectedProofTypes.isNotEmpty) {
-      //print("AI Validation: $selectedProofRadioType");
-    }
-    //print("Selected Files: $selectedFiles");
-
     if (_validateSections() && _formKey.currentState!.validate()) {
       taskController.clearMessages();
 
@@ -1145,8 +1129,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       }
 
       if (selectedEndType == 'end_by') {
-        //print('end by active');
-        // formData['endByDate'] = endDateController.text;
         formData['endByDate'] = DateTime(
           int.parse(endDateController.text.split('-')[2]),
           int.parse(endDateController.text.split('-')[1]),
@@ -1155,9 +1137,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       } else if (selectedEndType == 'end_after') {
         formData['endAfterCount'] = occurrencesCount;
       }
-
-      //print('Form Data');
-      //print(formData);
 
       if (isProofEnabled) {
         formData['proofTypes'] = jsonEncode(selectedProofTypes);
@@ -1213,19 +1192,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       );
     }
 
-    // //print("Selected AI Proof Type: $")
-
-    // ScaffoldMessenger.of(context).showSnackBar(
-    //   SnackBar(
-    //     content: Text(
-    //       "Form submitted successfully!",
-    //       style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
-    //     ),
-    //     backgroundColor: Colors.green,
-    //     behavior: SnackBarBehavior.floating,
-    //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
-    //   ),
-    // );
   }
 
   // ── LOCATION AUTOCOMPLETE ────────────────────────────────────────────────
@@ -1778,15 +1744,17 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Back + page title
-                          GestureDetector(
-                            onTap: () => Navigator.maybePop(context),
-                            child: Icon(
+                          IconButton(
+                            onPressed: () => Navigator.maybePop(context),
+                            icon: Icon(
                               Icons.arrow_back,
                               size: 17.r,
                               color: const Color(0xFF0A0258),
                             ),
+                            splashRadius: 22.r,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
                           ),
-                          SizedBox(height: 5.h),
                           Text(
                             "Core Identity & Media",
                             style: GoogleFonts.inter(
@@ -2838,8 +2806,9 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                         color: const Color(0xFF0A0258),
                                       ),
                                     ),
-                                    _buildToggle(
+                                    ToggleSwitch(
                                       value: isAssignmentEnabled,
+                                      semanticLabel: "Assignment & Recurrence",
                                       onTap: () => setState(() {
                                         isAssignmentEnabled =
                                             !isAssignmentEnabled;
@@ -3378,8 +3347,10 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                         color: const Color(0xFF0A0258),
                                       ),
                                     ),
-                                    _buildToggle(
+                                    ToggleSwitch(
                                       value: isProofEnabled,
+                                      semanticLabel:
+                                          'The "Proof" & AI Validation',
                                       onTap: () => setState(() {
                                         isProofEnabled = !isProofEnabled;
                                         if (!isProofEnabled) {
@@ -4023,39 +3994,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       ),
     ),
   );
-
-  Widget _buildToggle({required bool value, required VoidCallback onTap}) =>
-      GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          width: 30.w,
-          height: 15.h,
-          padding: EdgeInsets.all(1.w),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(30.r),
-            border: Border.all(
-              color: value ? const Color(0xFF1DC230) : const Color(0xFF676299),
-              width: 1.2,
-            ),
-          ),
-          child: AnimatedAlign(
-            duration: const Duration(milliseconds: 250),
-            alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-            child: Container(
-              width: 14.w,
-              height: 14.h,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: value
-                    ? const Color(0xFF1DC230)
-                    : const Color(0xFF676299),
-              ),
-            ),
-          ),
-        ),
-      );
 
   Widget _buildLabel(String text) => RichText(
     text: TextSpan(

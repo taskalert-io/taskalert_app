@@ -34,6 +34,17 @@ class TaskRepositoryImpl implements TaskRepository {
       );
     } on NetworkException catch (e) {
       return ApiResult.failure(e);
+    } catch (e) {
+      // Guards against unexpected response shapes (e.g. a ref field the
+      // backend populates differently than expected) so a parsing bug
+      // surfaces as a normal failure instead of an uncaught exception
+      // that leaves the controller's loading state stuck forever.
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
     }
   }
 
@@ -63,6 +74,17 @@ class TaskRepositoryImpl implements TaskRepository {
       );
     } on NetworkException catch (e) {
       return ApiResult.failure(e);
+    } catch (e) {
+      // Guards against unexpected response shapes (e.g. a ref field the
+      // backend populates differently than expected) so a parsing bug
+      // surfaces as a normal failure instead of an uncaught exception
+      // that leaves the controller's loading state stuck forever.
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
     }
   }
 
@@ -110,6 +132,17 @@ class TaskRepositoryImpl implements TaskRepository {
       );
     } on NetworkException catch (e) {
       return ApiResult.failure(e);
+    } catch (e) {
+      // Guards against unexpected response shapes (e.g. a ref field the
+      // backend populates differently than expected) so a parsing bug
+      // surfaces as a normal failure instead of an uncaught exception
+      // that leaves the controller's loading state stuck forever.
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
     }
   }
 
@@ -154,6 +187,17 @@ class TaskRepositoryImpl implements TaskRepository {
       );
     } on NetworkException catch (e) {
       return ApiResult.failure(e);
+    } catch (e) {
+      // Guards against unexpected response shapes (e.g. a ref field the
+      // backend populates differently than expected) so a parsing bug
+      // surfaces as a normal failure instead of an uncaught exception
+      // that leaves the controller's loading state stuck forever.
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
     }
   }
 
@@ -197,6 +241,17 @@ class TaskRepositoryImpl implements TaskRepository {
       );
     } on NetworkException catch (e) {
       return ApiResult.failure(e);
+    } catch (e) {
+      // Guards against unexpected response shapes (e.g. a ref field the
+      // backend populates differently than expected) so a parsing bug
+      // surfaces as a normal failure instead of an uncaught exception
+      // that leaves the controller's loading state stuck forever.
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
     }
   }
 }

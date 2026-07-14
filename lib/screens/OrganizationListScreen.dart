@@ -51,8 +51,8 @@ class _OrganizationListScreenState extends State<OrganizationListScreen> {
     return orgs.where((o) => _matchesQuery(o, q)).toList();
   }
 
-  bool get _allSelected =>
-      _filtered.isNotEmpty && _selectedIds.length == _filtered.length;
+  bool _isAllSelected(List<OrganizationModel> filtered) =>
+      filtered.isNotEmpty && _selectedIds.length == filtered.length;
 
   @override
   void initState() {
@@ -504,7 +504,7 @@ class _OrganizationListScreenState extends State<OrganizationListScreen> {
                             child: Row(
                               children: [
                                 Checkbox(
-                                  value: _allSelected,
+                                  value: _isAllSelected(filtered),
                                   activeColor: const Color(0xFF0A0258),
                                   materialTapTargetSize:
                                       MaterialTapTargetSize.shrinkWrap,

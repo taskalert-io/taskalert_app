@@ -157,12 +157,15 @@ class _CustomAppBarState extends State<CustomAppBar> {
                                   ? null
                                   : () async {
                                       ss(() => switchingToId = org.id);
-                                      final success =
-                                          await _organizationController
-                                              .handleSwitchOrganization(
-                                                organizationId: org.id,
-                                              );
-                                      ss(() => switchingToId = null);
+                                      bool success = false;
+                                      try {
+                                        success = await _organizationController
+                                            .handleSwitchOrganization(
+                                              organizationId: org.id,
+                                            );
+                                      } finally {
+                                        ss(() => switchingToId = null);
+                                      }
 
                                       if (!sheetCtx.mounted) return;
 

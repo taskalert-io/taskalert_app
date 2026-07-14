@@ -52,32 +52,34 @@ class EmployeeController extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    final result = await _employeeRepository.getEmployees(
-      organizationId: organizationId ?? '',
-      jobRole: jobRole,
-      search: search,
-      page: page,
-      department: department,
-    );
+    try {
+      final result = await _employeeRepository.getEmployees(
+        organizationId: organizationId ?? '',
+        jobRole: jobRole,
+        search: search,
+        page: page,
+        department: department,
+      );
 
-    _isLoading = false;
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<List<EmployeeModel>>;
 
-    if (result is Success) {
-      final apiResponse =
-          (result as Success).data as BaseApiResponse<List<EmployeeModel>>;
+        if (department != null) {
+          _employees = apiResponse.data ?? [];
+        } else {
+          _allEmployees = apiResponse.data ?? [];
+        }
 
-      if (department != null) {
-        _employees = apiResponse.data ?? [];
-      } else {
-        _allEmployees = apiResponse.data ?? [];
+        _pagination = apiResponse
+            .pagination; // Capture automatic pagination tracking fields safely
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
       }
-
-      _pagination = apiResponse
-          .pagination; // Capture automatic pagination tracking fields safely
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   /// 2. Fetch Single Employee
@@ -86,18 +88,20 @@ class EmployeeController extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    final result = await _employeeRepository.getEmployeeById(id: id);
+    try {
+      final result = await _employeeRepository.getEmployeeById(id: id);
 
-    _isLoading = false;
-
-    if (result is Success) {
-      final apiResponse =
-          (result as Success).data as BaseApiResponse<EmployeeModel>;
-      _selectedEmployee = apiResponse.data;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<EmployeeModel>;
+        _selectedEmployee = apiResponse.data;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+      }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   /// 3. Create Employee
@@ -121,44 +125,45 @@ class EmployeeController extends ChangeNotifier {
     _successMessage = null;
     notifyListeners();
 
-    final result = await _employeeRepository.createEmployee(
-      firstName: firstName,
-      lastName: lastName,
-      email: email ?? '',
-      phoneNumber: phoneNumber,
-      jobRole: jobRole,
-      imageFilePath: imageFilePath,
-      gender: gender ?? '',
-      department: department,
-      organization: organization,
-      location: location,
-      dateOfBirth: dateOfBirth,
-      taskPermission: taskPermission,
-      taskType: taskType,
-    );
+    try {
+      final result = await _employeeRepository.createEmployee(
+        firstName: firstName,
+        lastName: lastName,
+        email: email ?? '',
+        phoneNumber: phoneNumber,
+        jobRole: jobRole,
+        imageFilePath: imageFilePath,
+        gender: gender ?? '',
+        department: department,
+        organization: organization,
+        location: location,
+        dateOfBirth: dateOfBirth,
+        taskPermission: taskPermission,
+        taskType: taskType,
+      );
 
-    _isLoading = false;
-
-    if (result is Success) {
-      final apiResponse =
-          (result as Success).data as BaseApiResponse<EmployeeModel>;
-      _successMessage = apiResponse.message;
-      if (apiResponse.data != null) {
-        // Optimistically prepend to both local list views — `employees` is
-        // the department-scoped list (Create*Screen's "Assign to" pickers),
-        // `allEmployees` is the unscoped list (EmployeesScreen's Users List)
-        // — a create should show up in whichever one is currently in use.
-        _employees.insert(0, apiResponse.data!);
-        _allEmployees.insert(0, apiResponse.data!);
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<EmployeeModel>;
+        _successMessage = apiResponse.message;
+        if (apiResponse.data != null) {
+          // Optimistically prepend to both local list views — `employees` is
+          // the department-scoped list (Create*Screen's "Assign to" pickers),
+          // `allEmployees` is the unscoped list (EmployeesScreen's Users List)
+          // — a create should show up in whichever one is currently in use.
+          _employees.insert(0, apiResponse.data!);
+          _allEmployees.insert(0, apiResponse.data!);
+        }
+        return true;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+        return false;
       }
-      notifyListeners();
-      return true;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
-      notifyListeners();
       return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    return false;
   }
 
   /// 4. Update Employee
@@ -183,47 +188,48 @@ class EmployeeController extends ChangeNotifier {
     _successMessage = null;
     notifyListeners();
 
-    final result = await _employeeRepository.updateEmployee(
-      id: id,
-      firstName: firstName,
-      lastName: lastName,
-      email: email,
-      phoneNumber: phoneNumber,
-      jobRole: jobRole,
-      imageFilePath: imageFilePath,
-      gender: gender ?? '',
-      department: department,
-      organization: organization,
-      location: location,
-      dateOfBirth: dateOfBirth,
-      taskPermission: taskPermission,
-      taskType: taskType,
-    );
+    try {
+      final result = await _employeeRepository.updateEmployee(
+        id: id,
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        phoneNumber: phoneNumber,
+        jobRole: jobRole,
+        imageFilePath: imageFilePath,
+        gender: gender ?? '',
+        department: department,
+        organization: organization,
+        location: location,
+        dateOfBirth: dateOfBirth,
+        taskPermission: taskPermission,
+        taskType: taskType,
+      );
 
-    _isLoading = false;
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<EmployeeModel>;
+        _successMessage = apiResponse.message;
 
-    if (result is Success) {
-      final apiResponse =
-          (result as Success).data as BaseApiResponse<EmployeeModel>;
-      _successMessage = apiResponse.message;
+        if (apiResponse.data != null) {
+          final index = _employees.indexWhere((element) => element.id == id);
+          if (index != -1) _employees[index] = apiResponse.data!;
 
-      if (apiResponse.data != null) {
-        final index = _employees.indexWhere((element) => element.id == id);
-        if (index != -1) _employees[index] = apiResponse.data!;
-
-        final allIndex = _allEmployees.indexWhere(
-          (element) => element.id == id,
-        );
-        if (allIndex != -1) _allEmployees[allIndex] = apiResponse.data!;
+          final allIndex = _allEmployees.indexWhere(
+            (element) => element.id == id,
+          );
+          if (allIndex != -1) _allEmployees[allIndex] = apiResponse.data!;
+        }
+        return true;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+        return false;
       }
-      notifyListeners();
-      return true;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
-      notifyListeners();
       return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    return false;
   }
 
   /// 5. Delete Employee
@@ -233,22 +239,25 @@ class EmployeeController extends ChangeNotifier {
     _successMessage = null;
     notifyListeners();
 
-    final result = await _employeeRepository.deleteEmployee(id: id);
-    _isLoading = false;
+    try {
+      final result = await _employeeRepository.deleteEmployee(id: id);
 
-    if (result is Success) {
-      final apiResponse = (result as Success).data as BaseApiResponse<dynamic>;
-      _successMessage = apiResponse.message;
-      _employees.removeWhere((element) => element.id == id);
-      _allEmployees.removeWhere((element) => element.id == id);
-      notifyListeners();
-      return true;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
-      notifyListeners();
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<dynamic>;
+        _successMessage = apiResponse.message;
+        _employees.removeWhere((element) => element.id == id);
+        _allEmployees.removeWhere((element) => element.id == id);
+        return true;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+        return false;
+      }
       return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    return false;
   }
 
   /// 6. Live Recommendations Real-Time Text Query
@@ -284,23 +293,24 @@ class EmployeeController extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    final result = await _employeeRepository.findEmployeeByEmailOrPhone(
-      email: email,
-      phoneNumber: phoneNumber,
-    );
+    try {
+      final result = await _employeeRepository.findEmployeeByEmailOrPhone(
+        email: email,
+        phoneNumber: phoneNumber,
+      );
 
-    _isLoading = false;
-
-    if (result is Success) {
-      final apiResponse =
-          (result as Success).data as BaseApiResponse<EmployeeModel>;
-      notifyListeners();
-      return apiResponse.data;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
-      notifyListeners();
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<EmployeeModel>;
+        return apiResponse.data;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+        return null;
+      }
       return null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    return null;
   }
 }

@@ -51,8 +51,8 @@ class _LocationListScreenState extends State<LocationListScreen> {
     return locations.where((l) => _matchesQuery(l, q)).toList();
   }
 
-  bool get _allSelected =>
-      _filtered.isNotEmpty && _selectedIds.length == _filtered.length;
+  bool _isAllSelected(List<LocationModel> filtered) =>
+      filtered.isNotEmpty && _selectedIds.length == filtered.length;
 
   @override
   void initState() {
@@ -506,7 +506,7 @@ class _LocationListScreenState extends State<LocationListScreen> {
                             child: Row(
                               children: [
                                 Checkbox(
-                                  value: _allSelected,
+                                  value: _isAllSelected(filtered),
                                   activeColor: const Color(0xFF0A0258),
                                   materialTapTargetSize:
                                       MaterialTapTargetSize.shrinkWrap,

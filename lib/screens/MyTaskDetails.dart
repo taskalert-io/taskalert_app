@@ -12,11 +12,14 @@ import 'package:taskalert_app/core/features/employees/controllers/employee_contr
 import 'package:taskalert_app/core/features/employees/data/models/employee_model.dart';
 import 'package:taskalert_app/core/features/taskInstance/controllers/task_instance_controller.dart';
 import 'package:taskalert_app/core/features/taskInstance/data/models/task_instance_model.dart';
+import 'package:taskalert_app/screens/panel_right_close_icon.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
+import '../components/ToggleSwitch.dart';
+import 'activity_bottom_sheet.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Model — mirrors your API response shape exactly.
@@ -188,8 +191,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   /// Whether this task type collects proof at all — reused for both the
   /// "Upload Proof" button and the "Uploaded Proofs" list below.
   bool get _proofAllowed =>
-      taskController.selectedInstance?.proofSubmission?.proofTypes
-          .isNotEmpty ??
+      taskController.selectedInstance?.proofSubmission?.proofTypes.isNotEmpty ??
       false;
 
   // ── Editable fields (all API-mapped) ──────────────────────────────────────
@@ -548,34 +550,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   // Reusable UI components
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildToggle({required bool value, required VoidCallback onTap}) =>
-      GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          width: 30.w,
-          height: 15.h,
-          padding: EdgeInsets.all(1.w),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(30.r),
-            border: Border.all(color: value ? _greenOn : _greyOff, width: 1.2),
-          ),
-          child: AnimatedAlign(
-            duration: const Duration(milliseconds: 250),
-            alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-            child: Container(
-              width: 14.w,
-              height: 14.h,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: value ? _greenOn : _greyOff,
-              ),
-            ),
-          ),
-        ),
-      );
-
   Widget _card({required Widget child, EdgeInsets? padding}) => Container(
     width: double.infinity,
     decoration: BoxDecoration(
@@ -636,7 +610,13 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             ],
           ),
         ),
-        _buildToggle(value: value, onTap: onTap),
+        ToggleSwitch(
+          value: value,
+          activeColor: _greenOn,
+          inactiveColor: _greyOff,
+          semanticLabel: label,
+          onTap: onTap,
+        ),
       ],
     ),
   );
@@ -807,7 +787,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       useRootNavigator: true,
       builder: (_) => StatefulBuilder(
         builder: (ctx, ss) => Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
           child: Container(
             constraints: BoxConstraints(
               maxHeight: MediaQuery.of(ctx).size.height * 0.75,
@@ -867,7 +849,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         ),
                         GestureDetector(
                           onTap: () => Navigator.pop(ctx),
-                          child: Icon(Icons.close, size: 20.r, color: _labelColor),
+                          child: Icon(
+                            Icons.close,
+                            size: 20.r,
+                            color: _labelColor,
+                          ),
                         ),
                       ],
                     ),
@@ -898,15 +884,21 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8.r),
-                          borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFD9DEE5),
+                          ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8.r),
-                          borderSide: const BorderSide(color: Color(0xFFD9DEE5)),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFD9DEE5),
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8.r),
-                          borderSide: const BorderSide(color: Color(0xFF0A0258)),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF0A0258),
+                          ),
                         ),
                       ),
                       onChanged: (q) => ss(() {
@@ -916,10 +908,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             : allEmployeesForPicker
                                   .where(
                                     (e) =>
-                                        e.fullName.toLowerCase().contains(query) ||
-                                        (e.jobRole ?? '').toLowerCase().contains(
+                                        e.fullName.toLowerCase().contains(
                                           query,
-                                        ),
+                                        ) ||
+                                        (e.jobRole ?? '')
+                                            .toLowerCase()
+                                            .contains(query),
                                   )
                                   .toList();
                       }),
@@ -947,8 +941,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                               vertical: 8.h,
                             ),
                             itemCount: filtered.length,
-                            separatorBuilder: (_, __) =>
-                                const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                            separatorBuilder: (_, __) => const Divider(
+                              height: 1,
+                              color: Color(0xFFE4E7EC),
+                            ),
                             itemBuilder: (context, index) {
                               final employee = filtered[index];
                               final empId = employee.id ?? '';
@@ -1373,7 +1369,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   }
 
   Widget _buildUploadedProofsSection() {
-    final files = taskController.selectedInstance?.proofSubmission?.files ??
+    final files =
+        taskController.selectedInstance?.proofSubmission?.files ??
         const <ProofFileModel>[];
 
     return Column(
@@ -1446,7 +1443,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           ),
           IconButton(
             visualDensity: VisualDensity.compact,
-            icon: Icon(Icons.visibility_outlined, size: 18.r, color: _primaryColor),
+            icon: Icon(
+              Icons.visibility_outlined,
+              size: 18.r,
+              color: _primaryColor,
+            ),
             onPressed: () => _viewProofFile(proof),
           ),
           IconButton(
@@ -1467,7 +1468,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       color: const Color(0xFFF6F5FE),
       borderRadius: BorderRadius.circular(6.r),
     ),
-    child: Icon(Icons.insert_drive_file_outlined, size: 18.r, color: _labelColor),
+    child: Icon(
+      Icons.insert_drive_file_outlined,
+      size: 18.r,
+      color: _labelColor,
+    ),
   );
 
   void _viewProofFile(ProofFileModel proof) {
@@ -1481,7 +1486,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       builder: (dialogCtx) => Dialog(
         backgroundColor: Colors.white,
         insetPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 40.h),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14.r),
+        ),
         child: Padding(
           padding: EdgeInsets.all(14.w),
           child: Column(
@@ -1532,7 +1539,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     onPressed: () async {
                       final uri = Uri.tryParse(url);
                       if (uri != null) {
-                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        await launchUrl(
+                          uri,
+                          mode: LaunchMode.externalApplication,
+                        );
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -1540,7 +1550,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     ),
                     child: Text(
                       'Open',
-                      style: GoogleFonts.inter(color: Colors.white, fontSize: 13.sp),
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: 13.sp,
+                      ),
                     ),
                   ),
                 ),
@@ -1571,7 +1584,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14.r),
+        ),
         title: Text(
           'Delete Proof',
           style: GoogleFonts.inter(
@@ -1592,7 +1607,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(dialogCtx, true),
-            child: Text('Delete', style: GoogleFonts.inter(color: Colors.white)),
+            child: Text(
+              'Delete',
+              style: GoogleFonts.inter(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -2068,14 +2086,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
                               if (success) {
                                 setState(
-                                  () => _uploadedProofFiles.addAll(
-                                    pendingFiles,
-                                  ),
+                                  () =>
+                                      _uploadedProofFiles.addAll(pendingFiles),
                                 );
                                 Navigator.pop(ctx);
-                                ScaffoldMessenger.of(
-                                  context,
-                                ).showSnackBar(
+                                ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: const Text(
                                       'Proof uploaded successfully',
@@ -2386,8 +2401,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 ),
               ),
             ),
-            _buildToggle(
+            ToggleSwitch(
               value: _selectDurationEnabled,
+              semanticLabel: 'Select Duration & Time',
               onTap: () => setState(
                 () => _selectDurationEnabled = !_selectDurationEnabled,
               ),
@@ -2716,13 +2732,53 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         ),
                         Align(
                           alignment: Alignment.centerRight,
-                          child: InkWell(
-                            onTap: () => Navigator.pop(context),
-                            child: Icon(
-                              Icons.close,
-                              size: 20.r,
-                              color: _textColor,
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              InkWell(
+                                onTap: () {
+                                  showActivityBottomSheet(
+                                    context,
+                                    activities: const [
+                                      ActivityItem(
+                                        text:
+                                            'You created taskinstance "Design"',
+                                        timeAgo: '2 hours ago',
+                                      ),
+                                      ActivityItem(
+                                        text: 'Show more',
+                                        timeAgo: '',
+                                        isExpandable: true,
+                                      ),
+                                      ActivityItem(
+                                        text:
+                                            'Sudipta Sarkar uploaded proof for "Design" (1 file(s))',
+                                        timeAgo: '1 hour ago',
+                                      ),
+                                    ],
+                                    onDelete: () {
+                                      // TODO: delete action
+                                    },
+                                    onSubmit: () {
+                                      // TODO: submit action
+                                    },
+                                  );
+                                },
+                                child: PanelRightCloseIcon(
+                                  size: 20.r,
+                                  color: _textColor,
+                                ),
+                              ),
+                              SizedBox(width: 12.w),
+                              InkWell(
+                                onTap: () => Navigator.pop(context),
+                                child: Icon(
+                                  Icons.close,
+                                  size: 20.r,
+                                  color: _textColor,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -2754,264 +2810,272 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     child: RefreshIndicator(
                       onRefresh: _loadInstance,
                       child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      keyboardDismissBehavior:
-                          ScrollViewKeyboardDismissBehavior.onDrag,
-                      padding: EdgeInsets.only(
-                        left: 15.w,
-                        right: 15.w,
-                        bottom: MediaQuery.of(context).viewInsets.bottom + 24.h,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // 🔒 LOCKED SECTION STARTS HERE
-                          AbsorbPointer(
-                            absorbing: _isSaving || _isReadOnly,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Task info card
-                                _buildInfoCard(),
-                                SizedBox(height: 16.h),
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        padding: EdgeInsets.only(
+                          left: 15.w,
+                          right: 15.w,
+                          bottom:
+                              MediaQuery.of(context).viewInsets.bottom + 24.h,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // 🔒 LOCKED SECTION STARTS HERE
+                            AbsorbPointer(
+                              absorbing: _isSaving || _isReadOnly,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Task info card
+                                  _buildInfoCard(),
+                                  SizedBox(height: 16.h),
 
-                                // Date & Time card
-                                _sectionLabel('Date & Time'),
-                                _card(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 14.w,
-                                    vertical: 2.h,
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      // Schedule Date — read-only, never editable
-                                      _staticInfoRow(
-                                        label: 'Schedule Date',
-                                        value: _selectedDateLabel,
-                                      ),
-                                      _divider(),
-
-                                      // Schedule Time toggle
-                                      _toggleRow(
-                                        label: 'Schedule Time',
-                                        sub: _formattedTime,
-                                        value: _assignTimeEnabled,
-                                        onTap: () => setState(() {
-                                          _assignTimeEnabled =
-                                              !_assignTimeEnabled;
-                                          _showTimePicker = _assignTimeEnabled;
-                                        }),
-                                      ),
-                                      if (_showTimePicker) ...[
-                                        SizedBox(height: 6.h),
-                                        _buildTimePicker(),
-                                        SizedBox(height: 8.h),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                                SizedBox(height: 16.h),
-
-                                // Action card (Priority Only)
-                                _sectionLabel('Action'),
-                                _card(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 14.w,
-                                    vertical: 2.h,
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      _dropdownField(
-                                        label: 'Priority',
-                                        value: _priority,
-                                        valueColor: const Color(0xFF4CAF50),
-                                        onTap: () => _showSearchableSheet(
-                                          title: 'Priority',
-                                          items: _priorityItems,
-                                          selected: _priority,
-                                          onSelect: (v) =>
-                                              setState(() => _priority = v),
+                                  // Date & Time card
+                                  _sectionLabel('Date & Time'),
+                                  _card(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 14.w,
+                                      vertical: 2.h,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        // Schedule Date — read-only, never editable
+                                        _staticInfoRow(
+                                          label: 'Schedule Date',
+                                          value: _selectedDateLabel,
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                                        _divider(),
 
-                          // 🔓 LOCKED SECTION ENDS HERE
-                          SizedBox(height: 16.h),
-
-                          // 🔓 UNLOCKED ACTION CARD (Status Only)
-                          _card(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 14.w,
-                              vertical: 2.h,
-                            ),
-                            child: Column(
-                              children: [
-                                _dropdownField(
-                                  label: 'Status',
-                                  value: _status,
-                                  valueColor: const Color(0xFFE57373),
-                                  onTap: () => _showSearchableSheet(
-                                    title: 'Status',
-                                    items: _statusItems,
-                                    selected: _status,
-                                    onSelect: (v) =>
-                                        setState(() => _status = v),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          SizedBox(height: 24.h),
-
-                          // 🔓 UNLOCKED UPLOAD PROOF BUTTON — only shown when
-                          // the instance actually requires proof types.
-                          if (_proofAllowed) ...[
-                            _buildUploadProofButton(),
-                            SizedBox(height: 16.h),
-                          ],
-
-                          // 🔓 UPLOADED PROOFS LIST — only shown for tasks
-                          // that collect proof AND are assigned to the
-                          // current user (not just anyone viewing the task).
-                          if (_proofAllowed && _isAssignedToMe)
-                            _buildUploadedProofsSection(),
-
-                          // 🔓 UNLOCKED SAVE BUTTON
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8.r),
-                                child: Container(
-                                  height: 40.h,
-                                  constraints: BoxConstraints(minWidth: 120.w),
-                                  decoration: const BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Color(0xFFD96CFF),
-                                        Color(0xFF5CE1E6),
+                                        // Schedule Time toggle
+                                        _toggleRow(
+                                          label: 'Schedule Time',
+                                          sub: _formattedTime,
+                                          value: _assignTimeEnabled,
+                                          onTap: () => setState(() {
+                                            _assignTimeEnabled =
+                                                !_assignTimeEnabled;
+                                            _showTimePicker =
+                                                _assignTimeEnabled;
+                                          }),
+                                        ),
+                                        if (_showTimePicker) ...[
+                                          SizedBox(height: 6.h),
+                                          _buildTimePicker(),
+                                          SizedBox(height: 8.h),
+                                        ],
                                       ],
                                     ),
                                   ),
-                                  child: Material(
-                                    color: Colors.transparent,
-                                    child: InkWell(
-                                      onTap: () async {
-                                        if (!_isSaving &&
-                                            await userTaskPermission) {
-                                          String statusAfterUpdate = 'todo';
+                                  SizedBox(height: 16.h),
 
-                                          if (_status == 'To Do') {
-                                            statusAfterUpdate = 'todo';
-                                          } else if (_status == 'In Progress') {
-                                            statusAfterUpdate = 'inProgress';
-                                          } else if (_status == 'Completed') {
-                                            statusAfterUpdate = 'completed';
-                                          }
-
-                                          setState(() => _isSaving = true);
-
-                                          final success = await taskController
-                                              .handleUpdateInstanceConfiguration(
-                                                taskId: widget.mainTaskId ?? '',
-                                                instanceId: widget.taskId ?? '',
-                                                status: statusAfterUpdate,
-                                                assigneeIds: _assigneeIds,
-                                                priority: _priority
-                                                    .toLowerCase(),
-                                                time: _assignTimeEnabled
-                                                    ? _scheduledTimeForSave
-                                                    : null,
-                                                period: _assignTimeEnabled
-                                                    ? _scheduledPeriodForSave
-                                                    : null,
-
-                                                scope: 'single',
-                                              );
-
-                                          if (!mounted) return;
-
-                                          setState(() => _isSaving = false);
-
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                success
-                                                    ? 'Task updated successfully'
-                                                    : (taskController
-                                                              .errorMessage ??
-                                                          'Failed to update task'),
-                                              ),
-                                              backgroundColor: success
-                                                  ? _greenOn
-                                                  : Colors.redAccent,
-                                              duration: const Duration(
-                                                seconds: 3,
-                                              ),
-                                            ),
-                                          );
-                                        } else {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                'You are not authorized to edit tasks.',
-                                              ),
-                                              duration: Duration(seconds: 3),
-                                            ),
-                                          );
-                                        }
-                                      },
-                                      splashColor: Colors.white.withOpacity(
-                                        0.15,
-                                      ),
-                                      highlightColor: Colors.transparent,
-                                      child: Padding(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: 24.w,
+                                  // Action card (Priority Only)
+                                  _sectionLabel('Action'),
+                                  _card(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 14.w,
+                                      vertical: 2.h,
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        _dropdownField(
+                                          label: 'Priority',
+                                          value: _priority,
+                                          valueColor: const Color(0xFF4CAF50),
+                                          onTap: () => _showSearchableSheet(
+                                            title: 'Priority',
+                                            items: _priorityItems,
+                                            selected: _priority,
+                                            onSelect: (v) =>
+                                                setState(() => _priority = v),
+                                          ),
                                         ),
-                                        child: Center(
-                                          child: _isSaving
-                                              ? SizedBox(
-                                                  width: 16.w,
-                                                  height: 16.h,
-                                                  child:
-                                                      const CircularProgressIndicator(
-                                                        strokeWidth: 2,
-                                                        color: Colors.white,
-                                                      ),
-                                                )
-                                              : Text(
-                                                  'Save Changes',
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 12.sp,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                        ),
-                                      ),
+                                      ],
                                     ),
                                   ),
-                                ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
 
-                          SizedBox(height: 24.h),
-                        ],
-                      ),
+                            // 🔓 LOCKED SECTION ENDS HERE
+                            SizedBox(height: 16.h),
+
+                            // 🔓 UNLOCKED ACTION CARD (Status Only)
+                            _card(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 14.w,
+                                vertical: 2.h,
+                              ),
+                              child: Column(
+                                children: [
+                                  _dropdownField(
+                                    label: 'Status',
+                                    value: _status,
+                                    valueColor: const Color(0xFFE57373),
+                                    onTap: () => _showSearchableSheet(
+                                      title: 'Status',
+                                      items: _statusItems,
+                                      selected: _status,
+                                      onSelect: (v) =>
+                                          setState(() => _status = v),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            SizedBox(height: 24.h),
+
+                            // 🔓 UNLOCKED UPLOAD PROOF BUTTON — only shown when
+                            // the instance actually requires proof types.
+                            if (_proofAllowed) ...[
+                              _buildUploadProofButton(),
+                              SizedBox(height: 16.h),
+                            ],
+
+                            // 🔓 UPLOADED PROOFS LIST — only shown for tasks
+                            // that collect proof AND are assigned to the
+                            // current user (not just anyone viewing the task).
+                            if (_proofAllowed && _isAssignedToMe)
+                              _buildUploadedProofsSection(),
+
+                            // 🔓 UNLOCKED SAVE BUTTON
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8.r),
+                                  child: Container(
+                                    height: 40.h,
+                                    constraints: BoxConstraints(
+                                      minWidth: 120.w,
+                                    ),
+                                    decoration: const BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Color(0xFFD96CFF),
+                                          Color(0xFF5CE1E6),
+                                        ],
+                                      ),
+                                    ),
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: () async {
+                                          if (!_isSaving &&
+                                              await userTaskPermission) {
+                                            String statusAfterUpdate = 'todo';
+
+                                            if (_status == 'To Do') {
+                                              statusAfterUpdate = 'todo';
+                                            } else if (_status ==
+                                                'In Progress') {
+                                              statusAfterUpdate = 'inProgress';
+                                            } else if (_status == 'Completed') {
+                                              statusAfterUpdate = 'completed';
+                                            }
+
+                                            setState(() => _isSaving = true);
+
+                                            final success = await taskController
+                                                .handleUpdateInstanceConfiguration(
+                                                  taskId:
+                                                      widget.mainTaskId ?? '',
+                                                  instanceId:
+                                                      widget.taskId ?? '',
+                                                  status: statusAfterUpdate,
+                                                  assigneeIds: _assigneeIds,
+                                                  priority: _priority
+                                                      .toLowerCase(),
+                                                  time: _assignTimeEnabled
+                                                      ? _scheduledTimeForSave
+                                                      : null,
+                                                  period: _assignTimeEnabled
+                                                      ? _scheduledPeriodForSave
+                                                      : null,
+
+                                                  scope: 'single',
+                                                );
+
+                                            if (!mounted) return;
+
+                                            setState(() => _isSaving = false);
+
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  success
+                                                      ? 'Task updated successfully'
+                                                      : (taskController
+                                                                .errorMessage ??
+                                                            'Failed to update task'),
+                                                ),
+                                                backgroundColor: success
+                                                    ? _greenOn
+                                                    : Colors.redAccent,
+                                                duration: const Duration(
+                                                  seconds: 3,
+                                                ),
+                                              ),
+                                            );
+                                          } else {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  'You are not authorized to edit tasks.',
+                                                ),
+                                                duration: Duration(seconds: 3),
+                                              ),
+                                            );
+                                          }
+                                        },
+                                        splashColor: Colors.white.withOpacity(
+                                          0.15,
+                                        ),
+                                        highlightColor: Colors.transparent,
+                                        child: Padding(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 24.w,
+                                          ),
+                                          child: Center(
+                                            child: _isSaving
+                                                ? SizedBox(
+                                                    width: 16.w,
+                                                    height: 16.h,
+                                                    child:
+                                                        const CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                          color: Colors.white,
+                                                        ),
+                                                  )
+                                                : Text(
+                                                    'Save Changes',
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 12.sp,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            SizedBox(height: 24.h),
+                          ],
+                        ),
                       ),
                     ),
                   ),
