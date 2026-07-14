@@ -46,24 +46,26 @@ class TaskController extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    final result = await _taskRepository.getAllTasks(
-      taskType: taskType,
-      status: status,
-      department: department,
-      assigned: assigned,
-    );
+    try {
+      final result = await _taskRepository.getAllTasks(
+        taskType: taskType,
+        status: status,
+        department: department,
+        assigned: assigned,
+      );
 
-    _isLoading = false;
-
-    if (result is Success) {
-      final apiResponse =
-          (result as Success).data as BaseApiResponse<List<TaskModel>>;
-      _tasks = apiResponse.data ?? [];
-      _pagination = apiResponse.pagination;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<List<TaskModel>>;
+        _tasks = apiResponse.data ?? [];
+        _pagination = apiResponse.pagination;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+      }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   /// 2. Fetch Single Task Details exclusively via Object ID Link
@@ -72,18 +74,20 @@ class TaskController extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    final result = await _taskRepository.getSingleTask(taskId: taskId);
+    try {
+      final result = await _taskRepository.getSingleTask(taskId: taskId);
 
-    _isLoading = false;
-
-    if (result is Success) {
-      final apiResponse =
-          (result as Success).data as BaseApiResponse<TaskModel>;
-      _selectedTask = apiResponse.data;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<TaskModel>;
+        _selectedTask = apiResponse.data;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+      }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   /// 3. Create Task (Optimistically prepends new task item to array)
@@ -96,29 +100,30 @@ class TaskController extends ChangeNotifier {
     _successMessage = null;
     notifyListeners();
 
-    final result = await _taskRepository.createTask(
-      bodyFields: bodyFields,
-      files: files,
-    );
+    try {
+      final result = await _taskRepository.createTask(
+        bodyFields: bodyFields,
+        files: files,
+      );
 
-    _isLoading = false;
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<TaskModel>;
+        _successMessage = apiResponse.message;
 
-    if (result is Success) {
-      final apiResponse =
-          (result as Success).data as BaseApiResponse<TaskModel>;
-      _successMessage = apiResponse.message;
-
-      if (apiResponse.data != null) {
-        _tasks.insert(0, apiResponse.data!);
+        if (apiResponse.data != null) {
+          _tasks.insert(0, apiResponse.data!);
+        }
+        return true;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+        return false;
       }
-      notifyListeners();
-      return true;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
-      notifyListeners();
       return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    return false;
   }
 
   /// 4. Full Task Update (Replaces changed element within current UI view layout)
@@ -132,36 +137,37 @@ class TaskController extends ChangeNotifier {
     _successMessage = null;
     notifyListeners();
 
-    final result = await _taskRepository.updateTask(
-      taskId: taskId,
-      bodyFields: bodyFields,
-      files: files,
-    );
+    try {
+      final result = await _taskRepository.updateTask(
+        taskId: taskId,
+        bodyFields: bodyFields,
+        files: files,
+      );
 
-    _isLoading = false;
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<TaskModel>;
+        _successMessage = apiResponse.message;
 
-    if (result is Success) {
-      final apiResponse =
-          (result as Success).data as BaseApiResponse<TaskModel>;
-      _successMessage = apiResponse.message;
+        final index = _tasks.indexWhere((element) => element.id == taskId);
+        if (index != -1 && apiResponse.data != null) {
+          _tasks[index] = apiResponse.data!;
+        }
 
-      final index = _tasks.indexWhere((element) => element.id == taskId);
-      if (index != -1 && apiResponse.data != null) {
-        _tasks[index] = apiResponse.data!;
+        if (_selectedTask?.id == taskId && apiResponse.data != null) {
+          _selectedTask = apiResponse.data;
+        }
+
+        return true;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+        return false;
       }
-
-      if (_selectedTask?.id == taskId && apiResponse.data != null) {
-        _selectedTask = apiResponse.data;
-      }
-
-      notifyListeners();
-      return true;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
-      notifyListeners();
       return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    return false;
   }
 
   /// 5. Update Task Status (Modifies target task status dynamically)
@@ -174,36 +180,38 @@ class TaskController extends ChangeNotifier {
     _successMessage = null;
     notifyListeners();
 
-    final result = await _taskRepository.updateTaskStatus(
-      taskId: taskId,
-      status: status,
-    );
+    try {
+      final result = await _taskRepository.updateTaskStatus(
+        taskId: taskId,
+        status: status,
+      );
 
-    _isLoading = false;
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<dynamic>;
+        _successMessage = apiResponse.message;
 
-    if (result is Success) {
-      final apiResponse = (result as Success).data as BaseApiResponse<dynamic>;
-      _successMessage = apiResponse.message;
+        // Update the status locally in the list representation without re-fetching
+        final index = _tasks.indexWhere((element) => element.id == taskId);
+        if (index != -1) {
+          // Creates a cloned version updating just the status parameter
+          _tasks[index] = _updateLocalStatus(_tasks[index], status);
+        }
 
-      // Update the status locally in the list representation without re-fetching
-      final index = _tasks.indexWhere((element) => element.id == taskId);
-      if (index != -1) {
-        // Creates a cloned version updating just the status parameter
-        _tasks[index] = _updateLocalStatus(_tasks[index], status);
+        if (_selectedTask?.id == taskId && _selectedTask != null) {
+          _selectedTask = _updateLocalStatus(_selectedTask!, status);
+        }
+
+        return true;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+        return false;
       }
-
-      if (_selectedTask?.id == taskId && _selectedTask != null) {
-        _selectedTask = _updateLocalStatus(_selectedTask!, status);
-      }
-
-      notifyListeners();
-      return true;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
-      notifyListeners();
       return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    return false;
   }
 
   /// Helper utility logic to safely assign status modifications locally

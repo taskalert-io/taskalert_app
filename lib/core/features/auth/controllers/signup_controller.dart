@@ -46,34 +46,35 @@ class SignUpController extends ChangeNotifier {
     _otp = null;
     notifyListeners();
 
-    final result = await _authRepository.signUp(
-      phoneNumber: phoneNumber,
-      email: email,
-    );
+    try {
+      final result = await _authRepository.signUp(
+        phoneNumber: phoneNumber,
+        email: email,
+      );
 
-    _isLoading = false;
+      if (result is Success) {
+        _currentPhoneNumber = phoneNumber;
+        final apiResponse = (result as Success).data;
+        // Only surface the dev/test backend's echoed OTP in debug builds — a
+        // release build must never read or display this, regardless of what
+        // the backend returns.
+        _otp = kDebugMode ? apiResponse.data['otp']?.toString() : null;
+        _successMessage = _otp != null
+            ? '${apiResponse.message} Your OTP is: $_otp'
+            : apiResponse.message;
+        // Cache phone number for subsequent steps
 
-    if (result is Success) {
-      _currentPhoneNumber = phoneNumber;
-      final apiResponse = (result as Success).data;
-      // Only surface the dev/test backend's echoed OTP in debug builds — a
-      // release build must never read or display this, regardless of what
-      // the backend returns.
-      _otp = kDebugMode ? apiResponse.data['otp']?.toString() : null;
-      _successMessage = _otp != null
-          ? '${apiResponse.message} Your OTP is: $_otp'
-          : apiResponse.message;
-      // Cache phone number for subsequent steps
+        return true;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+        return false;
+      }
 
-      notifyListeners();
-      return true;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
-      notifyListeners();
       return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-
-    return false;
   }
 
   /// 2. Verification Step: Validate User Profile Details + OTP Code
@@ -100,36 +101,36 @@ class SignUpController extends ChangeNotifier {
     _successMessage = null;
     notifyListeners();
 
-    final result = await _authRepository.verifySignUpOtp(
-      firstName: firstName,
-      lastName: lastName,
-      phoneNumber: _currentPhoneNumber!,
-      password: password,
-      agreeTerms: agreeTerms,
-      otpCode: otpCode,
-      email: email,
-      gender: gender,
-      dateOfBirth: dateOfBirth,
-      accountType: accountType,
-    );
+    try {
+      final result = await _authRepository.verifySignUpOtp(
+        firstName: firstName,
+        lastName: lastName,
+        phoneNumber: _currentPhoneNumber!,
+        password: password,
+        agreeTerms: agreeTerms,
+        otpCode: otpCode,
+        email: email,
+        gender: gender,
+        dateOfBirth: dateOfBirth,
+        accountType: accountType,
+      );
 
-    _isLoading = false;
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<UserModel>;
+        final user = apiResponse.data;
 
-    if (result is Success) {
-      final apiResponse =
-          (result as Success).data as BaseApiResponse<UserModel>;
-      final user = apiResponse.data;
+        return user;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+        return null;
+      }
 
-      notifyListeners();
-
-      return user;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
-      notifyListeners();
       return null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-
-    return null;
   }
 
   /// 3. Auxiliary Step: Resend Sign-Up OTP Code
@@ -145,28 +146,30 @@ class SignUpController extends ChangeNotifier {
     _successMessage = null;
     notifyListeners();
 
-    final result = await _authRepository.resendSignUpOtp(
-      phoneNumber: _currentPhoneNumber!,
-    );
+    try {
+      final result = await _authRepository.resendSignUpOtp(
+        phoneNumber: _currentPhoneNumber!,
+      );
 
-    _isLoading = false;
-
-    if (result is Success) {
-      final apiResponse = (result as Success).data as BaseApiResponse<dynamic>;
-      _otp = kDebugMode ? apiResponse.data['otp']?.toString() : null;
-      if (_otp != null) {
-        _successMessage = " Your new OTP is: $_otp";
-      } else {
-        _successMessage = " OTP resent successfully to ${_currentPhoneNumber!}";
+      if (result is Success) {
+        final apiResponse =
+            (result as Success).data as BaseApiResponse<dynamic>;
+        _otp = kDebugMode ? apiResponse.data['otp']?.toString() : null;
+        if (_otp != null) {
+          _successMessage = " Your new OTP is: $_otp";
+        } else {
+          _successMessage = " OTP resent successfully to ${_currentPhoneNumber!}";
+        }
+        return true;
+      } else if (result is Failure) {
+        _errorMessage = (result as Failure).exception.userMessage;
+        return false;
       }
-      notifyListeners();
-      return true;
-    } else if (result is Failure) {
-      _errorMessage = (result as Failure).exception.userMessage;
-      notifyListeners();
-      return false;
-    }
 
-    return false;
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 }
