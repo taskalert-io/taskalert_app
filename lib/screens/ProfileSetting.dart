@@ -16,6 +16,7 @@ import '../components/DcmntComplianceSection.dart';
 import '../components/EmpJobDetailsSection.dart';
 import '../components/SkillPerformSection.dart';
 import '../components/TimeAttendSection.dart';
+import 'SignInScreen.dart';
 
 class ProfileSetting extends StatefulWidget {
   final String userId;
@@ -238,7 +239,8 @@ class ProfileSettingState extends State<ProfileSetting> {
     if (assetSystemEnabled && !(_assetKey.currentState?.validate() ?? true)) {
       sectionsValid = false;
     }
-    if (dcmntComplianceEnabled && !(_dcmntKey.currentState?.validate() ?? true)) {
+    if (dcmntComplianceEnabled &&
+        !(_dcmntKey.currentState?.validate() ?? true)) {
       sectionsValid = false;
     }
 
@@ -876,6 +878,362 @@ class ProfileSettingState extends State<ProfileSetting> {
         );
       },
     );
+  }
+
+  // ── Delete-account OTP verification bottom sheet ───────────────────────────
+  void _showDeleteAccountOtpSheet(BuildContext context) {
+    final otpControllers = List.generate(6, (_) => TextEditingController());
+    final otpFocusNodes = List.generate(6, (_) => FocusNode());
+    String? otpErrorMessage;
+    String? otpInfoMessage;
+    bool isVerifying = false;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      builder: (BuildContext builder) {
+        return StatefulBuilder(
+          builder: (context, sheetSetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: SafeArea(
+                child: Container(
+                  padding: EdgeInsets.fromLTRB(20.w, 15.h, 20.w, 25.h),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(20.r),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40.w,
+                          height: 4.h,
+                          decoration: BoxDecoration(
+                            color: _dividerColor,
+                            borderRadius: BorderRadius.circular(2.r),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 18.h),
+                      Text(
+                        'Verify OTP',
+                        style: GoogleFonts.inter(
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.w700,
+                          color: _labelColor,
+                        ),
+                      ),
+                      SizedBox(height: 6.h),
+                      Text(
+                        'Enter the 6-digit code sent to your registered email to confirm account deletion.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          fontSize: 12.sp,
+                          color: _textColor,
+                        ),
+                      ),
+                      SizedBox(height: 22.h),
+                      if (otpErrorMessage != null) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(10.w),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(8.r),
+                            border: Border.all(
+                              color: Colors.red.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                color: Colors.red,
+                                size: 16,
+                              ),
+                              SizedBox(width: 8.w),
+                              Expanded(
+                                child: Text(
+                                  otpErrorMessage!,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11.sp,
+                                    color: Colors.red,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 14.h),
+                      ],
+                      if (otpInfoMessage != null) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(10.w),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(8.r),
+                            border: Border.all(
+                              color: Colors.green.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.check_circle_outline,
+                                color: Colors.green,
+                                size: 16,
+                              ),
+                              SizedBox(width: 8.w),
+                              Expanded(
+                                child: Text(
+                                  otpInfoMessage!,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11.sp,
+                                    color: Colors.green,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 14.h),
+                      ],
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(
+                          6,
+                          (index) => Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 5.w),
+                            child: SizedBox(
+                              width: 42.w,
+                              height: 42.h,
+                              child: KeyboardListener(
+                                focusNode: FocusNode(),
+                                onKeyEvent: (KeyEvent event) {
+                                  if (event is KeyDownEvent &&
+                                      event.logicalKey ==
+                                          LogicalKeyboardKey.backspace) {
+                                    if (otpControllers[index].text.isEmpty &&
+                                        index > 0) {
+                                      otpFocusNodes[index - 1].requestFocus();
+                                      otpControllers[index - 1].clear();
+                                    }
+                                  }
+                                },
+                                child: TextFormField(
+                                  controller: otpControllers[index],
+                                  focusNode: otpFocusNodes[index],
+                                  textAlign: TextAlign.center,
+                                  textAlignVertical: TextAlignVertical.center,
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                    LengthLimitingTextInputFormatter(1),
+                                  ],
+                                  maxLength: 1,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: _primaryColor,
+                                  ),
+                                  decoration: InputDecoration(
+                                    counterText: "",
+                                    isDense: true,
+                                    filled: true,
+                                    fillColor: const Color(0xFFF7F8FA),
+                                    contentPadding: const EdgeInsets.only(
+                                      top: 10,
+                                      bottom: 10,
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        6.r,
+                                      ),
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFFD8DCE3),
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        6.r,
+                                      ),
+                                      borderSide: BorderSide(
+                                        color: _primaryColor,
+                                        width: 1.2.w,
+                                      ),
+                                    ),
+                                  ),
+                                  onChanged: (value) {
+                                    if (value.isNotEmpty && index < 5) {
+                                      otpFocusNodes[index + 1].requestFocus();
+                                    }
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 16.h),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            "Didn't receive the code? ",
+                            style: GoogleFonts.inter(
+                              fontSize: 12.sp,
+                              color: _textColor,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () async {
+                              final resent = await _loginController
+                                  .handleRequestAccountDeletion();
+
+                              if (!context.mounted) return;
+
+                              sheetSetState(() {
+                                if (resent) {
+                                  otpErrorMessage = null;
+                                  otpInfoMessage =
+                                      _loginController.successMessage ??
+                                      'A new code has been sent.';
+                                } else {
+                                  otpInfoMessage = null;
+                                  otpErrorMessage =
+                                      _loginController.errorMessage ??
+                                      'Failed to resend the code. Please try again.';
+                                }
+                              });
+                            },
+                            child: Text(
+                              'Resend',
+                              style: GoogleFonts.inter(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF4D81E7),
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 22.h),
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8.r),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFD96CFF), Color(0xFF5CE1E6)],
+                          ),
+                        ),
+                        child: ElevatedButton(
+                          onPressed: isVerifying
+                              ? null
+                              : () async {
+                                  final otp = otpControllers
+                                      .map((c) => c.text)
+                                      .join();
+
+                                  if (otp.length != 6) {
+                                    sheetSetState(() {
+                                      otpErrorMessage =
+                                          'Please enter the complete 6-digit code.';
+                                    });
+                                    return;
+                                  }
+
+                                  sheetSetState(() {
+                                    otpErrorMessage = null;
+                                    otpInfoMessage = null;
+                                    isVerifying = true;
+                                  });
+
+                                  final verified = await _loginController
+                                      .handleVerifyAccountDeletionOtp(
+                                        otpCode: otp,
+                                      );
+
+                                  if (!context.mounted) return;
+
+                                  if (!verified) {
+                                    sheetSetState(() {
+                                      isVerifying = false;
+                                      otpErrorMessage =
+                                          _loginController.errorMessage ??
+                                          'Invalid code. Please try again.';
+                                    });
+                                    return;
+                                  }
+
+                                  Navigator.pop(context); // close OTP sheet
+
+                                  await _loginController.handleLogout();
+
+                                  if (!context.mounted) return;
+
+                                  Navigator.pushAndRemoveUntil(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const SignInScreen(),
+                                    ),
+                                    (route) => false,
+                                  );
+                                },
+                          style: ElevatedButton.styleFrom(
+                            elevation: 0,
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            padding: EdgeInsets.symmetric(vertical: 12.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
+                          ),
+                          child: isVerifying
+                              ? SizedBox(
+                                  width: 18.w,
+                                  height: 18.w,
+                                  child: const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  'Verify OTP',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ).whenComplete(() {
+      for (final controller in otpControllers) {
+        controller.dispose();
+      }
+      for (final node in otpFocusNodes) {
+        node.dispose();
+      }
+    });
   }
 
   // ── My Profile tab ─────────────────────────────────────────────────────────
@@ -1519,7 +1877,8 @@ class ProfileSettingState extends State<ProfileSetting> {
                                   ),
                                 ),
                                 content: Text(
-                                  'Are you sure you want to permanently delete your account? This action cannot be undone.',
+                                  "Warning: Are you sure you want to delete your account? Deleting your account will permanently remove all your data, tasks, and workspace access. This cannot be reversed. If you did not request this, secure your account immediately.",
+
                                   style: GoogleFonts.inter(
                                     fontSize: 12.sp,
                                     color: _textColor,
@@ -1537,7 +1896,62 @@ class ProfileSettingState extends State<ProfileSetting> {
                                     ),
                                   ),
                                   TextButton(
-                                    onPressed: () => Navigator.pop(ctx),
+                                    onPressed: () async {
+                                      Navigator.pop(ctx); // close confirmation
+
+                                      final success = await _loginController
+                                          .handleRequestAccountDeletion();
+
+                                      if (!context.mounted) return;
+
+                                      if (success) {
+                                        // OTP was sent to confirm the
+                                        // deletion — collect it instead of
+                                        // just showing a plain success text.
+                                        _showDeleteAccountOtpSheet(context);
+                                        return;
+                                      }
+
+                                      showDialog(
+                                        context: context,
+                                        builder: (resultCtx) => AlertDialog(
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12.r),
+                                          ),
+                                          title: Text(
+                                            'Something Went Wrong',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 14.sp,
+                                              fontWeight: FontWeight.w700,
+                                              color: _labelColor,
+                                            ),
+                                          ),
+                                          content: Text(
+                                            _loginController.errorMessage ??
+                                                'Failed to submit deletion request. Please try again.',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 12.sp,
+                                              color: _textColor,
+                                            ),
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(resultCtx),
+                                              child: Text(
+                                                'OK',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 12.sp,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.red,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
                                     child: Text(
                                       'Delete',
                                       style: GoogleFonts.inter(
