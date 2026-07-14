@@ -1566,74 +1566,102 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         ),
         child: Padding(
           padding: EdgeInsets.all(14.w),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      proof.fileType.isNotEmpty ? proof.fileType : 'Proof file',
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w700,
-                        color: _primaryColor,
+          child: SingleChildScrollView(
+            // A tall/portrait image (or a small screen) can push this past
+            // the Dialog's fixed insetPadding height — scroll instead of
+            // overflowing.
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        proof.fileType.isNotEmpty
+                            ? proof.fileType
+                            : 'Proof file',
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w700,
+                          color: _primaryColor,
+                        ),
                       ),
                     ),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(dialogCtx),
+                      child: Icon(Icons.close, size: 20.r, color: _labelColor),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 12.h),
+                if (isImage && url.isNotEmpty)
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.55,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8.r),
+                      child: Image.network(
+                        url,
+                        fit: BoxFit.contain,
+                        loadingBuilder: (context, child, progress) {
+                          if (progress == null) return child;
+                          return SizedBox(
+                            height: 200.h,
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: _primaryColor,
+                                value: progress.expectedTotalBytes != null
+                                    ? progress.cumulativeBytesLoaded /
+                                          progress.expectedTotalBytes!
+                                    : null,
+                              ),
+                            ),
+                          );
+                        },
+                        errorBuilder: (_, __, ___) => _previewFallback(),
+                      ),
+                    ),
+                  )
+                else
+                  _previewFallback(
+                    message: url.isEmpty
+                        ? 'This file is no longer available.'
+                        : 'Preview not available for this file type — tap Open to view it.',
                   ),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(dialogCtx),
-                    child: Icon(Icons.close, size: 20.r, color: _labelColor),
+                if (!isImage && url.isNotEmpty) ...[
+                  SizedBox(height: 12.h),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final uri = Uri.tryParse(url);
+                        if (uri != null) {
+                          await launchUrl(
+                            uri,
+                            mode: LaunchMode.externalApplication,
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primaryColor,
+                      ),
+                      child: Text(
+                        'Open',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 13.sp,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
-              ),
-              SizedBox(height: 12.h),
-              if (isImage && url.isNotEmpty)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8.r),
-                  child: Image.network(
-                    url,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => _previewFallback(),
-                  ),
-                )
-              else
-                _previewFallback(
-                  message: url.isEmpty
-                      ? 'This file is no longer available.'
-                      : 'Preview not available for this file type — tap Open to view it.',
-                ),
-              if (!isImage && url.isNotEmpty) ...[
-                SizedBox(height: 12.h),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      final uri = Uri.tryParse(url);
-                      if (uri != null) {
-                        await launchUrl(
-                          uri,
-                          mode: LaunchMode.externalApplication,
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _primaryColor,
-                    ),
-                    child: Text(
-                      'Open',
-                      style: GoogleFonts.inter(
-                        color: Colors.white,
-                        fontSize: 13.sp,
-                      ),
-                    ),
-                  ),
-                ),
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -1799,11 +1827,65 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     ),
   );
 
+  /// Non-dismissible "Uploading proof..." popup shown for the duration of
+  /// an upload request — dismiss it yourself via
+  /// `Navigator.of(context, rootNavigator: true).pop()` once the request
+  /// settles (success or failure).
+  void _showUploadingProofDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14.r),
+        ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 22.h),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 20.w,
+                height: 20.w,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: _primaryColor,
+                ),
+              ),
+              SizedBox(width: 14.w),
+              Text(
+                'Uploading proof...',
+                style: GoogleFonts.inter(
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w600,
+                  color: _labelColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Re-fetches the instance so the "Uploaded Proofs" section (and
+  /// everything else on this screen) reflects the server's latest state
+  /// right after a successful proof upload.
+  Future<void> _reloadInstanceAfterProofUpload() async {
+    await taskController.handleGetInstanceById(instanceId: widget.taskId ?? '');
+    if (!mounted) return;
+    setState(() {});
+  }
+
   /// "Use Camera" flow — captures a single photo and uploads it as proof.
   Future<void> _captureProofWithCamera() async {
     final picker = ImagePicker();
     final XFile? shot = await picker.pickImage(source: ImageSource.camera);
     if (shot == null) return;
+
+    if (!mounted) return;
+    _showUploadingProofDialog();
 
     final success = await taskController.handleUploadInstanceProofFiles(
       taskId: widget.mainTaskId ?? '',
@@ -1812,14 +1894,15 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     );
 
     if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop(); // close uploading popup
 
     if (success) {
       final size = await File(shot.path).length();
-      setState(() {
-        _uploadedProofFiles.add(
-          PlatformFile(name: shot.name, size: size, path: shot.path),
-        );
-      });
+      _uploadedProofFiles.add(
+        PlatformFile(name: shot.name, size: size, path: shot.path),
+      );
+      await _reloadInstanceAfterProofUpload();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Proof uploaded successfully'),
@@ -2160,10 +2243,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                               if (!mounted) return;
 
                               if (success) {
-                                setState(
-                                  () =>
-                                      _uploadedProofFiles.addAll(pendingFiles),
-                                );
+                                _uploadedProofFiles.addAll(pendingFiles);
+                                await _reloadInstanceAfterProofUpload();
+                                if (!mounted) return;
                                 Navigator.pop(ctx);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(

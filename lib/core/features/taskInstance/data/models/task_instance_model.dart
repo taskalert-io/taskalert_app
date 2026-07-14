@@ -97,6 +97,7 @@ class TaskInstanceModel {
   final String title;
   final String? description;
   final String priority;
+  final String? notificationPreference; // "one_time" | "recurring" | null
   final String status;
   final String taskId;
   final List<String> department;
@@ -144,6 +145,7 @@ class TaskInstanceModel {
     required this.title,
     this.description,
     required this.priority,
+    this.notificationPreference,
     required this.status,
     required this.taskId,
     required this.department,
@@ -174,6 +176,49 @@ class TaskInstanceModel {
     this.endAfterCount,
   });
 
+  TaskInstanceModel copyWith({ProofSubmissionModel? proofSubmission}) {
+    return TaskInstanceModel(
+      id: id,
+      taskDocId: taskDocId,
+      instanceId: instanceId,
+      scheduledTime: scheduledTime,
+      scheduledDate: scheduledDate,
+      taskType: taskType,
+      title: title,
+      description: description,
+      priority: priority,
+      notificationPreference: notificationPreference,
+      status: status,
+      taskId: taskId,
+      department: department,
+      organization: organization,
+      assignees: assignees,
+      assigneeRefs: assigneeRefs,
+      parentInstance: parentInstance,
+      completedBy: completedBy,
+      completedAt: completedAt,
+      proofSubmission: proofSubmission ?? this.proofSubmission,
+      reviewedBy: reviewedBy,
+      reviewedAt: reviewedAt,
+      reviewNote: reviewNote,
+      createdBy: createdBy,
+      isDeleted: isDeleted,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      timePeriod: timePeriod,
+      everyN: everyN,
+      daysOfWeek: daysOfWeek,
+      monthlyType: monthlyType,
+      dayOfMonth: dayOfMonth,
+      weekOfMonth: weekOfMonth,
+      dayOfWeekMonthly: dayOfWeekMonthly,
+      rangeStart: rangeStart,
+      endType: endType,
+      endByDate: endByDate,
+      endAfterCount: endAfterCount,
+    );
+  }
+
   factory TaskInstanceModel.fromJson(Map<String, dynamic> json) {
     return TaskInstanceModel(
       id: json['_id'] ?? '',
@@ -189,6 +234,7 @@ class TaskInstanceModel {
       title: json['title'] ?? '',
       description: json['description'],
       priority: json['priority'] ?? '',
+      notificationPreference: json['notificationPreference'] as String?,
       status: json['status'] ?? '',
       taskId: json['taskId'] ?? '',
       department: json['department'] != null

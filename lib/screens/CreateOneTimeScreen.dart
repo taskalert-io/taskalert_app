@@ -53,6 +53,13 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
   String? _dueDateError;
   String? _reportingToError;
 
+  // ── Notification Preference (optional) ─────────────────────────────────────
+  static const List<String> _notificationPreferenceOptions = [
+    "one_time",
+    "recurring",
+  ];
+  String? selectedNotificationPreference;
+
   // ── Location (autocomplete search, mirrors LocationListScreen) ────────────
   final TextEditingController locationSearchController =
       TextEditingController();
@@ -493,7 +500,11 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       employeeController.handleGetEmployees();
-      locationController.handleGetLocations();
+      // This dropdown is a client-side search over the full list, not a
+      // paginated view — without an explicit limit the backend only
+      // returns its default page size, so later locations silently never
+      // show up in the search.
+      locationController.handleGetLocations(limit: 1000);
 
       final accountType = await secureStorage.read(key: 'user_account_type');
       if (mounted) {
@@ -654,6 +665,8 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
             ), // Convert list to string for API; repository should handle conversion back to list
 
           if (!_isIndividual) "reportingTo": jsonEncode(selectedReportingList),
+          if (selectedNotificationPreference != null)
+            "notificationPreference": selectedNotificationPreference,
           // "attachments":
           //     selectedFiles, // This would typically be handled as multipart form data in the repository layer
         },
@@ -1785,6 +1798,67 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                       ),
                                     ),
                                   ],
+                                ),
+
+                                SizedBox(height: 8.h),
+
+                                // Notification Preference — optional
+                                _buildLabel("Notification Preference"),
+                                SizedBox(height: 3.h),
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    children: _notificationPreferenceOptions.map((
+                                      pref,
+                                    ) {
+                                      final label = pref == "one_time"
+                                          ? "One Time"
+                                          : "Recurring";
+                                      final isSelected =
+                                          selectedNotificationPreference ==
+                                          pref;
+                                      return InkWell(
+                                        onTap: () => setState(
+                                          () => selectedNotificationPreference =
+                                              isSelected ? null : pref,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Radio<String>(
+                                              value: pref,
+                                              groupValue:
+                                                  selectedNotificationPreference,
+                                              activeColor: const Color(
+                                                0xFF0A0258,
+                                              ),
+                                              materialTapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                              onChanged: (v) => setState(
+                                                () =>
+                                                    selectedNotificationPreference =
+                                                        v,
+                                              ),
+                                            ),
+                                            SizedBox(width: 2.w),
+                                            Text(
+                                              label,
+                                              style: GoogleFonts.inter(
+                                                fontSize: 11.5.sp,
+                                                fontWeight: isSelected
+                                                    ? FontWeight.w600
+                                                    : FontWeight.w400,
+                                                color: const Color(0xFF344054),
+                                              ),
+                                            ),
+                                            SizedBox(width: 12.w),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
                                 ),
 
                                 SizedBox(height: 8.h),

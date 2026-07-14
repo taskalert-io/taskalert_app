@@ -8,6 +8,7 @@ class TaskModel {
   final DepartmentModel?
   department; // 🌟 Fixed: Turned into an object structure
   final String priority;
+  final String? notificationPreference; // "one_time" | "recurring" | null
   final List<ReportingUserModel>
   assignees; // 🌟 Fixed: Changed to strongly typed list matching payload
   final DateTime? reportingDate;
@@ -36,6 +37,7 @@ class TaskModel {
     required this.title,
     this.department,
     required this.priority,
+    this.notificationPreference,
     required this.assignees,
     this.reportingDate,
     this.reportingTime,
@@ -67,6 +69,7 @@ class TaskModel {
           ? DepartmentModel.fromJson(json['department'] as Map<String, dynamic>)
           : null,
       priority: json['priority'] ?? '',
+      notificationPreference: json['notificationPreference'] as String?,
       assignees: json['assignees'] != null
           ? (json['assignees'] as List)
                 .map(

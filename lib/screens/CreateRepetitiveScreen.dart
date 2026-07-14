@@ -894,7 +894,11 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       employeeController.handleGetEmployees();
-      locationController.handleGetLocations();
+      // This dropdown is a client-side search over the full list, not a
+      // paginated view — without an explicit limit the backend only
+      // returns its default page size, so later locations silently never
+      // show up in the search.
+      locationController.handleGetLocations(limit: 1000);
     });
   }
 
@@ -3352,7 +3356,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      'The "Proof" & AI Validation',
+                                      'The "Proof" & Validation',
                                       style: GoogleFonts.inter(
                                         fontSize: 12.sp,
                                         fontWeight: FontWeight.w700,
