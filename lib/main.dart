@@ -58,9 +58,15 @@ class _MyAppState extends State<MyApp> {
 
       builder: (context, child) {
         return MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: const TextScaler.linear(1.0)),
+          data: MediaQuery.of(context).copyWith(
+            // Bounded instead of locked to 1.0 — respects the OS
+            // accessibility text-size setting instead of overriding it for
+            // every user, while the upper bound keeps this ScreenUtil-based
+            // layout from breaking at very large scale factors.
+            textScaler: MediaQuery.of(
+              context,
+            ).textScaler.clamp(minScaleFactor: 1.0, maxScaleFactor: 1.3),
+          ),
 
           child: MaterialApp(
             title: 'taskalert.io',
