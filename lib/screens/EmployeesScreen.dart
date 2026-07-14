@@ -303,95 +303,123 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     );
 
     _suggestionsOverlay = OverlayEntry(
-      builder: (context) => Positioned(
-        width: width,
-        child: CompositedTransformFollower(
-          link: _searchLayerLink,
-          showWhenUnlinked: false,
-          offset: Offset(0, placement.dy),
-          child: Align(
-            alignment: placement.showAbove
-                ? Alignment.bottomLeft
-                : Alignment.topLeft,
-            child: Material(
-              elevation: 6,
-              borderRadius: BorderRadius.circular(10.r),
-              color: Colors.white,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: placement.maxHeight),
-                child: _suggestions.isEmpty
-                    ? Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12.w,
-                          vertical: 14.h,
-                        ),
-                        child: Text(
-                          "No data found",
-                          style: GoogleFonts.inter(
-                            fontSize: 12.5.sp,
-                            color: const Color(0xFF9AA0AB),
-                          ),
-                        ),
-                      )
-                    : ListView.separated(
-                        padding: EdgeInsets.symmetric(vertical: 4.h),
-                        shrinkWrap: true,
-                        itemCount: _suggestions.length,
-                        separatorBuilder: (_, __) =>
-                            const Divider(height: 1, color: Color(0xFFE4E7EC)),
-                        itemBuilder: (context, index) {
-                          final s = _suggestions[index];
-                          final name =
-                              "${s.firstName ?? ''} ${s.lastName ?? ''}".trim();
-                          return InkWell(
-                            onTap: () => _selectSuggestion(s),
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 12.w,
-                                vertical: 8.h,
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    CupertinoIcons.person_fill,
-                                    size: 14.r,
-                                    color: const Color(0xFF4338CA),
-                                  ),
-                                  SizedBox(width: 8.w),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          name.isEmpty ? "(No name)" : name,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 13.sp,
-                                            fontWeight: FontWeight.w600,
-                                            color: const Color(0xFF1D2939),
-                                          ),
-                                        ),
-                                        Text(
-                                          "${s.jobRole ?? '-'} • ${s.email ?? ''}",
-                                          style: GoogleFonts.inter(
-                                            fontSize: 11.sp,
-                                            color: const Color(0xFF667085),
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+      builder: (context) => Stack(
+        children: [
+          // Full-screen barrier so a tap anywhere outside the dropdown's own
+          // content dismisses it immediately, instead of the tap being
+          // silently absorbed by this entry until the focus-loss delay
+          // below fires on its own.
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                _removeSuggestionsOverlay();
+                _searchFocusNode.unfocus();
+              },
+            ),
+          ),
+          Positioned(
+            width: width,
+            child: CompositedTransformFollower(
+              link: _searchLayerLink,
+              showWhenUnlinked: false,
+              offset: Offset(0, placement.dy),
+              child: Align(
+                alignment: placement.showAbove
+                    ? Alignment.bottomLeft
+                    : Alignment.topLeft,
+                child: Material(
+                  elevation: 6,
+                  borderRadius: BorderRadius.circular(10.r),
+                  color: Colors.white,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: placement.maxHeight,
+                    ),
+                    child: _suggestions.isEmpty
+                        ? Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12.w,
+                              vertical: 14.h,
+                            ),
+                            child: Text(
+                              "No data found",
+                              style: GoogleFonts.inter(
+                                fontSize: 12.5.sp,
+                                color: const Color(0xFF9AA0AB),
                               ),
                             ),
-                          );
-                        },
-                      ),
+                          )
+                        : ListView.separated(
+                            padding: EdgeInsets.symmetric(vertical: 4.h),
+                            shrinkWrap: true,
+                            itemCount: _suggestions.length,
+                            separatorBuilder: (_, __) => const Divider(
+                              height: 1,
+                              color: Color(0xFFE4E7EC),
+                            ),
+                            itemBuilder: (context, index) {
+                              final s = _suggestions[index];
+                              final name =
+                                  "${s.firstName ?? ''} ${s.lastName ?? ''}"
+                                      .trim();
+                              return InkWell(
+                                onTap: () => _selectSuggestion(s),
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 12.w,
+                                    vertical: 8.h,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        CupertinoIcons.person_fill,
+                                        size: 14.r,
+                                        color: const Color(0xFF4338CA),
+                                      ),
+                                      SizedBox(width: 8.w),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              name.isEmpty
+                                                  ? "(No name)"
+                                                  : name,
+                                              style: GoogleFonts.inter(
+                                                fontSize: 13.sp,
+                                                fontWeight: FontWeight.w600,
+                                                color: const Color(
+                                                  0xFF1D2939,
+                                                ),
+                                              ),
+                                            ),
+                                            Text(
+                                              "${s.jobRole ?? '-'} • ${s.email ?? ''}",
+                                              style: GoogleFonts.inter(
+                                                fontSize: 11.sp,
+                                                color: const Color(
+                                                  0xFF667085,
+                                                ),
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
 
