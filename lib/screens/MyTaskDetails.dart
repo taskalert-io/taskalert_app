@@ -7,7 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:taskalert_app/core/features/activityLogs/controllers/activity_log_controller.dart';
 import 'package:taskalert_app/core/features/employees/controllers/employee_controller.dart';
 import 'package:taskalert_app/core/features/employees/data/models/employee_model.dart';
@@ -1538,12 +1540,97 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           ),
           IconButton(
             visualDensity: VisualDensity.compact,
+            icon: Icon(
+              Icons.download_outlined,
+              size: 18.r,
+              color: _primaryColor,
+            ),
+            onPressed: () => _downloadProofFile(proof),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
             icon: Icon(Icons.delete_outline, size: 18.r, color: Colors.red),
             onPressed: () => _confirmDeleteProofFile(proof),
           ),
         ],
       ),
     );
+  }
+
+  /// Downloads the proof file's bytes in-app and writes them to disk —
+  /// doesn't hand off to the browser. Saves to the platform's Downloads
+  /// folder where available (Android/desktop); falls back to the app's own
+  /// documents folder where it isn't (iOS has no public Downloads dir).
+  Future<void> _downloadProofFile(ProofFileModel proof) async {
+    final url = proof.file?.originalUrl ?? '';
+    if (url.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'This proof file is no longer available to download.',
+            style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    _showUploadingProofDialog(message: 'Downloading...');
+
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode != 200) {
+        throw Exception('Server returned ${response.statusCode}');
+      }
+
+      Directory? saveDir;
+      try {
+        saveDir = await getDownloadsDirectory();
+      } catch (_) {
+        saveDir = null;
+      }
+      saveDir ??= await getApplicationDocumentsDirectory();
+
+      final ext = _proofFileExt(proof);
+      final baseName = proof.fileType.isNotEmpty
+          ? proof.fileType.replaceAll(RegExp(r'[^a-zA-Z0-9]+'), '_')
+          : 'proof';
+      final fileName =
+          '${baseName}_${DateTime.now().millisecondsSinceEpoch}'
+          '${ext.isNotEmpty ? '.$ext' : ''}';
+
+      final savedFile = File('${saveDir.path}/$fileName');
+      await savedFile.writeAsBytes(response.bodyBytes);
+
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // close popup
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Downloaded to ${savedFile.path}',
+            style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
+          ),
+          backgroundColor: _greenOn,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // close popup
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not download this file.',
+            style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Widget _proofFileIcon() => Container(
@@ -1835,11 +1922,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     ),
   );
 
-  /// Non-dismissible "Uploading proof..." popup shown for the duration of
-  /// an upload request — dismiss it yourself via
+  /// Non-dismissible progress popup shown for the duration of an
+  /// upload/download request — dismiss it yourself via
   /// `Navigator.of(context, rootNavigator: true).pop()` once the request
   /// settles (success or failure).
-  void _showUploadingProofDialog() {
+  void _showUploadingProofDialog({String message = 'Uploading proof...'}) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1863,7 +1950,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               ),
               SizedBox(width: 14.w),
               Text(
-                'Uploading proof...',
+                message,
                 style: GoogleFonts.inter(
                   fontSize: 13.sp,
                   fontWeight: FontWeight.w600,
