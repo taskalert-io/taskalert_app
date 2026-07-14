@@ -773,6 +773,12 @@ class ProfileSettingState extends State<ProfileSetting> {
       showCursor: isEditing,
       cursorColor: isEditing ? _primaryColor : Colors.transparent,
       cursorWidth: isEditing ? 2.0 : 0,
+      onTap: () {
+        if (!isEditing) {
+          onEdit();
+          Future.microtask(() => focusNode.requestFocus());
+        }
+      },
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       validator: validator,
