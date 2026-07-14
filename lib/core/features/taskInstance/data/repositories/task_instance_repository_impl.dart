@@ -121,6 +121,7 @@ class TaskInstanceRepositoryImpl implements TaskInstanceRepository {
     String? status,
     String? priority,
     List<String>? assigneeIds,
+    // String? scheduledDate,
     Map<String, String>? scheduledTime,
     String? scope,
   }) async {
@@ -129,6 +130,7 @@ class TaskInstanceRepositoryImpl implements TaskInstanceRepository {
         "status": status,
         "priority": priority,
         "assignees": assigneeIds,
+        // "scheduledDate": scheduledDate,
         "scheduledTime": scheduledTime,
         "scope": scope,
       };

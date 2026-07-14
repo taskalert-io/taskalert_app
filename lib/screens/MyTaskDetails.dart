@@ -590,6 +590,16 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   String get _scheduledPeriodForSave => _isAM ? 'AM' : 'PM';
 
+  /// The live date-picker state (`_calendarYear`/`_calendarMonth`/
+  /// `_selectedDay`), formatted "YYYY-MM-DD" for the update-instance
+  /// request. The backend validates `scheduledDate` and `scheduledTime`
+  /// together — omitting the date while sending a time failed validation.
+  String? get _scheduledDateForSave => _selectedDay == null
+      ? null
+      : '$_calendarYear-'
+            '${_calendarMonth.toString().padLeft(2, '0')}-'
+            '${_selectedDay.toString().padLeft(2, '0')}';
+
   String get _endTime {
     int h24 = _hour % 12;
     if (!_isAM) h24 += 12;
@@ -1731,6 +1741,19 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     if (!mounted) return;
     setState(() {});
 
+    // Once the last proof is gone, do one full reload of the whole details
+    // screen (not just the proof list) — same call initState uses — so
+    // everything on this screen that could depend on proof state (status,
+    // completion eligibility, activity log, etc.) is back in sync with the
+    // server, not just trusting the locally-pruned list.
+    final remainingFiles =
+        taskController.selectedInstance?.proofSubmission?.files ??
+        const <ProofFileModel>[];
+    if (success && remainingFiles.isEmpty) {
+      await _loadInstance();
+      if (!mounted) return;
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -2323,50 +2346,60 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         ),
         child: Padding(
           padding: EdgeInsets.all(14.w),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      file.name,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w700,
-                        color: _primaryColor,
+          child: SingleChildScrollView(
+            // A tall/portrait image (or a small screen) can push this past
+            // the Dialog's fixed insetPadding height — scroll instead of
+            // overflowing.
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        file.name,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w700,
+                          color: _primaryColor,
+                        ),
                       ),
                     ),
-                  ),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(dialogCtx),
-                    child: Icon(Icons.close, size: 20.r, color: _labelColor),
-                  ),
-                ],
-              ),
-              SizedBox(height: 12.h),
-              if (isImage && path != null)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8.r),
-                  child: Image.file(
-                    File(path),
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => _previewFallback(),
-                  ),
-                )
-              else
-                _previewFallback(
-                  // TODO: swap for a real video/PDF viewer package
-                  message: ext == 'pdf'
-                      ? 'PDF preview not available yet — file is attached.'
-                      : ext == 'mp4' || ext == 'mov' || ext == 'avi'
-                      ? 'Video preview not available yet — file is attached.'
-                      : 'Preview not available for this file type.',
+                    GestureDetector(
+                      onTap: () => Navigator.pop(dialogCtx),
+                      child: Icon(Icons.close, size: 20.r, color: _labelColor),
+                    ),
+                  ],
                 ),
-            ],
+                SizedBox(height: 12.h),
+                if (isImage && path != null)
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.55,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8.r),
+                      child: Image.file(
+                        File(path),
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => _previewFallback(),
+                      ),
+                    ),
+                  )
+                else
+                  _previewFallback(
+                    // TODO: swap for a real video/PDF viewer package
+                    message: ext == 'pdf'
+                        ? 'PDF preview not available yet — file is attached.'
+                        : ext == 'mp4' || ext == 'mov' || ext == 'avi'
+                        ? 'Video preview not available yet — file is attached.'
+                        : 'Preview not available for this file type.',
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -3266,6 +3299,16 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
                                             setState(() => _isSaving = true);
 
+                                            print(
+                                              'Scheduled Date for Save: $_scheduledDateForSave',
+                                            );
+                                            print(
+                                              'Scheduled Time for Save: $_scheduledTimeForSave',
+                                            );
+                                            print(
+                                              'Scheduled Period for Save: $_scheduledPeriodForSave',
+                                            );
+
                                             final success = await taskController
                                                 .handleUpdateInstanceConfiguration(
                                                   taskId:
@@ -3276,12 +3319,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                                   assigneeIds: _assigneeIds,
                                                   priority: _priority
                                                       .toLowerCase(),
-                                                  time: _assignTimeEnabled
-                                                      ? _scheduledTimeForSave
-                                                      : null,
-                                                  period: _assignTimeEnabled
-                                                      ? _scheduledPeriodForSave
-                                                      : null,
+                                                  date: _scheduledDateForSave,
+                                                  time: _scheduledTimeForSave,
+                                                  period:
+                                                      _scheduledPeriodForSave,
 
                                                   scope: 'single',
                                                 );

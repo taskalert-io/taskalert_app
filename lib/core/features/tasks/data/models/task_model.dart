@@ -308,6 +308,18 @@ class CreatedByModel {
       lastName: json['lastName'] ?? '',
     );
   }
+
+  /// Some responses (e.g. `completedBy` right after marking an instance
+  /// complete) send this ref as a plain id string instead of the usual
+  /// populated `{"_id": ..., "firstName": ..., "lastName": ...}` object —
+  /// handle both shapes so parsing one doesn't throw and fail the whole
+  /// request.
+  factory CreatedByModel.fromDynamic(dynamic value) {
+    if (value is Map<String, dynamic>) {
+      return CreatedByModel.fromJson(value);
+    }
+    return CreatedByModel(id: value?.toString() ?? '', firstName: '', lastName: '');
+  }
 }
 
 class ReportingUserModel {

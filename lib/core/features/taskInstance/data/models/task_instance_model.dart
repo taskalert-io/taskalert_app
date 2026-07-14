@@ -259,7 +259,7 @@ class TaskInstanceModel {
           : [],
       parentInstance: json['parentInstance'],
       completedBy: json['completedBy'] != null
-          ? CreatedByModel.fromJson(json['completedBy'] as Map<String, dynamic>)
+          ? CreatedByModel.fromDynamic(json['completedBy'])
           : null,
       completedAt: json['completedAt'] != null
           ? DateTime.tryParse(json['completedAt'])
@@ -271,14 +271,14 @@ class TaskInstanceModel {
             )
           : null,
       reviewedBy: json['reviewedBy'] != null
-          ? CreatedByModel.fromJson(json['reviewedBy'] as Map<String, dynamic>)
+          ? CreatedByModel.fromDynamic(json['reviewedBy'])
           : null,
       reviewedAt: json['reviewedAt'] != null
           ? DateTime.tryParse(json['reviewedAt'])
           : null,
       reviewNote: json['reviewNote'],
       createdBy: json['createdBy'] != null
-          ? CreatedByModel.fromJson(json['createdBy'] as Map<String, dynamic>)
+          ? CreatedByModel.fromDynamic(json['createdBy'])
           : null,
       isDeleted: json['isDeleted'] ?? false,
       createdAt: json['createdAt'] != null

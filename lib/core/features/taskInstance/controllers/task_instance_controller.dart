@@ -111,6 +111,7 @@ class TaskInstanceController extends ChangeNotifier {
     required String status,
     String? priority,
     List<String>? assigneeIds,
+    String? date,
     String? time,
     String? period,
     required String scope,
@@ -126,6 +127,7 @@ class TaskInstanceController extends ChangeNotifier {
       status: status,
       priority: priority,
       assigneeIds: assigneeIds,
+      // scheduledDate: date,
       scheduledTime: {"time": ?time, "period": ?period},
       scope: scope,
     );
