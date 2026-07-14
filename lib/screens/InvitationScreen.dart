@@ -65,6 +65,12 @@ class _InvitationScreenState extends State<InvitationScreen> {
     });
   }
 
+  // Backend timestamps are UTC — convert to a fixed IST (UTC+5:30) offset
+  // for display rather than `.toLocal()`, which would instead follow
+  // whatever timezone the device happens to be set to.
+  DateTime _toIst(DateTime dt) =>
+      dt.toUtc().add(const Duration(hours: 5, minutes: 30));
+
   Color _statusColor(String status) {
     switch (status.toLowerCase()) {
       case 'accepted':
@@ -968,15 +974,10 @@ class _InvitationScreenState extends State<InvitationScreen> {
                                                               ),
                                                         ),
                                                         if (invitation
-                                                                .createdAt !=
+                                                                .expiresAt !=
                                                             null)
                                                           Text(
-                                                            DateFormat(
-                                                              'MMM d, yyyy',
-                                                            ).format(
-                                                              invitation
-                                                                  .createdAt!,
-                                                            ),
+                                                            "Expires: ${DateFormat('hh:mm a - MMM d, yyyy').format(_toIst(invitation.expiresAt!))}",
                                                             style: GoogleFonts.inter(
                                                               fontSize: 11.sp,
                                                               color:
