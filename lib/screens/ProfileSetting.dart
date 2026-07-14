@@ -1,8 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 import 'package:taskalert_app/core/features/auth/controllers/login_controller.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
@@ -17,6 +21,8 @@ import '../components/EmpJobDetailsSection.dart';
 import '../components/SkillPerformSection.dart';
 import '../components/TimeAttendSection.dart';
 import 'SignInScreen.dart';
+
+enum _ProfileImageAction { view, camera, gallery }
 
 class ProfileSetting extends StatefulWidget {
   final String userId;
@@ -119,14 +125,18 @@ class ProfileSettingState extends State<ProfileSetting> {
 
   final _loginController = sl<LoginController>();
   final FlutterSecureStorage storage = const FlutterSecureStorage();
+  final ImagePicker _imagePicker = ImagePicker();
   String userName = "User";
   String userPhone = "";
   String userEmail = "";
   String userThumbnail = "";
+  String userOriginalImage = "";
 
   Map<String, dynamic>? _employeeData;
 
   bool isLoading = true;
+  File? _pickedProfileImage;
+  bool _isSavingProfile = false;
 
   @override
   void initState() {
@@ -156,6 +166,9 @@ class ProfileSettingState extends State<ProfileSetting> {
     String? storedEmail = await storage.read(key: "user_email");
 
     String? storedThumbnail = await storage.read(key: "user_avatar_thumbnail");
+    String? storedOriginalImage = await storage.read(
+      key: "user_avatar_original",
+    );
     String? storedPhoneNumber = await storage.read(key: "user_phone");
 
     String? storedDOB = await storage.read(key: "user_dob");
@@ -169,6 +182,7 @@ class ProfileSettingState extends State<ProfileSetting> {
       userName = storedName ?? "User";
       userEmail = storedEmail ?? "";
       userThumbnail = storedThumbnail ?? "assets/images/profile.png";
+      userOriginalImage = storedOriginalImage ?? "";
       userPhone = storedPhoneNumber ?? "";
 
       _firstNameController.text = storedFirstName ?? "";
@@ -214,7 +228,7 @@ class ProfileSettingState extends State<ProfileSetting> {
   }
 
   // ── My Profile Submit ──────────────────────────────────────────────────────
-  void _submitForm() {
+  Future<void> _submitForm() async {
     setState(() => _autoValidate = true);
     bool mainValid = _formKey.currentState!.validate();
 
@@ -248,7 +262,213 @@ class ProfileSettingState extends State<ProfileSetting> {
       _showSnackBar("Please fill all required fields.", Colors.red);
       return;
     }
-    _showSnackBar("Form submitted successfully!", Colors.green);
+
+    setState(() => _isSavingProfile = true);
+
+    // The update-profile endpoint clears the stored image whenever the
+    // "image" field is absent from the request, even if it was already
+    // present before. So when the user didn't pick a new photo, re-attach
+    // the existing one instead of leaving the field out.
+    final imageToSend =
+        _pickedProfileImage ?? await _downloadExistingProfileImage();
+
+    final success = await _loginController.handleUpdateProfile(
+      firstName: _firstNameController.text.trim(),
+      lastName: _lastNameController.text.trim(),
+      phoneNumber: _phoneController.text.trim(),
+      email: _emailController.text.trim(),
+      imageFile: imageToSend,
+    );
+
+    if (!mounted) return;
+
+    if (!success) {
+      setState(() => _isSavingProfile = false);
+      _showSnackBar(
+        _loginController.errorMessage ?? "Failed to update profile.",
+        Colors.red,
+      );
+      return;
+    }
+
+    // Refresh the cached profile (name/avatar/etc.) from the server so the
+    // header and every other screen reading secure storage stays in sync.
+    await _loginController.handleGetProfile();
+    await loadUserData();
+
+    if (!mounted) return;
+
+    setState(() {
+      _isSavingProfile = false;
+      _pickedProfileImage = null;
+      _isFirstNameEditing = false;
+      _isLastNameEditing = false;
+      _isEmailEditing = false;
+      _isPhoneEditing = false;
+    });
+
+    _showSnackBar(
+      _loginController.successMessage ?? "Profile updated successfully!",
+      Colors.green,
+    );
+  }
+
+  /// Downloads the currently-saved profile photo so it can be re-sent on a
+  /// profile update that didn't pick a new one. Returns null (silently) on
+  /// any failure — the update still proceeds, just without the image field,
+  /// same as before this fix.
+  Future<File?> _downloadExistingProfileImage() async {
+    final existingImageUrl = userOriginalImage.isNotEmpty
+        ? userOriginalImage
+        : userThumbnail;
+    if (existingImageUrl.isEmpty || !existingImageUrl.startsWith('http')) {
+      return null;
+    }
+
+    try {
+      final response = await http.get(Uri.parse(existingImageUrl));
+      if (response.statusCode != 200) return null;
+
+      final extension = existingImageUrl.split('.').last.split('?').first;
+      final tempFile = File(
+        '${Directory.systemTemp.path}/profile_${DateTime.now().millisecondsSinceEpoch}.$extension',
+      );
+      await tempFile.writeAsBytes(response.bodyBytes);
+      return tempFile;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ── Profile picture picker ─────────────────────────────────────────────────
+  Future<void> _pickProfileImage() async {
+    final action = await showModalBottomSheet<_ProfileImageAction>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(height: 8.h),
+            Container(
+              width: 36.w,
+              height: 4.h,
+              decoration: BoxDecoration(
+                color: _dividerColor,
+                borderRadius: BorderRadius.circular(4.r),
+              ),
+            ),
+            SizedBox(height: 12.h),
+            ListTile(
+              leading: Icon(Icons.remove_red_eye, color: _primaryColor),
+              title: Text(
+                "View Photo",
+                style: GoogleFonts.inter(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              onTap: () => Navigator.pop(ctx, _ProfileImageAction.view),
+            ),
+            ListTile(
+              leading: Icon(Icons.camera_alt, color: _primaryColor),
+              title: Text(
+                "Take Photo",
+                style: GoogleFonts.inter(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              onTap: () => Navigator.pop(ctx, _ProfileImageAction.camera),
+            ),
+            ListTile(
+              leading: Icon(Icons.photo_library, color: _primaryColor),
+              title: Text(
+                "Choose from Gallery",
+                style: GoogleFonts.inter(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              onTap: () => Navigator.pop(ctx, _ProfileImageAction.gallery),
+            ),
+            SizedBox(height: 8.h),
+          ],
+        ),
+      ),
+    );
+
+    if (action == null) return;
+
+    if (action == _ProfileImageAction.view) {
+      _showProfileImageViewer();
+      return;
+    }
+
+    final source = action == _ProfileImageAction.camera
+        ? ImageSource.camera
+        : ImageSource.gallery;
+
+    try {
+      final XFile? picked = await _imagePicker.pickImage(
+        source: source,
+        imageQuality: 80,
+        maxWidth: 1024,
+      );
+      if (picked != null) {
+        setState(() => _pickedProfileImage = File(picked.path));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar("Couldn't access camera/gallery: $e", Colors.red);
+    }
+  }
+
+  // ── Profile picture full-view popup ────────────────────────────────────────
+  void _showProfileImageViewer() {
+    final ImageProvider image = _pickedProfileImage != null
+        ? FileImage(_pickedProfileImage!) as ImageProvider
+        : userThumbnail.isNotEmpty
+        ? NetworkImage(userThumbnail) as ImageProvider
+        : const AssetImage("assets/images/profile.png");
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (dialogCtx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.symmetric(horizontal: 24.w),
+        child: Stack(
+          alignment: Alignment.topRight,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12.r),
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: Image(image: image, fit: BoxFit.cover),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(6.r),
+              child: GestureDetector(
+                onTap: () => Navigator.pop(dialogCtx),
+                child: Container(
+                  padding: EdgeInsets.all(4.r),
+                  decoration: const BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close, color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // ── Account Settings Submit ────────────────────────────────────────────────
@@ -720,7 +940,7 @@ class ProfileSettingState extends State<ProfileSetting> {
   }
 
   // ── Save button ────────────────────────────────────────────────────────────
-  Widget _buildSaveButton(VoidCallback onPressed) {
+  Widget _buildSaveButton(VoidCallback onPressed, {bool isLoading = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
@@ -732,7 +952,7 @@ class ProfileSettingState extends State<ProfileSetting> {
             ),
           ),
           child: ElevatedButton(
-            onPressed: onPressed,
+            onPressed: isLoading ? null : onPressed,
             style: ElevatedButton.styleFrom(
               elevation: 0,
               backgroundColor: Colors.transparent,
@@ -744,14 +964,23 @@ class ProfileSettingState extends State<ProfileSetting> {
                 borderRadius: BorderRadius.circular(8.r),
               ),
             ),
-            child: Text(
-              "Save Changes",
-              style: GoogleFonts.inter(
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
+            child: isLoading
+                ? SizedBox(
+                    width: 16.w,
+                    height: 16.w,
+                    child: const CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Text(
+                    "Save Changes",
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
           ),
         ),
       ],
@@ -1639,7 +1868,7 @@ class ProfileSettingState extends State<ProfileSetting> {
             ),
 
             SizedBox(height: 16.h),
-            _buildSaveButton(_submitForm),
+            _buildSaveButton(_submitForm, isLoading: _isSavingProfile),
           ],
         ),
       ),
@@ -2102,14 +2331,48 @@ class ProfileSettingState extends State<ProfileSetting> {
                   ),
 
                   Center(
-                    child: SizedBox(
-                      width: 100.w,
-                      height: 100.h,
-                      child: CircleAvatar(
-                        backgroundImage: userThumbnail.isNotEmpty
-                            ? NetworkImage(userThumbnail)
-                            : const AssetImage("assets/images/profile.png")
-                                  as ImageProvider,
+                    child: GestureDetector(
+                      onTap: _pickProfileImage,
+                      child: SizedBox(
+                        width: 100.w,
+                        height: 100.h,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          clipBehavior: Clip.none,
+                          children: [
+                            CircleAvatar(
+                              backgroundImage: _pickedProfileImage != null
+                                  ? FileImage(_pickedProfileImage!)
+                                        as ImageProvider
+                                  : userThumbnail.isNotEmpty
+                                  ? NetworkImage(userThumbnail)
+                                        as ImageProvider
+                                  : const AssetImage(
+                                      "assets/images/profile.png",
+                                    ),
+                            ),
+                            Positioned(
+                              right: 0,
+                              bottom: 0,
+                              child: Container(
+                                padding: EdgeInsets.all(5.r),
+                                decoration: BoxDecoration(
+                                  color: _primaryColor,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 2.w,
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.camera_alt,
+                                  size: 14.r,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

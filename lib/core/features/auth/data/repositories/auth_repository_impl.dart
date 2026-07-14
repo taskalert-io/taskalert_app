@@ -558,8 +558,8 @@ class AuthRepositoryImpl implements AuthRepository {
         (json) => UserModel.fromJson(json),
       );
 
-      if (apiResponse.success && apiResponse.data != null) {
-        return ApiResult.success(apiResponse.data! as BaseApiResponse<dynamic>);
+      if (apiResponse.success) {
+        return ApiResult.success(apiResponse as BaseApiResponse<dynamic>);
       }
       _handleErrorEnvelope(apiResponse);
       return ApiResult.failure(
