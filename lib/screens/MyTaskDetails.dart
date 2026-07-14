@@ -20,6 +20,7 @@ import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
 import '../components/ToggleSwitch.dart';
+import '../components/ZoomableImage.dart';
 import 'activity_bottom_sheet.dart';
 import 'package:taskalert_app/screens/panel_right_close_icon.dart';
 import 'activity_bottom_sheet.dart';
@@ -1610,30 +1611,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 if (isImage && url.isNotEmpty)
                   ConstrainedBox(
                     constraints: BoxConstraints(
-                      maxHeight: MediaQuery.of(context).size.height * 0.55,
+                      maxHeight: MediaQuery.of(context).size.height * 0.65,
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8.r),
-                      child: Image.network(
-                        url,
-                        fit: BoxFit.contain,
-                        loadingBuilder: (context, child, progress) {
-                          if (progress == null) return child;
-                          return SizedBox(
-                            height: 200.h,
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                color: _primaryColor,
-                                value: progress.expectedTotalBytes != null
-                                    ? progress.cumulativeBytesLoaded /
-                                          progress.expectedTotalBytes!
-                                    : null,
-                              ),
-                            ),
-                          );
-                        },
-                        errorBuilder: (_, __, ___) => _previewFallback(),
+                      child: ZoomableImage(
+                        networkUrl: url,
+                        loaderColor: _primaryColor,
+                        errorBuilder: (_) => _previewFallback(),
                       ),
                     ),
                   )
@@ -2378,14 +2363,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 if (isImage && path != null)
                   ConstrainedBox(
                     constraints: BoxConstraints(
-                      maxHeight: MediaQuery.of(context).size.height * 0.55,
+                      maxHeight: MediaQuery.of(context).size.height * 0.65,
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8.r),
-                      child: Image.file(
-                        File(path),
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => _previewFallback(),
+                      child: ZoomableImage(
+                        file: File(path),
+                        loaderColor: _primaryColor,
+                        errorBuilder: (_) => _previewFallback(),
                       ),
                     ),
                   )

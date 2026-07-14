@@ -12,6 +12,7 @@ import 'package:image_picker/image_picker.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
+import '../components/ZoomableImage.dart';
 import '../core/features/organization/controllers/organization_controller.dart';
 import '../core/features/organization/data/models/organization_model.dart';
 import '../utils/injection_container.dart';
@@ -1614,42 +1615,11 @@ void _showOrgImagePreviewDialog(
               SizedBox(height: 12.h),
               ConstrainedBox(
                 constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.55,
+                  maxHeight: MediaQuery.of(context).size.height * 0.65,
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8.r),
-                  child: imageFile != null
-                      ? Image.file(imageFile, fit: BoxFit.contain)
-                      : Image.network(
-                          imageUrl ?? '',
-                          fit: BoxFit.contain,
-                          loadingBuilder: (context, child, progress) {
-                            if (progress == null) return child;
-                            return SizedBox(
-                              height: 200.h,
-                              child: Center(
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: const Color(0xFF0A0258),
-                                  value: progress.expectedTotalBytes != null
-                                      ? progress.cumulativeBytesLoaded /
-                                            progress.expectedTotalBytes!
-                                      : null,
-                                ),
-                              ),
-                            );
-                          },
-                          errorBuilder: (_, __, ___) => SizedBox(
-                            height: 120.h,
-                            child: Center(
-                              child: Icon(
-                                Icons.broken_image_outlined,
-                                size: 32.r,
-                                color: const Color(0xFF9AA0AB),
-                              ),
-                            ),
-                          ),
-                        ),
+                  child: ZoomableImage(file: imageFile, networkUrl: imageUrl),
                 ),
               ),
             ],

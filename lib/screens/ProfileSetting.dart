@@ -21,6 +21,7 @@ import '../components/EmpJobDetailsSection.dart';
 import '../components/SkillPerformSection.dart';
 import '../components/TimeAttendSection.dart';
 import '../components/ToggleSwitch.dart';
+import '../components/ZoomableImage.dart';
 import 'SignInScreen.dart';
 
 enum _ProfileImageAction { view, camera, gallery }
@@ -430,11 +431,7 @@ class ProfileSettingState extends State<ProfileSetting> {
 
   // ── Profile picture full-view popup ────────────────────────────────────────
   void _showProfileImageViewer() {
-    final ImageProvider image = _pickedProfileImage != null
-        ? FileImage(_pickedProfileImage!) as ImageProvider
-        : userThumbnail.isNotEmpty
-        ? NetworkImage(userThumbnail) as ImageProvider
-        : const AssetImage("assets/images/profile.png");
+    final hasRealPhoto = _pickedProfileImage != null || userThumbnail.isNotEmpty;
 
     showDialog(
       context: context,
@@ -447,9 +444,25 @@ class ProfileSettingState extends State<ProfileSetting> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(12.r),
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: Image(image: image, fit: BoxFit.cover),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.65,
+                ),
+                child: hasRealPhoto
+                    ? ZoomableImage(
+                        file: _pickedProfileImage,
+                        networkUrl: _pickedProfileImage == null
+                            ? userThumbnail
+                            : null,
+                        loaderColor: _primaryColor,
+                      )
+                    : AspectRatio(
+                        aspectRatio: 1,
+                        child: Image.asset(
+                          "assets/images/profile.png",
+                          fit: BoxFit.cover,
+                        ),
+                      ),
               ),
             ),
             Padding(
