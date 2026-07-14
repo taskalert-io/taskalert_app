@@ -77,13 +77,13 @@ import '../core/features/departments/data/models/department_model.dart';
 import '../core/features/employees/controllers/employee_controller.dart';
 import '../core/features/employees/data/models/employee_model.dart';
 import '../core/features/jobRoles/controllers/job_role_controller.dart';
+import '../components/ToggleSwitch.dart';
 import '../core/features/jobRoles/data/models/job_role_model.dart';
 import '../core/features/location/controllers/location_controller.dart';
 import '../core/features/location/data/models/location_model.dart';
 import '../utils/injection_container.dart';
 import 'DepartmentListScreen.dart' show openDepartmentFormDialog;
 import 'LocationListScreen.dart' show openLocationFormDialog;
-import 'NotificationStart.dart';
 
 // ── Shared overlay-placement helper ─────────────────────────────────────
 //
@@ -448,10 +448,15 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     _searchFocusNode.unfocus();
   }
 
-  bool _matchesQuery(EmployeeModel e, String q) =>
-      (e.firstName ?? '').toLowerCase().contains(q) ||
-      (e.lastName ?? '').toLowerCase().contains(q) ||
-      (e.email ?? '').toLowerCase().contains(q);
+  bool _matchesQuery(EmployeeModel e, String q) {
+    final fullName = "${e.firstName ?? ''} ${e.lastName ?? ''}"
+        .trim()
+        .toLowerCase();
+    return fullName.contains(q) ||
+        (e.firstName ?? '').toLowerCase().contains(q) ||
+        (e.lastName ?? '').toLowerCase().contains(q) ||
+        (e.email ?? '').toLowerCase().contains(q);
+  }
 
   List<EmployeeModel> get _filtered {
     final q = _searchController.text.trim().toLowerCase();
@@ -463,8 +468,8 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     return list;
   }
 
-  bool get _allSelected =>
-      _filtered.isNotEmpty && _selectedIds.length == _filtered.length;
+  bool _isAllSelected(List<EmployeeModel> filtered) =>
+      filtered.isNotEmpty && _selectedIds.length == filtered.length;
 
   void _toggleSelectAll(bool? value) {
     setState(() {
@@ -826,8 +831,8 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                           children: [
                             ToggleSwitch(
                               value: taskPermission,
-                              colors: ThemeConst.of(ctx),
                               activeColor: Colors.green,
+                              semanticLabel: 'Task Permission',
                               onTap: () =>
                                   ss(() => taskPermission = !taskPermission),
                             ),
@@ -1855,7 +1860,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                           SizedBox(
                             width: 32.w,
                             child: Checkbox(
-                              value: _allSelected,
+                              value: _isAllSelected(filtered),
                               activeColor: const Color(0xFF0A0258),
                               materialTapTargetSize:
                                   MaterialTapTargetSize.shrinkWrap,
