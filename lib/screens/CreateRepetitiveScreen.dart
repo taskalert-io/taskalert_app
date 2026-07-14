@@ -23,6 +23,7 @@ import 'package:taskalert_app/utils/injection_container.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
+import '../components/ToggleSwitch.dart';
 import 'DepartmentListScreen.dart' show openDepartmentFormDialog;
 import 'LocationListScreen.dart' show openLocationFormDialog;
 import 'MyTaskScreen.dart';
@@ -2805,8 +2806,9 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                         color: const Color(0xFF0A0258),
                                       ),
                                     ),
-                                    _buildToggle(
+                                    ToggleSwitch(
                                       value: isAssignmentEnabled,
+                                      semanticLabel: "Assignment & Recurrence",
                                       onTap: () => setState(() {
                                         isAssignmentEnabled =
                                             !isAssignmentEnabled;
@@ -3345,8 +3347,10 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                         color: const Color(0xFF0A0258),
                                       ),
                                     ),
-                                    _buildToggle(
+                                    ToggleSwitch(
                                       value: isProofEnabled,
+                                      semanticLabel:
+                                          'The "Proof" & AI Validation',
                                       onTap: () => setState(() {
                                         isProofEnabled = !isProofEnabled;
                                         if (!isProofEnabled) {
@@ -3990,39 +3994,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
       ),
     ),
   );
-
-  Widget _buildToggle({required bool value, required VoidCallback onTap}) =>
-      GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          width: 30.w,
-          height: 15.h,
-          padding: EdgeInsets.all(1.w),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(30.r),
-            border: Border.all(
-              color: value ? const Color(0xFF1DC230) : const Color(0xFF676299),
-              width: 1.2,
-            ),
-          ),
-          child: AnimatedAlign(
-            duration: const Duration(milliseconds: 250),
-            alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-            child: Container(
-              width: 14.w,
-              height: 14.h,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: value
-                    ? const Color(0xFF1DC230)
-                    : const Color(0xFF676299),
-              ),
-            ),
-          ),
-        ),
-      );
 
   Widget _buildLabel(String text) => RichText(
     text: TextSpan(

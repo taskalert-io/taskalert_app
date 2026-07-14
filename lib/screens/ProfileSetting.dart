@@ -16,6 +16,7 @@ import '../components/DcmntComplianceSection.dart';
 import '../components/EmpJobDetailsSection.dart';
 import '../components/SkillPerformSection.dart';
 import '../components/TimeAttendSection.dart';
+import '../components/ToggleSwitch.dart';
 
 class ProfileSetting extends StatefulWidget {
   final String userId;
@@ -630,39 +631,6 @@ class ProfileSettingState extends State<ProfileSetting> {
     ),
   );
 
-  // ── Toggle switch ──────────────────────────────────────────────────────────
-  Widget _buildToggle({required bool value, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        width: 30.w,
-        height: 15.h,
-        padding: EdgeInsets.all(1.w),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(30.r),
-          border: Border.all(
-            color: value ? const Color(0xFF1DC230) : const Color(0xFF676299),
-            width: 1.2,
-          ),
-        ),
-        child: AnimatedAlign(
-          duration: const Duration(milliseconds: 250),
-          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            width: 14.w,
-            height: 14.h,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: value ? const Color(0xFF1DC230) : const Color(0xFF676299),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   // ── Section row ───────────────────────────────────────────────────────────
   Widget _buildSectionRow({
     required String label,
@@ -687,7 +655,7 @@ class ProfileSettingState extends State<ProfileSetting> {
                 color: _primaryColor,
               ),
             ),
-            _buildToggle(value: value, onTap: onTap),
+            ToggleSwitch(value: value, onTap: onTap, semanticLabel: label),
           ],
         ),
         SizedBox(height: 8.h),
@@ -1408,8 +1376,9 @@ class ProfileSettingState extends State<ProfileSetting> {
                           ),
                         ),
                         SizedBox(width: 12.w),
-                        _buildToggle(
+                        ToggleSwitch(
                           value: _isTwoStepEnabled,
+                          semanticLabel: '2 - Step Verifications',
                           onTap: () => setState(
                             () => _isTwoStepEnabled = !_isTwoStepEnabled,
                           ),
@@ -1459,8 +1428,9 @@ class ProfileSettingState extends State<ProfileSetting> {
                           ),
                         ),
                         SizedBox(width: 12.w),
-                        _buildToggle(
+                        ToggleSwitch(
                           value: _isSupportAccessEnabled,
+                          semanticLabel: 'Support Access',
                           onTap: () => setState(
                             () => _isSupportAccessEnabled =
                                 !_isSupportAccessEnabled,
