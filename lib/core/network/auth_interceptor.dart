@@ -1,5 +1,8 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:taskalert_app/screens/SignInScreen.dart';
+import 'package:taskalert_app/utils/navigation_service.dart';
 
 class AuthInterceptor extends Interceptor {
   final FlutterSecureStorage _secureStorage;
@@ -62,9 +65,11 @@ class AuthInterceptor extends Interceptor {
 
     if (newToken == null) {
       // Refresh token missing, or the refresh endpoint explicitly rejected it
-      // (401/403) — this session is genuinely unrecoverable, wipe it so the
-      // user lands back on sign-in.
+      // (401/403) — this session is genuinely unrecoverable, wipe it and
+      // force the user back to sign-in instead of leaving them stranded on
+      // whatever screen they were on with silently-failing requests.
       await _secureStorage.deleteAll();
+      _redirectToSignIn();
       return handler.next(err);
     }
 
@@ -123,5 +128,35 @@ class AuthInterceptor extends Interceptor {
       }
       rethrow; // transient — let the caller preserve the session
     }
+  }
+
+  /// Forces navigation back to Sign In, clearing everything behind it —
+  /// same pattern as the manual "Logout" flow elsewhere in the app. Guards
+  /// against firing more than once if several in-flight requests 401 at
+  /// the same moment (only the first should actually navigate).
+  bool _redirecting = false;
+
+  void _redirectToSignIn() {
+    if (_redirecting) return;
+    final navState = navigatorKey.currentState;
+    if (navState == null) return;
+
+    _redirecting = true;
+
+    navState.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const SignInScreen()),
+      (route) => false,
+    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _redirecting = false;
+      final ctx = navigatorKey.currentContext;
+      if (ctx == null) return;
+      ScaffoldMessenger.of(ctx).showSnackBar(
+        const SnackBar(
+          content: Text('Your session has expired. Please sign in again.'),
+        ),
+      );
+    });
   }
 }
