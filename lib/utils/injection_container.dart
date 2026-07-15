@@ -30,6 +30,9 @@ import 'package:taskalert_app/core/features/notifications/data/repositories/noti
 import 'package:taskalert_app/core/features/organization/controllers/organization_controller.dart';
 import 'package:taskalert_app/core/features/organization/data/repositories/organization_repository.dart';
 import 'package:taskalert_app/core/features/organization/data/repositories/organization_repository_impl.dart';
+import 'package:taskalert_app/core/features/sidebar/controllers/sidebar_controller.dart';
+import 'package:taskalert_app/core/features/sidebar/data/repositories/sidebar_repository.dart';
+import 'package:taskalert_app/core/features/sidebar/data/repositories/sidebar_repository_impl.dart';
 import 'package:taskalert_app/core/features/subTasks/controllers/sub_task_controller.dart';
 import 'package:taskalert_app/core/features/subTasks/data/repositories/sub_task_repository.dart';
 import 'package:taskalert_app/core/features/subTasks/data/repositories/sub_task_repository_impl.dart';
@@ -150,4 +153,10 @@ Future<void> init() async {
     () => DashboardRepositoryImpl(sl<HttpService>()),
   );
   sl.registerFactory(() => DashboardController(sl<DashboardRepository>()));
+
+  // 🍔 Sidebar Feature Layers
+  sl.registerLazySingleton<SidebarRepository>(
+    () => SidebarRepositoryImpl(sl<HttpService>()),
+  );
+  sl.registerFactory(() => SidebarController(sl<SidebarRepository>()));
 }
