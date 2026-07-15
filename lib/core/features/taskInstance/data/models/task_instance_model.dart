@@ -114,6 +114,7 @@ class TaskInstanceModel {
   // final String? proofSubmission;
   final ProofSubmissionModel?
   proofSubmission; // 🌟 Updated from String? to ProofSubmissionModel?
+  final List<AttachmentModel> attachments;
   final CreatedByModel? reviewedBy;
   final DateTime? reviewedAt;
   final String? reviewNote;
@@ -156,6 +157,7 @@ class TaskInstanceModel {
     this.completedBy,
     this.completedAt,
     this.proofSubmission,
+    this.attachments = const [],
     this.reviewedBy,
     this.reviewedAt,
     this.reviewNote,
@@ -198,6 +200,7 @@ class TaskInstanceModel {
       completedBy: completedBy,
       completedAt: completedAt,
       proofSubmission: proofSubmission ?? this.proofSubmission,
+      attachments: attachments,
       reviewedBy: reviewedBy,
       reviewedAt: reviewedAt,
       reviewNote: reviewNote,
@@ -270,6 +273,13 @@ class TaskInstanceModel {
               json['proofSubmission'] as Map<String, dynamic>,
             )
           : null,
+      attachments: json['attachments'] != null
+          ? (json['attachments'] as List)
+                .map(
+                  (x) => AttachmentModel.fromJson(x as Map<String, dynamic>),
+                )
+                .toList()
+          : [],
       reviewedBy: json['reviewedBy'] != null
           ? CreatedByModel.fromDynamic(json['reviewedBy'])
           : null,
