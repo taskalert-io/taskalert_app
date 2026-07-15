@@ -18,6 +18,7 @@ import 'package:taskalert_app/core/features/taskInstance/data/models/task_instan
 import 'package:taskalert_app/core/features/tasks/data/models/task_model.dart'
     show AttachmentModel;
 import 'package:taskalert_app/screens/panel_right_close_icon.dart';
+import 'package:taskalert_app/utils/download_notification_service.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../components/CustomAppBar.dart';
@@ -1521,9 +1522,96 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             ),
             onPressed: () => _viewAttachmentFile(attachment),
           ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: Icon(
+              Icons.download_outlined,
+              size: 18.r,
+              color: _primaryColor,
+            ),
+            onPressed: () => _downloadAttachmentFile(attachment),
+          ),
         ],
       ),
     );
+  }
+
+  /// Downloads the attachment's bytes in-app and writes them to disk — same
+  /// mechanism as `_downloadProofFile`, just for the task's own attachments
+  /// instead of submitted proofs.
+  Future<void> _downloadAttachmentFile(AttachmentModel attachment) async {
+    final url = attachment.file?.originalUrl ?? '';
+    if (url.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'This attachment is no longer available to download.',
+            style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    _showUploadingProofDialog(message: 'Downloading...');
+
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode != 200) {
+        throw Exception('Server returned ${response.statusCode}');
+      }
+
+      Directory? saveDir;
+      try {
+        saveDir = await getDownloadsDirectory();
+      } catch (_) {
+        saveDir = null;
+      }
+      saveDir ??= await getApplicationDocumentsDirectory();
+
+      final ext = attachment.fileType.toLowerCase();
+      final baseName = attachment.fileName.isNotEmpty
+          ? attachment.fileName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]+'), '_')
+          : 'attachment_${DateTime.now().millisecondsSinceEpoch}'
+                '${ext.isNotEmpty ? '.$ext' : ''}';
+
+      final savedFile = File('${saveDir.path}/$baseName');
+      await savedFile.writeAsBytes(response.bodyBytes);
+
+      await DownloadNotificationService.instance.showDownloadComplete(
+        fileName: baseName,
+        filePath: savedFile.path,
+      );
+
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // close popup
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Downloaded to ${savedFile.path}',
+            style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
+          ),
+          backgroundColor: _greenOn,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // close popup
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not download this file.',
+            style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   void _viewAttachmentFile(AttachmentModel attachment) {
@@ -1786,6 +1874,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
       final savedFile = File('${saveDir.path}/$fileName');
       await savedFile.writeAsBytes(response.bodyBytes);
+
+      await DownloadNotificationService.instance.showDownloadComplete(
+        fileName: fileName,
+        filePath: savedFile.path,
+      );
 
       if (!mounted) return;
       Navigator.of(context, rootNavigator: true).pop(); // close popup
