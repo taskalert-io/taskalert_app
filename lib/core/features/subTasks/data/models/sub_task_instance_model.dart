@@ -121,13 +121,24 @@ class TaskInstanceRef {
   }
 }
 
-/// The parent Task (template).
+/// The parent Task (template) — also reused by the Workflow feature, whose
+/// "workflow details" response nests a richer version of this same ref
+/// (adds `description`/`createdBy`, both optional here since the SubTask
+/// Instance endpoints never send them).
 class TaskRef {
   final String id;
   final String? taskType;
   final String? title;
+  final String? description;
+  final SubTaskUserRef? createdBy;
 
-  TaskRef({required this.id, this.taskType, this.title});
+  TaskRef({
+    required this.id,
+    this.taskType,
+    this.title,
+    this.description,
+    this.createdBy,
+  });
 
   factory TaskRef.fromDynamic(dynamic value) {
     if (value is Map<String, dynamic>) {
@@ -135,6 +146,10 @@ class TaskRef {
         id: value['_id']?.toString() ?? '',
         taskType: value['taskType'],
         title: value['title'],
+        description: value['description'],
+        createdBy: value['createdBy'] != null
+            ? SubTaskUserRef.fromDynamic(value['createdBy'])
+            : null,
       );
     }
     return TaskRef(id: value?.toString() ?? '');

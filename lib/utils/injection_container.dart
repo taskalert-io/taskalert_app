@@ -36,6 +36,9 @@ import 'package:taskalert_app/core/features/taskInstance/data/repositories/task_
 import 'package:taskalert_app/core/features/tasks/controllers/task_controller.dart';
 import 'package:taskalert_app/core/features/tasks/data/repositories/task_repository.dart';
 import 'package:taskalert_app/core/features/tasks/data/repositories/task_repository_impl.dart';
+import 'package:taskalert_app/core/features/workflow/controllers/workflow_controller.dart';
+import 'package:taskalert_app/core/features/workflow/data/repositories/workflow_repository.dart';
+import 'package:taskalert_app/core/features/workflow/data/repositories/workflow_repository_impl.dart';
 import 'package:taskalert_app/core/network/dio_http_service.dart';
 import 'package:taskalert_app/core/network/http_service.dart';
 
@@ -132,4 +135,10 @@ Future<void> init() async {
     () => SubTaskRepositoryImpl(sl<HttpService>()),
   );
   sl.registerFactory(() => SubTaskController(sl<SubTaskRepository>()));
+
+  // 🔀 Workflow Feature Layers
+  sl.registerLazySingleton<WorkflowRepository>(
+    () => WorkflowRepositoryImpl(sl<HttpService>()),
+  );
+  sl.registerFactory(() => WorkflowController(sl<WorkflowRepository>()));
 }
