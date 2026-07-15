@@ -196,6 +196,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       _currentUserId!.isNotEmpty &&
       _assigneeIds.contains(_currentUserId);
 
+  // The person who created/assigned this task also needs to see the
+  // submitted proofs to review them — not just the assignee(s) — otherwise
+  // "Assigned by Me" tasks never show the Uploaded Proofs section at all.
+  bool get _isCreatedByMe =>
+      _currentUserId != null &&
+      _currentUserId!.isNotEmpty &&
+      taskController.selectedInstance?.createdBy?.id == _currentUserId;
+
   /// Whether this task type collects proof at all — reused for both the
   /// "Upload Proof" button and the "Uploaded Proofs" list below.
   bool get _proofAllowed =>
@@ -3609,9 +3617,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             ],
 
                             // 🔓 UPLOADED PROOFS LIST — only shown for tasks
-                            // that collect proof AND are assigned to the
-                            // current user (not just anyone viewing the task).
-                            if (_proofAllowed && _isAssignedToMe)
+                            // that collect proof AND (assigned to the
+                            // current user OR created/assigned by them) —
+                            // not just anyone viewing the task.
+                            if (_proofAllowed && (_isAssignedToMe || _isCreatedByMe))
                               _buildUploadedProofsSection(),
 
                             // 🔓 UNLOCKED SAVE BUTTON

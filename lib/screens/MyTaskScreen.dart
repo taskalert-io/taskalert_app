@@ -22,7 +22,7 @@ class TodoItem {
   final String? mainTaskId;
   final String image;
   final String title;
-  final String status; // Pending | In progress | Done
+  final String status; // Todo | In Progress | Done
   final String requestedBy;
   final String priority; // Low | High
   final String date;
@@ -315,7 +315,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
           } else if (taskStatus == 'inProgress') {
             taskStatus = 'In Progress';
           } else {
-            taskStatus = 'Pending';
+            taskStatus = 'Todo';
           }
 
           todoItems.add(
@@ -359,7 +359,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
         return Colors.green;
       case 'in progress':
         return Colors.orange;
-      case 'pending':
+      case 'todo':
       default:
         return Colors.red;
     }
@@ -387,7 +387,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
           return status == 'done';
         case 'todo':
         default:
-          return status == 'pending' || status.isEmpty;
+          return status == 'todo' || status.isEmpty;
       }
     }).toList();
   }
