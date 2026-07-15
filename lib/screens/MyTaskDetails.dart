@@ -15,6 +15,8 @@ import 'package:taskalert_app/core/features/employees/controllers/employee_contr
 import 'package:taskalert_app/core/features/employees/data/models/employee_model.dart';
 import 'package:taskalert_app/core/features/taskInstance/controllers/task_instance_controller.dart';
 import 'package:taskalert_app/core/features/taskInstance/data/models/task_instance_model.dart';
+import 'package:taskalert_app/core/features/tasks/data/models/task_model.dart'
+    show AttachmentModel;
 import 'package:taskalert_app/screens/panel_right_close_icon.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -1444,6 +1446,187 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       ),
     ),
   );
+
+  // ── Task attachments (original files attached to the task, from the
+  // server) — view-only, no upload/delete here. Omitted entirely (not even
+  // an empty-state placeholder) when there are none. ──────────────────────
+
+  Widget _buildAttachmentsSection() {
+    final attachments =
+        taskController.selectedInstance?.attachments ??
+        const <AttachmentModel>[];
+    if (attachments.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel('Attachments'),
+        _card(
+          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+          child: Column(
+            children: [
+              for (int i = 0; i < attachments.length; i++) ...[
+                if (i != 0) _divider(),
+                _attachmentFileRow(attachments[i]),
+              ],
+            ],
+          ),
+        ),
+        SizedBox(height: 16.h),
+      ],
+    );
+  }
+
+  Widget _attachmentFileRow(AttachmentModel attachment) {
+    final ext = attachment.fileType.toLowerCase();
+    final isImage = _viewableProofExts.contains(ext);
+    final thumbnailUrl = attachment.file?.thumbnailUrl;
+
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8.h),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6.r),
+            child: (isImage && thumbnailUrl != null && thumbnailUrl.isNotEmpty)
+                ? Image.network(
+                    thumbnailUrl,
+                    width: 36.w,
+                    height: 36.w,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _proofFileIcon(),
+                  )
+                : _proofFileIcon(),
+          ),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Text(
+              attachment.fileName.isNotEmpty
+                  ? attachment.fileName
+                  : (ext.isNotEmpty ? 'Attachment (.$ext)' : 'Attachment'),
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(
+                fontSize: 12.5.sp,
+                fontWeight: FontWeight.w500,
+                color: _accentColor,
+              ),
+            ),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: Icon(
+              Icons.visibility_outlined,
+              size: 18.r,
+              color: _primaryColor,
+            ),
+            onPressed: () => _viewAttachmentFile(attachment),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _viewAttachmentFile(AttachmentModel attachment) {
+    final url = attachment.file?.originalUrl ?? '';
+    final ext = attachment.fileType.toLowerCase();
+    final isImage = _viewableProofExts.contains(ext);
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.7),
+      builder: (dialogCtx) => Dialog(
+        backgroundColor: Colors.white,
+        insetPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 40.h),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14.r),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(14.w),
+          child: SingleChildScrollView(
+            // A tall/portrait image (or a small screen) can push this past
+            // the Dialog's fixed insetPadding height — scroll instead of
+            // overflowing.
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        attachment.fileName.isNotEmpty
+                            ? attachment.fileName
+                            : 'Attachment',
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w700,
+                          color: _primaryColor,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(dialogCtx),
+                      child: Icon(Icons.close, size: 20.r, color: _labelColor),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 12.h),
+                if (isImage && url.isNotEmpty)
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.65,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8.r),
+                      child: ZoomableImage(
+                        networkUrl: url,
+                        loaderColor: _primaryColor,
+                        errorBuilder: (_) => _previewFallback(),
+                      ),
+                    ),
+                  )
+                else
+                  _previewFallback(
+                    message: url.isEmpty
+                        ? 'This file is no longer available.'
+                        : 'Preview not available for this file type — tap Open to view it.',
+                  ),
+                if (!isImage && url.isNotEmpty) ...[
+                  SizedBox(height: 12.h),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final uri = Uri.tryParse(url);
+                        if (uri != null) {
+                          await launchUrl(
+                            uri,
+                            mode: LaunchMode.externalApplication,
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primaryColor,
+                      ),
+                      child: Text(
+                        'Open',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 13.sp,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   // ── Uploaded proofs list (already-submitted files, from the server) ──────
 
@@ -3262,6 +3445,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                     ),
                                   ),
                                   SizedBox(height: 16.h),
+
+                                  // 🔓 ATTACHMENTS — the task's own attached
+                                  // files; the widget itself renders nothing
+                                  // when there are none.
+                                  _buildAttachmentsSection(),
 
                                   // Action card (Priority Only)
                                   _sectionLabel('Action'),
