@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<!-- saved from url=(0253)https://58b61316-06a6-4097-99f8-fc03f5721640.frame.claudeusercontent.com/_f/1783938863-19fe/?__frame_t=N3S8uqSZ5w5J_cndWK4ufr8_.50635f5a-517e-4de7-8146-b488705f4898.e2c36dfa-28d4-4e81-a34b-fa225b567841.1783946726&__frame_v=manifest.21ba44c2bfde1499.json -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><!-- frame-runtime --><!--<base href="/_f/1783938863-19fe/">--><base href="."><script>window.__FRAME_PREAMBLE={"capabilities":{"downloads":"downloads.DUzXFHNF.js","mcp":"mcp.Djj5DQjZ.js","self":"self.DqF_PxOe.js"},"transforms":"_transforms.DYk1Ltlh.js"}</script><script>(function(){"use strict";const X="modulepreload",Y=function(e){return"/"+e},Z={},U=function(t,n,u){let o=Promise.resolve();function i(f){const a=new Event("vite:preloadError",{cancelable:!0});if(a.payload=f,window.dispatchEvent(a),!a.defaultPrevented)throw f}return o.then(f=>{for(const a of f||[])a.status==="rejected"&&i(a.reason);return t().catch(i)})},D=["light","dark","system"];function $(e){if(e==null||typeof e!="object")return!1;const t=e.__frame_init;return t!=null&&typeof t=="object"}function q(e){if(e==null||typeof e!="object")return!1;const t=e.__frame_theme;if(t==null||typeof t!="object")return!1;const n=t.theme;return typeof n=="string"&&D.includes(n)}function M(e){if(window===top||e.type==="auxclick"&&e.button!==1)return;const t=e.composedPath?e.composedPath():[e.target];let n=null;for(let f=0;f<t.length;f++){const a=t[f];if(a&&a.matches&&a.matches("a[href],area[href]")){n=a;break}}if(!n&&e.target&&e.target.closest&&(n=e.target.closest("a[href],area[href]")),!n)return;const u=n.getAttribute("href");if(!u)return;let o,i;try{o=new URL(u,document.baseURI),i=new URL(document.baseURI).origin}catch{return}(o.protocol==="http:"||o.protocol==="https:")&&o.origin!==i&&(e.preventDefault(),parent.postMessage({__frame_nav:!0,url:o.href},"*"))}const L={};function y(e){if(window===top)return;const t=Date.now();t-(L[e]||0)<500||(L[e]=t,parent.postMessage({__frame_engaged:!0,kind:e},"*"))}const F=2e3,T=["wheel","touchstart","touchmove","keydown","pointerdown"];let k=0;function B(e){e.isTrusted&&(k=Date.now())}function z(){addEventListener("click",M,!0),addEventListener("auxclick",M,!0)}function W(){for(let e=0;e<T.length;e++)addEventListener(T[e],B,{capture:!0,passive:!0});addEventListener("scroll",e=>{e.isTrusted&&Date.now()-k<F&&y("scroll")},{capture:!0,passive:!0}),addEventListener("pointermove",e=>{e.isTrusted&&y("pointer")},{capture:!0,passive:!0}),addEventListener("click",e=>{e.isTrusted&&y("click")},{capture:!0,passive:!0})}function x(e,t,n){const u=[...t.values()].filter(o=>o.targets.some(i=>i.startsWith(e+".")));return{wrap(o,i){const f=`${e}.${o}`,a=u.filter(s=>s.targets.includes(f));return a.length===0?(...s)=>{try{return i(...s)}catch(d){return Promise.reject(d)}}:(...s)=>{let d=s;for(const c of a){const l=c.module.parameters;if(l)try{d=l(d)}catch{return Promise.reject({code:"transform_error",id:c.id,scope:e,message:"parameters transform failed"})}}let m;try{m=i(...d)}catch(c){m=Promise.reject(c)}return m.then(c=>{for(let l=a.length-1;l>=0;l--){const h=a[l],p=h.module.returns;if(p)try{c=p(c)}catch{return n({id:h.id,scope:e,leg:"returns"}),c}}return c},c=>{for(let l=a.length-1;l>=0;l--){const h=a[l],p=h.module.throws;if(p)try{c=p(c)}catch{return n({id:h.id,scope:e,leg:"throws"}),Promise.reject(c)}}return Promise.reject(c)})}}}}function H(e,t,n,u=()=>{}){const o=new Set(e.changes??[]),i=new Map;for(const f of o){const a=t[f];a&&i.set(f,a)}return{contract:e.contract,changes:o,flags:new Set(e.flags??[]),capabilities:e.capabilities??{},transforms:i,shellOrigin:n.shellOrigin,mount:n.mount,pipe:f=>x(f,i,u)}}(function(){const e=Object.defineProperty,t=globalThis,n=["RTCPeerConnection","webkitRTCPeerConnection","RTCDataChannel","RTCIceCandidate","RTCSessionDescription","RTCRtpSender","RTCRtpReceiver"];let u=0;for(let o=0;o<n.length;o++){const i=n[o];try{e(t,i,{value:void 0,writable:!1,configurable:!1})}catch{try{delete t[i]}catch{}try{e(t,i,{value:void 0,writable:!1,configurable:!0})}catch{}}typeof t[i]=="function"&&u++}if(u&&window!==top)try{parent.postMessage({__frame_rtc_lockdown_failed:u},"*")}catch{}})();const K=1e4,G=Object.freeze([...window.__FRAME_PREAMBLE?.origins??["https://claude.ai","https://preview.claude.ai"]]);function J(e){for(const t of G)if(t.endsWith(":*"))try{const n=new URL(e);if(`${n.protocol}//${n.hostname}:*`===t)return!0}catch{}else if(e===t)return!0;return!1}const w=Object.freeze({...window.__FRAME_PREAMBLE?.capabilities??{}}),E=window.__FRAME_PREAMBLE?.transforms,C=/^[\w.-]+\.js$/,V=/^[a-z][a-z0-9_-]{0,63}$/;let A=null,g=null;function P(e,t,n){try{Object.defineProperty(e,t,{value:n,writable:!1,configurable:!1,enumerable:!0})}catch{try{Object.defineProperty(e,t,{value:n,writable:!1,configurable:!0,enumerable:!0})}catch{}}}let R=!1;function N(e){const t=document.documentElement;e==="light"||e==="dark"?(t.dataset.theme=e,t.style.colorScheme=e,R=!0):R&&(delete t.dataset.theme,t.style.colorScheme="",R=!1)}const _=new Map;function Q(e,t){const n=_.get(e);if(!n)return;Object.assign(n.impl,t),n.impl.__settled=()=>Promise.reject({code:"capability_removed",message:`${e}: method not in this runtime`});const u=n.queue;n.queue=[];for(const o of u){const i=t[o.method];i?i(...o.args).then(o.resolve,o.reject):o.reject({code:"capability_removed",message:`${e}.${o.method} is not in this runtime`})}}function O(e,t){const n=_.get(e);if(!n)return;n.impl.__settled=()=>Promise.reject(t);const u=n.queue;n.queue=[];for(const o of u)o.reject(t)}const j=Object.getOwnPropertyDescriptor(window,"claude");if(window!==top&&!(j&&j.writable===!1)){z(),W();const e=j?.value??{};P(window,"claude",e);const t=s=>{const d={impl:Object.create(null),queue:[]};_.set(s,d);const m=new Proxy(d.impl,{get:(c,l)=>{if(typeof l=="string"&&!(l==="then"||l==="toJSON"||l==="valueOf"))return l==="toString"?Object.prototype.toString:(...h)=>{const p=c[l]??c.__settled;return p?p(...h):new Promise((b,S)=>{d.queue.push({method:l,args:h,resolve:b,reject:S})})}},set:()=>!1});P(e,s,m)};for(const s of Object.keys(w)){if(e[s]!==void 0){P(e,s,e[s]);continue}t(s)}let n=null,u=null,o=0;const i=s=>{s.source!==parent||!J(s.origin)||$(s.data)&&(n=s.data.__frame_init,g=s.origin,removeEventListener("message",i),clearTimeout(o),u?.())};addEventListener("message",i),parent.postMessage({__frame_connect:!0},"*");const f=new Promise(s=>{u=s,o=setTimeout(()=>{removeEventListener("message",i),s()},K)}),a=document.readyState==="loading"?new Promise(s=>document.addEventListener("DOMContentLoaded",()=>s(),{once:!0})):Promise.resolve();f.then(async()=>{if(!n||!g){for(const r of _.keys())O(r,{code:"not_granted",message:"frame initialization did not arrive - capability unavailable"});return}N(n.theme);const s=g;addEventListener("message",r=>{r.source!==parent||r.origin!==s||q(r.data)&&N(r.data.__frame_theme.theme)});const d=r=>U(()=>import("/_runtime/"+r),void 0),m=Object.keys(n.capabilities??{});for(const r of m)Object.hasOwn(w,r)||V.test(r)&&e[r]===void 0&&(t(r),O(r,{code:"capability_disabled",message:"capability not in this runtime generation"}));const c=m.filter(r=>Object.hasOwn(w,r)).map(r=>[r,w[r]]).filter(r=>typeof r[1]=="string"&&C.test(r[1])),[l,...h]=await Promise.allSettled([E&&C.test(E)?d(E):Promise.resolve({}),...c.map(([,r])=>d(r))]),p=g;A=H(n,l.status==="fulfilled"&&l.value?.TRANSFORMS||{},{shellOrigin:p,mount:Q},r=>parent.postMessage({__frame_cap_telemetry:r},p));const b=r=>parent.postMessage({__frame_cap_telemetry:{kind:"cap-load-error",cap:r}},p),S=A;h.forEach((r,v)=>{const I=c[v][0];if(r.status!=="fulfilled"){b(I);return}try{r.value?.install?.(S)}catch{b(I)}});for(const[r,v]of _)v.queue.length===0&&Object.keys(v.impl).length>0||O(r,{code:m.includes(r)?"capability_disabled":"not_granted",message:"capability not available in this session"});await a,parent.postMessage({__frame_ready:!0},g)})}})();</script><!-- /frame-runtime --><meta name="viewport" content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style></head><body>
+<title>TaskAlert — Production Readiness Audit</title>
+<style>
+  :root{
+    --bg:#f5f6f4;
+    --surface:#ffffff;
+    --surface-2:#eef0ee;
+    --ink:#1b211d;
+    --ink-muted:#535d56;
+    --border:#dde1dc;
+    --accent:#1f5f56;
+    --accent-ink:#0f3c36;
+    --accent-soft:#e2ede9;
+    --critical:#a3271d;
+    --critical-soft:#fbe9e7;
+    --high:#9a5a10;
+    --high-soft:#faf0e0;
+    --medium:#7d6a12;
+    --medium-soft:#f7f3df;
+    --low:#2b6b48;
+    --low-soft:#e6f2ea;
+    --info:#3c5a72;
+    --info-soft:#e8eef3;
+    --code-bg:#eef1ee;
+    --shadow: 0 1px 2px rgba(20,30,25,.06), 0 6px 20px rgba(20,30,25,.05);
+  }
+  :root[data-theme="dark"]{
+    --bg:#10140f;
+    --surface:#171d17;
+    --surface-2:#1d241d;
+    --ink:#e7ece6;
+    --ink-muted:#a2ab9f;
+    --border:#2b332b;
+    --accent:#5fb8a8;
+    --accent-ink:#8fd2c4;
+    --accent-soft:#1a2d29;
+    --critical:#e3897c;
+    --critical-soft:#2e1917;
+    --high:#e0ab6b;
+    --high-soft:#2c2213;
+    --medium:#d7c56a;
+    --medium-soft:#2a2612;
+    --low:#87cba6;
+    --low-soft:#17281f;
+    --info:#8fb4cf;
+    --info-soft:#182631;
+    --code-bg:#1b211b;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#10140f;
+      --surface:#171d17;
+      --surface-2:#1d241d;
+      --ink:#e7ece6;
+      --ink-muted:#a2ab9f;
+      --border:#2b332b;
+      --accent:#5fb8a8;
+      --accent-ink:#8fd2c4;
+      --accent-soft:#1a2d29;
+      --critical:#e3897c;
+      --critical-soft:#2e1917;
+      --high:#e0ab6b;
+      --high-soft:#2c2213;
+      --medium:#d7c56a;
+      --medium-soft:#2a2612;
+      --low:#87cba6;
+      --low-soft:#17281f;
+      --info:#8fb4cf;
+      --info-soft:#182631;
+      --code-bg:#1b211b;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto;} }
+
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:16px;
+    line-height:1.6;
+  }
+
+  h1,h2,h3,h4{
+    font-family:Georgia,"Iowan Old Style","Palatino Linotype",Palatino,serif;
+    font-weight:600;
+    color:var(--ink);
+    text-wrap:balance;
+    letter-spacing:.2px;
+  }
+
+  .mono, code, .stat-num, .score-bar-label, .kv td.num{
+    font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",Menlo,monospace;
+    font-variant-numeric:tabular-nums;
+  }
+
+  a{color:var(--accent-ink);}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px 96px;}
+
+  /* ---------- Header ---------- */
+  header.hero{
+    border-bottom:1px solid var(--border);
+    background:
+      linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
+    padding:56px 0 28px;
+  }
+  .hero-inner{max-width:1180px;margin:0 auto;padding:0 24px;}
+  .eyebrow{
+    text-transform:uppercase;
+    letter-spacing:.12em;
+    font-size:.72rem;
+    color:var(--accent-ink);
+    font-weight:700;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .eyebrow::before{
+    content:"";
+    width:7px;height:7px;border-radius:50%;
+    background:var(--accent);
+    display:inline-block;
+  }
+  h1.title{
+    font-size:clamp(1.9rem, 3.2vw, 2.6rem);
+    margin:.5rem 0 .3rem;
+  }
+  .subtitle{
+    color:var(--ink-muted);
+    font-size:1.02rem;
+    max-width:70ch;
+    margin:0 0 22px;
+  }
+  .meta-row{
+    display:flex;flex-wrap:wrap;gap:8px 22px;
+    font-size:.86rem;color:var(--ink-muted);
+    border-top:1px solid var(--border);
+    padding-top:16px;
+  }
+  .meta-row b{color:var(--ink);font-weight:600;}
+
+  /* ---------- Score dashboard ---------- */
+  .scores{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:10px;
+    margin-top:26px;
+  }
+  @media (max-width:980px){ .scores{grid-template-columns:repeat(4,1fr);} }
+  @media (max-width:620px){ .scores{grid-template-columns:repeat(2,1fr);} }
+  .stat{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:14px 14px 12px;
+    box-shadow:var(--shadow);
+  }
+  .stat-label{
+    font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;
+    color:var(--ink-muted);font-weight:600;margin-bottom:8px;
+  }
+  .stat-num{font-size:1.5rem;font-weight:700;color:var(--ink);}
+  .stat-num small{font-size:.85rem;color:var(--ink-muted);font-weight:500;}
+  .score-bar{height:5px;border-radius:3px;background:var(--surface-2);margin-top:9px;overflow:hidden;}
+  .score-bar > span{display:block;height:100%;border-radius:3px;background:var(--accent);}
+  .score-bar.warn > span{background:var(--high);}
+  .score-bar.bad > span{background:var(--critical);}
+
+  /* ---------- Layout: TOC + content ---------- */
+  .layout{display:grid;grid-template-columns:230px 1fr;gap:44px;margin-top:40px;align-items:start;}
+  @media (max-width:900px){ .layout{grid-template-columns:1fr;} nav.toc{position:static;} }
+  nav.toc{
+    position:sticky;top:24px;
+    font-size:.86rem;
+    border-left:2px solid var(--border);
+    padding-left:16px;
+  }
+  nav.toc .toc-title{
+    text-transform:uppercase;letter-spacing:.08em;font-size:.68rem;
+    color:var(--ink-muted);font-weight:700;margin-bottom:10px;
+  }
+  nav.toc a{
+    display:block;color:var(--ink-muted);text-decoration:none;padding:4px 0;
+    border-left:2px solid transparent;margin-left:-18px;padding-left:16px;
+  }
+  nav.toc a:hover{color:var(--ink);}
+
+  main{min-width:0;}
+
+  section.sec{margin-bottom:52px;scroll-margin-top:20px;}
+  section.sec > h2{
+    font-size:1.5rem;
+    display:flex;align-items:baseline;gap:12px;
+    border-bottom:1px solid var(--border);
+    padding-bottom:10px;margin-bottom:18px;
+  }
+  section.sec > h2 .num{
+    font-family:ui-monospace,monospace;font-size:.85rem;color:var(--accent-ink);
+    background:var(--accent-soft);padding:2px 8px;border-radius:5px;font-weight:700;
+  }
+  h3{font-size:1.12rem;margin:26px 0 10px;}
+  p{margin:0 0 14px;max-width:76ch;}
+  ul,ol{margin:0 0 14px;padding-left:1.3em;}
+  li{margin-bottom:6px;max-width:74ch;}
+
+  .lede{
+    font-size:1.03rem;color:var(--ink-muted);
+    border-left:3px solid var(--accent);
+    padding:2px 0 2px 16px;margin:0 0 22px;max-width:72ch;
+  }
+
+  /* ---------- Finding cards ---------- */
+  .finding{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-left:4px solid var(--info);
+    border-radius:8px;
+    padding:16px 18px 14px;
+    margin-bottom:16px;
+    box-shadow:var(--shadow);
+  }
+  .finding.crit{border-left-color:var(--critical);}
+  .finding.high{border-left-color:var(--high);}
+  .finding.med{border-left-color:var(--medium);}
+  .finding.low{border-left-color:var(--low);}
+
+  .f-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px;}
+  .f-title{font-weight:700;font-size:1rem;color:var(--ink);}
+  .chip{
+    font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+    padding:3px 9px;border-radius:99px;white-space:nowrap;
+  }
+  .chip.crit{background:var(--critical-soft);color:var(--critical);}
+  .chip.high{background:var(--high-soft);color:var(--high);}
+  .chip.med{background:var(--medium-soft);color:var(--medium);}
+  .chip.low{background:var(--low-soft);color:var(--low);}
+  .chip.info{background:var(--info-soft);color:var(--info);}
+
+  .f-file{font-size:.8rem;color:var(--ink-muted);margin-bottom:10px;}
+  .f-file code{background:var(--code-bg);padding:1px 6px;border-radius:4px;font-size:.8rem;}
+
+  .f-grid{display:grid;grid-template-columns:1fr;gap:2px 18px;font-size:.93rem;}
+  .f-grid dt{font-weight:700;color:var(--ink-muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;margin-top:10px;}
+  .f-grid dd{margin:2px 0 0;}
+
+  pre{
+    background:var(--code-bg);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:12px 14px;
+    overflow-x:auto;
+    font-size:.82rem;
+    line-height:1.55;
+    margin:8px 0 0;
+  }
+  pre code{background:none;padding:0;}
+
+  /* ---------- Tables ---------- */
+  .tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:8px;margin:0 0 20px;}
+  table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:560px;}
+  thead th{
+    text-align:left;background:var(--surface-2);color:var(--ink-muted);
+    font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;
+    padding:9px 12px;border-bottom:1px solid var(--border);white-space:nowrap;
+  }
+  td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:var(--surface-2);}
+
+  /* ---------- Checklist ---------- */
+  .checklist{list-style:none;padding:0;margin:0;}
+  .checklist li{
+    display:grid;grid-template-columns:28px 1fr;gap:12px;
+    padding:14px 0;border-bottom:1px solid var(--border);max-width:none;
+  }
+  .checklist li:last-child{border-bottom:none;}
+  .checklist .box{
+    width:22px;height:22px;border-radius:6px;border:2px solid var(--critical);
+    margin-top:2px;
+  }
+  .checklist.high .box{border-color:var(--high);}
+  .checklist b.ttl{display:block;font-size:.98rem;margin-bottom:3px;}
+  .checklist .desc{color:var(--ink-muted);font-size:.9rem;}
+
+  .pill-row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 22px;}
+  .pill{font-size:.78rem;padding:4px 11px;border-radius:99px;background:var(--surface-2);color:var(--ink-muted);border:1px solid var(--border);}
+
+  footer{
+    margin-top:60px;padding-top:22px;border-top:1px solid var(--border);
+    color:var(--ink-muted);font-size:.82rem;
+  }
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media (max-width:700px){ .two-col{grid-template-columns:1fr;} }
+</style>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="eyebrow">Production Readiness Audit</div>
+    <h1 class="title">TaskAlert — Flutter Application Audit</h1>
+    <p class="subtitle">Architecture, security, performance, and SaaS-readiness review of the <span class="mono">taskalert_app</span> codebase (76 Dart files, ~35,600 lines under <span class="mono">lib/</span>), assessed against a thousands-of-paying-users production bar.</p>
+    <div class="meta-row">
+      <span><b>Reviewed</b> 2026-07-13</span>
+      <span><b>Branch</b> ui</span>
+      <span><b>Package</b> com.hih7.taskalert_app · v1.0.0+1</span>
+      <span><b>Backend</b> task-alert-backend.onrender.com/api/v1</span>
+      <span><b>Stack</b> Dio + GetIt + ChangeNotifier, no Firebase/local DB</span>
+    </div>
+
+    <div class="scores">
+      <div class="stat"><div class="stat-label">Architecture</div><div class="stat-num">6<small>/10</small></div><div class="score-bar warn"><span style="width:60%"></span></div></div>
+      <div class="stat"><div class="stat-label">Security</div><div class="stat-num">4<small>/10</small></div><div class="score-bar bad"><span style="width:40%"></span></div></div>
+      <div class="stat"><div class="stat-label">Performance</div><div class="stat-num">5<small>/10</small></div><div class="score-bar warn"><span style="width:50%"></span></div></div>
+      <div class="stat"><div class="stat-label">Code quality</div><div class="stat-num">5<small>/10</small></div><div class="score-bar warn"><span style="width:50%"></span></div></div>
+      <div class="stat"><div class="stat-label">Maintainability</div><div class="stat-num">5<small>/10</small></div><div class="score-bar warn"><span style="width:50%"></span></div></div>
+      <div class="stat"><div class="stat-label">Prod readiness</div><div class="stat-num">3<small>/10</small></div><div class="score-bar bad"><span style="width:30%"></span></div></div>
+      <div class="stat"><div class="stat-label">SaaS readiness</div><div class="stat-num">4<small>/10</small></div><div class="score-bar bad"><span style="width:40%"></span></div></div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+<div class="layout">
+
+<nav class="toc">
+  <div class="toc-title">Contents</div>
+  <a href="https://58b61316-06a6-4097-99f8-fc03f5721640.frame.claudeusercontent.com/_f/1783938863-19fe/#summary">Executive summary</a>
+  <a href="https://58b61316-06a6-4097-99f8-fc03f5721640.frame.claudeusercontent.com/_f/1783938863-19fe/#architecture">1 · Architecture</a>
+  <a href="https://58b61316-06a6-4097-99f8-fc03f5721640.frame.claudeusercontent.com/_f/1783938863-19fe/#security">2 · Security audit</a>
+  <a href="https://58b61316-06a6-4097-99f8-fc03f5721640.frame.claudeusercontent.com/_f/1783938863-19fe/#performance">3 · Performance</a>
+  <a href="https://58b61316-06a6-4097-99f8-fc03f5721640.frame.claudeusercontent.com/_f/1783938863-19fe/#bestpractices">4 · Flutter best practices</a>
+  <a href="https://58b61316-06a6-4097-99f8-fc03f5721640.frame.claudeusercontent.com/_f/1783938863-19fe/#state">5 · State management</a>
+  <a href="https://58b61316-06a6-4097-99f8-fc03f5721640.frame.claudeusercontent.com/_f/1783938863-19fe/#api">6 · API layer</a>
+  <a href="https://58b61316-06a6-4097-99f8-fc03f5721640.frame.claudeusercontent.com/_f/1783938863-19fe/#database">7 · Database</a>
+  <a href="https://58b61316-06a6-4097-99f8-fc03f5721640.frame.claudeusercontent.com/_f/1783938863-19fe/#auth">8 · Authentication</a>
+  <a href="https://58b61316-06a6-4097-99f8-fc03f5721640.frame.claudeusercontent.com/_f/1783938863-19fe/#uiux">9 · UI / UX</a>
+  <a href="https://58b61316-06a6-4097-99f8-fc03f5721640.frame.claudeusercontent.com/_f/1783938863-19fe/#prod">10 · Production readiness</a>
+  <a href="https://58b61316-06a6-4097-99f8-fc03f5721640.frame.claudeusercontent.com/_f/1783938863-19fe/#deps">11 · Dependencies</a>
+  <a href="https://58b61316-06a6-4097-99f8-fc03f5721640.frame.claudeusercontent.com/_f/1783938863-19fe/#quality">12 · Code quality</a>
+  <a href="https://58b61316-06a6-4097-99f8-fc03f5721640.frame.claudeusercontent.com/_f/1783938863-19fe/#testing">13 · Testing</a>
+  <a href="https://58b61316-06a6-4097-99f8-fc03f5721640.frame.claudeusercontent.com/_f/1783938863-19fe/#saas">14 · SaaS readiness</a>
+  <a href="https://58b61316-06a6-4097-99f8-fc03f5721640.frame.claudeusercontent.com/_f/1783938863-19fe/#checklist">15 · Must fix before production</a>
+</nav>
+
+<main>
+
+<section class="sec" id="summary">
+  <h2><span class="num">00</span> Executive summary</h2>
+  <p class="lede">TaskAlert is a genuinely well-structured feature-sliced app for its size — repository/controller separation, a real dependency injection container, and a competent token-refresh interceptor are not things I see in every early-stage Flutter codebase. The gap between "this is a solid weekend-project skeleton" and "this can carry paying customers' data" is one authentication design flaw, an unset production build pipeline, and a handful of files that have grown past the point any one engineer can safely change them.</p>
+  <p>Two findings are release-blocking on their own: the OTP verification flow is architected so the API can (and during testing, does) hand the one-time code straight back to the client, which the client then displays — this defeats the purpose of two-factor sign-in. And logout only clears local storage; the refresh token is never revoked server-side, so a stolen device or a leaked token stays valid indefinitely after the user "logs out." Neither requires a rewrite to fix — see the <a href="https://58b61316-06a6-4097-99f8-fc03f5721640.frame.claudeusercontent.com/_f/1783938863-19fe/#checklist">checklist</a> — but both must close before this reaches a production audience of paying customers.</p>
+  <p>Beyond those two, the codebase's biggest structural risk is size concentration: <span class="mono">CreateRepetitiveScreen.dart</span> is 5,649 lines, four other screens exceed 1,700 lines, and none of them have a single test covering them. That combination — huge stateful widgets, zero test coverage, no crash reporting — means regressions will be caught by users, not CI.</p>
+</section>
+
+<section class="sec" id="architecture">
+  <h2><span class="num">01</span> Project architecture</h2>
+  <p>The <span class="mono">lib/core/features/&lt;feature&gt;/{controllers,data/{models,repositories}}</span> slice is applied consistently across nine features (auth, departments, employees, jobRoles, location, notifications, organization, taskInstance, tasks), each wired through <span class="mono">GetIt</span> in <a href="https://58b61316-06a6-4097-99f8-fc03f5721640.frame.claudeusercontent.com/_f/1783938863-19fe/#" class="mono">injection_container.dart</a>. Repository interfaces are separated from their <span class="mono">*Impl</span> classes, which is exactly the seam you want for swapping the HTTP client or writing repository-level tests later. This part of the codebase would pass review at most shops.</p>
+  <p>The screens layer doesn't follow the same discipline. <span class="mono">lib/screens/</span> holds 30 files with no further grouping, several of which are both "screen" and "everything that screen needs" — dialogs, form validators, dropdown builders, and API-calling logic all live in the same file as the widget tree.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>File</th><th>Lines</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">CreateRepetitiveScreen.dart</td><td class="mono num">5,649</td><td>Single-screen form + validation + dialogs + API glue</td></tr>
+        <tr><td class="mono">CreateOneTimeScreen.dart</td><td class="mono num">3,339</td><td>~70% duplicate of the file above</td></tr>
+        <tr><td class="mono">EmployeesScreen.dart</td><td class="mono num">3,327</td><td>List + 3 nested create dialogs (location/job role/department) inline</td></tr>
+        <tr><td class="mono">MyTaskDetails.dart</td><td class="mono num">3,098</td><td>Detail view + edit forms + proof upload + dialogs</td></tr>
+        <tr><td class="mono">MyTaskScreen.dart</td><td class="mono num">2,098</td><td>Tab counts + list + filters</td></tr>
+        <tr><td class="mono">ProfileSetting.dart / HomeScreen.dart / LocationListScreen.dart / SignUpScreen.dart / OrganizationListScreen.dart</td><td class="mono num">1,644 – 1,798</td><td>Same pattern at smaller scale</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Duplication</h3>
+  <p><span class="mono">CreateOneTimeScreen.dart</span> and <span class="mono">CreateRepetitiveScreen.dart</span> share the vast majority of their form-field, dropdown, and validation code — the recurring-schedule fields are the real delta. The dialog-opening helpers (<span class="mono">openLocationFormDialog</span>, <span class="mono">openDepartmentFormDialog</span>) are copy-pasted as free functions and re-imported into five different screens rather than extracted once into <span class="mono">lib/components/</span>. <span class="mono">AuthRepositoryImpl</span> repeats the same ~15-line "persist user session to secure storage" block three times (sign-up OTP, sign-in OTP, get-profile) with minor key differences — a single <span class="mono">_persistSession(UserModel)</span> helper would remove ~40 lines and the risk of the three copies drifting.</p>
+
+  <h3>Dead code</h3>
+  <p><span class="mono">lib/extras/MoreScreen.dart</span> and <span class="mono">lib/extras/NotificationScreen.dart</span> are 16-line stub leftovers, superseded by the real implementations in <span class="mono">lib/screens/</span> — they aren't imported anywhere and should be deleted. Commented-out <span class="mono">print(...)</span> lines are scattered through <span class="mono">CreateRepetitiveScreen.dart</span>, <span class="mono">login_controller.dart</span>, <span class="mono">task_controller.dart</span>, and <span class="mono">MyTaskScreen.dart</span> — harmless but noise that should be deleted, not commented.</p>
+
+  <h3>Recommended structure change</h3>
+  <p>Split each of the five largest screens into: a thin screen widget (scaffold + tabs/routing only), a <span class="mono">widgets/</span> subfolder for the section widgets currently inlined as build methods, and move every dialog builder into <span class="mono">lib/components/</span> as a proper reusable widget rather than a free function taking a <span class="mono">BuildContext</span>.</p>
+</section>
+
+<section class="sec" id="security">
+  <h2><span class="num">02</span> Security audit</h2>
+
+  <div class="finding crit">
+    <div class="f-head"><span class="f-title">OTP is returned by the API and rendered in the sign-in UI</span><span class="chip crit">Critical</span></div>
+    <div class="f-file"><code>lib/core/features/auth/controllers/login_controller.dart:55-58, 130-135</code></div>
+    <dl class="f-grid">
+      <dt>Problem</dt><dd>After requesting a sign-in OTP, the controller reads <span class="mono">apiResponse.data['otp']</span> unconditionally and, if present, appends it to the success message shown to the user: <span class="mono">"Your OTP is: $_otp"</span>. This is explicitly commented as a dev/test convenience ("Dev/test backends echo the generated OTP back in the response so the UI can auto-fill it"), but there is no build-flavor or environment gate around it in the client — it will render the code for <em>any</em> backend response that includes that field.</dd>
+      <dt>Impact</dt><dd>Two-factor/OTP verification exists specifically so that possession of a phone is required to sign in. If this ships as-is, and the field is ever present in a production response (misconfiguration, staging pointed at prod, a debug flag left on server-side), anyone who can trigger a sign-in request for a victim's phone number sees their OTP on-screen with no SMS access needed — a full authentication bypass.</dd>
+      <dt>Fix</dt><dd>Delete this behavior from the client entirely rather than gating it. OTP delivery is the backend's job (SMS/email); the client should never read or display an OTP value from a JSON body. If a dev convenience is truly needed, gate it behind <span class="mono">kDebugMode &amp;&amp; !kReleaseMode</span> in the client <em>and</em> remove the field from the API response outside non-prod environments.</dd>
+    </dl>
+    <pre><code>// login_controller.dart — remove this branch outright
+final result = await _authRepository.signIn(phoneNumber: phoneNumber);
+if (result is Success) {
+  _currentPhoneNumber = phoneNumber;
+  _successMessage = 'OTP sent successfully to $phoneNumber';   // no OTP value, ever
+  notifyListeners();
+  return true;
+}</code></pre>
+  </div>
+
+  <div class="finding crit">
+    <div class="f-head"><span class="f-title">Logout never revokes the session server-side</span><span class="chip crit">Critical</span></div>
+    <div class="f-file"><code>lib/core/features/auth/data/repositories/auth_repository_impl.dart:628-631</code></div>
+    <dl class="f-grid">
+      <dt>Problem</dt><dd><span class="mono">logout()</span> is <span class="mono">await _secureStorage.deleteAll();</span> — nothing is sent to the backend. The refresh token (and the access token, until it naturally expires) remains valid on the server.</dd>
+      <dt>Impact</dt><dd>A device that's lost, stolen, or had its storage extracted before "logout" was pressed keeps a live, usable refresh token forever — logout provides zero security benefit against token theft, only a local UX reset. For a SaaS product handling employee/organization data, this is the difference between "we can revoke a compromised session" and "we can't."</dd>
+      <dt>Fix</dt><dd>Call a backend revoke/logout endpoint with the refresh token before clearing local storage, and clear local storage even if that call fails.</dd>
+    </dl>
+    <pre><code>@override
+Future&lt;void&gt; logout() async {
+  final refreshToken = await _secureStorage.read(key: 'refresh_token');
+  try {
+    if (refreshToken != null &amp;&amp; refreshToken.isNotEmpty) {
+      await _httpService.post('/auth/logout', body: {'refreshToken': refreshToken});
+    }
+  } catch (_) {
+    // best-effort — still wipe local state below
+  } finally {
+    await _secureStorage.deleteAll();
+  }
+}</code></pre>
+  </div>
+
+  <div class="finding high">
+    <div class="f-head"><span class="f-title">No certificate pinning; API base URL hardcoded with no environment separation</span><span class="chip high">High</span></div>
+    <div class="f-file"><code>lib/core/network/dio_http_service.dart:13</code></div>
+    <dl class="f-grid">
+      <dt>Problem</dt><dd><span class="mono">baseUrl: 'https://task-alert-backend.onrender.com/api/v1'</span> is a literal in the service constructor — there is no dev/staging/prod flavor mechanism (no <span class="mono">--dart-define</span>, no flavor-specific entry points), and Dio uses the platform trust store with no pinning.</dd>
+      <dt>Impact</dt><dd>Every build — including anything a developer sideloads — talks to the single production API, so there's no safe way to test against staging without editing source. Without pinning, a device with a malicious root CA installed (common on compromised or MDM'd corporate devices) can MITM every request, including the auth token exchange.</dd>
+      <dt>Fix</dt><dd>Move the base URL to <span class="mono">String.fromEnvironment('API_BASE_URL', defaultValue: ...)</span> fed by <span class="mono">--dart-define-from-file</span> per flavor, and add certificate pinning via Dio's <span class="mono">HttpClientAdapter</span> (e.g. <span class="mono">dio_certificate_pinning</span> or a custom <span class="mono">SecurityContext</span>) for the production flavor at minimum.</dd>
+    </dl>
+  </div>
+
+  <div class="finding high">
+    <div class="f-head"><span class="f-title">Release build ships without code obfuscation or shrinking configured</span><span class="chip high">High</span></div>
+    <div class="f-file"><code>android/app/build.gradle.kts:54-65</code></div>
+    <dl class="f-grid">
+      <dt>Problem</dt><dd>The <span class="mono">release</span> build type only sets a signing config — there's no <span class="mono">isMinifyEnabled</span>/<span class="mono">isShrinkResources</span>, and the Flutter build isn't invoked with <span class="mono">--obfuscate --split-debug-info</span> anywhere in the repo.</dd>
+      <dt>Impact</dt><dd>Shipped APK/AAB is trivially decompilable — class names, the API base URL, storage key names, and business logic are all readable with a few minutes of jadx. Combined with no cert pinning, this materially lowers the effort needed to reverse-engineer and attack the API.</dd>
+      <dt>Fix</dt><dd>Enable R8 in the release build type and build with obfuscation: </dd>
+    </dl>
+    <pre><code>// android/app/build.gradle.kts
+buildTypes {
+    release {
+        isMinifyEnabled = true
+        isShrinkResources = true
+        proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        signingConfig = if (keystorePropertiesFile.exists()) signingConfigs.getByName("release")
+                        else signingConfigs.getByName("debug")
+    }
+}
+
+// build command
+flutter build appbundle --obfuscate --split-debug-info=build/symbols</code></pre>
+  </div>
+
+  <div class="finding med">
+    <div class="f-head"><span class="f-title">A transient refresh failure wipes the entire local session, not just an expired one</span><span class="chip med">Medium</span></div>
+    <div class="f-file"><code>lib/core/network/auth_interceptor.dart:53-61</code></div>
+    <dl class="f-grid">
+      <dt>Problem</dt><dd><span class="mono">_doRefresh()</span> catches every error (network timeout, DNS failure, 500 from the backend) and returns <span class="mono">null</span> the same way it would for a genuinely expired/invalid refresh token. The caller then runs <span class="mono">_secureStorage.deleteAll()</span> unconditionally when <span class="mono">newToken == null</span>.</dd>
+      <dt>Impact</dt><dd>A user on a flaky connection whose access token happens to expire mid-request gets fully logged out and loses all cached profile/org state, indistinguishable from an actually-revoked session. At scale this shows up as "random logouts" support tickets.</dd>
+      <dt>Fix</dt><dd>Only wipe storage when the refresh call itself returns a definitive 401/403 from the auth endpoint; on network/5xx errors during refresh, surface a retryable error and leave stored tokens intact.</dd>
+    </dl>
+  </div>
+
+  <div class="finding med">
+    <div class="f-head"><span class="f-title">User session persisted as ~20 discrete secure-storage keys instead of one signed session object</span><span class="chip med">Medium</span></div>
+    <div class="f-file"><code>lib/core/features/auth/data/repositories/auth_repository_impl.dart</code></div>
+    <dl class="f-grid">
+      <dt>Problem</dt><dd>Each of sign-up, sign-in, and get-profile writes 12-16 separate <span class="mono">secureStorage.write</span> calls (user id, email, phone, DOB, role, org id/name, avatar URLs, task permission…). <span class="mono">flutter_secure_storage</span> encrypts each value at rest, so this isn't a raw-plaintext exposure, but it means the three call sites can silently drift (get-profile already omits keys that sign-in writes, like <span class="mono">user_gender</span>/<span class="mono">user_active_organization</span>), and a partial write (app killed mid-sequence) leaves an inconsistent session with no way to detect it.</dd>
+      <dt>Impact</dt><dd>Stale/mismatched local user state (e.g. showing an old organization name after switching orgs) and a larger attack surface of individually-readable keys for anything with debugger/backup access to the keystore-backed store.</dd>
+      <dt>Fix</dt><dd>Serialize the full <span class="mono">UserModel</span>/<span class="mono">ProfileModel</span> as JSON under a single <span class="mono">user_session</span> key, write it atomically in one <span class="mono">_persistSession()</span> helper called from all three sites, and read it back through one deserializer.</dd>
+    </dl>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Severity</th><th>Finding</th><th>Location</th></tr></thead>
+      <tbody>
+        <tr><td><span class="chip med">Medium</span></td><td><span class="mono">android:allowBackup</span> not explicitly disabled — default <span class="mono">true</span> lets Android back up app data (incl. any non-Keystore prefs) to Google Drive on some OEM/Android versions.</td><td class="mono">AndroidManifest.xml</td></tr>
+        <tr><td><span class="chip low">Low</span></td><td>Raw API payload logged via <span class="mono">debugPrint</span> with an explicit <span class="mono">// remove in production</span> left in place — could leak task/user data to device logs (readable by other apps with <span class="mono">READ_LOGS</span> on rooted/old devices).</td><td class="mono">MyTaskDetails.dart:378</td></tr>
+        <tr><td><span class="chip low">Low</span></td><td>No root/jailbreak detection, no <span class="mono">FLAG_SECURE</span>/screenshot-prevention on screens that render task proof photos, employee PII, or salary-adjacent HR fields.</td><td>App-wide</td></tr>
+        <tr><td><span class="chip low">Low</span></td><td>No client-side input length/charset caps on phone/email/name fields beyond basic presence checks visible in the sampled screens — rely entirely on backend validation.</td><td>Sign-up/Sign-in forms</td></tr>
+        <tr><td><span class="chip info">Info</span></td><td>No Firebase, no local SQL/NoSQL database, and <span class="mono">.gitignore</span> already excludes <span class="mono">key.properties</span>/<span class="mono">.env</span> — smaller attack surface than most apps this size, and secrets hygiene at the repo level is already correct.</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="sec" id="performance">
+  <h2><span class="num">03</span> Performance audit</h2>
+
+  <div class="finding high">
+    <div class="f-head"><span class="f-title"><span class="mono">ListView.separated(shrinkWrap: true)</span> used for every list instead of lazy <span class="mono">ListView.builder</span></span><span class="chip high">High</span></div>
+    <div class="f-file"><code>EmployeesScreen.dart (×4), LocationListScreen.dart, DepartmentListScreen.dart, OrganizationListScreen.dart</code></div>
+    <dl class="f-grid">
+      <dt>Problem</dt><dd><span class="mono">shrinkWrap: true</span> forces Flutter to lay out and measure every item up front instead of building lazily as items scroll into view — it's the one flag that defeats the entire point of using a <span class="mono">ListView</span> over a <span class="mono">Column</span>. It's used consistently across the list-heavy management screens (employees, locations, departments, organizations), typically because the list is nested inside another scrollable.</dd>
+      <dt>Impact</dt><dd>Fine at 20-30 rows in a demo org. An organization with hundreds of employees — the exact customer this app is selling to — will jank on first paint of that screen and hold every row's <span class="mono">RenderObject</span> in memory at once.</dd>
+      <dt>Fix</dt><dd>Restructure so the list owns the scroll axis directly (<span class="mono">CustomScrollView</span> + <span class="mono">SliverList</span> if it must coexist with a header/filter bar) rather than nesting a shrink-wrapped list inside a scrollable parent.</dd>
+    </dl>
+  </div>
+
+  <div class="finding med">
+    <div class="f-head"><span class="f-title">God-widgets make targeted rebuilds impossible</span><span class="chip med">Medium</span></div>
+    <dl class="f-grid">
+      <dt>Problem</dt><dd>With <span class="mono">CreateRepetitiveScreen.dart</span> at 5,649 lines as effectively one build method plus helpers, any <span class="mono">setState</span> call — e.g. toggling one checkbox — re-runs the build for the entire form, dropdowns, date pickers and all.</dd>
+      <dt>Impact</dt><dd>Frame-time cost scales with the whole screen's widget count on every keystroke/toggle, not with what actually changed — the classic cause of typing jank in large forms.</dd>
+      <dt>Fix</dt><dd>Extract independent sections (schedule picker, proof-type selector, reporting-list picker) into their own <span class="mono">StatefulWidget</span>s with their own local state, so a change in one doesn't rebuild the others.</dd>
+    </dl>
+  </div>
+
+  <p><b>Const usage</b> is present but inconsistent — spot checks show <span class="mono">HomeScreen.dart</span> and <span class="mono">CreateRepetitiveScreen.dart</span> already use <span class="mono">const</span> in hundreds of places, so this is a matter of running <span class="mono">flutter analyze</span> with <span class="mono">prefer_const_constructors</span> enabled and fixing stragglers rather than a systemic gap.</p>
+  <p><b>Images</b> go through <span class="mono">cached_network_image</span>, which is the right call for avatar/proof-photo thumbnails and already handles disk caching — no action needed there beyond confirming a <span class="mono">memCacheWidth</span>/<span class="mono">cacheWidth</span> is set for large proof photos so full-resolution images aren't decoded just to render as thumbnails.</p>
+  <p><b>Isolates</b> are not used anywhere, which is fine today — nothing in the sampled code (JSON decoding of list responses, image handling) is heavy enough to justify it yet. Revisit if task-instance list responses grow past a few hundred KB.</p>
+</section>
+
+<section class="sec" id="bestpractices">
+  <h2><span class="num">04</span> Flutter best practices</h2>
+  <p>Disposal hygiene, where checked, is correct: <span class="mono">SignInScreen</span> and <span class="mono">OtpVerificationScreen</span> both pair <span class="mono">addListener</span>/<span class="mono">removeListener</span> on their <span class="mono">ChangeNotifier</span> controllers and dispose their <span class="mono">TextEditingController</span>s and <span class="mono">FocusNode</span>s correctly. 29 <span class="mono">dispose()</span> overrides exist across 24 files against 20 files that hold a disposable controller — worth a full pass specifically on the five largest screens, since a missed <span class="mono">removeListener</span> on a GetIt-singleton controller (which outlives the screen) is a real, easy-to-introduce leak in files that size.</p>
+
+  <div class="finding med">
+    <div class="f-head"><span class="f-title"><span class="mono">di.init()</span> is not awaited, and runs before <span class="mono">WidgetsFlutterBinding.ensureInitialized()</span></span><span class="chip med">Medium</span></div>
+    <div class="f-file"><code>lib/main.dart:13-17</code></div>
+    <dl class="f-grid">
+      <dt>Problem</dt><dd><span class="mono">void main() { di.init(); WidgetsFlutterBinding.ensureInitialized(); runApp(...); }</span> — the binding is initialized <em>after</em> DI setup runs, and the async <span class="mono">init()</span> call isn't awaited at all.</dd>
+      <dt>Impact</dt><dd>Harmless today only because <span class="mono">init()</span> happens to contain no <span class="mono">await</span> internally, so it completes synchronously. That's an accident of the current implementation, not a guarantee — the moment anyone adds an awaited call inside <span class="mono">init()</span> (a remote-config fetch, a plugin that needs the binding), this silently breaks in a way that's hard to reproduce.</dd>
+      <dt>Fix</dt><dd>
+      </dd>
+    </dl>
+    <pre><code>Future&lt;void&gt; main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await di.init();
+  runApp(const MyApp());
+}</code></pre>
+  </div>
+
+  <p><b>Error handling</b> is centralized well through <span class="mono">NetworkException.fromDioError</span>, which maps Dio's exception types to a small, user-safe <span class="mono">NetworkErrorType</span> enum and prefers the backend's own message when present — this is a genuinely good pattern and every repository method routes through it consistently.</p>
+  <p><b>Null safety</b> is enabled project-wide (SDK <span class="mono">^3.8.0</span>) with no <span class="mono">// ignore: </span> escape hatches spotted in the sampled files.</p>
+</section>
+
+<section class="sec" id="state">
+  <h2><span class="num">05</span> State management</h2>
+  <p>There's no Provider/Riverpod/Bloc/GetX dependency in <span class="mono">pubspec.yaml</span> — state management is hand-rolled: every feature controller <span class="mono">extends ChangeNotifier</span>, is registered in <span class="mono">GetIt</span> (singletons for auth-adjacent controllers, factories for the CRUD-feature controllers), and screens call <span class="mono">sl&lt;XController&gt;()</span> then manually <span class="mono">addListener</span>/<span class="mono">setState</span>. It works, and it's honest about what it is — but it puts the correctness burden (remembering to remove the listener, not over-notifying) entirely on each screen author rather than a framework enforcing it.</p>
+  <p>The DI split between <span class="mono">registerLazySingleton</span> (repositories, auth-related controllers) and <span class="mono">registerFactory</span> (CRUD feature controllers) is a reasonable lifecycle choice — factories mean each screen gets a fresh controller instance rather than sharing mutated list/filter state with a previous screen instance.</p>
+  <p><b>Recommendation:</b> not urgent enough to block release, but worth budgeting for once the team grows past ~2-3 engineers: standardizing on Riverpod (keeps the existing repository/controller shapes, just replaces GetIt+ChangeNotifier's manual wiring with compile-time-safe providers and automatic disposal) removes an entire class of "forgot to remove a listener" bugs that will otherwise scale with headcount.</p>
+</section>
+
+<section class="sec" id="api">
+  <h2><span class="num">06</span> API layer</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Aspect</th><th>Status</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td>Timeouts</td><td>✅</td><td>15s connect/receive set globally in <span class="mono">DioHttpService</span></td></tr>
+        <tr><td>Token refresh</td><td>✅</td><td>Well-implemented single-flight refresh in <span class="mono">AuthInterceptor</span> — concurrent 401s coalesce onto one refresh call via a cached <span class="mono">Future</span>, and a separate interceptor-free Dio instance avoids infinite refresh loops. This is above-average work for this size of app.</td></tr>
+        <tr><td>Error mapping</td><td>✅</td><td><span class="mono">NetworkException.fromDioError</span> — consistent, user-safe messages across all repositories</td></tr>
+        <tr><td>Retry strategy</td><td>⚠️</td><td>Only the auth-refresh-then-replay path retries; transient network errors on ordinary GET/POST calls are not retried at all</td></tr>
+        <tr><td>Request cancellation</td><td>❌</td><td>No <span class="mono">CancelToken</span> used anywhere — navigating away mid-request doesn't cancel it</td></tr>
+        <tr><td>Offline handling</td><td>❌</td><td>No connectivity check or offline queue; a lost connection surfaces as a generic error per request</td></tr>
+        <tr><td>Pagination</td><td>⚠️</td><td><span class="mono">PaginationModel</span> exists and parses <span class="mono">total/page/limit/hasNext/hasPrev</span> correctly, but list screens render pages inside <span class="mono">shrinkWrap</span> lists (see <a href="https://58b61316-06a6-4097-99f8-fc03f5721640.frame.claudeusercontent.com/_f/1783938863-19fe/#performance">Performance</a>) rather than true infinite-scroll virtualization</td></tr>
+        <tr><td>Response validation</td><td>⚠️</td><td>Relies on <span class="mono">as Map&lt;String, dynamic&gt;</span> casts and model <span class="mono">fromJson</span> factories; a malformed/renamed backend field throws a raw <span class="mono">TypeError</span> instead of a handled <span class="mono">NetworkException</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The <span class="mono">http</span> package is still in <span class="mono">pubspec.yaml</span> alongside <span class="mono">dio</span>, but every repository goes through <span class="mono">HttpService</span>/<span class="mono">DioHttpService</span> — <span class="mono">http</span> appears to be unused dead weight and should be removed unless something outside the sampled files depends on it.</p>
+</section>
+
+<section class="sec" id="database">
+  <h2><span class="num">07</span> Database review</h2>
+  <p>Not applicable in the traditional sense — there's no Firestore, SQLite, Hive, or Isar in this codebase. All feature data is fetched fresh from the REST API on each screen visit; <span class="mono">shared_preferences</span> and <span class="mono">flutter_secure_storage</span> hold only session/profile state, not domain data. This is a legitimate architectural choice for an internal-tools-style app and removes an entire category of local-database-security concerns (no security rules, no local injection surface to audit) — but it also means there's currently no offline capability and no local caching layer, which will matter for the SaaS-scale conversation in <a href="https://58b61316-06a6-4097-99f8-fc03f5721640.frame.claudeusercontent.com/_f/1783938863-19fe/#saas">§14</a>.</p>
+</section>
+
+<section class="sec" id="auth">
+  <h2><span class="num">08</span> Authentication</h2>
+  <p>The flow is phone-number-first and OTP-verified for sign-in (passwordless), while sign-up collects a password in addition to OTP verification, and there's a separate <span class="mono">updatePassword</span> endpoint — meaning password and OTP are both live credential mechanisms depending on the flow, which is a slightly unusual hybrid worth confirming is intentional product design rather than incremental drift.</p>
+  <ul>
+    <li><b>Session persistence / auto-login:</b> <span class="mono">main.dart</span> checks for a stored <span class="mono">auth_token</span> at startup and routes straight to <span class="mono">HomeScreen</span> if present — correct pattern, though it trusts token <em>presence</em>, not validity; an expired-but-still-stored token will bounce through one failed request and the refresh flow before the user notices, rather than being caught at startup.</li>
+    <li><b>Refresh tokens:</b> handled server round-trip via <span class="mono">/auth/access-token</span>, stored in <span class="mono">flutter_secure_storage</span> — correct storage choice. See §2 for the revocation-on-logout gap.</li>
+    <li><b>Biometric auth:</b> not implemented — no <span class="mono">local_auth</span> dependency. Reasonable to defer, but worth offering as an option before enterprise customers ask for it, since it's the cheapest lever to reduce OTP/SMS friction on repeat sign-ins.</li>
+    <li><b>OTP verification:</b> see the critical finding in §2 — this is the item that actually blocks release, not the hybrid model above.</li>
+  </ul>
+</section>
+
+<section class="sec" id="uiux">
+  <h2><span class="num">09</span> UI / UX review</h2>
+  <p class="lede">This review was performed by reading source, not by running the app in a device/simulator — I can speak to patterns visible in code (loading/error state wiring, responsive units, theming) but cannot confirm actual rendered layout, overflow, or keyboard behavior on-device. Treat this section as a code-level signal, not a substitute for manual QA on real screen sizes before release.</p>
+  <ul>
+    <li><span class="mono">flutter_screenutil</span> is used for responsive sizing app-wide with a fixed <span class="mono">designSize</span>, and <span class="mono">main.dart</span> explicitly locks <span class="mono">textScaler</span> to <span class="mono">1.0</span> — this overrides the user's OS-level font-size accessibility setting for the entire app, which is a real accessibility regression for low-vision users and should be reconsidered (clamp to a sane range like <span class="mono">TextScaler.linear(scale.clamp(0.9, 1.3))</span> rather than pinning to exactly 1.0).</li>
+    <li>Controllers expose <span class="mono">isLoading</span>/<span class="mono">errorMessage</span>/<span class="mono">successMessage</span> getters consistently, which is the right shape for screens to drive loading spinners and error banners — whether every screen actually surfaces all three states (versus silently swallowing an error) wasn't fully verifiable without running the UI.</li>
+    <li>No dark mode: <span class="mono">ThemeData(textTheme: GoogleFonts.interTextTheme())</span> is the only theme configuration — colors are hardcoded per-widget (e.g. <span class="mono">Color(0xFF0A0258)</span> constants repeated across <span class="mono">MoreScreen</span>/<span class="mono">ProfileSetting</span>) rather than pulled from a <span class="mono">ColorScheme</span>, so there's no dark-mode support and no single place to re-theme the app.</li>
+  </ul>
+</section>
+
+<section class="sec" id="prod">
+  <h2><span class="num">10</span> Production readiness</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Area</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Environment separation (dev/staging/prod)</td><td>❌ Single hardcoded base URL, no flavors</td></tr>
+        <tr><td>Secrets management</td><td>✅ <span class="mono">key.properties</span>/<span class="mono">.env</span> correctly gitignored; no hardcoded API keys or Firebase config found in the client</td></tr>
+        <tr><td>Crash reporting</td><td>❌ No Crashlytics/Sentry/equivalent — a production crash is invisible to the team unless a user reports it</td></tr>
+        <tr><td>Analytics</td><td>❌ None found</td></tr>
+        <tr><td>Release build obfuscation</td><td>❌ See §2 — not configured</td></tr>
+        <tr><td>App size / tree-shaking</td><td>⚠️ Default Flutter release build handles icon tree-shaking automatically; no custom asset-size audit needed at current asset count (4 images)</td></tr>
+        <tr><td>Signing</td><td>✅ Proper <span class="mono">key.properties</span>-based release signing with a safe debug-key fallback for CI checkouts without the keystore</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The missing crash reporting is the single highest-leverage gap in this section: with 5 screens over 1,700 lines and zero automated tests, a crash reporting SDK (Firebase Crashlytics or Sentry) is how the team finds out about regressions before a support ticket does. This should land before general release, not after.</p>
+</section>
+
+<section class="sec" id="deps">
+  <h2><span class="num">11</span> Dependency review</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Package</th><th>Assessment</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">dio</td><td>Actively maintained, correct choice for the interceptor-based auth flow already built on it.</td></tr>
+        <tr><td class="mono">http</td><td>Appears unused now that Dio is the sole client — remove to cut dead weight.</td></tr>
+        <tr><td class="mono">flutter_secure_storage</td><td>Right call for tokens/PII; actively maintained.</td></tr>
+        <tr><td class="mono">get_it</td><td>Solid, lightweight DI choice; fine as-is.</td></tr>
+        <tr><td class="mono">syncfusion_flutter_datepicker</td><td><b>Flag for legal/finance, not engineering:</b> Syncfusion's Flutter widgets are free only under their Community License (org revenue and headcount thresholds apply) — confirm TaskAlert still qualifies as it grows, or budget for a commercial license. This is a real production-readiness risk for a paid SaaS product that a lot of teams miss until an audit catches it.</td></tr>
+        <tr><td class="mono">dropdown_button2</td><td>Small, lightly-maintained package for something Flutter's own <span class="mono">DropdownButton</span> + a custom decorator could likely replace — not urgent, low risk given it's UI-only.</td></tr>
+        <tr><td class="mono">google_fonts</td><td>Fetches font files over the network at runtime by default unless bundled/pinned — adds a startup network dependency and a minor privacy consideration (calls out to Google's CDN). Consider <span class="mono">GoogleFonts.config.allowRuntimeFetching = false</span> with fonts bundled as assets for offline-first reliability.</td></tr>
+        <tr><td class="mono">flutter_screenutil, file_picker, image_picker, cached_network_image, url_launcher, intl, country_code_picker</td><td>All actively maintained, standard, appropriately used for their stated purpose — no concerns.</td></tr>
+        <tr><td class="mono">git_hooks</td><td>Dev-only, low download count but functionally fine; no user-facing risk.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="sec" id="quality">
+  <h2><span class="num">12</span> Code quality</h2>
+  <ul>
+    <li><b>File naming:</b> screens use PascalCase filenames (<span class="mono">MyTaskDetails.dart</span>, <span class="mono">HomeScreen.dart</span>) against the Dart/Flutter convention of <span class="mono">snake_case</span> file names (which the <span class="mono">core/features/</span> tree correctly follows) — an easy, mechanical, high-value cleanup since <span class="mono">flutter_lints</span>' <span class="mono">file_names</span> rule would catch this if enabled.</li>
+    <li><b>Typo:</b> <span class="mono">employee_respository_impl.dart</span> (repository misspelled) — harmless but worth fixing while nothing external depends on the filename.</li>
+    <li><b>Dead code:</b> <span class="mono">lib/extras/</span> stub files (§1), commented-out debug prints throughout, and a fully commented-out duplicate <span class="mono">getProfile()</span> override left at the bottom of <span class="mono">auth_repository_impl.dart</span> (lines 494-517).</li>
+    <li><b>Long methods / large widgets:</b> covered in §1 and §3 — this is the dominant code-quality issue in the repo by volume.</li>
+    <li><b>Comments:</b> where present, comments in the network/auth layer are unusually good — they explain <em>why</em> (e.g. the separate refresh-Dio instance to avoid recursive interceptor loops), not just what. That standard isn't consistently carried into the screens layer.</li>
+  </ul>
+</section>
+
+<section class="sec" id="testing">
+  <h2><span class="num">13</span> Testing</h2>
+  <div class="finding high">
+    <div class="f-head"><span class="f-title">Zero real test coverage</span><span class="chip high">High</span></div>
+    <dl class="f-grid">
+      <dt>Problem</dt><dd><span class="mono">test/widget_test.dart</span> is the only test file in the repository, and it's the default Flutter counter-app template test — it does not exercise this app at all.</dd>
+      <dt>Impact</dt><dd>Every one of the god-widget screens in §1, the token-refresh logic in §2/§6, and every repository's JSON parsing is entirely unverified by automation. Regressions are caught by users in production, not CI.</dd>
+      <dt>Recommended minimum before scaling the team</dt><dd>
+        <ul>
+          <li><b>Unit tests</b> for every <span class="mono">*RepositoryImpl</span> (mock <span class="mono">HttpService</span>, assert on success/failure mapping) and every controller's state transitions — these are the highest-value tests per hour spent given the repository/controller split already in place.</li>
+          <li><b>Unit test</b> specifically for <span class="mono">AuthInterceptor</span>'s refresh-coalescing logic — it's the most intricate piece of logic in the app and the easiest to silently break.</li>
+          <li><b>Widget tests</b> for the sign-in/OTP/sign-up flow given its security sensitivity.</li>
+          <li><b>Integration test</b> for the create-task flows (one-time and repetitive) given their size and complexity.</li>
+        </ul>
+      </dd>
+    </dl>
+  </div>
+</section>
+
+<section class="sec" id="saas">
+  <h2><span class="num">14</span> SaaS readiness</h2>
+  <p>The data model already has real multi-tenancy shape — <span class="mono">organization</span> vs. <span class="mono">activeOrganization</span> fields on the user, an organization-switch dialog, department/location/job-role scoping — this is not a bolt-on, it looks designed in from early on, which is the hard part to retrofit. What's missing is the operational layer around it:</p>
+  <ul>
+    <li><b>No monitoring/observability:</b> no crash reporting (§10) and no API-level tracing means the team is blind to production incidents until a customer reports them — a hard blocker for supporting "thousands of concurrent users" with any confidence.</li>
+    <li><b>List rendering won't hold at enterprise scale:</b> the <span class="mono">shrinkWrap</span> pattern (§3) is specifically the kind of thing that works in every demo and QA org (small headcount) and fails at the first genuinely large enterprise customer's employee list.</li>
+    <li><b>Licensing risk under a paid-SaaS model:</b> Syncfusion's date picker (§11) needs a revenue/headcount check now, before it's a surprise during a compliance or procurement review from an enterprise customer.</li>
+    <li><b>Session revocation</b> (§2) matters more, not less, at SaaS scale — an admin needs to be able to kick a departed employee's device off the account, and today nothing server-side is even called on logout to build that on top of.</li>
+  </ul>
+  <p>None of this requires an architecture rewrite — the repository/controller/DI foundation is the right shape to build on. It requires closing the auth gaps, adding observability, and doing the list-virtualization fix before selling into an organization large enough to feel it.</p>
+</section>
+
+<section class="sec" id="checklist">
+  <h2><span class="num">15</span> Must fix before production</h2>
+  <p>Ordered by actual release risk, not by section order.</p>
+  <ol class="checklist">
+    <li><div class="box"></div><div><b class="ttl">1. Remove OTP-in-response display from the sign-in flow</b><div class="desc">Authentication bypass as currently coded. See §2 for the exact lines and replacement code. <span class="pill">login_controller.dart</span></div></div></li>
+    <li><div class="box"></div><div><b class="ttl">2. Call a real backend revoke endpoint on logout</b><div class="desc">Local-only logout leaves stolen/lost-device tokens valid indefinitely. <span class="pill">auth_repository_impl.dart</span></div></div></li>
+    <li><div class="box high"></div><div><b class="ttl">3. Add environment flavors and remove the hardcoded production base URL</b><div class="desc">Blocks safe staging testing and is a prerequisite for cert pinning per-environment. <span class="pill">dio_http_service.dart</span></div></div></li>
+    <li><div class="box high"></div><div><b class="ttl">4. Enable R8 minification + <span class="mono">--obfuscate --split-debug-info</span> for release builds</b><div class="desc">Shipping today with a fully readable APK. <span class="pill">build.gradle.kts</span></div></div></li>
+    <li><div class="box high"></div><div><b class="ttl">5. Add crash reporting (Crashlytics or Sentry)</b><div class="desc">Non-negotiable given zero test coverage and several 3,000+ line screens — this is how the team learns about regressions before support does.</div></div></li>
+    <li><div class="box high"></div><div><b class="ttl">6. Fix the refresh-failure-wipes-session bug</b><div class="desc">Only clear tokens on a definitive auth rejection, not on any refresh-call error. <span class="pill">auth_interceptor.dart</span></div></div></li>
+    <li><div class="box high"></div><div><b class="ttl">7. Replace <span class="mono">shrinkWrap</span> lists with true lazy <span class="mono">ListView.builder</span>/slivers on the employee/location/department/organization screens</b><div class="desc">Works today because test orgs are small; won't hold at the enterprise scale this product is selling into.</div></div></li>
+    <li><div class="box high"></div><div><b class="ttl">8. Resolve the Syncfusion license question for a revenue-generating product</b><div class="desc">Legal/finance action item, not code — confirm license tier before general availability.</div></div></li>
+    <li><div class="box"></div><div><b class="ttl">9. Write unit tests for every repository and the auth interceptor</b><div class="desc">Highest test-ROI given the existing repository/controller separation; do this before the next refactor, not after.</div></div></li>
+    <li><div class="box"></div><div><b class="ttl">10. Consolidate the three duplicated secure-storage session-write blocks into one helper</b><div class="desc">Removes drift risk between sign-up, sign-in, and get-profile persistence. <span class="pill">auth_repository_impl.dart</span></div></div></li>
+  </ol>
+</section>
+
+<footer>
+  Audit performed by static review of the <span class="mono">taskalert_app</span> source tree on the <span class="mono">ui</span> branch. UI/UX findings in §9 are code-level observations only — pair this with manual device QA before release.
+</footer>
+
+</main>
+</div>
+</div>
+
+</body></html>

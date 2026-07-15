@@ -34,6 +34,7 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
   // ── Autocomplete plumbing (matches LocationListScreen pattern) ──────────
   final FocusNode _searchFocusNode = FocusNode();
   final LayerLink _searchLayerLink = LayerLink();
+  final GlobalKey _searchBoxKey = GlobalKey();// 14.07.2026
   OverlayEntry? _suggestionsOverlay;
   List<DepartmentModel> _suggestions = [];
 
@@ -119,6 +120,10 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
     _showSuggestionsOverlay();
   }
 
+<<<<<<< Updated upstream
+=======
+  // 14.07.2026
+>>>>>>> Stashed changes
   double _availableHeightBelow({
     required BuildContext? fieldContext,
     required double fallbackFieldHeight,
@@ -141,10 +146,17 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
 
     final spaceBelow =
         mq.size.height -
+<<<<<<< Updated upstream
         bottomInset -
         (fieldTopGlobal + fieldHeight) -
         gap -
         bottomMargin;
+=======
+            bottomInset -
+            (fieldTopGlobal + fieldHeight) -
+            gap -
+            bottomMargin;
+>>>>>>> Stashed changes
 
     return spaceBelow.clamp(minCap, maxCap);
   }
@@ -154,12 +166,19 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
 
     final overlay = Overlay.of(context);
 
+<<<<<<< Updated upstream
+=======
+    // 14.07.2026
+>>>>>>> Stashed changes
     final maxOverlayHeight = _availableHeightBelow(
       fieldContext: _searchBoxKey.currentContext,
       fallbackFieldHeight: _searchBoxHeight,
       maxCap: 260.h,
     );
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
     _suggestionsOverlay = OverlayEntry(
       builder: (context) => Positioned(
         width: _searchBoxWidth,
@@ -172,8 +191,12 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
             borderRadius: BorderRadius.circular(10.r),
             color: Colors.white,
             child: ConstrainedBox(
+<<<<<<< Updated upstream
               // constraints: BoxConstraints(maxHeight: 260.h),
               constraints: BoxConstraints(maxHeight: maxOverlayHeight),
+=======
+              constraints: BoxConstraints(maxHeight: maxOverlayHeight), // 14.07.2026
+>>>>>>> Stashed changes
               child: ListView.separated(
                 padding: EdgeInsets.symmetric(vertical: 4.h),
                 shrinkWrap: true,
@@ -388,7 +411,11 @@ class _DepartmentListScreenState extends State<DepartmentListScreen> {
                     children: [
                       Expanded(
                         child: CompositedTransformTarget(
+<<<<<<< Updated upstream
                           key: _searchBoxKey,
+=======
+                          key: _searchBoxKey, // 14.07.2026
+>>>>>>> Stashed changes
                           link: _searchLayerLink,
                           child: TextField(
                             controller: _searchController,
@@ -1195,6 +1222,28 @@ class _LocationMultiSelectFieldState extends State<_LocationMultiSelectField> {
       canAddDepartment: false,
     );
   }
+  // 14.07.2026
+  double _availableOverlayHeight() {
+    final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+    final fieldHeight = box?.size.height ?? 44.h;
+    final fieldTopGlobal = box?.localToGlobal(Offset.zero).dy ?? 0;
+
+    final mq = MediaQuery.of(context);
+    final bottomInset = mq.viewInsets.bottom > 0
+        ? mq.viewInsets.bottom
+        : mq.padding.bottom;
+    final gap = 6.h; // matches the follower's vertical offset below
+    const bottomMargin = 12.0; // small breathing room from the edge
+
+    final spaceBelow =
+        mq.size.height -
+            bottomInset -
+            (fieldTopGlobal + fieldHeight) -
+            gap -
+            bottomMargin;
+
+    return spaceBelow.clamp(120.0, 200.h);
+  }
 
   double _availableOverlayHeight() {
     final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
@@ -1224,6 +1273,7 @@ class _LocationMultiSelectFieldState extends State<_LocationMultiSelectField> {
     final overlay = Overlay.of(context);
     final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
     final width = box?.size.width ?? 260.w;
+    final maxOverlayHeight = _availableOverlayHeight();// 14.07.2026
 
     final maxOverlayHeight = _availableOverlayHeight();
 
@@ -1241,7 +1291,11 @@ class _LocationMultiSelectFieldState extends State<_LocationMultiSelectField> {
               borderRadius: BorderRadius.circular(10.r),
               color: Colors.white,
               child: ConstrainedBox(
+<<<<<<< Updated upstream
                 constraints: BoxConstraints(maxHeight: maxOverlayHeight),
+=======
+                constraints: BoxConstraints(maxHeight: maxOverlayHeight), // 14.07.2026
+>>>>>>> Stashed changes
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [

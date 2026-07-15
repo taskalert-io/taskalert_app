@@ -271,6 +271,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                 SizedBox(width: 10.w),
 
                 /// CLOSE BUTTON
+<<<<<<< Updated upstream
                 // InkWell(
                 //   onTap: () {
                 //     Navigator.pop(context);
@@ -290,6 +291,8 @@ class _CustomDrawerState extends State<CustomDrawer> {
                 //     ),
                 //   ),
                 // ),
+=======
+>>>>>>> Stashed changes
                 IconButton(
                   onPressed: () => Navigator.pop(context),
                   splashRadius: 24.r,
