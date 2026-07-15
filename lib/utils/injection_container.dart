@@ -158,5 +158,8 @@ Future<void> init() async {
   sl.registerLazySingleton<SidebarRepository>(
     () => SidebarRepositoryImpl(sl<HttpService>()),
   );
-  sl.registerFactory(() => SidebarController(sl<SidebarRepository>()));
+  // Singleton (not registerFactory like other controllers) — its cached
+  // config needs to survive across every screen's own CustomDrawer
+  // instance, not just live for one screen.
+  sl.registerLazySingleton(() => SidebarController(sl<SidebarRepository>()));
 }

@@ -562,6 +562,11 @@ class _CustomDrawerState extends State<CustomDrawer> {
 
                                   // 2. Clear out local secure storage variables via your controller workflow
                                   await _loginController.handleLogout();
+                                  // Clear the cached sidebar config too — it's
+                                  // an app-wide singleton, so it'd otherwise
+                                  // still hold this user's menu the next
+                                  // time someone signs in this session.
+                                  _sidebarController.reset();
 
                                   if (!context.mounted) return;
 

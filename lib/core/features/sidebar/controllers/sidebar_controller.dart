@@ -24,7 +24,16 @@ class SidebarController extends ChangeNotifier {
   }
 
   /// Fetches which drawer/sidebar items the logged-in user has access to.
-  Future<void> handleGetSidebarConfiguration() async {
+  ///
+  /// This controller is registered as an app-wide singleton (not a fresh
+  /// instance per screen), so [_config] persists across every screen's own
+  /// `CustomDrawer` — by default this only actually calls the API once per
+  /// session and every later call (e.g. a new screen's drawer mounting)
+  /// just reuses the cached result. Pass [forceRefresh] when the
+  /// permission set could genuinely have changed (organization switch).
+  Future<void> handleGetSidebarConfiguration({bool forceRefresh = false}) async {
+    if (!forceRefresh && _config != null) return;
+
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -43,5 +52,15 @@ class SidebarController extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  /// Clears the cached config — call on logout so a different user signing
+  /// in on the same app session doesn't briefly see the previous user's
+  /// sidebar before their own fetch resolves.
+  void reset() {
+    _config = null;
+    _errorMessage = null;
+    _isLoading = false;
+    notifyListeners();
   }
 }
