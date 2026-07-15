@@ -2956,7 +2956,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         showLeading: true,
         onBackPressed: () => Navigator.pop(context),
       ),
-      drawer: CustomDrawer(activeTile: 'Home', onTileTap: (_) {}),
+      drawer: CustomDrawer(activeTile: '', onTileTap: (_) {}),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : GestureDetector(

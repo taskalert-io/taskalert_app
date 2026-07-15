@@ -122,12 +122,6 @@ final List<_DrawerEntryDef> _accountDrawerEntries = [
     icon: Icons.person_outline,
     screenBuilder: () => ProfileSetting(userId: ''),
   ),
-  _DrawerEntryDef(
-    matchKeys: const ['help'],
-    title: 'Help',
-    icon: Icons.help_outline,
-    screenBuilder: () => MoreScreen(userId: ''),
-  ),
 ];
 
 class CustomDrawer extends StatefulWidget {
