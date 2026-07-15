@@ -1,12 +1,13 @@
 import '../../../../network/api_result.dart';
 import '../../../../network/base_api_response.dart';
+import '../models/sub_task_instance_model.dart';
 import '../models/sub_task_model.dart';
 
 abstract class SubTaskRepository {
   // ── SubTask (template, scoped to a task instance) ─────────────────────────
 
   /// 1. POST /tasks/instances/:instanceId/subtasks
-  Future<ApiResult<BaseApiResponse<SubTaskModel>>> createSubTask({
+  Future<ApiResult<BaseApiResponse<SubTaskCreateResponse>>> createSubTask({
     required String instanceId,
     required String title,
     String? description,
@@ -19,13 +20,12 @@ abstract class SubTaskRepository {
   // ── SubTask Instance (generated occurrence of a SubTask) ──────────────────
 
   /// 7. GET /tasks/instances/:instanceId/subtask-instances
-  Future<ApiResult<BaseApiResponse<List<SubTaskModel>>>>
+  Future<ApiResult<BaseApiResponse<SubTaskInstancesResponse>>>
   getAllSubTaskInstances({required String instanceId});
 
   /// 8. GET /tasks/subtask-instances/:subTaskInstanceId
-  Future<ApiResult<BaseApiResponse<SubTaskModel>>> getSubTaskInstanceById({
-    required String subTaskInstanceId,
-  });
+  Future<ApiResult<BaseApiResponse<SubTaskInstanceModel>>>
+  getSubTaskInstanceById({required String subTaskInstanceId});
 
   /// 9. PUT /tasks/subtasks/instance/update/:subTaskInstanceId — quick
   /// status/assignee/priority patch
@@ -38,7 +38,8 @@ abstract class SubTaskRepository {
   });
 
   /// 10. PUT /tasks/subtasks/instance/:subTaskInstanceId — full update
-  Future<ApiResult<BaseApiResponse<SubTaskModel>>> updateSubTaskInstance({
+  Future<ApiResult<BaseApiResponse<SubTaskInstanceModel>>>
+  updateSubTaskInstance({
     required String subTaskInstanceId,
     String? title,
     String? description,

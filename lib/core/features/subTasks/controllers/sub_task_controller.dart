@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:taskalert_app/core/network/api_result.dart';
 import 'package:taskalert_app/core/network/base_api_response.dart';
+import '../data/models/sub_task_instance_model.dart';
 import '../data/models/sub_task_model.dart';
 import '../data/repositories/sub_task_repository.dart';
 
@@ -21,11 +22,21 @@ class SubTaskController extends ChangeNotifier {
   final List<SubTaskModel> _subTasks = [];
   List<SubTaskModel> get subTasks => _subTasks;
 
-  List<SubTaskModel> _subTaskInstances = [];
-  List<SubTaskModel> get subTaskInstances => _subTaskInstances;
+  // How many existing task instances the most-recently-created SubTask was
+  // generated onto (from the Create response's sibling `instanceCount`).
+  int? _lastCreatedInstanceCount;
+  int? get lastCreatedInstanceCount => _lastCreatedInstanceCount;
 
-  SubTaskModel? _selectedSubTaskInstance;
-  SubTaskModel? get selectedSubTaskInstance => _selectedSubTaskInstance;
+  List<SubTaskInstanceModel> _subTaskInstances = [];
+  List<SubTaskInstanceModel> get subTaskInstances => _subTaskInstances;
+
+  // The parent TaskInstance summary that comes back alongside the list on
+  // "Get All SubTask Instances" — not present on any other endpoint.
+  TaskInstanceRef? _parentTaskInstance;
+  TaskInstanceRef? get parentTaskInstance => _parentTaskInstance;
+
+  SubTaskInstanceModel? _selectedSubTaskInstance;
+  SubTaskInstanceModel? get selectedSubTaskInstance => _selectedSubTaskInstance;
 
   void clearMessages() {
     _errorMessage = null;
@@ -63,10 +74,12 @@ class SubTaskController extends ChangeNotifier {
 
       if (result is Success) {
         final apiResponse =
-            (result as Success).data as BaseApiResponse<SubTaskModel>;
+            (result as Success).data
+                as BaseApiResponse<SubTaskCreateResponse>;
         _successMessage = apiResponse.message;
         if (apiResponse.data != null) {
-          _subTasks.insert(0, apiResponse.data!);
+          _subTasks.insert(0, apiResponse.data!.subTask);
+          _lastCreatedInstanceCount = apiResponse.data!.instanceCount;
         }
         return true;
       } else if (result is Failure) {
@@ -97,8 +110,10 @@ class SubTaskController extends ChangeNotifier {
 
       if (result is Success) {
         final apiResponse =
-            (result as Success).data as BaseApiResponse<List<SubTaskModel>>;
-        _subTaskInstances = apiResponse.data ?? [];
+            (result as Success).data
+                as BaseApiResponse<SubTaskInstancesResponse>;
+        _subTaskInstances = apiResponse.data?.subTaskInstances ?? [];
+        _parentTaskInstance = apiResponse.data?.taskInstance;
       } else if (result is Failure) {
         _errorMessage = (result as Failure).exception.userMessage;
       }
@@ -123,7 +138,7 @@ class SubTaskController extends ChangeNotifier {
 
       if (result is Success) {
         final apiResponse =
-            (result as Success).data as BaseApiResponse<SubTaskModel>;
+            (result as Success).data as BaseApiResponse<SubTaskInstanceModel>;
         _selectedSubTaskInstance = apiResponse.data;
       } else if (result is Failure) {
         _errorMessage = (result as Failure).exception.userMessage;
@@ -201,7 +216,7 @@ class SubTaskController extends ChangeNotifier {
 
       if (result is Success) {
         final apiResponse =
-            (result as Success).data as BaseApiResponse<SubTaskModel>;
+            (result as Success).data as BaseApiResponse<SubTaskInstanceModel>;
         _successMessage = apiResponse.message;
 
         if (apiResponse.data != null) {

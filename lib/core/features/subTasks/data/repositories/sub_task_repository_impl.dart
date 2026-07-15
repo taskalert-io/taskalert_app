@@ -3,6 +3,7 @@ import '../../../../network/base_api_response.dart';
 import 'package:taskalert_app/core/errors/network_exceptions.dart';
 import '../../../../network/http_service.dart';
 import 'sub_task_repository.dart';
+import '../models/sub_task_instance_model.dart';
 import '../models/sub_task_model.dart';
 
 class SubTaskRepositoryImpl implements SubTaskRepository {
@@ -12,7 +13,7 @@ class SubTaskRepositoryImpl implements SubTaskRepository {
 
   /// 1. POST: Create a SubTask under a task instance
   @override
-  Future<ApiResult<BaseApiResponse<SubTaskModel>>> createSubTask({
+  Future<ApiResult<BaseApiResponse<SubTaskCreateResponse>>> createSubTask({
     required String instanceId,
     required String title,
     String? description,
@@ -37,7 +38,8 @@ class SubTaskRepositoryImpl implements SubTaskRepository {
 
       final apiResponse = BaseApiResponse.fromJson(
         responseData as Map<String, dynamic>,
-        (json) => SubTaskModel.fromJson(json as Map<String, dynamic>),
+        (json) =>
+            SubTaskCreateResponse.fromJson(json as Map<String, dynamic>),
       );
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
@@ -65,7 +67,7 @@ class SubTaskRepositoryImpl implements SubTaskRepository {
 
   /// 7. GET: Fetch all SubTask Instances for a task instance
   @override
-  Future<ApiResult<BaseApiResponse<List<SubTaskModel>>>>
+  Future<ApiResult<BaseApiResponse<SubTaskInstancesResponse>>>
   getAllSubTaskInstances({required String instanceId}) async {
     try {
       final responseData = await _httpService.get(
@@ -74,16 +76,8 @@ class SubTaskRepositoryImpl implements SubTaskRepository {
 
       final apiResponse = BaseApiResponse.fromJson(
         responseData as Map<String, dynamic>,
-        (dataJson) {
-          if (dataJson is List) {
-            return dataJson
-                .map(
-                  (item) => SubTaskModel.fromJson(item as Map<String, dynamic>),
-                )
-                .toList();
-          }
-          return <SubTaskModel>[];
-        },
+        (dataJson) =>
+            SubTaskInstancesResponse.fromJson(dataJson as Map<String, dynamic>),
       );
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
@@ -107,9 +101,8 @@ class SubTaskRepositoryImpl implements SubTaskRepository {
 
   /// 8. GET: Fetch a single SubTask Instance by id
   @override
-  Future<ApiResult<BaseApiResponse<SubTaskModel>>> getSubTaskInstanceById({
-    required String subTaskInstanceId,
-  }) async {
+  Future<ApiResult<BaseApiResponse<SubTaskInstanceModel>>>
+  getSubTaskInstanceById({required String subTaskInstanceId}) async {
     try {
       final responseData = await _httpService.get(
         '/tasks/subtask-instances/$subTaskInstanceId',
@@ -117,7 +110,7 @@ class SubTaskRepositoryImpl implements SubTaskRepository {
 
       final apiResponse = BaseApiResponse.fromJson(
         responseData as Map<String, dynamic>,
-        (json) => SubTaskModel.fromJson(json as Map<String, dynamic>),
+        (json) => SubTaskInstanceModel.fromJson(json as Map<String, dynamic>),
       );
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
@@ -184,7 +177,8 @@ class SubTaskRepositoryImpl implements SubTaskRepository {
 
   /// 10. PUT: Full update of a SubTask Instance
   @override
-  Future<ApiResult<BaseApiResponse<SubTaskModel>>> updateSubTaskInstance({
+  Future<ApiResult<BaseApiResponse<SubTaskInstanceModel>>>
+  updateSubTaskInstance({
     required String subTaskInstanceId,
     String? title,
     String? description,
@@ -211,7 +205,7 @@ class SubTaskRepositoryImpl implements SubTaskRepository {
 
       final apiResponse = BaseApiResponse.fromJson(
         responseData as Map<String, dynamic>,
-        (json) => SubTaskModel.fromJson(json as Map<String, dynamic>),
+        (json) => SubTaskInstanceModel.fromJson(json as Map<String, dynamic>),
       );
 
       if (apiResponse.success) return ApiResult.success(apiResponse);
