@@ -157,6 +157,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
     await _overdueCountController.handleGetAllInstances(
       assigned: _assignedFilter,
       overdue: true,
+      expand: true,
     );
     if (!mounted) return;
     setState(() {
@@ -208,6 +209,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
       startDate: startDate,
       endDate: endDate,
       overdue: overdue,
+      expand: true,
     );
 
     if (!mounted) return;
@@ -1062,8 +1064,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                   return Padding(
                     padding: EdgeInsets.only(right: 10.w),
                     child: GestureDetector(
-                      onTap: () =>
-                          _onAssignmentFilterChanged(f['value']!),
+                      onTap: () => _onAssignmentFilterChanged(f['value']!),
                       child: Container(
                         padding: EdgeInsets.symmetric(
                           horizontal: 14.w,
@@ -1078,9 +1079,7 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                                   ],
                                 )
                               : null,
-                          color: isSelected
-                              ? null
-                              : const Color(0xFFF1F4F9),
+                          color: isSelected ? null : const Color(0xFFF1F4F9),
                           borderRadius: BorderRadius.circular(20.r),
                         ),
                         child: Text(
@@ -1209,54 +1208,54 @@ class MyTaskScreenState extends State<MyTaskScreen> {
               child: RefreshIndicator(
                 onRefresh: _onRefresh,
                 child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  children: [
-                    _buildTaskSection(
-                      title: "To Do",
-                      sectionKey: 'todo',
-                      isExpanded: _isTodoExpanded,
-                      onToggleExpand: () {
-                        setState(() {
-                          _isTodoExpanded = !_isTodoExpanded;
-                          if (_isTodoExpanded) {
-                            _isInProgressExpanded = false;
-                            _isCompletedExpanded = false;
-                          }
-                        });
-                      },
-                    ),
-                    _buildTaskSection(
-                      title: "In Progress",
-                      sectionKey: 'in_progress',
-                      isExpanded: _isInProgressExpanded,
-                      onToggleExpand: () {
-                        setState(() {
-                          _isInProgressExpanded = !_isInProgressExpanded;
-                          if (_isInProgressExpanded) {
-                            _isTodoExpanded = false;
-                            _isCompletedExpanded = false;
-                          }
-                        });
-                      },
-                    ),
-                    _buildTaskSection(
-                      title: "Completed",
-                      sectionKey: 'completed',
-                      isExpanded: _isCompletedExpanded,
-                      onToggleExpand: () {
-                        setState(() {
-                          _isCompletedExpanded = !_isCompletedExpanded;
-                          if (_isCompletedExpanded) {
-                            _isTodoExpanded = false;
-                            _isInProgressExpanded = false;
-                          }
-                        });
-                      },
-                    ),
-                  ],
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    children: [
+                      _buildTaskSection(
+                        title: "To Do",
+                        sectionKey: 'todo',
+                        isExpanded: _isTodoExpanded,
+                        onToggleExpand: () {
+                          setState(() {
+                            _isTodoExpanded = !_isTodoExpanded;
+                            if (_isTodoExpanded) {
+                              _isInProgressExpanded = false;
+                              _isCompletedExpanded = false;
+                            }
+                          });
+                        },
+                      ),
+                      _buildTaskSection(
+                        title: "In Progress",
+                        sectionKey: 'in_progress',
+                        isExpanded: _isInProgressExpanded,
+                        onToggleExpand: () {
+                          setState(() {
+                            _isInProgressExpanded = !_isInProgressExpanded;
+                            if (_isInProgressExpanded) {
+                              _isTodoExpanded = false;
+                              _isCompletedExpanded = false;
+                            }
+                          });
+                        },
+                      ),
+                      _buildTaskSection(
+                        title: "Completed",
+                        sectionKey: 'completed',
+                        isExpanded: _isCompletedExpanded,
+                        onToggleExpand: () {
+                          setState(() {
+                            _isCompletedExpanded = !_isCompletedExpanded;
+                            if (_isCompletedExpanded) {
+                              _isTodoExpanded = false;
+                              _isInProgressExpanded = false;
+                            }
+                          });
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              ),
               ),
             ),
           ],
@@ -1380,7 +1379,8 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => CreateRepetitiveScreen(userId: ''),
+                                        builder: (context) =>
+                                            CreateRepetitiveScreen(userId: ''),
                                       ),
                                     );
                                   },
@@ -1393,13 +1393,15 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                                       vertical: 10.h,
                                     ),
                                     minimumSize: Size.zero,
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(8.r),
                                     ),
                                   ),
                                   child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
                                         "Repetitive",
@@ -1438,7 +1440,8 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => CreateOneTimeScreen(userId: ''),
+                                      builder: (context) =>
+                                          CreateOneTimeScreen(userId: ''),
                                     ),
                                   );
                                 },
@@ -1451,13 +1454,15 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                                     vertical: 10.h,
                                   ),
                                   minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8.r),
                                   ),
                                 ),
                                 child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       "One-time",

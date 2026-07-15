@@ -8,6 +8,7 @@ class TaskModel {
   final DepartmentModel?
   department; // 🌟 Fixed: Turned into an object structure
   final String priority;
+  final String? notificationPreference; // "one_time" | "recurring" | null
   final List<ReportingUserModel>
   assignees; // 🌟 Fixed: Changed to strongly typed list matching payload
   final DateTime? reportingDate;
@@ -36,6 +37,7 @@ class TaskModel {
     required this.title,
     this.department,
     required this.priority,
+    this.notificationPreference,
     required this.assignees,
     this.reportingDate,
     this.reportingTime,
@@ -67,6 +69,7 @@ class TaskModel {
           ? DepartmentModel.fromJson(json['department'] as Map<String, dynamic>)
           : null,
       priority: json['priority'] ?? '',
+      notificationPreference: json['notificationPreference'] as String?,
       assignees: json['assignees'] != null
           ? (json['assignees'] as List)
                 .map(
@@ -188,13 +191,15 @@ class RecurrenceModel {
 
 class ProofConfigModel {
   final List<String> proofTypes;
-  final bool aiValidationEnabled;
+  // final bool aiValidationEnabled;
   final String id;
+  final String proofEnabled;
 
   ProofConfigModel({
     required this.proofTypes,
-    required this.aiValidationEnabled,
+    // required this.aiValidationEnabled,
     required this.id,
+    required this.proofEnabled,
   });
 
   factory ProofConfigModel.fromJson(Map<String, dynamic> json) {
@@ -202,8 +207,9 @@ class ProofConfigModel {
       proofTypes: json['proofTypes'] != null
           ? List<String>.from(json['proofTypes'])
           : [],
-      aiValidationEnabled: json['aiValidationEnabled'] ?? false,
+      // aiValidationEnabled: json['aiValidationEnabled'] ?? false,
       id: json['_id'] ?? '',
+      proofEnabled: json['proofEnabled'] ?? '',
     );
   }
 }
@@ -301,6 +307,18 @@ class CreatedByModel {
       firstName: json['firstName'] ?? '',
       lastName: json['lastName'] ?? '',
     );
+  }
+
+  /// Some responses (e.g. `completedBy` right after marking an instance
+  /// complete) send this ref as a plain id string instead of the usual
+  /// populated `{"_id": ..., "firstName": ..., "lastName": ...}` object —
+  /// handle both shapes so parsing one doesn't throw and fail the whole
+  /// request.
+  factory CreatedByModel.fromDynamic(dynamic value) {
+    if (value is Map<String, dynamic>) {
+      return CreatedByModel.fromJson(value);
+    }
+    return CreatedByModel(id: value?.toString() ?? '', firstName: '', lastName: '');
   }
 }
 

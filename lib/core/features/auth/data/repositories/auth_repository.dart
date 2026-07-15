@@ -82,4 +82,8 @@ abstract class AuthRepository {
 
   // --- Account Deletion ---
   Future<ApiResult<BaseApiResponse<dynamic>>> requestAccountDeletion();
+
+  Future<ApiResult<BaseApiResponse<dynamic>>> verifyAccountDeletionOtp({
+    required String otpCode,
+  });
 }

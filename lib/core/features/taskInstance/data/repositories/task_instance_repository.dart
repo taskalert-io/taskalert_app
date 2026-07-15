@@ -29,6 +29,7 @@ abstract class TaskInstanceRepository {
     String? status,
     String? priority,
     List<String>? assigneeIds,
+    // String? scheduledDate,
     Map<String, String>? scheduledTime,
     String? scope,
   });

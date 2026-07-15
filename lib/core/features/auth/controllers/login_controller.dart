@@ -291,6 +291,31 @@ class LoginController extends ChangeNotifier {
     }
   }
 
+  Future<bool> handleVerifyAccountDeletionOtp({required String otpCode}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _successMessage = null;
+    notifyListeners();
+
+    final result = await _authRepository.verifyAccountDeletionOtp(
+      otpCode: otpCode,
+    );
+
+    _isLoading = false;
+
+    if (result is Success) {
+      final apiResponse = (result as Success).data as BaseApiResponse<dynamic>;
+      _successMessage = apiResponse.message;
+      notifyListeners();
+      return true;
+    } else if (result is Failure) {
+      _errorMessage = (result as Failure).exception.userMessage;
+      notifyListeners();
+      return false;
+    }
+    return false;
+  }
+
   /// Coordinates registering a company structure profile right after user registration succeeds
   Future<bool> handleRegisterOrganizationProfile({
     required String email,

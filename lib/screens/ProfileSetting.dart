@@ -1,8 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 import 'package:taskalert_app/core/features/auth/controllers/login_controller.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
@@ -17,6 +21,10 @@ import '../components/EmpJobDetailsSection.dart';
 import '../components/SkillPerformSection.dart';
 import '../components/TimeAttendSection.dart';
 import '../components/ToggleSwitch.dart';
+import '../components/ZoomableImage.dart';
+import 'SignInScreen.dart';
+
+enum _ProfileImageAction { view, camera, gallery }
 
 class ProfileSetting extends StatefulWidget {
   final String userId;
@@ -119,14 +127,18 @@ class ProfileSettingState extends State<ProfileSetting> {
 
   final _loginController = sl<LoginController>();
   final FlutterSecureStorage storage = const FlutterSecureStorage();
+  final ImagePicker _imagePicker = ImagePicker();
   String userName = "User";
   String userPhone = "";
   String userEmail = "";
   String userThumbnail = "";
+  String userOriginalImage = "";
 
   Map<String, dynamic>? _employeeData;
 
   bool isLoading = true;
+  File? _pickedProfileImage;
+  bool _isSavingProfile = false;
 
   @override
   void initState() {
@@ -156,6 +168,9 @@ class ProfileSettingState extends State<ProfileSetting> {
     String? storedEmail = await storage.read(key: "user_email");
 
     String? storedThumbnail = await storage.read(key: "user_avatar_thumbnail");
+    String? storedOriginalImage = await storage.read(
+      key: "user_avatar_original",
+    );
     String? storedPhoneNumber = await storage.read(key: "user_phone");
 
     String? storedDOB = await storage.read(key: "user_dob");
@@ -169,6 +184,7 @@ class ProfileSettingState extends State<ProfileSetting> {
       userName = storedName ?? "User";
       userEmail = storedEmail ?? "";
       userThumbnail = storedThumbnail ?? "assets/images/profile.png";
+      userOriginalImage = storedOriginalImage ?? "";
       userPhone = storedPhoneNumber ?? "";
 
       _firstNameController.text = storedFirstName ?? "";
@@ -214,7 +230,7 @@ class ProfileSettingState extends State<ProfileSetting> {
   }
 
   // ── My Profile Submit ──────────────────────────────────────────────────────
-  void _submitForm() {
+  Future<void> _submitForm() async {
     setState(() => _autoValidate = true);
     bool mainValid = _formKey.currentState!.validate();
 
@@ -239,7 +255,8 @@ class ProfileSettingState extends State<ProfileSetting> {
     if (assetSystemEnabled && !(_assetKey.currentState?.validate() ?? true)) {
       sectionsValid = false;
     }
-    if (dcmntComplianceEnabled && !(_dcmntKey.currentState?.validate() ?? true)) {
+    if (dcmntComplianceEnabled &&
+        !(_dcmntKey.currentState?.validate() ?? true)) {
       sectionsValid = false;
     }
 
@@ -247,7 +264,225 @@ class ProfileSettingState extends State<ProfileSetting> {
       _showSnackBar("Please fill all required fields.", Colors.red);
       return;
     }
-    _showSnackBar("Form submitted successfully!", Colors.green);
+
+    setState(() => _isSavingProfile = true);
+
+    // The update-profile endpoint clears the stored image whenever the
+    // "image" field is absent from the request, even if it was already
+    // present before. So when the user didn't pick a new photo, re-attach
+    // the existing one instead of leaving the field out.
+    final imageToSend =
+        _pickedProfileImage ?? await _downloadExistingProfileImage();
+
+    final success = await _loginController.handleUpdateProfile(
+      firstName: _firstNameController.text.trim(),
+      lastName: _lastNameController.text.trim(),
+      phoneNumber: _phoneController.text.trim(),
+      email: _emailController.text.trim(),
+      imageFile: imageToSend,
+    );
+
+    if (!mounted) return;
+
+    if (!success) {
+      setState(() => _isSavingProfile = false);
+      _showSnackBar(
+        _loginController.errorMessage ?? "Failed to update profile.",
+        Colors.red,
+      );
+      return;
+    }
+
+    // Refresh the cached profile (name/avatar/etc.) from the server so the
+    // header and every other screen reading secure storage stays in sync.
+    await _loginController.handleGetProfile();
+    await loadUserData();
+
+    if (!mounted) return;
+
+    setState(() {
+      _isSavingProfile = false;
+      _pickedProfileImage = null;
+      _isFirstNameEditing = false;
+      _isLastNameEditing = false;
+      _isEmailEditing = false;
+      _isPhoneEditing = false;
+    });
+
+    _showSnackBar(
+      _loginController.successMessage ?? "Profile updated successfully!",
+      Colors.green,
+    );
+  }
+
+  /// Downloads the currently-saved profile photo so it can be re-sent on a
+  /// profile update that didn't pick a new one. Returns null (silently) on
+  /// any failure — the update still proceeds, just without the image field,
+  /// same as before this fix.
+  Future<File?> _downloadExistingProfileImage() async {
+    final existingImageUrl = userOriginalImage.isNotEmpty
+        ? userOriginalImage
+        : userThumbnail;
+    if (existingImageUrl.isEmpty || !existingImageUrl.startsWith('http')) {
+      return null;
+    }
+
+    try {
+      final response = await http.get(Uri.parse(existingImageUrl));
+      if (response.statusCode != 200) return null;
+
+      final extension = existingImageUrl.split('.').last.split('?').first;
+      final tempFile = File(
+        '${Directory.systemTemp.path}/profile_${DateTime.now().millisecondsSinceEpoch}.$extension',
+      );
+      await tempFile.writeAsBytes(response.bodyBytes);
+      return tempFile;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ── Profile picture picker ─────────────────────────────────────────────────
+  Future<void> _pickProfileImage() async {
+    final action = await showModalBottomSheet<_ProfileImageAction>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(height: 8.h),
+            Container(
+              width: 36.w,
+              height: 4.h,
+              decoration: BoxDecoration(
+                color: _dividerColor,
+                borderRadius: BorderRadius.circular(4.r),
+              ),
+            ),
+            SizedBox(height: 12.h),
+            ListTile(
+              leading: Icon(Icons.remove_red_eye, color: _primaryColor),
+              title: Text(
+                "View Photo",
+                style: GoogleFonts.inter(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              onTap: () => Navigator.pop(ctx, _ProfileImageAction.view),
+            ),
+            ListTile(
+              leading: Icon(Icons.camera_alt, color: _primaryColor),
+              title: Text(
+                "Take Photo",
+                style: GoogleFonts.inter(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              onTap: () => Navigator.pop(ctx, _ProfileImageAction.camera),
+            ),
+            ListTile(
+              leading: Icon(Icons.photo_library, color: _primaryColor),
+              title: Text(
+                "Choose from Gallery",
+                style: GoogleFonts.inter(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              onTap: () => Navigator.pop(ctx, _ProfileImageAction.gallery),
+            ),
+            SizedBox(height: 8.h),
+          ],
+        ),
+      ),
+    );
+
+    if (action == null) return;
+
+    if (action == _ProfileImageAction.view) {
+      _showProfileImageViewer();
+      return;
+    }
+
+    final source = action == _ProfileImageAction.camera
+        ? ImageSource.camera
+        : ImageSource.gallery;
+
+    try {
+      final XFile? picked = await _imagePicker.pickImage(
+        source: source,
+        imageQuality: 80,
+        maxWidth: 1024,
+      );
+      if (picked != null) {
+        setState(() => _pickedProfileImage = File(picked.path));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar("Couldn't access camera/gallery: $e", Colors.red);
+    }
+  }
+
+  // ── Profile picture full-view popup ────────────────────────────────────────
+  void _showProfileImageViewer() {
+    final hasRealPhoto = _pickedProfileImage != null || userThumbnail.isNotEmpty;
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (dialogCtx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.symmetric(horizontal: 24.w),
+        child: Stack(
+          alignment: Alignment.topRight,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12.r),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.65,
+                ),
+                child: hasRealPhoto
+                    ? ZoomableImage(
+                        file: _pickedProfileImage,
+                        networkUrl: _pickedProfileImage == null
+                            ? userThumbnail
+                            : null,
+                        loaderColor: _primaryColor,
+                      )
+                    : AspectRatio(
+                        aspectRatio: 1,
+                        child: Image.asset(
+                          "assets/images/profile.png",
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(6.r),
+              child: GestureDetector(
+                onTap: () => Navigator.pop(dialogCtx),
+                child: Container(
+                  padding: EdgeInsets.all(4.r),
+                  decoration: const BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close, color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // ── Account Settings Submit ────────────────────────────────────────────────
@@ -552,6 +787,12 @@ class ProfileSettingState extends State<ProfileSetting> {
       showCursor: isEditing,
       cursorColor: isEditing ? _primaryColor : Colors.transparent,
       cursorWidth: isEditing ? 2.0 : 0,
+      onTap: () {
+        if (!isEditing) {
+          onEdit();
+          Future.microtask(() => focusNode.requestFocus());
+        }
+      },
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       validator: validator,
@@ -686,7 +927,7 @@ class ProfileSettingState extends State<ProfileSetting> {
   }
 
   // ── Save button ────────────────────────────────────────────────────────────
-  Widget _buildSaveButton(VoidCallback onPressed) {
+  Widget _buildSaveButton(VoidCallback onPressed, {bool isLoading = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
@@ -698,7 +939,7 @@ class ProfileSettingState extends State<ProfileSetting> {
             ),
           ),
           child: ElevatedButton(
-            onPressed: onPressed,
+            onPressed: isLoading ? null : onPressed,
             style: ElevatedButton.styleFrom(
               elevation: 0,
               backgroundColor: Colors.transparent,
@@ -710,14 +951,23 @@ class ProfileSettingState extends State<ProfileSetting> {
                 borderRadius: BorderRadius.circular(8.r),
               ),
             ),
-            child: Text(
-              "Save Changes",
-              style: GoogleFonts.inter(
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
+            child: isLoading
+                ? SizedBox(
+                    width: 16.w,
+                    height: 16.w,
+                    child: const CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Text(
+                    "Save Changes",
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
           ),
         ),
       ],
@@ -844,6 +1094,362 @@ class ProfileSettingState extends State<ProfileSetting> {
         );
       },
     );
+  }
+
+  // ── Delete-account OTP verification bottom sheet ───────────────────────────
+  void _showDeleteAccountOtpSheet(BuildContext context) {
+    final otpControllers = List.generate(6, (_) => TextEditingController());
+    final otpFocusNodes = List.generate(6, (_) => FocusNode());
+    String? otpErrorMessage;
+    String? otpInfoMessage;
+    bool isVerifying = false;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      builder: (BuildContext builder) {
+        return StatefulBuilder(
+          builder: (context, sheetSetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: SafeArea(
+                child: Container(
+                  padding: EdgeInsets.fromLTRB(20.w, 15.h, 20.w, 25.h),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(20.r),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40.w,
+                          height: 4.h,
+                          decoration: BoxDecoration(
+                            color: _dividerColor,
+                            borderRadius: BorderRadius.circular(2.r),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 18.h),
+                      Text(
+                        'Verify OTP',
+                        style: GoogleFonts.inter(
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.w700,
+                          color: _labelColor,
+                        ),
+                      ),
+                      SizedBox(height: 6.h),
+                      Text(
+                        'Enter the 6-digit code sent to your registered email to confirm account deletion.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          fontSize: 12.sp,
+                          color: _textColor,
+                        ),
+                      ),
+                      SizedBox(height: 22.h),
+                      if (otpErrorMessage != null) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(10.w),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(8.r),
+                            border: Border.all(
+                              color: Colors.red.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                color: Colors.red,
+                                size: 16,
+                              ),
+                              SizedBox(width: 8.w),
+                              Expanded(
+                                child: Text(
+                                  otpErrorMessage!,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11.sp,
+                                    color: Colors.red,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 14.h),
+                      ],
+                      if (otpInfoMessage != null) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(10.w),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(8.r),
+                            border: Border.all(
+                              color: Colors.green.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.check_circle_outline,
+                                color: Colors.green,
+                                size: 16,
+                              ),
+                              SizedBox(width: 8.w),
+                              Expanded(
+                                child: Text(
+                                  otpInfoMessage!,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11.sp,
+                                    color: Colors.green,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 14.h),
+                      ],
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(
+                          6,
+                          (index) => Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 5.w),
+                            child: SizedBox(
+                              width: 42.w,
+                              height: 42.h,
+                              child: KeyboardListener(
+                                focusNode: FocusNode(),
+                                onKeyEvent: (KeyEvent event) {
+                                  if (event is KeyDownEvent &&
+                                      event.logicalKey ==
+                                          LogicalKeyboardKey.backspace) {
+                                    if (otpControllers[index].text.isEmpty &&
+                                        index > 0) {
+                                      otpFocusNodes[index - 1].requestFocus();
+                                      otpControllers[index - 1].clear();
+                                    }
+                                  }
+                                },
+                                child: TextFormField(
+                                  controller: otpControllers[index],
+                                  focusNode: otpFocusNodes[index],
+                                  textAlign: TextAlign.center,
+                                  textAlignVertical: TextAlignVertical.center,
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                    LengthLimitingTextInputFormatter(1),
+                                  ],
+                                  maxLength: 1,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: _primaryColor,
+                                  ),
+                                  decoration: InputDecoration(
+                                    counterText: "",
+                                    isDense: true,
+                                    filled: true,
+                                    fillColor: const Color(0xFFF7F8FA),
+                                    contentPadding: const EdgeInsets.only(
+                                      top: 10,
+                                      bottom: 10,
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        6.r,
+                                      ),
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFFD8DCE3),
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        6.r,
+                                      ),
+                                      borderSide: BorderSide(
+                                        color: _primaryColor,
+                                        width: 1.2.w,
+                                      ),
+                                    ),
+                                  ),
+                                  onChanged: (value) {
+                                    if (value.isNotEmpty && index < 5) {
+                                      otpFocusNodes[index + 1].requestFocus();
+                                    }
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 16.h),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            "Didn't receive the code? ",
+                            style: GoogleFonts.inter(
+                              fontSize: 12.sp,
+                              color: _textColor,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () async {
+                              final resent = await _loginController
+                                  .handleRequestAccountDeletion();
+
+                              if (!context.mounted) return;
+
+                              sheetSetState(() {
+                                if (resent) {
+                                  otpErrorMessage = null;
+                                  otpInfoMessage =
+                                      _loginController.successMessage ??
+                                      'A new code has been sent.';
+                                } else {
+                                  otpInfoMessage = null;
+                                  otpErrorMessage =
+                                      _loginController.errorMessage ??
+                                      'Failed to resend the code. Please try again.';
+                                }
+                              });
+                            },
+                            child: Text(
+                              'Resend',
+                              style: GoogleFonts.inter(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF4D81E7),
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 22.h),
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8.r),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFD96CFF), Color(0xFF5CE1E6)],
+                          ),
+                        ),
+                        child: ElevatedButton(
+                          onPressed: isVerifying
+                              ? null
+                              : () async {
+                                  final otp = otpControllers
+                                      .map((c) => c.text)
+                                      .join();
+
+                                  if (otp.length != 6) {
+                                    sheetSetState(() {
+                                      otpErrorMessage =
+                                          'Please enter the complete 6-digit code.';
+                                    });
+                                    return;
+                                  }
+
+                                  sheetSetState(() {
+                                    otpErrorMessage = null;
+                                    otpInfoMessage = null;
+                                    isVerifying = true;
+                                  });
+
+                                  final verified = await _loginController
+                                      .handleVerifyAccountDeletionOtp(
+                                        otpCode: otp,
+                                      );
+
+                                  if (!context.mounted) return;
+
+                                  if (!verified) {
+                                    sheetSetState(() {
+                                      isVerifying = false;
+                                      otpErrorMessage =
+                                          _loginController.errorMessage ??
+                                          'Invalid code. Please try again.';
+                                    });
+                                    return;
+                                  }
+
+                                  Navigator.pop(context); // close OTP sheet
+
+                                  await _loginController.handleLogout();
+
+                                  if (!context.mounted) return;
+
+                                  Navigator.pushAndRemoveUntil(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const SignInScreen(),
+                                    ),
+                                    (route) => false,
+                                  );
+                                },
+                          style: ElevatedButton.styleFrom(
+                            elevation: 0,
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            padding: EdgeInsets.symmetric(vertical: 12.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
+                          ),
+                          child: isVerifying
+                              ? SizedBox(
+                                  width: 18.w,
+                                  height: 18.w,
+                                  child: const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  'Verify OTP',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ).whenComplete(() {
+      for (final controller in otpControllers) {
+        controller.dispose();
+      }
+      for (final node in otpFocusNodes) {
+        node.dispose();
+      }
+    });
   }
 
   // ── My Profile tab ─────────────────────────────────────────────────────────
@@ -1249,7 +1855,7 @@ class ProfileSettingState extends State<ProfileSetting> {
             ),
 
             SizedBox(height: 16.h),
-            _buildSaveButton(_submitForm),
+            _buildSaveButton(_submitForm, isLoading: _isSavingProfile),
           ],
         ),
       ),
@@ -1489,7 +2095,8 @@ class ProfileSettingState extends State<ProfileSetting> {
                                   ),
                                 ),
                                 content: Text(
-                                  'Are you sure you want to permanently delete your account? This action cannot be undone.',
+                                  "Warning: Are you sure you want to delete your account? Deleting your account will permanently remove all your data, tasks, and workspace access. This cannot be reversed. If you did not request this, secure your account immediately.",
+
                                   style: GoogleFonts.inter(
                                     fontSize: 12.sp,
                                     color: _textColor,
@@ -1507,7 +2114,62 @@ class ProfileSettingState extends State<ProfileSetting> {
                                     ),
                                   ),
                                   TextButton(
-                                    onPressed: () => Navigator.pop(ctx),
+                                    onPressed: () async {
+                                      Navigator.pop(ctx); // close confirmation
+
+                                      final success = await _loginController
+                                          .handleRequestAccountDeletion();
+
+                                      if (!context.mounted) return;
+
+                                      if (success) {
+                                        // OTP was sent to confirm the
+                                        // deletion — collect it instead of
+                                        // just showing a plain success text.
+                                        _showDeleteAccountOtpSheet(context);
+                                        return;
+                                      }
+
+                                      showDialog(
+                                        context: context,
+                                        builder: (resultCtx) => AlertDialog(
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12.r),
+                                          ),
+                                          title: Text(
+                                            'Something Went Wrong',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 14.sp,
+                                              fontWeight: FontWeight.w700,
+                                              color: _labelColor,
+                                            ),
+                                          ),
+                                          content: Text(
+                                            _loginController.errorMessage ??
+                                                'Failed to submit deletion request. Please try again.',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 12.sp,
+                                              color: _textColor,
+                                            ),
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(resultCtx),
+                                              child: Text(
+                                                'OK',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 12.sp,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.red,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
                                     child: Text(
                                       'Delete',
                                       style: GoogleFonts.inter(
@@ -1658,14 +2320,48 @@ class ProfileSettingState extends State<ProfileSetting> {
                   ),
 
                   Center(
-                    child: SizedBox(
-                      width: 100.w,
-                      height: 100.h,
-                      child: CircleAvatar(
-                        backgroundImage: userThumbnail.isNotEmpty
-                            ? NetworkImage(userThumbnail)
-                            : const AssetImage("assets/images/profile.png")
-                                  as ImageProvider,
+                    child: GestureDetector(
+                      onTap: _pickProfileImage,
+                      child: SizedBox(
+                        width: 100.w,
+                        height: 100.h,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          clipBehavior: Clip.none,
+                          children: [
+                            CircleAvatar(
+                              backgroundImage: _pickedProfileImage != null
+                                  ? FileImage(_pickedProfileImage!)
+                                        as ImageProvider
+                                  : userThumbnail.isNotEmpty
+                                  ? NetworkImage(userThumbnail)
+                                        as ImageProvider
+                                  : const AssetImage(
+                                      "assets/images/profile.png",
+                                    ),
+                            ),
+                            Positioned(
+                              right: 0,
+                              bottom: 0,
+                              child: Container(
+                                padding: EdgeInsets.all(5.r),
+                                decoration: BoxDecoration(
+                                  color: _primaryColor,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 2.w,
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.camera_alt,
+                                  size: 14.r,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

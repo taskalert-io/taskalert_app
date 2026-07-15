@@ -894,7 +894,11 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       employeeController.handleGetEmployees();
-      locationController.handleGetLocations();
+      // This dropdown is a client-side search over the full list, not a
+      // paginated view — without an explicit limit the backend only
+      // returns its default page size, so later locations silently never
+      // show up in the search.
+      locationController.handleGetLocations(limit: 1000);
     });
   }
 
@@ -1140,9 +1144,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
 
       if (isProofEnabled) {
         formData['proofTypes'] = jsonEncode(selectedProofTypes);
-        formData["aiValidationEnabled"] = selectedProofRadioType == "Yes"
-            ? true
-            : false;
+        formData["proofEnabled"] = selectedProofRadioType;
       }
 
       final bool success = await taskController.handleCreateTask(
@@ -1191,7 +1193,6 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
         ),
       );
     }
-
   }
 
   // ── LOCATION AUTOCOMPLETE ────────────────────────────────────────────────
@@ -1744,6 +1745,18 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Back + page title
+                          // IconButton(
+                          // onPressed: () => Navigator.maybePop(context),
+                          // icon: Icon(
+                          // GestureDetector(
+                          //   onTap: () => Navigator.maybePop(context),
+                          //   child: Icon(
+                          //     Icons.arrow_back,
+                          //     size: 17.r,
+                          //     color: const Color(0xFF0A0258),
+                          //   ),
+                          // ),
+                          // SizedBox(height: 5.h),
                           IconButton(
                             onPressed: () => Navigator.maybePop(context),
                             icon: Icon(
@@ -1754,6 +1767,9 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                             splashRadius: 22.r,
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
+                            // splashRadius: 22.r,
+                            // padding: EdgeInsets.zero,
+                            // constraints: const BoxConstraints(),
                           ),
                           Text(
                             "Core Identity & Media",
@@ -3340,7 +3356,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      'The "Proof" & AI Validation',
+                                      'The "Proof" & Validation',
                                       style: GoogleFonts.inter(
                                         fontSize: 12.sp,
                                         fontWeight: FontWeight.w700,
@@ -3437,7 +3453,7 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                "AI Validation (Optional)",
+                                                "Proof Description",
                                                 style: GoogleFonts.inter(
                                                   color: const Color(
                                                     0xFF3F3F3F,
@@ -3452,27 +3468,31 @@ class CreateRepetitiveScreenState extends State<CreateRepetitiveScreen> {
                                                 runSpacing: 10.h,
                                                 children: [
                                                   _buildProoftypeOption(
-                                                    "Yes",
-                                                    "Yes",
+                                                    "Live",
+                                                    "live",
                                                   ),
                                                   _buildProoftypeOption(
-                                                    "No",
-                                                    "No",
+                                                    "Upload",
+                                                    "upload",
+                                                  ),
+                                                  _buildProoftypeOption(
+                                                    "Both",
+                                                    "both",
                                                   ),
                                                 ],
                                               ),
                                               // DELETED: the _proofRadioError Padding widget
                                               SizedBox(height: 8.h),
-                                              Text(
-                                                'If enabled, the system uses Vision AI to scan the uploaded image to ensure it matches the task.',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 11.sp,
-                                                  fontWeight: FontWeight.w400,
-                                                  color: const Color(
-                                                    0xFF797979,
-                                                  ),
-                                                ),
-                                              ),
+                                              // Text(
+                                              //   'If enabled, the system uses Vision AI to scan the uploaded image to ensure it matches the task.',
+                                              //   style: GoogleFonts.inter(
+                                              //     fontSize: 11.sp,
+                                              //     fontWeight: FontWeight.w400,
+                                              //     color: const Color(
+                                              //       0xFF797979,
+                                              //     ),
+                                              //   ),
+                                              // ),
                                             ],
                                           ),
 

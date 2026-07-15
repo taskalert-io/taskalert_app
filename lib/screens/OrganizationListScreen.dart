@@ -6,11 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
+import '../components/ZoomableImage.dart';
 import '../core/features/organization/controllers/organization_controller.dart';
 import '../core/features/organization/data/models/organization_model.dart';
 import '../utils/injection_container.dart';
@@ -904,6 +906,29 @@ class _OrganizationListScreenState extends State<OrganizationListScreen> {
   }
 }
 
+// Downloads the currently-saved organization logo so it can be re-sent on
+// an update that didn't pick a new one — the update endpoint clears the
+// logo whenever the "image" field is absent from the request, even if one
+// was already set. Returns null (silently) on any failure; the update
+// still proceeds, just without the image field, same as before this fix.
+Future<File?> _downloadExistingOrgImage(String url) async {
+  if (url.isEmpty || !url.startsWith('http')) return null;
+
+  try {
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode != 200) return null;
+
+    final extension = url.split('.').last.split('?').first;
+    final tempFile = File(
+      '${Directory.systemTemp.path}/org_logo_${DateTime.now().millisecondsSinceEpoch}.$extension',
+    );
+    await tempFile.writeAsBytes(response.bodyBytes);
+    return tempFile;
+  } catch (_) {
+    return null;
+  }
+}
+
 // ── Reusable Organization create/edit dialog ────────────────────────────
 //
 // Extracted to a top-level function (not a State method), matching the
@@ -1050,6 +1075,7 @@ void openOrganizationFormDialog({
                     ],
 
                     _orgImageUploadField(
+                      context: ctx,
                       imageFile: selectedImageFile,
                       existingImageUrl:
                           existing?.image?.thumbnailUrl ??
@@ -1245,6 +1271,17 @@ void openOrganizationFormDialog({
                                                 selectedImageFile?.path,
                                           );
                                     } else {
+                                      // Re-attach the existing logo when no
+                                      // new one was picked — the update
+                                      // endpoint clears it otherwise.
+                                      final imagePath =
+                                          selectedImageFile?.path ??
+                                          (await _downloadExistingOrgImage(
+                                            existing.image?.thumbnailUrl ??
+                                                existing.image?.originalUrl ??
+                                                '',
+                                          ))?.path;
+
                                       success = await organizationController
                                           .handleUpdateOrganization(
                                             id: existing.id,
@@ -1256,8 +1293,7 @@ void openOrganizationFormDialog({
                                             state: stateCtrl.text.trim(),
                                             country: countryCtrl.text.trim(),
                                             pinCode: pincodeCtrl.text.trim(),
-                                            imageFilePath:
-                                                selectedImageFile?.path,
+                                            imageFilePath: imagePath,
                                           );
                                     }
 
@@ -1364,6 +1400,7 @@ void openOrganizationFormDialog({
 }
 
 Widget _orgImageUploadField({
+  required BuildContext context,
   required File? imageFile,
   required VoidCallback onTap,
   VoidCallback? onRemove,
@@ -1480,6 +1517,30 @@ Widget _orgImageUploadField({
                       ),
                     ),
                   ),
+                if (imageFile != null || hasExistingImage)
+                  Positioned(
+                    bottom: -6,
+                    right: -6,
+                    child: GestureDetector(
+                      onTap: () => _showOrgImagePreviewDialog(
+                        context,
+                        imageFile: imageFile,
+                        imageUrl: existingImageUrl,
+                      ),
+                      child: Container(
+                        padding: EdgeInsets.all(3.r),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF0A0258),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.remove_red_eye,
+                          size: 11.r,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -1503,6 +1564,69 @@ Widget _orgImageUploadField({
         ),
       ],
     ],
+  );
+}
+
+/// Full-size preview popup for the organization logo — either the locally
+/// picked file (not yet uploaded) or the existing server image.
+void _showOrgImagePreviewDialog(
+  BuildContext context, {
+  required File? imageFile,
+  String? imageUrl,
+}) {
+  showDialog(
+    context: context,
+    barrierColor: Colors.black.withOpacity(0.7),
+    builder: (dialogCtx) => Dialog(
+      backgroundColor: Colors.white,
+      insetPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 40.h),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
+      child: Padding(
+        padding: EdgeInsets.all(14.w),
+        child: SingleChildScrollView(
+          // A tall/portrait image (or a small screen) can push this past
+          // the Dialog's fixed insetPadding height — scroll instead of
+          // overflowing.
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Image Preview',
+                    style: GoogleFonts.inter(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF0A0258),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(dialogCtx),
+                    child: Icon(
+                      Icons.close,
+                      size: 20.r,
+                      color: const Color(0xFF6C7278),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 12.h),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.65,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8.r),
+                  child: ZoomableImage(file: imageFile, networkUrl: imageUrl),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
   );
 }
 

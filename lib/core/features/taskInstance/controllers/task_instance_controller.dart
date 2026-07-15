@@ -111,6 +111,7 @@ class TaskInstanceController extends ChangeNotifier {
     required String status,
     String? priority,
     List<String>? assigneeIds,
+    String? date,
     String? time,
     String? period,
     required String scope,
@@ -126,6 +127,7 @@ class TaskInstanceController extends ChangeNotifier {
       status: status,
       priority: priority,
       assigneeIds: assigneeIds,
+      // scheduledDate: date,
       scheduledTime: {"time": ?time, "period": ?period},
       scope: scope,
     );
@@ -272,14 +274,36 @@ class TaskInstanceController extends ChangeNotifier {
           (result as Success).data as BaseApiResponse<TaskInstanceModel>;
       _successMessage = apiResponse.message;
 
+      // This endpoint's response body has, in practice, come back missing
+      // the rest of the proof list instead of just the deleted file — so
+      // rather than trusting it verbatim (which wiped every proof, not
+      // just the one requested), prune only the just-deleted publicId from
+      // what we already know locally.
+      ProofSubmissionModel? pruneDeleted(ProofSubmissionModel? submission) {
+        if (submission == null) return null;
+        return ProofSubmissionModel(
+          submittedAt: submission.submittedAt,
+          files: submission.files
+              .where((f) => f.file?.publicId != publicId)
+              .toList(),
+          note: submission.note,
+          proofTypes: submission.proofTypes,
+          proofEnabled: submission.proofEnabled,
+        );
+      }
+
       final index = _instances.indexWhere(
         (element) => element.id == instanceId,
       );
-      if (index != -1 && apiResponse.data != null) {
-        _instances[index] = apiResponse.data!;
+      if (index != -1) {
+        _instances[index] = _instances[index].copyWith(
+          proofSubmission: pruneDeleted(_instances[index].proofSubmission),
+        );
       }
       if (_selectedInstance?.id == instanceId) {
-        _selectedInstance = apiResponse.data;
+        _selectedInstance = _selectedInstance!.copyWith(
+          proofSubmission: pruneDeleted(_selectedInstance!.proofSubmission),
+        );
       }
       notifyListeners();
       return true;

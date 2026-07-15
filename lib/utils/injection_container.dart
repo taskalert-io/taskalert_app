@@ -1,5 +1,8 @@
 import 'package:get_it/get_it.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:taskalert_app/core/features/activityLogs/controllers/activity_log_controller.dart';
+import 'package:taskalert_app/core/features/activityLogs/data/repositories/activity_log_repository.dart';
+import 'package:taskalert_app/core/features/activityLogs/data/repositories/activity_log_repository_impl.dart';
 import 'package:taskalert_app/core/features/auth/controllers/signup_controller.dart';
 import 'package:taskalert_app/core/features/auth/data/repositories/auth_repository.dart';
 import 'package:taskalert_app/core/features/auth/data/repositories/auth_repository_impl.dart';
@@ -9,6 +12,9 @@ import 'package:taskalert_app/core/features/departments/data/repositories/depart
 import 'package:taskalert_app/core/features/employees/controllers/employee_controller.dart';
 import 'package:taskalert_app/core/features/employees/data/repositories/employee_repository.dart';
 import 'package:taskalert_app/core/features/employees/data/repositories/employee_respository_impl.dart';
+import 'package:taskalert_app/core/features/invitation/controllers/invitation_controller.dart';
+import 'package:taskalert_app/core/features/invitation/data/repositories/invitation_repository.dart';
+import 'package:taskalert_app/core/features/invitation/data/repositories/invitation_repository_impl.dart';
 import 'package:taskalert_app/core/features/jobRoles/controllers/job_role_controller.dart';
 import 'package:taskalert_app/core/features/jobRoles/data/repositories/job_role_repository.dart';
 import 'package:taskalert_app/core/features/jobRoles/data/repositories/job_role_repository_impl.dart';
@@ -102,6 +108,17 @@ Future<void> init() async {
   sl.registerFactory(
     () => NotificationController(sl<NotificationRepository>()),
   );
+
+  sl.registerLazySingleton<ActivityLogRepository>(
+    () => ActivityLogRepositoryImpl(sl<HttpService>()),
+  );
+  sl.registerFactory(() => ActivityLogController(sl<ActivityLogRepository>()));
+
+  // ✉️ Invitations Feature Layers
+  sl.registerLazySingleton<InvitationRepository>(
+    () => InvitationRepositoryImpl(sl<HttpService>()),
+  );
+  sl.registerFactory(() => InvitationController(sl<InvitationRepository>()));
 
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(sl<HttpService>(), sl<FlutterSecureStorage>()),

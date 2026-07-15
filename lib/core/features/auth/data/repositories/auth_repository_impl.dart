@@ -543,8 +543,8 @@ class AuthRepositoryImpl implements AuthRepository {
         (json) => UserModel.fromJson(json),
       );
 
-      if (apiResponse.success && apiResponse.data != null) {
-        return ApiResult.success(apiResponse.data! as BaseApiResponse<dynamic>);
+      if (apiResponse.success) {
+        return ApiResult.success(apiResponse as BaseApiResponse<dynamic>);
       }
       _handleErrorEnvelope(apiResponse);
       return ApiResult.failure(
@@ -640,6 +640,33 @@ class AuthRepositoryImpl implements AuthRepository {
           userMessage: 'Something went wrong while processing the response.',
         ),
       );
+    }
+  }
+
+  @override
+  Future<ApiResult<BaseApiResponse<dynamic>>> verifyAccountDeletionOtp({
+    required String otpCode,
+  }) async {
+    try {
+      final responseData = await _httpService.delete(
+        '/auth/delete-account',
+        body: {'otpCode': otpCode},
+      );
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData,
+        (json) => json,
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+      _handleErrorEnvelope(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
     }
   }
 

@@ -43,10 +43,22 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _autoValidate = false;
 
+  // Individual accounts have no org structure (no locations/departments/
+  // other employees), so Location, Department, Assign To and Reporting To
+  // don't apply — hidden and skipped from validation/submission for them.
+  bool _isIndividual = false;
+
   // ── Section error strings ──────────────────────────────────────────────────
   String? _assignToError;
   String? _dueDateError;
   String? _reportingToError;
+
+  // ── Notification Preference (optional) ─────────────────────────────────────
+  static const List<String> _notificationPreferenceOptions = [
+    "one_time",
+    "recurring",
+  ];
+  String? selectedNotificationPreference;
 
   // ── Location (autocomplete search, mirrors LocationListScreen) ────────────
   final TextEditingController locationSearchController =
@@ -486,9 +498,18 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
     locationController = sl<LocationController>();
     locationController.addListener(_onLocationsChanged);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       employeeController.handleGetEmployees();
-      locationController.handleGetLocations();
+      // This dropdown is a client-side search over the full list, not a
+      // paginated view — without an explicit limit the backend only
+      // returns its default page size, so later locations silently never
+      // show up in the search.
+      locationController.handleGetLocations(limit: 1000);
+
+      final accountType = await secureStorage.read(key: 'user_account_type');
+      if (mounted) {
+        setState(() => _isIndividual = accountType == 'individual');
+      }
     });
   }
 
@@ -522,36 +543,41 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
   bool _validateSections() {
     bool valid = true;
 
-    if (selectedLocation == null) {
-      setState(() => _locationError = "Please select a location");
-      valid = false;
-    } else {
-      setState(() => _locationError = null);
-    }
+    // Individual accounts have no org structure to assign these against.
+    if (!_isIndividual) {
+      if (selectedLocation == null) {
+        setState(() => _locationError = "Please select a location");
+        valid = false;
+      } else {
+        setState(() => _locationError = null);
+      }
 
-    if (selectedNewDepartments.isEmpty) {
-      setState(
-        () => _newDepartmentError = "Please select at least one department",
-      );
-      valid = false;
-    } else {
-      setState(() => _newDepartmentError = null);
-    }
+      if (selectedNewDepartments.isEmpty) {
+        setState(
+          () => _newDepartmentError = "Please select at least one department",
+        );
+        valid = false;
+      } else {
+        setState(() => _newDepartmentError = null);
+      }
 
-    // Reporting To
-    if (selectedReportingList.isEmpty) {
-      setState(() => _reportingToError = "Please select a user");
-      valid = false;
-    } else {
-      setState(() => _reportingToError = null);
-    }
+      // Reporting To
+      if (selectedReportingList.isEmpty) {
+        setState(() => _reportingToError = "Please select a user");
+        valid = false;
+      } else {
+        setState(() => _reportingToError = null);
+      }
 
-    // Assign To
-    if (selectedAssignees.isEmpty) {
-      setState(() => _assignToError = "Please select at least one assignee");
-      valid = false;
-    } else {
-      setState(() => _assignToError = null);
+      // Assign To
+      if (selectedAssignees.isEmpty) {
+        setState(
+          () => _assignToError = "Please select at least one assignee",
+        );
+        valid = false;
+      } else {
+        setState(() => _assignToError = null);
+      }
     }
 
     // Cross-field: due date must not be before assign date
@@ -611,13 +637,17 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
           "taskType": taskType,
           "title": titleNameController.text.trim(),
           "description": descriptionController.text.trim(),
-          "location": selectedLocation?.id,
-          "department": jsonEncode(
-            selectedNewDepartments
-                .map((d) => d.id)
-                .whereType<String>()
-                .toList(),
-          ),
+          // Individual accounts have no org structure — leave these out
+          // entirely rather than sending null/empty ref ids the backend
+          // would reject.
+          if (!_isIndividual) "location": selectedLocation?.id,
+          if (!_isIndividual)
+            "department": jsonEncode(
+              selectedNewDepartments
+                  .map((d) => d.id)
+                  .whereType<String>()
+                  .toList(),
+            ),
           "priority": selectedPriority.toLowerCase(),
           "reportingDate": assignSelectedDate != null
               ? "${assignSelectedDate!.year}-"
@@ -629,11 +659,14 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
             "period": assignSelectedAmPm,
           },
 
-          "assignees": jsonEncode(
-            selectedAssignees,
-          ), // Convert list to string for API; repository should handle conversion back to list
+          if (!_isIndividual)
+            "assignees": jsonEncode(
+              selectedAssignees,
+            ), // Convert list to string for API; repository should handle conversion back to list
 
-          "reportingTo": jsonEncode(selectedReportingList),
+          if (!_isIndividual) "reportingTo": jsonEncode(selectedReportingList),
+          if (selectedNotificationPreference != null)
+            "notificationPreference": selectedNotificationPreference,
           // "attachments":
           //     selectedFiles, // This would typically be handled as multipart form data in the repository layer
         },
@@ -1240,6 +1273,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
 
                                 SizedBox(height: 8.h),
 
+                                if (!_isIndividual) ...[
                                 // Location — autocomplete search, same UX as
                                 // LocationListScreen's search field.
                                 _buildLabel("Location"),
@@ -1358,9 +1392,11 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                       ),
                                     ),
                                   ),
+                                ],
 
                                 SizedBox(height: 8.h),
 
+                                if (!_isIndividual) ...[
                                 // New Department — searchable multi-select,
                                 // scoped to whichever Location is selected
                                 // above. Locked until a Location is chosen.
@@ -1459,6 +1495,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                       ),
                                     ),
                                   ),
+                                ],
 
                                 SizedBox(height: 8.h),
 
@@ -1477,6 +1514,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
 
                                 SizedBox(height: 8.h),
 
+                                if (!_isIndividual) ...[
                                 // Assign To — multi-select
                                 _buildLabel("Assign To"),
                                 SizedBox(height: 3.h),
@@ -1649,6 +1687,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                       ),
                                     ),
                                   ),
+                                ],
 
                                 // Reporting To — searchable single-select
                                 SizedBox(height: 8.h),
@@ -1759,6 +1798,67 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
                                       ),
                                     ),
                                   ],
+                                ),
+
+                                SizedBox(height: 8.h),
+
+                                // Notification Preference — optional
+                                _buildLabel("Notification Preference"),
+                                SizedBox(height: 3.h),
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    children: _notificationPreferenceOptions.map((
+                                      pref,
+                                    ) {
+                                      final label = pref == "one_time"
+                                          ? "One Time"
+                                          : "Recurring";
+                                      final isSelected =
+                                          selectedNotificationPreference ==
+                                          pref;
+                                      return InkWell(
+                                        onTap: () => setState(
+                                          () => selectedNotificationPreference =
+                                              isSelected ? null : pref,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Radio<String>(
+                                              value: pref,
+                                              groupValue:
+                                                  selectedNotificationPreference,
+                                              activeColor: const Color(
+                                                0xFF0A0258,
+                                              ),
+                                              materialTapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                              onChanged: (v) => setState(
+                                                () =>
+                                                    selectedNotificationPreference =
+                                                        v,
+                                              ),
+                                            ),
+                                            SizedBox(width: 2.w),
+                                            Text(
+                                              label,
+                                              style: GoogleFonts.inter(
+                                                fontSize: 11.5.sp,
+                                                fontWeight: isSelected
+                                                    ? FontWeight.w600
+                                                    : FontWeight.w400,
+                                                color: const Color(0xFF344054),
+                                              ),
+                                            ),
+                                            SizedBox(width: 12.w),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
                                 ),
 
                                 SizedBox(height: 8.h),

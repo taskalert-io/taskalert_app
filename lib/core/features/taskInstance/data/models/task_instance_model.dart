@@ -5,14 +5,16 @@ class ProofSubmissionModel {
   final List<ProofFileModel> files;
   final String note;
   final List<String> proofTypes;
-  final String? aiValidationResult;
+  final String proofEnabled;
+  // final String? aiValidationResult;
 
   ProofSubmissionModel({
     this.submittedAt,
     required this.files,
     required this.note,
     required this.proofTypes,
-    this.aiValidationResult,
+    required this.proofEnabled,
+    // this.aiValidationResult,
   });
 
   factory ProofSubmissionModel.fromJson(Map<String, dynamic> json) {
@@ -36,7 +38,8 @@ class ProofSubmissionModel {
       proofTypes: json['proofTypes'] != null
           ? List<String>.from(json['proofTypes'])
           : [],
-      aiValidationResult: json['aiValidationResult']?.toString(),
+      proofEnabled: json['proofEnabled'] ?? '',
+      // aiValidationResult: json['aiValidationResult']?.toString(),
     );
   }
 }
@@ -94,6 +97,7 @@ class TaskInstanceModel {
   final String title;
   final String? description;
   final String priority;
+  final String? notificationPreference; // "one_time" | "recurring" | null
   final String status;
   final String taskId;
   final List<String> department;
@@ -141,6 +145,7 @@ class TaskInstanceModel {
     required this.title,
     this.description,
     required this.priority,
+    this.notificationPreference,
     required this.status,
     required this.taskId,
     required this.department,
@@ -171,6 +176,49 @@ class TaskInstanceModel {
     this.endAfterCount,
   });
 
+  TaskInstanceModel copyWith({ProofSubmissionModel? proofSubmission}) {
+    return TaskInstanceModel(
+      id: id,
+      taskDocId: taskDocId,
+      instanceId: instanceId,
+      scheduledTime: scheduledTime,
+      scheduledDate: scheduledDate,
+      taskType: taskType,
+      title: title,
+      description: description,
+      priority: priority,
+      notificationPreference: notificationPreference,
+      status: status,
+      taskId: taskId,
+      department: department,
+      organization: organization,
+      assignees: assignees,
+      assigneeRefs: assigneeRefs,
+      parentInstance: parentInstance,
+      completedBy: completedBy,
+      completedAt: completedAt,
+      proofSubmission: proofSubmission ?? this.proofSubmission,
+      reviewedBy: reviewedBy,
+      reviewedAt: reviewedAt,
+      reviewNote: reviewNote,
+      createdBy: createdBy,
+      isDeleted: isDeleted,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      timePeriod: timePeriod,
+      everyN: everyN,
+      daysOfWeek: daysOfWeek,
+      monthlyType: monthlyType,
+      dayOfMonth: dayOfMonth,
+      weekOfMonth: weekOfMonth,
+      dayOfWeekMonthly: dayOfWeekMonthly,
+      rangeStart: rangeStart,
+      endType: endType,
+      endByDate: endByDate,
+      endAfterCount: endAfterCount,
+    );
+  }
+
   factory TaskInstanceModel.fromJson(Map<String, dynamic> json) {
     return TaskInstanceModel(
       id: json['_id'] ?? '',
@@ -186,6 +234,7 @@ class TaskInstanceModel {
       title: json['title'] ?? '',
       description: json['description'],
       priority: json['priority'] ?? '',
+      notificationPreference: json['notificationPreference'] as String?,
       status: json['status'] ?? '',
       taskId: json['taskId'] ?? '',
       department: json['department'] != null
@@ -210,7 +259,7 @@ class TaskInstanceModel {
           : [],
       parentInstance: json['parentInstance'],
       completedBy: json['completedBy'] != null
-          ? CreatedByModel.fromJson(json['completedBy'] as Map<String, dynamic>)
+          ? CreatedByModel.fromDynamic(json['completedBy'])
           : null,
       completedAt: json['completedAt'] != null
           ? DateTime.tryParse(json['completedAt'])
@@ -222,14 +271,14 @@ class TaskInstanceModel {
             )
           : null,
       reviewedBy: json['reviewedBy'] != null
-          ? CreatedByModel.fromJson(json['reviewedBy'] as Map<String, dynamic>)
+          ? CreatedByModel.fromDynamic(json['reviewedBy'])
           : null,
       reviewedAt: json['reviewedAt'] != null
           ? DateTime.tryParse(json['reviewedAt'])
           : null,
       reviewNote: json['reviewNote'],
       createdBy: json['createdBy'] != null
-          ? CreatedByModel.fromJson(json['createdBy'] as Map<String, dynamic>)
+          ? CreatedByModel.fromDynamic(json['createdBy'])
           : null,
       isDeleted: json['isDeleted'] ?? false,
       createdAt: json['createdAt'] != null

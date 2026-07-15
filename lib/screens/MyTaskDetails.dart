@@ -7,7 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:taskalert_app/core/features/activityLogs/controllers/activity_log_controller.dart';
 import 'package:taskalert_app/core/features/employees/controllers/employee_controller.dart';
 import 'package:taskalert_app/core/features/employees/data/models/employee_model.dart';
 import 'package:taskalert_app/core/features/taskInstance/controllers/task_instance_controller.dart';
@@ -19,8 +22,10 @@ import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
 import '../components/ToggleSwitch.dart';
+import '../components/ZoomableImage.dart';
 import 'activity_bottom_sheet.dart';
-
+import 'package:taskalert_app/screens/panel_right_close_icon.dart';
+import 'activity_bottom_sheet.dart';
 // ═══════════════════════════════════════════════════════════════════════════
 // Model — mirrors your API response shape exactly.
 // Swap field names here to match your backend without touching UI code.
@@ -206,6 +211,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   String _priority = 'Low';
   String _status = 'To Do';
 
+  final activityLogs = <ActivityItem>[];
+
   // ── Static option lists ────────────────────────────────────────────────────
   static const _priorityItems = ['Low', 'Medium', 'High'];
   static const _statusItems = ['To Do', 'In Progress', 'Completed'];
@@ -216,6 +223,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   // late final TaskInstanceController taskController;
   TaskInstanceController taskController = sl<TaskInstanceController>();
+  ActivityLogController activityLogController = sl<ActivityLogController>();
   final EmployeeController employeeController = sl<EmployeeController>();
 
   // @override
@@ -248,8 +256,28 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     ]);
     final currentUserId = await secureStorage.read(key: 'user_id');
 
+    try {
+      await activityLogController.handleGetInstanceActivityLogs(
+        'fetching logs',
+        instanceId: widget.taskId!,
+      );
+    } catch (e) {
+      debugPrint('Error fetching activity logs: $e');
+    }
+
     if (mounted) {
       final instance = taskController.selectedInstance;
+
+      final fetchedLogs = activityLogController.logs.map((log) {
+        final userName = log.userSnapshot?.name ?? 'Unknown User';
+        final action = log.description;
+        final entityName = log.entityName;
+        return ActivityItem(
+          text: '$userName $action'.trim(),
+          timeAgo: log.timeLabel,
+        );
+      }).toList();
+
       setState(() {
         _currentUserId = currentUserId;
         _title = instance?.title ?? '';
@@ -305,8 +333,54 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             instance?.createdBy?.id == currentUserId;
         _isReadOnly = !isCreatedByCurrentUser;
 
+        activityLogs.clear();
+        activityLogs.addAll(fetchedLogs);
+
         _isLoading = false;
+
+        print('Activity logs for instance ${widget.taskId!}:');
+
+        // activityLogController.handleGetInstanceActivityLogs(
+        //   'fetching logs',
+        //   instanceId: widget.taskId!,
+        // );
+
+        // activityLogs.addAll(
+        //   activityLogController.logs.map((log) {
+        //     final userName = log.userSnapshot?.name ?? 'Unknown User';
+        //     final action = log.description;
+        //     final entityName = log.entityName;
+        //     return ActivityItem(
+        //       text: '$userName $action $entityName',
+        //       timeAgo: log.timeLabel,
+        //     );
+        //   }).toList(),
+        // );
+
+        print('Activity logs for instance ${activityLogs}:');
+
+        //add some dummy datas in activityLogs list
+        // activityLogs.addAll([
+        //   const ActivityItem(
+        //     text: 'John Doe created the task',
+        //     timeAgo: '2 hours ago',
+        //   ),
+        //   const ActivityItem(
+        //     text: 'Jane Smith updated the task status to In Progress',
+        //     timeAgo: '1 hour ago',
+        //   ),
+        //   const ActivityItem(
+        //     text: 'John Doe commented on the task',
+        //     timeAgo: '30 minutes ago',
+        //   ),
+        // ]);
       });
+
+      // print('Activity logs for instance ${activityLogs}:');
+
+      //In a varibale fetch and save activity logs for this instance
+
+      // Fetch activity logs for the instance
     }
   }
 
@@ -320,7 +394,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   /// Returns null if no name can be found anywhere — callers must never
   /// fall back to showing the raw ID to the user.
   String? _employeeNameById(String id) {
-    for (final ref in taskController.selectedInstance?.assigneeRefs ?? const []) {
+    for (final ref
+        in taskController.selectedInstance?.assigneeRefs ?? const []) {
       if (ref.id == id && ref.fullName.isNotEmpty) {
         return ref.fullName;
       }
@@ -518,6 +593,16 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   String get _scheduledPeriodForSave => _isAM ? 'AM' : 'PM';
 
+  /// The live date-picker state (`_calendarYear`/`_calendarMonth`/
+  /// `_selectedDay`), formatted "YYYY-MM-DD" for the update-instance
+  /// request. The backend validates `scheduledDate` and `scheduledTime`
+  /// together — omitting the date while sending a time failed validation.
+  String? get _scheduledDateForSave => _selectedDay == null
+      ? null
+      : '$_calendarYear-'
+            '${_calendarMonth.toString().padLeft(2, '0')}-'
+            '${_selectedDay.toString().padLeft(2, '0')}';
+
   String get _endTime {
     int h24 = _hour % 12;
     if (!_isAM) h24 += 12;
@@ -713,7 +798,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             selectedNames.isEmpty
                 ? Text(
                     'No assignees',
-                    style: GoogleFonts.inter(fontSize: 11.sp, color: _labelColor),
+                    style: GoogleFonts.inter(
+                      fontSize: 11.sp,
+                      color: _labelColor,
+                    ),
                   )
                 : Wrap(
                     spacing: 4.w,
@@ -1452,12 +1540,97 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           ),
           IconButton(
             visualDensity: VisualDensity.compact,
+            icon: Icon(
+              Icons.download_outlined,
+              size: 18.r,
+              color: _primaryColor,
+            ),
+            onPressed: () => _downloadProofFile(proof),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
             icon: Icon(Icons.delete_outline, size: 18.r, color: Colors.red),
             onPressed: () => _confirmDeleteProofFile(proof),
           ),
         ],
       ),
     );
+  }
+
+  /// Downloads the proof file's bytes in-app and writes them to disk —
+  /// doesn't hand off to the browser. Saves to the platform's Downloads
+  /// folder where available (Android/desktop); falls back to the app's own
+  /// documents folder where it isn't (iOS has no public Downloads dir).
+  Future<void> _downloadProofFile(ProofFileModel proof) async {
+    final url = proof.file?.originalUrl ?? '';
+    if (url.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'This proof file is no longer available to download.',
+            style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    _showUploadingProofDialog(message: 'Downloading...');
+
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode != 200) {
+        throw Exception('Server returned ${response.statusCode}');
+      }
+
+      Directory? saveDir;
+      try {
+        saveDir = await getDownloadsDirectory();
+      } catch (_) {
+        saveDir = null;
+      }
+      saveDir ??= await getApplicationDocumentsDirectory();
+
+      final ext = _proofFileExt(proof);
+      final baseName = proof.fileType.isNotEmpty
+          ? proof.fileType.replaceAll(RegExp(r'[^a-zA-Z0-9]+'), '_')
+          : 'proof';
+      final fileName =
+          '${baseName}_${DateTime.now().millisecondsSinceEpoch}'
+          '${ext.isNotEmpty ? '.$ext' : ''}';
+
+      final savedFile = File('${saveDir.path}/$fileName');
+      await savedFile.writeAsBytes(response.bodyBytes);
+
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // close popup
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Downloaded to ${savedFile.path}',
+            style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
+          ),
+          backgroundColor: _greenOn,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // close popup
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not download this file.',
+            style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Widget _proofFileIcon() => Container(
@@ -1491,74 +1664,86 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         ),
         child: Padding(
           padding: EdgeInsets.all(14.w),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      proof.fileType.isNotEmpty ? proof.fileType : 'Proof file',
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w700,
-                        color: _primaryColor,
+          child: SingleChildScrollView(
+            // A tall/portrait image (or a small screen) can push this past
+            // the Dialog's fixed insetPadding height — scroll instead of
+            // overflowing.
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        proof.fileType.isNotEmpty
+                            ? proof.fileType
+                            : 'Proof file',
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w700,
+                          color: _primaryColor,
+                        ),
                       ),
                     ),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(dialogCtx),
+                      child: Icon(Icons.close, size: 20.r, color: _labelColor),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 12.h),
+                if (isImage && url.isNotEmpty)
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.65,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8.r),
+                      child: ZoomableImage(
+                        networkUrl: url,
+                        loaderColor: _primaryColor,
+                        errorBuilder: (_) => _previewFallback(),
+                      ),
+                    ),
+                  )
+                else
+                  _previewFallback(
+                    message: url.isEmpty
+                        ? 'This file is no longer available.'
+                        : 'Preview not available for this file type — tap Open to view it.',
                   ),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(dialogCtx),
-                    child: Icon(Icons.close, size: 20.r, color: _labelColor),
+                if (!isImage && url.isNotEmpty) ...[
+                  SizedBox(height: 12.h),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final uri = Uri.tryParse(url);
+                        if (uri != null) {
+                          await launchUrl(
+                            uri,
+                            mode: LaunchMode.externalApplication,
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primaryColor,
+                      ),
+                      child: Text(
+                        'Open',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 13.sp,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
-              ),
-              SizedBox(height: 12.h),
-              if (isImage && url.isNotEmpty)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8.r),
-                  child: Image.network(
-                    url,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => _previewFallback(),
-                  ),
-                )
-              else
-                _previewFallback(
-                  message: url.isEmpty
-                      ? 'This file is no longer available.'
-                      : 'Preview not available for this file type — tap Open to view it.',
-                ),
-              if (!isImage && url.isNotEmpty) ...[
-                SizedBox(height: 12.h),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      final uri = Uri.tryParse(url);
-                      if (uri != null) {
-                        await launchUrl(
-                          uri,
-                          mode: LaunchMode.externalApplication,
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _primaryColor,
-                    ),
-                    child: Text(
-                      'Open',
-                      style: GoogleFonts.inter(
-                        color: Colors.white,
-                        fontSize: 13.sp,
-                      ),
-                    ),
-                  ),
-                ),
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -1627,6 +1812,19 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
     if (!mounted) return;
     setState(() {});
+
+    // Once the last proof is gone, do one full reload of the whole details
+    // screen (not just the proof list) — same call initState uses — so
+    // everything on this screen that could depend on proof state (status,
+    // completion eligibility, activity log, etc.) is back in sync with the
+    // server, not just trusting the locally-pruned list.
+    final remainingFiles =
+        taskController.selectedInstance?.proofSubmission?.files ??
+        const <ProofFileModel>[];
+    if (success && remainingFiles.isEmpty) {
+      await _loadInstance();
+      if (!mounted) return;
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -1724,11 +1922,65 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     ),
   );
 
+  /// Non-dismissible progress popup shown for the duration of an
+  /// upload/download request — dismiss it yourself via
+  /// `Navigator.of(context, rootNavigator: true).pop()` once the request
+  /// settles (success or failure).
+  void _showUploadingProofDialog({String message = 'Uploading proof...'}) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14.r),
+        ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 22.h),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 20.w,
+                height: 20.w,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: _primaryColor,
+                ),
+              ),
+              SizedBox(width: 14.w),
+              Text(
+                message,
+                style: GoogleFonts.inter(
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w600,
+                  color: _labelColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Re-fetches the instance so the "Uploaded Proofs" section (and
+  /// everything else on this screen) reflects the server's latest state
+  /// right after a successful proof upload.
+  Future<void> _reloadInstanceAfterProofUpload() async {
+    await taskController.handleGetInstanceById(instanceId: widget.taskId ?? '');
+    if (!mounted) return;
+    setState(() {});
+  }
+
   /// "Use Camera" flow — captures a single photo and uploads it as proof.
   Future<void> _captureProofWithCamera() async {
     final picker = ImagePicker();
     final XFile? shot = await picker.pickImage(source: ImageSource.camera);
     if (shot == null) return;
+
+    if (!mounted) return;
+    _showUploadingProofDialog();
 
     final success = await taskController.handleUploadInstanceProofFiles(
       taskId: widget.mainTaskId ?? '',
@@ -1737,14 +1989,15 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     );
 
     if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop(); // close uploading popup
 
     if (success) {
       final size = await File(shot.path).length();
-      setState(() {
-        _uploadedProofFiles.add(
-          PlatformFile(name: shot.name, size: size, path: shot.path),
-        );
-      });
+      _uploadedProofFiles.add(
+        PlatformFile(name: shot.name, size: size, path: shot.path),
+      );
+      await _reloadInstanceAfterProofUpload();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Proof uploaded successfully'),
@@ -2085,10 +2338,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                               if (!mounted) return;
 
                               if (success) {
-                                setState(
-                                  () =>
-                                      _uploadedProofFiles.addAll(pendingFiles),
-                                );
+                                _uploadedProofFiles.addAll(pendingFiles);
+                                await _reloadInstanceAfterProofUpload();
+                                if (!mounted) return;
                                 Navigator.pop(ctx);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
@@ -2166,50 +2418,60 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         ),
         child: Padding(
           padding: EdgeInsets.all(14.w),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      file.name,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w700,
-                        color: _primaryColor,
+          child: SingleChildScrollView(
+            // A tall/portrait image (or a small screen) can push this past
+            // the Dialog's fixed insetPadding height — scroll instead of
+            // overflowing.
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        file.name,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w700,
+                          color: _primaryColor,
+                        ),
                       ),
                     ),
-                  ),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(dialogCtx),
-                    child: Icon(Icons.close, size: 20.r, color: _labelColor),
-                  ),
-                ],
-              ),
-              SizedBox(height: 12.h),
-              if (isImage && path != null)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8.r),
-                  child: Image.file(
-                    File(path),
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => _previewFallback(),
-                  ),
-                )
-              else
-                _previewFallback(
-                  // TODO: swap for a real video/PDF viewer package
-                  message: ext == 'pdf'
-                      ? 'PDF preview not available yet — file is attached.'
-                      : ext == 'mp4' || ext == 'mov' || ext == 'avi'
-                      ? 'Video preview not available yet — file is attached.'
-                      : 'Preview not available for this file type.',
+                    GestureDetector(
+                      onTap: () => Navigator.pop(dialogCtx),
+                      child: Icon(Icons.close, size: 20.r, color: _labelColor),
+                    ),
+                  ],
                 ),
-            ],
+                SizedBox(height: 12.h),
+                if (isImage && path != null)
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.65,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8.r),
+                      child: ZoomableImage(
+                        file: File(path),
+                        loaderColor: _primaryColor,
+                        errorBuilder: (_) => _previewFallback(),
+                      ),
+                    ),
+                  )
+                else
+                  _previewFallback(
+                    // TODO: swap for a real video/PDF viewer package
+                    message: ext == 'pdf'
+                        ? 'PDF preview not available yet — file is attached.'
+                        : ext == 'mp4' || ext == 'mov' || ext == 'avi'
+                        ? 'Video preview not available yet — file is attached.'
+                        : 'Preview not available for this file type.',
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -2730,6 +2992,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             ),
                           ),
                         ),
+
                         Align(
                           alignment: Alignment.centerRight,
                           child: Row(
@@ -2739,23 +3002,34 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                 onTap: () {
                                   showActivityBottomSheet(
                                     context,
-                                    activities: const [
-                                      ActivityItem(
-                                        text:
-                                            'You created taskinstance "Design"',
-                                        timeAgo: '2 hours ago',
-                                      ),
-                                      ActivityItem(
-                                        text: 'Show more',
-                                        timeAgo: '',
-                                        isExpandable: true,
-                                      ),
-                                      ActivityItem(
-                                        text:
-                                            'Sudipta Sarkar uploaded proof for "Design" (1 file(s))',
-                                        timeAgo: '1 hour ago',
-                                      ),
-                                    ],
+                                    activities: activityLogs
+                                        .map(
+                                          (log) => ActivityItem(
+                                            text: log.text,
+                                            timeAgo: log.timeAgo,
+                                          ),
+                                        )
+                                        .toList(),
+
+                                    // [
+                                    //   //Fetch the activity log controller and display the activity log for the task instance
+                                    //   // await taskController.fetchActivityLog(widget.taskId ?? ''),
+                                    //   const ActivityItem(
+                                    //     text:
+                                    //         'You created taskinstance "Design"',
+                                    //     timeAgo: '2 hours ago',
+                                    //   ),
+                                    //   const ActivityItem(
+                                    //     text: 'Show more',
+                                    //     timeAgo: '',
+                                    //     isExpandable: true,
+                                    //   ),
+                                    //   const ActivityItem(
+                                    //     text:
+                                    //         'Sudipta Sarkar uploaded proof for "Design" (1 file(s))',
+                                    //     timeAgo: '1 hour ago',
+                                    //   ),
+                                    // ],
                                     onDelete: () {
                                       // TODO: delete action
                                     },
@@ -2781,6 +3055,123 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             ],
                           ),
                         ),
+
+                        // Align(
+                        //   alignment: Alignment.centerRight,
+                        //   child: Row(
+                        //     mainAxisSize: MainAxisSize.min,
+                        //     children: [
+                        //       InkWell(
+                        //         onTap: () {
+                        //           showActivityBottomSheet(
+                        //             context,
+                        //             activities: const [
+                        //               ActivityItem(
+                        //                 text:
+                        //                     'You created taskinstance "Design"',
+                        //                 timeAgo: '2 hours ago',
+                        //               ),
+                        //               ActivityItem(
+                        //                 text: 'Show more',
+                        //                 timeAgo: '',
+                        //                 isExpandable: true,
+                        //               ),
+                        //               ActivityItem(
+                        //                 text:
+                        //                     'Sudipta Sarkar uploaded proof for "Design" (1 file(s))',
+                        //                 timeAgo: '1 hour ago',
+                        //               ),
+                        //             ],
+                        //             onDelete: () {
+                        //               // TODO: delete action
+                        //             },
+                        //             onSubmit: () {
+                        //               // TODO: submit action
+                        //             },
+                        //           );
+                        //         },
+                        //         child: PanelRightCloseIcon(
+                        //           size: 20.r,
+                        //           color: _textColor,
+                        //         ),
+                        //       ),
+                        //       SizedBox(width: 12.w),
+                        //       InkWell(
+                        //         onTap: () => Navigator.pop(context),
+                        //         child: Icon(
+                        //           Icons.close,
+                        //           size: 20.r,
+                        //           color: _textColor,
+                        //         ),
+                        //       ),
+                        //     ],
+                        //   ),
+                        // ),
+
+                        // Align(
+                        //   alignment: Alignment.centerRight,
+                        //   child: Row(
+                        //     mainAxisSize: MainAxisSize.min,
+                        //     children: [
+                        //       InkWell(
+                        //         onTap: () {
+                        //           showActivityBottomSheet(
+                        //             context,
+                        //             activities: const [
+                        //               ActivityItem(
+                        //                 text:
+                        //                     'You created taskinstance "Design"',
+                        //                 timeAgo: '2 hours ago',
+                        //               ),
+                        //               ActivityItem(
+                        //                 text: 'Show more',
+                        //                 timeAgo: '',
+                        //                 isExpandable: true,
+                        //               ),
+                        //               ActivityItem(
+                        //                 text:
+                        //                     'Sudipta Sarkar uploaded proof for "Design" (1 file(s))',
+                        //                 timeAgo: '1 hour ago',
+                        //               ),
+                        //             ],
+                        //             onDelete: () {
+                        //               // TODO: delete action
+                        //             },
+                        //             onSubmit: () {
+                        //               // TODO: submit action
+                        //             },
+                        //           );
+
+                        //         },
+                        //         child: PanelRightCloseIcon(
+                        //           size: 20.r,
+                        //           color: _textColor,
+                        //         ),
+                        //       ),
+                        //       SizedBox(width: 12.w),
+                        //       InkWell(
+                        //         onTap: () => Navigator.pop(context),
+                        //         child: Icon(
+                        //           Icons.close,
+                        //           size: 20.r,
+                        //           color: _textColor,
+                        //         ),
+                        //       ),
+                        //     ],
+                        //   ),
+                        // ),
+
+                        // Align(
+                        //   alignment: Alignment.centerRight,
+                        //   child: InkWell(
+                        //     onTap: () => Navigator.pop(context),
+                        //     child: Icon(
+                        //       Icons.close,
+                        //       size: 20.r,
+                        //       color: _textColor,
+                        //     ),
+                        //   ),
+                        // ),
                       ],
                     ),
                   ),
@@ -2980,6 +3371,16 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
                                             setState(() => _isSaving = true);
 
+                                            print(
+                                              'Scheduled Date for Save: $_scheduledDateForSave',
+                                            );
+                                            print(
+                                              'Scheduled Time for Save: $_scheduledTimeForSave',
+                                            );
+                                            print(
+                                              'Scheduled Period for Save: $_scheduledPeriodForSave',
+                                            );
+
                                             final success = await taskController
                                                 .handleUpdateInstanceConfiguration(
                                                   taskId:
@@ -2990,12 +3391,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                                   assigneeIds: _assigneeIds,
                                                   priority: _priority
                                                       .toLowerCase(),
-                                                  time: _assignTimeEnabled
-                                                      ? _scheduledTimeForSave
-                                                      : null,
-                                                  period: _assignTimeEnabled
-                                                      ? _scheduledPeriodForSave
-                                                      : null,
+                                                  date: _scheduledDateForSave,
+                                                  time: _scheduledTimeForSave,
+                                                  period:
+                                                      _scheduledPeriodForSave,
 
                                                   scope: 'single',
                                                 );

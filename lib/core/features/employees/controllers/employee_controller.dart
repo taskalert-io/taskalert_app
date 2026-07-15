@@ -146,14 +146,12 @@ class EmployeeController extends ChangeNotifier {
         final apiResponse =
             (result as Success).data as BaseApiResponse<EmployeeModel>;
         _successMessage = apiResponse.message;
-        if (apiResponse.data != null) {
-          // Optimistically prepend to both local list views — `employees` is
-          // the department-scoped list (Create*Screen's "Assign to" pickers),
-          // `allEmployees` is the unscoped list (EmployeesScreen's Users List)
-          // — a create should show up in whichever one is currently in use.
-          _employees.insert(0, apiResponse.data!);
-          _allEmployees.insert(0, apiResponse.data!);
-        }
+        // Deliberately not optimistically inserted here: the create
+        // endpoint's response returns location/department/jobRole as
+        // unresolved ref ids rather than names (unlike the list endpoint),
+        // so doing that briefly showed raw ids in the UI until the caller's
+        // follow-up handleGetEmployees() refresh replaced it. The caller is
+        // expected to re-fetch the list on success instead.
         return true;
       } else if (result is Failure) {
         _errorMessage = (result as Failure).exception.userMessage;
@@ -171,7 +169,7 @@ class EmployeeController extends ChangeNotifier {
     required String id,
     required String firstName,
     required String lastName,
-    required String email,
+    String? email,
     required String phoneNumber,
     String? jobRole,
     String? department,
@@ -210,16 +208,10 @@ class EmployeeController extends ChangeNotifier {
         final apiResponse =
             (result as Success).data as BaseApiResponse<EmployeeModel>;
         _successMessage = apiResponse.message;
-
-        if (apiResponse.data != null) {
-          final index = _employees.indexWhere((element) => element.id == id);
-          if (index != -1) _employees[index] = apiResponse.data!;
-
-          final allIndex = _allEmployees.indexWhere(
-            (element) => element.id == id,
-          );
-          if (allIndex != -1) _allEmployees[allIndex] = apiResponse.data!;
-        }
+        // Deliberately not applied to the local lists here — same reason as
+        // handleCreateEmployee: the update response's location/department/
+        // jobRole come back as unresolved ref ids, not names. The caller is
+        // expected to re-fetch the list on success instead.
         return true;
       } else if (result is Failure) {
         _errorMessage = (result as Failure).exception.userMessage;

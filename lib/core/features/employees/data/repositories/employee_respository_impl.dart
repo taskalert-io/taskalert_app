@@ -215,7 +215,7 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
     required String id,
     required String firstName,
     required String lastName,
-    required String email,
+    String? email,
     required String phoneNumber,
     required String gender,
     String? jobRole,
@@ -231,10 +231,18 @@ class EmployeeRepositoryImpl implements EmployeeRepository {
       final Map<String, dynamic> map = {
         'firstName': firstName,
         'lastName': lastName,
-        'email': email,
+        // 'email': email,
         'phoneNumber': phoneNumber,
-        'gender': gender,
+        // 'gender': gender,
       };
+
+      if (email != null && email.isNotEmpty) {
+        map['email'] = email;
+      }
+
+      if (gender != null && gender.isNotEmpty) {
+        map['gender'] = gender;
+      }
 
       if (jobRole != null && jobRole.isNotEmpty) {
         map['jobRole'] = jobRole;

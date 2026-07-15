@@ -6,6 +6,7 @@ import 'package:taskalert_app/screens/HomeScreen.dart';
 import 'package:taskalert_app/screens/SignInScreen.dart';
 import 'package:taskalert_app/screens/SplashScreen.dart';
 import 'package:taskalert_app/utils/injection_container.dart' as di;
+import 'package:taskalert_app/utils/navigation_service.dart';
 
 final RouteObserver<ModalRoute<void>> routeObserver =
     RouteObserver<ModalRoute<void>>();
@@ -72,6 +73,7 @@ class _MyAppState extends State<MyApp> {
             title: 'taskalert.io',
             debugShowCheckedModeBanner: false,
 
+            navigatorKey: navigatorKey,
             navigatorObservers: [routeObserver],
 
             theme: ThemeData(textTheme: GoogleFonts.interTextTheme()),
