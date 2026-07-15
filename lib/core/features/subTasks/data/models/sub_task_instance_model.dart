@@ -259,6 +259,57 @@ class SubTaskInstanceModel {
           : null,
     );
   }
+
+  SubTaskInstanceModel copyWith({
+    String? status,
+    List<SubTaskUserRef>? assignees,
+  }) {
+    return SubTaskInstanceModel(
+      id: id,
+      subTask: subTask,
+      taskInstance: taskInstance,
+      task: task,
+      taskType: taskType,
+      title: title,
+      description: description,
+      assignees: assignees ?? this.assignees,
+      reportingTime: reportingTime,
+      status: status ?? this.status,
+      completedBy: completedBy,
+      completedAt: completedAt,
+      organization: organization,
+      isDeleted: isDeleted,
+      deletedAt: deletedAt,
+      deletedBy: deletedBy,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
+  }
+}
+
+/// The "Update Sub Task Instance Status Assignee Priority" response only
+/// echoes back `_id`, `status`, and `assignees` (as plain ids) — `priority`
+/// is accepted in the request but not reflected in this response.
+class SubTaskInstanceQuickUpdate {
+  final String id;
+  final String status;
+  final List<String> assigneeIds;
+
+  SubTaskInstanceQuickUpdate({
+    required this.id,
+    required this.status,
+    required this.assigneeIds,
+  });
+
+  factory SubTaskInstanceQuickUpdate.fromJson(Map<String, dynamic> json) {
+    return SubTaskInstanceQuickUpdate(
+      id: json['_id']?.toString() ?? '',
+      status: json['status'] ?? '',
+      assigneeIds: json['assignees'] != null
+          ? (json['assignees'] as List).map((a) => a.toString()).toList()
+          : [],
+    );
+  }
 }
 
 /// Wrapper for the "Get All SubTask Instances" response, whose `data` is

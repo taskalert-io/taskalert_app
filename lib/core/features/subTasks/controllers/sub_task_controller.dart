@@ -172,8 +172,37 @@ class SubTaskController extends ChangeNotifier {
 
       if (result is Success) {
         final apiResponse =
-            (result as Success).data as BaseApiResponse<dynamic>;
+            (result as Success).data
+                as BaseApiResponse<SubTaskInstanceQuickUpdate>;
         _successMessage = apiResponse.message;
+
+        // The response only echoes `_id`/`status`/`assignees` (no
+        // `priority`, and not the rest of the instance) — patch just those
+        // two fields onto whatever we already have locally rather than
+        // replacing the item, since a full replacement would blank out
+        // everything else this endpoint doesn't return.
+        final update = apiResponse.data;
+        if (update != null) {
+          final newAssignees = update.assigneeIds
+              .map((id) => SubTaskUserRef.fromDynamic(id))
+              .toList();
+
+          final index = _subTaskInstances.indexWhere(
+            (s) => s.id == subTaskInstanceId,
+          );
+          if (index != -1) {
+            _subTaskInstances[index] = _subTaskInstances[index].copyWith(
+              status: update.status,
+              assignees: newAssignees,
+            );
+          }
+          if (_selectedSubTaskInstance?.id == subTaskInstanceId) {
+            _selectedSubTaskInstance = _selectedSubTaskInstance!.copyWith(
+              status: update.status,
+              assignees: newAssignees,
+            );
+          }
+        }
         return true;
       } else if (result is Failure) {
         _errorMessage = (result as Failure).exception.userMessage;

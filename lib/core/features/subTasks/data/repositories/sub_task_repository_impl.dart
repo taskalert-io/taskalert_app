@@ -134,7 +134,7 @@ class SubTaskRepositoryImpl implements SubTaskRepository {
 
   /// 9. PUT: Quick status/assignee/priority patch for a SubTask Instance
   @override
-  Future<ApiResult<BaseApiResponse<dynamic>>>
+  Future<ApiResult<BaseApiResponse<SubTaskInstanceQuickUpdate>>>
   updateSubTaskInstanceStatusAssigneePriority({
     required String subTaskInstanceId,
     String? status,
@@ -153,7 +153,9 @@ class SubTaskRepositoryImpl implements SubTaskRepository {
 
       final apiResponse = BaseApiResponse.fromJson(
         responseData as Map<String, dynamic>,
-        (json) => json,
+        (json) => SubTaskInstanceQuickUpdate.fromJson(
+          json as Map<String, dynamic>,
+        ),
       );
 
       if (apiResponse.success) return ApiResult.success(apiResponse);

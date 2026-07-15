@@ -28,8 +28,9 @@ abstract class SubTaskRepository {
   getSubTaskInstanceById({required String subTaskInstanceId});
 
   /// 9. PUT /tasks/subtasks/instance/update/:subTaskInstanceId — quick
-  /// status/assignee/priority patch
-  Future<ApiResult<BaseApiResponse<dynamic>>>
+  /// status/assignee/priority patch. Note: `priority` is accepted in the
+  /// request but not reflected in the response.
+  Future<ApiResult<BaseApiResponse<SubTaskInstanceQuickUpdate>>>
   updateSubTaskInstanceStatusAssigneePriority({
     required String subTaskInstanceId,
     String? status,
