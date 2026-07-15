@@ -1200,7 +1200,7 @@ class CreateOneTimeScreenState extends State<CreateOneTimeScreen> {
           userId: widget.userId,
           onBackPressed: () => Navigator.pop(context),
         ),
-        drawer: CustomDrawer(activeTile: "Home", onTileTap: (value) {}),
+        drawer: CustomDrawer(activeTile: "", onTileTap: (value) {}),
         body: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () => FocusScope.of(context).unfocus(),

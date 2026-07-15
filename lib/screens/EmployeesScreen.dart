@@ -305,117 +305,254 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       preferredMaxHeight: 260,
     );
 
+    // _suggestionsOverlay = OverlayEntry(
+    //   builder: (context) => Stack(
+    //     children: [
+    //       // Full-screen barrier so a tap anywhere outside the dropdown's own
+    //       // content dismisses it immediately, instead of the tap being
+    //       // silently absorbed by this entry until the focus-loss delay
+    //       // below fires on its own.
+    //       Positioned.fill(
+    //         child: GestureDetector(
+    //           behavior: HitTestBehavior.opaque,
+    //           onTap: () {
+    //             _removeSuggestionsOverlay();
+    //             _searchFocusNode.unfocus();
+    //           },
+    //         ),
+    //       ),
+    //       Positioned(
+    //         width: width,
+    //         child: CompositedTransformFollower(
+    //           link: _searchLayerLink,
+    //           showWhenUnlinked: false,
+    //           offset: Offset(0, placement.dy),
+    //           child: Align(
+    //             alignment: placement.showAbove
+    //                 ? Alignment.bottomLeft
+    //                 : Alignment.topLeft,
+    //             child: Material(
+    //               elevation: 6,
+    //               borderRadius: BorderRadius.circular(10.r),
+    //               color: Colors.white,
+    //               child: ConstrainedBox(
+    //                 constraints: BoxConstraints(maxHeight: placement.maxHeight),
+    //                 child: _suggestions.isEmpty
+    //                     ? Padding(
+    //                         padding: EdgeInsets.symmetric(
+    //                           horizontal: 12.w,
+    //                           vertical: 14.h,
+    //                         ),
+    //                         child: Text(
+    //                           "No data found",
+    //                           style: GoogleFonts.inter(
+    //                             fontSize: 12.5.sp,
+    //                             color: const Color(0xFF9AA0AB),
+    //                           ),
+    //                         ),
+    //                       )
+    //                     : ListView.separated(
+    //                         padding: EdgeInsets.symmetric(vertical: 4.h),
+    //                         shrinkWrap: true,
+    //                         itemCount: _suggestions.length,
+    //                         separatorBuilder: (_, __) => const Divider(
+    //                           height: 1,
+    //                           color: Color(0xFFE4E7EC),
+    //                         ),
+    //                         itemBuilder: (context, index) {
+    //                           final s = _suggestions[index];
+    //                           final name =
+    //                               "${s.firstName ?? ''} ${s.lastName ?? ''}"
+    //                                   .trim();
+    //                           return InkWell(
+    //                             onTap: () => _selectSuggestion(s),
+    //                             child: Padding(
+    //                               padding: EdgeInsets.symmetric(
+    //                                 horizontal: 12.w,
+    //                                 vertical: 8.h,
+    //                               ),
+    //                               child: Row(
+    //                                 children: [
+    //                                   Icon(
+    //                                     CupertinoIcons.person_fill,
+    //                                     size: 14.r,
+    //                                     color: const Color(0xFF4338CA),
+    //                                   ),
+    //                                   SizedBox(width: 8.w),
+    //                                   Expanded(
+    //                                     child: Column(
+    //                                       crossAxisAlignment:
+    //                                           CrossAxisAlignment.start,
+    //                                       children: [
+    //                                         Text(
+    //                                           name.isEmpty ? "(No name)" : name,
+    //                                           style: GoogleFonts.inter(
+    //                                             fontSize: 13.sp,
+    //                                             fontWeight: FontWeight.w600,
+    //                                             color: const Color(0xFF1D2939),
+    //                                           ),
+    //                                         ),
+    //                                         Text(
+    //                                           "${s.jobRole ?? '-'} • ${s.email ?? ''}",
+    //                                           style: GoogleFonts.inter(
+    //                                             fontSize: 11.sp,
+    //                                             color: const Color(0xFF667085),
+    //                                           ),
+    //                                           overflow: TextOverflow.ellipsis,
+    //                                         ),
+    //                                       ],
+    //                                     ),
+    //                                   ),
+    //                                 ],
+    //                               ),
+    //                             ),
+    //                           );
+    //                         },
+    //                       ),
+    //               ),
+    //             ),
+    //           ),
+    //         ),
+    //       ),
+    //     ],
+    //   ),
+    // );
+
     _suggestionsOverlay = OverlayEntry(
-      builder: (context) => Stack(
-        children: [
-          // Full-screen barrier so a tap anywhere outside the dropdown's own
-          // content dismisses it immediately, instead of the tap being
-          // silently absorbed by this entry until the focus-loss delay
-          // below fires on its own.
-          Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                _removeSuggestionsOverlay();
-                _searchFocusNode.unfocus();
-              },
+      // ★ CHANGED (1/4): `overlayContext` is provided fresh on every
+      // rebuild of this entry. We compute `_overlayPlacement` from it here
+      // — instead of from a value captured once *before* `OverlayEntry(...)`
+      // like the old code did — so the dropdown re-measures itself on every
+      // frame of the keyboard show/hide animation. See the
+      // "KEYBOARD-TIMING FIX" note near the top of this file.
+      builder: (overlayContext) {
+        // ★ CHANGED (1/4): moved inside builder (was computed once, above,
+        // before the keyboard had finished animating in).
+        final placement = _overlayPlacement(
+          context: overlayContext,
+          fieldKey: _searchFieldKey,
+          preferredMaxHeight: 260,
+        );
+
+        return Stack(
+          children: [
+            // Full-screen barrier so a tap anywhere outside the dropdown's own
+            // content dismisses it immediately, instead of the tap being
+            // silently absorbed by this entry until the focus-loss delay
+            // below fires on its own.
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  _removeSuggestionsOverlay();
+                  _searchFocusNode.unfocus();
+                },
+              ),
             ),
-          ),
-          Positioned(
-            width: width,
-            child: CompositedTransformFollower(
-              link: _searchLayerLink,
-              showWhenUnlinked: false,
-              offset: Offset(0, placement.dy),
-              child: Align(
-                alignment: placement.showAbove
-                    ? Alignment.bottomLeft
-                    : Alignment.topLeft,
-                child: Material(
-                  elevation: 6,
-                  borderRadius: BorderRadius.circular(10.r),
-                  color: Colors.white,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxHeight: placement.maxHeight),
-                    child: _suggestions.isEmpty
-                        ? Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 12.w,
-                              vertical: 14.h,
-                            ),
-                            child: Text(
-                              "No data found",
-                              style: GoogleFonts.inter(
-                                fontSize: 12.5.sp,
-                                color: const Color(0xFF9AA0AB),
+            Positioned(
+              width: width,
+              child: CompositedTransformFollower(
+                link: _searchLayerLink,
+                showWhenUnlinked: false,
+                offset: Offset(0, placement.dy),
+                child: Align(
+                  alignment: placement.showAbove
+                      ? Alignment.bottomLeft
+                      : Alignment.topLeft,
+                  child: Material(
+                    elevation: 6,
+                    borderRadius: BorderRadius.circular(10.r),
+                    color: Colors.white,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: placement.maxHeight,
+                      ),
+                      child: _suggestions.isEmpty
+                          ? Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12.w,
+                                vertical: 14.h,
                               ),
-                            ),
-                          )
-                        : ListView.separated(
-                            padding: EdgeInsets.symmetric(vertical: 4.h),
-                            shrinkWrap: true,
-                            itemCount: _suggestions.length,
-                            separatorBuilder: (_, __) => const Divider(
-                              height: 1,
-                              color: Color(0xFFE4E7EC),
-                            ),
-                            itemBuilder: (context, index) {
-                              final s = _suggestions[index];
-                              final name =
-                                  "${s.firstName ?? ''} ${s.lastName ?? ''}"
-                                      .trim();
-                              return InkWell(
-                                onTap: () => _selectSuggestion(s),
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 12.w,
-                                    vertical: 8.h,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        CupertinoIcons.person_fill,
-                                        size: 14.r,
-                                        color: const Color(0xFF4338CA),
-                                      ),
-                                      SizedBox(width: 8.w),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              name.isEmpty ? "(No name)" : name,
-                                              style: GoogleFonts.inter(
-                                                fontSize: 13.sp,
-                                                fontWeight: FontWeight.w600,
-                                                color: const Color(0xFF1D2939),
-                                              ),
-                                            ),
-                                            Text(
-                                              "${s.jobRole ?? '-'} • ${s.email ?? ''}",
-                                              style: GoogleFonts.inter(
-                                                fontSize: 11.sp,
-                                                color: const Color(0xFF667085),
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                              child: Text(
+                                "No data found",
+                                style: GoogleFonts.inter(
+                                  fontSize: 12.5.sp,
+                                  color: const Color(0xFF9AA0AB),
                                 ),
-                              );
-                            },
-                          ),
+                              ),
+                            )
+                          : ListView.separated(
+                              padding: EdgeInsets.symmetric(vertical: 4.h),
+                              shrinkWrap: true,
+                              itemCount: _suggestions.length,
+                              separatorBuilder: (_, __) => const Divider(
+                                height: 1,
+                                color: Color(0xFFE4E7EC),
+                              ),
+                              itemBuilder: (context, index) {
+                                final s = _suggestions[index];
+                                final name =
+                                    "${s.firstName ?? ''} ${s.lastName ?? ''}"
+                                        .trim();
+                                return InkWell(
+                                  onTap: () => _selectSuggestion(s),
+                                  child: Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 12.w,
+                                      vertical: 8.h,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          CupertinoIcons.person_fill,
+                                          size: 14.r,
+                                          color: const Color(0xFF4338CA),
+                                        ),
+                                        SizedBox(width: 8.w),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                name.isEmpty
+                                                    ? "(No name)"
+                                                    : name,
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 13.sp,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: const Color(
+                                                    0xFF1D2939,
+                                                  ),
+                                                ),
+                                              ),
+                                              Text(
+                                                "${s.jobRole ?? '-'} • ${s.email ?? ''}",
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 11.sp,
+                                                  color: const Color(
+                                                    0xFF667085,
+                                                  ),
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     );
 
     overlay.insert(_suggestionsOverlay!);
@@ -1083,9 +1220,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                           final imagePath =
                                               selectedImageFile?.path ??
                                               (await _downloadExistingEmployeeImage(
-                                                existing
-                                                        .image
-                                                        ?.thumbnailUrl ??
+                                                existing.image?.thumbnailUrl ??
                                                     existing
                                                         .image
                                                         ?.originalUrl ??
@@ -1898,10 +2033,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8.r),
-                    child: ZoomableImage(
-                      file: imageFile,
-                      networkUrl: imageUrl,
-                    ),
+                    child: ZoomableImage(file: imageFile, networkUrl: imageUrl),
                   ),
                 ),
               ],
@@ -2667,12 +2799,8 @@ class _LocationSearchableFieldState extends State<_LocationSearchableField> {
     final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
     final width = box?.size.width ?? 200.w;
 
-    final placement = _overlayPlacement(
-      context: context,
-      fieldKey: _fieldKey,
-      preferredMaxHeight: 150,
-    );
-
+    // Precompute the filtered results once — they don't depend on the
+    // keyboard, only `_overlayPlacement` (below, inside the builder) does.
     final q = _controller.text.trim().toLowerCase();
     final results = q.isEmpty
         ? _locationController.locations
@@ -2681,138 +2809,306 @@ class _LocationSearchableFieldState extends State<_LocationSearchableField> {
               .toList();
 
     _overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        width: width,
-        child: CompositedTransformFollower(
-          link: _layerLink,
-          showWhenUnlinked: false,
-          offset: Offset(0, placement.dy),
-          child: Align(
-            alignment: placement.showAbove
-                ? Alignment.bottomLeft
-                : Alignment.topLeft,
-            child: Material(
-              elevation: 6,
-              borderRadius: BorderRadius.circular(10.r),
-              color: Colors.white,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: placement.maxHeight),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    InkWell(
-                      onTap: _openAddLocationDialog,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 10.w,
-                          vertical: 10.h,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              CupertinoIcons.add_circled_solid,
-                              size: 14.r,
-                              color: const Color(0xFF0A0258),
-                            ),
-                            SizedBox(width: 6.w),
-                            Expanded(
-                              child: Text(
-                                "Add Location",
-                                style: GoogleFonts.inter(
-                                  fontSize: 12.5.sp,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF0A0258),
+      // ★ CHANGED (2/4): recompute placement from `overlayContext` on every
+      // rebuild so the dropdown tracks the keyboard's show/hide animation
+      // instead of freezing on a pre-keyboard measurement. See
+      // "KEYBOARD-TIMING FIX" note near the top of this file.
+      builder: (overlayContext) {
+        // ★ CHANGED (2/4): moved inside builder (was computed once, above,
+        // before the keyboard had finished animating in).
+        final placement = _overlayPlacement(
+          context: overlayContext,
+          fieldKey: _fieldKey,
+          preferredMaxHeight: 150,
+        );
+
+        return Positioned(
+          width: width,
+          child: CompositedTransformFollower(
+            link: _layerLink,
+            showWhenUnlinked: false,
+            offset: Offset(0, placement.dy),
+            child: Align(
+              alignment: placement.showAbove
+                  ? Alignment.bottomLeft
+                  : Alignment.topLeft,
+              child: Material(
+                elevation: 6,
+                borderRadius: BorderRadius.circular(10.r),
+                color: Colors.white,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: placement.maxHeight),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      InkWell(
+                        onTap: _openAddLocationDialog,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 10.w,
+                            vertical: 10.h,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                CupertinoIcons.add_circled_solid,
+                                size: 14.r,
+                                color: const Color(0xFF0A0258),
+                              ),
+                              SizedBox(width: 6.w),
+                              Expanded(
+                                child: Text(
+                                  "Add Location",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.5.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF0A0258),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                    const Divider(height: 1, color: Color(0xFFE4E7EC)),
-                    if (_locationController.isLoading)
-                      Padding(
-                        padding: EdgeInsets.symmetric(vertical: 14.h),
-                        child: Center(
-                          child: SizedBox(
-                            width: 16.r,
-                            height: 16.r,
-                            child: const CircularProgressIndicator(
-                              strokeWidth: 2,
+                      const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                      if (_locationController.isLoading)
+                        Padding(
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
+                          child: Center(
+                            child: SizedBox(
+                              width: 16.r,
+                              height: 16.r,
+                              child: const CircularProgressIndicator(
+                                strokeWidth: 2,
+                              ),
                             ),
                           ),
-                        ),
-                      )
-                    else if (results.isEmpty)
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12.w,
-                          vertical: 14.h,
-                        ),
-                        child: Text(
-                          "No locations found",
-                          style: GoogleFonts.inter(
-                            fontSize: 12.sp,
-                            color: const Color(0xFF9AA0AB),
+                        )
+                      else if (results.isEmpty)
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12.w,
+                            vertical: 14.h,
                           ),
-                        ),
-                      )
-                    else
-                      Flexible(
-                        child: ListView.separated(
-                          padding: EdgeInsets.symmetric(vertical: 4.h),
-                          shrinkWrap: true,
-                          itemCount: results.length,
-                          separatorBuilder: (_, __) => const Divider(
-                            height: 1,
-                            color: Color(0xFFE4E7EC),
+                          child: Text(
+                            "No locations found",
+                            style: GoogleFonts.inter(
+                              fontSize: 12.sp,
+                              color: const Color(0xFF9AA0AB),
+                            ),
                           ),
-                          itemBuilder: (context, index) {
-                            final loc = results[index];
-                            return InkWell(
-                              onTap: () => _select(loc),
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 12.w,
-                                  vertical: 10.h,
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      CupertinoIcons.location_solid,
-                                      size: 14.r,
-                                      color: const Color(0xFF4338CA),
-                                    ),
-                                    SizedBox(width: 8.w),
-                                    Expanded(
-                                      child: Text(
-                                        loc.name,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 13.sp,
-                                          fontWeight: FontWeight.w600,
-                                          color: const Color(0xFF1D2939),
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
+                        )
+                      else
+                        Flexible(
+                          child: ListView.separated(
+                            padding: EdgeInsets.symmetric(vertical: 4.h),
+                            shrinkWrap: true,
+                            itemCount: results.length,
+                            separatorBuilder: (_, __) => const Divider(
+                              height: 1,
+                              color: Color(0xFFE4E7EC),
+                            ),
+                            itemBuilder: (context, index) {
+                              final loc = results[index];
+                              return InkWell(
+                                onTap: () => _select(loc),
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 12.w,
+                                    vertical: 10.h,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        CupertinoIcons.location_solid,
+                                        size: 14.r,
+                                        color: const Color(0xFF4338CA),
                                       ),
-                                    ),
-                                  ],
+                                      SizedBox(width: 8.w),
+                                      Expanded(
+                                        child: Text(
+                                          loc.name,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13.sp,
+                                            fontWeight: FontWeight.w600,
+                                            color: const Color(0xFF1D2939),
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
+                              );
+                            },
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
 
     overlay.insert(_overlayEntry!);
   }
+
+  // void _showOverlay() {
+  //   _removeOverlay();
+
+  //   final overlay = Overlay.of(context);
+  //   final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+  //   final width = box?.size.width ?? 200.w;
+
+  //   final placement = _overlayPlacement(
+  //     context: context,
+  //     fieldKey: _fieldKey,
+  //     preferredMaxHeight: 150,
+  //   );
+
+  //   final q = _controller.text.trim().toLowerCase();
+  //   final results = q.isEmpty
+  //       ? _locationController.locations
+  //       : _locationController.locations
+  //             .where((l) => l.name.toLowerCase().contains(q))
+  //             .toList();
+
+  //   _overlayEntry = OverlayEntry(
+  //     builder: (context) => Positioned(
+  //       width: width,
+  //       child: CompositedTransformFollower(
+  //         link: _layerLink,
+  //         showWhenUnlinked: false,
+  //         offset: Offset(0, placement.dy),
+  //         child: Align(
+  //           alignment: placement.showAbove
+  //               ? Alignment.bottomLeft
+  //               : Alignment.topLeft,
+  //           child: Material(
+  //             elevation: 6,
+  //             borderRadius: BorderRadius.circular(10.r),
+  //             color: Colors.white,
+  //             child: ConstrainedBox(
+  //               constraints: BoxConstraints(maxHeight: placement.maxHeight),
+  //               child: Column(
+  //                 mainAxisSize: MainAxisSize.min,
+  //                 children: [
+  //                   InkWell(
+  //                     onTap: _openAddLocationDialog,
+  //                     child: Padding(
+  //                       padding: EdgeInsets.symmetric(
+  //                         horizontal: 10.w,
+  //                         vertical: 10.h,
+  //                       ),
+  //                       child: Row(
+  //                         children: [
+  //                           Icon(
+  //                             CupertinoIcons.add_circled_solid,
+  //                             size: 14.r,
+  //                             color: const Color(0xFF0A0258),
+  //                           ),
+  //                           SizedBox(width: 6.w),
+  //                           Expanded(
+  //                             child: Text(
+  //                               "Add Location",
+  //                               style: GoogleFonts.inter(
+  //                                 fontSize: 12.5.sp,
+  //                                 fontWeight: FontWeight.w600,
+  //                                 color: const Color(0xFF0A0258),
+  //                               ),
+  //                             ),
+  //                           ),
+  //                         ],
+  //                       ),
+  //                     ),
+  //                   ),
+  //                   const Divider(height: 1, color: Color(0xFFE4E7EC)),
+  //                   if (_locationController.isLoading)
+  //                     Padding(
+  //                       padding: EdgeInsets.symmetric(vertical: 14.h),
+  //                       child: Center(
+  //                         child: SizedBox(
+  //                           width: 16.r,
+  //                           height: 16.r,
+  //                           child: const CircularProgressIndicator(
+  //                             strokeWidth: 2,
+  //                           ),
+  //                         ),
+  //                       ),
+  //                     )
+  //                   else if (results.isEmpty)
+  //                     Padding(
+  //                       padding: EdgeInsets.symmetric(
+  //                         horizontal: 12.w,
+  //                         vertical: 14.h,
+  //                       ),
+  //                       child: Text(
+  //                         "No locations found",
+  //                         style: GoogleFonts.inter(
+  //                           fontSize: 12.sp,
+  //                           color: const Color(0xFF9AA0AB),
+  //                         ),
+  //                       ),
+  //                     )
+  //                   else
+  //                     Flexible(
+  //                       child: ListView.separated(
+  //                         padding: EdgeInsets.symmetric(vertical: 4.h),
+  //                         shrinkWrap: true,
+  //                         itemCount: results.length,
+  //                         separatorBuilder: (_, __) => const Divider(
+  //                           height: 1,
+  //                           color: Color(0xFFE4E7EC),
+  //                         ),
+  //                         itemBuilder: (context, index) {
+  //                           final loc = results[index];
+  //                           return InkWell(
+  //                             onTap: () => _select(loc),
+  //                             child: Padding(
+  //                               padding: EdgeInsets.symmetric(
+  //                                 horizontal: 12.w,
+  //                                 vertical: 10.h,
+  //                               ),
+  //                               child: Row(
+  //                                 children: [
+  //                                   Icon(
+  //                                     CupertinoIcons.location_solid,
+  //                                     size: 14.r,
+  //                                     color: const Color(0xFF4338CA),
+  //                                   ),
+  //                                   SizedBox(width: 8.w),
+  //                                   Expanded(
+  //                                     child: Text(
+  //                                       loc.name,
+  //                                       style: GoogleFonts.inter(
+  //                                         fontSize: 13.sp,
+  //                                         fontWeight: FontWeight.w600,
+  //                                         color: const Color(0xFF1D2939),
+  //                                       ),
+  //                                       overflow: TextOverflow.ellipsis,
+  //                                     ),
+  //                                   ),
+  //                                 ],
+  //                               ),
+  //                             ),
+  //                           );
+  //                         },
+  //                       ),
+  //                     ),
+  //                 ],
+  //               ),
+  //             ),
+  //           ),
+  //         ),
+  //       ),
+  //     ),
+  //   );
+
+  //   overlay.insert(_overlayEntry!);
+  // }
 
   void _removeOverlay() {
     _overlayEntry?.remove();
@@ -3108,12 +3404,8 @@ class _JobRoleSearchableFieldState extends State<_JobRoleSearchableField> {
     final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
     final width = box?.size.width ?? 200.w;
 
-    final placement = _overlayPlacement(
-      context: context,
-      fieldKey: _fieldKey,
-      preferredMaxHeight: 240,
-    );
-
+    // Precompute the filtered results once — they don't depend on the
+    // keyboard, only `_overlayPlacement` (below, inside the builder) does.
     final q = _controller.text.trim().toLowerCase();
     final results = q.isEmpty
         ? _jobRoleController.jobRoles
@@ -3122,138 +3414,308 @@ class _JobRoleSearchableFieldState extends State<_JobRoleSearchableField> {
               .toList();
 
     _overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        width: width,
-        child: CompositedTransformFollower(
-          link: _layerLink,
-          showWhenUnlinked: false,
-          offset: Offset(0, placement.dy),
-          child: Align(
-            alignment: placement.showAbove
-                ? Alignment.bottomLeft
-                : Alignment.topLeft,
-            child: Material(
-              elevation: 6,
-              borderRadius: BorderRadius.circular(10.r),
-              color: Colors.white,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: placement.maxHeight),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    InkWell(
-                      onTap: _openAddJobRoleDialog,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 10.w,
-                          vertical: 10.h,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              CupertinoIcons.add_circled_solid,
-                              size: 14.r,
-                              color: const Color(0xFF0A0258),
-                            ),
-                            SizedBox(width: 6.w),
-                            Expanded(
-                              child: Text(
-                                "Add Job Role",
-                                style: GoogleFonts.inter(
-                                  fontSize: 12.5.sp,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF0A0258),
+      // ★ CHANGED (3/4): recompute placement from `overlayContext` on every
+      // rebuild so the dropdown tracks the keyboard's show/hide animation
+      // instead of freezing on a pre-keyboard measurement. THIS is the
+      // exact spot that was causing the "Job Role" dropdown to render
+      // underneath the keyboard in your screenshot — see "KEYBOARD-TIMING
+      // FIX" note near the top of this file.
+      builder: (overlayContext) {
+        // ★ CHANGED (3/4): moved inside builder (was computed once, above,
+        // before the keyboard had finished animating in).
+        final placement = _overlayPlacement(
+          context: overlayContext,
+          fieldKey: _fieldKey,
+          preferredMaxHeight: 120,
+        );
+
+        return Positioned(
+          width: width,
+          child: CompositedTransformFollower(
+            link: _layerLink,
+            showWhenUnlinked: false,
+            offset: Offset(0, placement.dy),
+            child: Align(
+              alignment: placement.showAbove
+                  ? Alignment.bottomLeft
+                  : Alignment.topLeft,
+              child: Material(
+                elevation: 6,
+                borderRadius: BorderRadius.circular(10.r),
+                color: Colors.white,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: placement.maxHeight),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      InkWell(
+                        onTap: _openAddJobRoleDialog,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 10.w,
+                            vertical: 10.h,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                CupertinoIcons.add_circled_solid,
+                                size: 14.r,
+                                color: const Color(0xFF0A0258),
+                              ),
+                              SizedBox(width: 6.w),
+                              Expanded(
+                                child: Text(
+                                  "Add Job Role",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.5.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF0A0258),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                    const Divider(height: 1, color: Color(0xFFE4E7EC)),
-                    if (_jobRoleController.isLoading)
-                      Padding(
-                        padding: EdgeInsets.symmetric(vertical: 14.h),
-                        child: Center(
-                          child: SizedBox(
-                            width: 16.r,
-                            height: 16.r,
-                            child: const CircularProgressIndicator(
-                              strokeWidth: 2,
+                      const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                      if (_jobRoleController.isLoading)
+                        Padding(
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
+                          child: Center(
+                            child: SizedBox(
+                              width: 16.r,
+                              height: 16.r,
+                              child: const CircularProgressIndicator(
+                                strokeWidth: 2,
+                              ),
                             ),
                           ),
-                        ),
-                      )
-                    else if (results.isEmpty)
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12.w,
-                          vertical: 14.h,
-                        ),
-                        child: Text(
-                          "No job roles found",
-                          style: GoogleFonts.inter(
-                            fontSize: 12.sp,
-                            color: const Color(0xFF9AA0AB),
+                        )
+                      else if (results.isEmpty)
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12.w,
+                            vertical: 14.h,
                           ),
-                        ),
-                      )
-                    else
-                      Flexible(
-                        child: ListView.separated(
-                          padding: EdgeInsets.symmetric(vertical: 4.h),
-                          shrinkWrap: true,
-                          itemCount: results.length,
-                          separatorBuilder: (_, __) => const Divider(
-                            height: 1,
-                            color: Color(0xFFE4E7EC),
+                          child: Text(
+                            "No job roles found",
+                            style: GoogleFonts.inter(
+                              fontSize: 12.sp,
+                              color: const Color(0xFF9AA0AB),
+                            ),
                           ),
-                          itemBuilder: (context, index) {
-                            final role = results[index];
-                            return InkWell(
-                              onTap: () => _select(role),
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 12.w,
-                                  vertical: 10.h,
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      CupertinoIcons.briefcase_fill,
-                                      size: 14.r,
-                                      color: const Color(0xFF4338CA),
-                                    ),
-                                    SizedBox(width: 8.w),
-                                    Expanded(
-                                      child: Text(
-                                        role.title,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 13.sp,
-                                          fontWeight: FontWeight.w600,
-                                          color: const Color(0xFF1D2939),
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
+                        )
+                      else
+                        Flexible(
+                          child: ListView.separated(
+                            padding: EdgeInsets.symmetric(vertical: 4.h),
+                            shrinkWrap: true,
+                            itemCount: results.length,
+                            separatorBuilder: (_, __) => const Divider(
+                              height: 1,
+                              color: Color(0xFFE4E7EC),
+                            ),
+                            itemBuilder: (context, index) {
+                              final role = results[index];
+                              return InkWell(
+                                onTap: () => _select(role),
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 12.w,
+                                    vertical: 10.h,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        CupertinoIcons.briefcase_fill,
+                                        size: 14.r,
+                                        color: const Color(0xFF4338CA),
                                       ),
-                                    ),
-                                  ],
+                                      SizedBox(width: 8.w),
+                                      Expanded(
+                                        child: Text(
+                                          role.title,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13.sp,
+                                            fontWeight: FontWeight.w600,
+                                            color: const Color(0xFF1D2939),
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
+                              );
+                            },
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
 
     overlay.insert(_overlayEntry!);
   }
+
+  // void _showOverlay() {
+  //   _removeOverlay();
+
+  //   final overlay = Overlay.of(context);
+  //   final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+  //   final width = box?.size.width ?? 200.w;
+
+  //   final placement = _overlayPlacement(
+  //     context: context,
+  //     fieldKey: _fieldKey,
+  //     preferredMaxHeight: 240,
+  //   );
+
+  //   final q = _controller.text.trim().toLowerCase();
+  //   final results = q.isEmpty
+  //       ? _jobRoleController.jobRoles
+  //       : _jobRoleController.jobRoles
+  //             .where((j) => j.title.toLowerCase().contains(q))
+  //             .toList();
+
+  //   _overlayEntry = OverlayEntry(
+  //     builder: (context) => Positioned(
+  //       width: width,
+  //       child: CompositedTransformFollower(
+  //         link: _layerLink,
+  //         showWhenUnlinked: false,
+  //         offset: Offset(0, placement.dy),
+  //         child: Align(
+  //           alignment: placement.showAbove
+  //               ? Alignment.bottomLeft
+  //               : Alignment.topLeft,
+  //           child: Material(
+  //             elevation: 6,
+  //             borderRadius: BorderRadius.circular(10.r),
+  //             color: Colors.white,
+  //             child: ConstrainedBox(
+  //               constraints: BoxConstraints(maxHeight: placement.maxHeight),
+  //               child: Column(
+  //                 mainAxisSize: MainAxisSize.min,
+  //                 children: [
+  //                   InkWell(
+  //                     onTap: _openAddJobRoleDialog,
+  //                     child: Padding(
+  //                       padding: EdgeInsets.symmetric(
+  //                         horizontal: 10.w,
+  //                         vertical: 10.h,
+  //                       ),
+  //                       child: Row(
+  //                         children: [
+  //                           Icon(
+  //                             CupertinoIcons.add_circled_solid,
+  //                             size: 14.r,
+  //                             color: const Color(0xFF0A0258),
+  //                           ),
+  //                           SizedBox(width: 6.w),
+  //                           Expanded(
+  //                             child: Text(
+  //                               "Add Job Role",
+  //                               style: GoogleFonts.inter(
+  //                                 fontSize: 12.5.sp,
+  //                                 fontWeight: FontWeight.w600,
+  //                                 color: const Color(0xFF0A0258),
+  //                               ),
+  //                             ),
+  //                           ),
+  //                         ],
+  //                       ),
+  //                     ),
+  //                   ),
+  //                   const Divider(height: 1, color: Color(0xFFE4E7EC)),
+  //                   if (_jobRoleController.isLoading)
+  //                     Padding(
+  //                       padding: EdgeInsets.symmetric(vertical: 14.h),
+  //                       child: Center(
+  //                         child: SizedBox(
+  //                           width: 16.r,
+  //                           height: 16.r,
+  //                           child: const CircularProgressIndicator(
+  //                             strokeWidth: 2,
+  //                           ),
+  //                         ),
+  //                       ),
+  //                     )
+  //                   else if (results.isEmpty)
+  //                     Padding(
+  //                       padding: EdgeInsets.symmetric(
+  //                         horizontal: 12.w,
+  //                         vertical: 14.h,
+  //                       ),
+  //                       child: Text(
+  //                         "No job roles found",
+  //                         style: GoogleFonts.inter(
+  //                           fontSize: 12.sp,
+  //                           color: const Color(0xFF9AA0AB),
+  //                         ),
+  //                       ),
+  //                     )
+  //                   else
+  //                     Flexible(
+  //                       child: ListView.separated(
+  //                         padding: EdgeInsets.symmetric(vertical: 4.h),
+  //                         shrinkWrap: true,
+  //                         itemCount: results.length,
+  //                         separatorBuilder: (_, __) => const Divider(
+  //                           height: 1,
+  //                           color: Color(0xFFE4E7EC),
+  //                         ),
+  //                         itemBuilder: (context, index) {
+  //                           final role = results[index];
+  //                           return InkWell(
+  //                             onTap: () => _select(role),
+  //                             child: Padding(
+  //                               padding: EdgeInsets.symmetric(
+  //                                 horizontal: 12.w,
+  //                                 vertical: 10.h,
+  //                               ),
+  //                               child: Row(
+  //                                 children: [
+  //                                   Icon(
+  //                                     CupertinoIcons.briefcase_fill,
+  //                                     size: 14.r,
+  //                                     color: const Color(0xFF4338CA),
+  //                                   ),
+  //                                   SizedBox(width: 8.w),
+  //                                   Expanded(
+  //                                     child: Text(
+  //                                       role.title,
+  //                                       style: GoogleFonts.inter(
+  //                                         fontSize: 13.sp,
+  //                                         fontWeight: FontWeight.w600,
+  //                                         color: const Color(0xFF1D2939),
+  //                                       ),
+  //                                       overflow: TextOverflow.ellipsis,
+  //                                     ),
+  //                                   ),
+  //                                 ],
+  //                               ),
+  //                             ),
+  //                           );
+  //                         },
+  //                       ),
+  //                     ),
+  //                 ],
+  //               ),
+  //             ),
+  //           ),
+  //         ),
+  //       ),
+  //     ),
+  //   );
+
+  //   overlay.insert(_overlayEntry!);
+  // }
 
   void _removeOverlay() {
     _overlayEntry?.remove();
@@ -3531,16 +3993,8 @@ class _DepartmentSearchableFieldState
     final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
     final width = box?.size.width ?? 200.w;
 
-    final placement = _overlayPlacement(
-      context: context,
-      fieldKey: _fieldKey,
-      preferredMaxHeight: 260,
-      // The "Add Department" row is pinned inside the box regardless of
-      // scroll, so keep a slightly larger floor than other overlays to
-      // make sure it (plus a couple of results) stays comfortably usable.
-      minUsableHeight: 160,
-    );
-
+    // Precompute the filtered results once — they don't depend on the
+    // keyboard, only `_overlayPlacement` (below, inside the builder) does.
     final q = _controller.text.trim().toLowerCase();
     final results = _departmentController.departments
         .where((d) => d.location.any((l) => l.id == widget.locationId))
@@ -3548,137 +4002,311 @@ class _DepartmentSearchableFieldState
         .toList();
 
     _overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        width: width,
-        child: CompositedTransformFollower(
-          link: _layerLink,
-          showWhenUnlinked: false,
-          offset: Offset(0, placement.dy),
-          child: Align(
-            alignment: placement.showAbove
-                ? Alignment.bottomLeft
-                : Alignment.topLeft,
-            child: Material(
-              elevation: 6,
-              borderRadius: BorderRadius.circular(10.r),
-              color: Colors.white,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: placement.maxHeight),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    InkWell(
-                      onTap: _openAddDepartmentDialog,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 10.w,
-                          vertical: 10.h,
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              CupertinoIcons.add_circled_solid,
-                              size: 14.r,
-                              color: const Color(0xFF0A0258),
-                            ),
-                            SizedBox(width: 6.w),
-                            Expanded(
-                              child: Text(
-                                "Add Department",
-                                style: GoogleFonts.inter(
-                                  fontSize: 12.5.sp,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF0A0258),
+      // ★ CHANGED (4/4): recompute placement from `overlayContext` on every
+      // rebuild so the dropdown tracks the keyboard's show/hide animation
+      // instead of freezing on a pre-keyboard measurement. See
+      // "KEYBOARD-TIMING FIX" note near the top of this file.
+      builder: (overlayContext) {
+        // ★ CHANGED (4/4): moved inside builder (was computed once, above,
+        // before the keyboard had finished animating in).
+        final placement = _overlayPlacement(
+          context: overlayContext,
+          fieldKey: _fieldKey,
+          preferredMaxHeight: 260,
+          // The "Add Department" row is pinned inside the box regardless of
+          // scroll, so keep a slightly larger floor than other overlays to
+          // make sure it (plus a couple of results) stays comfortably usable.
+          minUsableHeight: 160,
+        );
+
+        return Positioned(
+          width: width,
+          child: CompositedTransformFollower(
+            link: _layerLink,
+            showWhenUnlinked: false,
+            offset: Offset(0, placement.dy),
+            child: Align(
+              alignment: placement.showAbove
+                  ? Alignment.bottomLeft
+                  : Alignment.topLeft,
+              child: Material(
+                elevation: 6,
+                borderRadius: BorderRadius.circular(10.r),
+                color: Colors.white,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: placement.maxHeight),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      InkWell(
+                        onTap: _openAddDepartmentDialog,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 10.w,
+                            vertical: 10.h,
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                CupertinoIcons.add_circled_solid,
+                                size: 14.r,
+                                color: const Color(0xFF0A0258),
+                              ),
+                              SizedBox(width: 6.w),
+                              Expanded(
+                                child: Text(
+                                  "Add Department",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.5.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF0A0258),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                    const Divider(height: 1, color: Color(0xFFE4E7EC)),
-                    if (_departmentController.isLoading)
-                      Padding(
-                        padding: EdgeInsets.symmetric(vertical: 14.h),
-                        child: SizedBox(
-                          width: 16.r,
-                          height: 16.r,
-                          child: const CircularProgressIndicator(
-                            strokeWidth: 2,
+                      const Divider(height: 1, color: Color(0xFFE4E7EC)),
+                      if (_departmentController.isLoading)
+                        Padding(
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
+                          child: SizedBox(
+                            width: 16.r,
+                            height: 16.r,
+                            child: const CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
                           ),
-                        ),
-                      )
-                    else if (results.isEmpty)
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12.w,
-                          vertical: 14.h,
-                        ),
-                        child: Text(
-                          "No departments found",
-                          style: GoogleFonts.inter(
-                            fontSize: 12.sp,
-                            color: const Color(0xFF9AA0AB),
+                        )
+                      else if (results.isEmpty)
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12.w,
+                            vertical: 14.h,
                           ),
-                        ),
-                      )
-                    else
-                      Flexible(
-                        child: ListView.separated(
-                          padding: EdgeInsets.symmetric(vertical: 4.h),
-                          shrinkWrap: true,
-                          itemCount: results.length,
-                          separatorBuilder: (_, __) => const Divider(
-                            height: 1,
-                            color: Color(0xFFE4E7EC),
+                          child: Text(
+                            "No departments found",
+                            style: GoogleFonts.inter(
+                              fontSize: 12.sp,
+                              color: const Color(0xFF9AA0AB),
+                            ),
                           ),
-                          itemBuilder: (context, index) {
-                            final dept = results[index];
-                            return InkWell(
-                              onTap: () => _select(dept),
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 12.w,
-                                  vertical: 10.h,
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      CupertinoIcons.square_grid_2x2,
-                                      size: 14.r,
-                                      color: const Color(0xFF4338CA),
-                                    ),
-                                    SizedBox(width: 8.w),
-                                    Expanded(
-                                      child: Text(
-                                        dept.name ?? '',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 13.sp,
-                                          fontWeight: FontWeight.w600,
-                                          color: const Color(0xFF1D2939),
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
+                        )
+                      else
+                        Flexible(
+                          child: ListView.separated(
+                            padding: EdgeInsets.symmetric(vertical: 4.h),
+                            shrinkWrap: true,
+                            itemCount: results.length,
+                            separatorBuilder: (_, __) => const Divider(
+                              height: 1,
+                              color: Color(0xFFE4E7EC),
+                            ),
+                            itemBuilder: (context, index) {
+                              final dept = results[index];
+                              return InkWell(
+                                onTap: () => _select(dept),
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 12.w,
+                                    vertical: 10.h,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        CupertinoIcons.square_grid_2x2,
+                                        size: 14.r,
+                                        color: const Color(0xFF4338CA),
                                       ),
-                                    ),
-                                  ],
+                                      SizedBox(width: 8.w),
+                                      Expanded(
+                                        child: Text(
+                                          dept.name ?? '',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13.sp,
+                                            fontWeight: FontWeight.w600,
+                                            color: const Color(0xFF1D2939),
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
+                              );
+                            },
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
 
     overlay.insert(_overlayEntry!);
   }
+
+  // void _showOverlay() {
+  //   _removeOverlay();
+
+  //   final overlay = Overlay.of(context);
+  //   final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+  //   final width = box?.size.width ?? 200.w;
+
+  //   final placement = _overlayPlacement(
+  //     context: context,
+  //     fieldKey: _fieldKey,
+  //     preferredMaxHeight: 260,
+  //     // The "Add Department" row is pinned inside the box regardless of
+  //     // scroll, so keep a slightly larger floor than other overlays to
+  //     // make sure it (plus a couple of results) stays comfortably usable.
+  //     minUsableHeight: 160,
+  //   );
+
+  //   final q = _controller.text.trim().toLowerCase();
+  //   final results = _departmentController.departments
+  //       .where((d) => d.location.any((l) => l.id == widget.locationId))
+  //       .where((d) => q.isEmpty || (d.name ?? '').toLowerCase().contains(q))
+  //       .toList();
+
+  //   _overlayEntry = OverlayEntry(
+  //     builder: (context) => Positioned(
+  //       width: width,
+  //       child: CompositedTransformFollower(
+  //         link: _layerLink,
+  //         showWhenUnlinked: false,
+  //         offset: Offset(0, placement.dy),
+  //         child: Align(
+  //           alignment: placement.showAbove
+  //               ? Alignment.bottomLeft
+  //               : Alignment.topLeft,
+  //           child: Material(
+  //             elevation: 6,
+  //             borderRadius: BorderRadius.circular(10.r),
+  //             color: Colors.white,
+  //             child: ConstrainedBox(
+  //               constraints: BoxConstraints(maxHeight: placement.maxHeight),
+  //               child: Column(
+  //                 mainAxisSize: MainAxisSize.min,
+  //                 children: [
+  //                   InkWell(
+  //                     onTap: _openAddDepartmentDialog,
+  //                     child: Padding(
+  //                       padding: EdgeInsets.symmetric(
+  //                         horizontal: 10.w,
+  //                         vertical: 10.h,
+  //                       ),
+  //                       child: Row(
+  //                         crossAxisAlignment: CrossAxisAlignment.start,
+  //                         children: [
+  //                           Icon(
+  //                             CupertinoIcons.add_circled_solid,
+  //                             size: 14.r,
+  //                             color: const Color(0xFF0A0258),
+  //                           ),
+  //                           SizedBox(width: 6.w),
+  //                           Expanded(
+  //                             child: Text(
+  //                               "Add Department",
+  //                               style: GoogleFonts.inter(
+  //                                 fontSize: 12.5.sp,
+  //                                 fontWeight: FontWeight.w600,
+  //                                 color: const Color(0xFF0A0258),
+  //                               ),
+  //                             ),
+  //                           ),
+  //                         ],
+  //                       ),
+  //                     ),
+  //                   ),
+  //                   const Divider(height: 1, color: Color(0xFFE4E7EC)),
+  //                   if (_departmentController.isLoading)
+  //                     Padding(
+  //                       padding: EdgeInsets.symmetric(vertical: 14.h),
+  //                       child: SizedBox(
+  //                         width: 16.r,
+  //                         height: 16.r,
+  //                         child: const CircularProgressIndicator(
+  //                           strokeWidth: 2,
+  //                         ),
+  //                       ),
+  //                     )
+  //                   else if (results.isEmpty)
+  //                     Padding(
+  //                       padding: EdgeInsets.symmetric(
+  //                         horizontal: 12.w,
+  //                         vertical: 14.h,
+  //                       ),
+  //                       child: Text(
+  //                         "No departments found",
+  //                         style: GoogleFonts.inter(
+  //                           fontSize: 12.sp,
+  //                           color: const Color(0xFF9AA0AB),
+  //                         ),
+  //                       ),
+  //                     )
+  //                   else
+  //                     Flexible(
+  //                       child: ListView.separated(
+  //                         padding: EdgeInsets.symmetric(vertical: 4.h),
+  //                         shrinkWrap: true,
+  //                         itemCount: results.length,
+  //                         separatorBuilder: (_, __) => const Divider(
+  //                           height: 1,
+  //                           color: Color(0xFFE4E7EC),
+  //                         ),
+  //                         itemBuilder: (context, index) {
+  //                           final dept = results[index];
+  //                           return InkWell(
+  //                             onTap: () => _select(dept),
+  //                             child: Padding(
+  //                               padding: EdgeInsets.symmetric(
+  //                                 horizontal: 12.w,
+  //                                 vertical: 10.h,
+  //                               ),
+  //                               child: Row(
+  //                                 children: [
+  //                                   Icon(
+  //                                     CupertinoIcons.square_grid_2x2,
+  //                                     size: 14.r,
+  //                                     color: const Color(0xFF4338CA),
+  //                                   ),
+  //                                   SizedBox(width: 8.w),
+  //                                   Expanded(
+  //                                     child: Text(
+  //                                       dept.name ?? '',
+  //                                       style: GoogleFonts.inter(
+  //                                         fontSize: 13.sp,
+  //                                         fontWeight: FontWeight.w600,
+  //                                         color: const Color(0xFF1D2939),
+  //                                       ),
+  //                                       overflow: TextOverflow.ellipsis,
+  //                                     ),
+  //                                   ),
+  //                                 ],
+  //                               ),
+  //                             ),
+  //                           );
+  //                         },
+  //                       ),
+  //                     ),
+  //                 ],
+  //               ),
+  //             ),
+  //           ),
+  //         ),
+  //       ),
+  //     ),
+  //   );
+
+  //   overlay.insert(_overlayEntry!);
+  // }
 
   void _removeOverlay() {
     _overlayEntry?.remove();

@@ -10,6 +10,7 @@ import 'package:taskalert_app/screens/LoginConfirmationScreen.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
 import '../core/features/auth/controllers/login_controller.dart';
 import '../core/features/auth/controllers/signup_controller.dart';
+import '../core/features/sidebar/controllers/sidebar_controller.dart';
 import 'dart:async';
 
 class OtpVerificationScreen extends StatefulWidget {
@@ -410,6 +411,16 @@ class OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                     if (!mounted) return;
 
                                     if (userModel != null) {
+                                      // Kick off the sidebar/drawer menu
+                                      // fetch now (once per session, cached
+                                      // by the singleton controller) rather
+                                      // than waiting for the first screen's
+                                      // CustomDrawer to trigger it — not
+                                      // awaited so it doesn't delay
+                                      // navigation.
+                                      sl<SidebarController>()
+                                          .handleGetSidebarConfiguration();
+
                                       // ✅ SIGN-UP FLOW:
                                       // account_type comes from widget.accountType
                                       // passed from SignUpScreen. Write it to

@@ -449,7 +449,7 @@ class _NotificationSettingState extends State<NotificationSetting> {
         showLeading: true,
         onBackPressed: () => Navigator.pop(context),
       ),
-      drawer: CustomDrawer(activeTile: "Home", onTileTap: (value) {}),
+      drawer: CustomDrawer(activeTile: "", onTileTap: (value) {}),
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => FocusScope.of(context).unfocus(),

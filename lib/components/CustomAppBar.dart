@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:taskalert_app/core/features/organization/controllers/organization_controller.dart';
+import 'package:taskalert_app/core/features/sidebar/controllers/sidebar_controller.dart';
 import 'package:taskalert_app/screens/HomeScreen.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
 
@@ -166,6 +167,16 @@ class _CustomAppBarState extends State<CustomAppBar> {
                                       if (!sheetCtx.mounted) return;
 
                                       if (success) {
+                                        // The permission set is scoped to
+                                        // the active organization — force a
+                                        // real refetch instead of reusing
+                                        // whichever org's menu was cached
+                                        // before.
+                                        await sl<SidebarController>()
+                                            .handleGetSidebarConfiguration(
+                                              forceRefresh: true,
+                                            );
+
                                         if (sheetCtx.mounted) {
                                           Navigator.pop(sheetCtx);
                                         }
