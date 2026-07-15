@@ -4,6 +4,9 @@ import 'package:taskalert_app/core/features/activityLogs/controllers/activity_lo
 import 'package:taskalert_app/core/features/activityLogs/data/repositories/activity_log_repository.dart';
 import 'package:taskalert_app/core/features/activityLogs/data/repositories/activity_log_repository_impl.dart';
 import 'package:taskalert_app/core/features/auth/controllers/signup_controller.dart';
+import 'package:taskalert_app/core/features/dashboard/controllers/dashboard_controller.dart';
+import 'package:taskalert_app/core/features/dashboard/data/repositories/dashboard_repository.dart';
+import 'package:taskalert_app/core/features/dashboard/data/repositories/dashboard_repository_impl.dart';
 import 'package:taskalert_app/core/features/auth/data/repositories/auth_repository.dart';
 import 'package:taskalert_app/core/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:taskalert_app/core/features/departments/controllers/department_controller.dart';
@@ -141,4 +144,10 @@ Future<void> init() async {
     () => WorkflowRepositoryImpl(sl<HttpService>()),
   );
   sl.registerFactory(() => WorkflowController(sl<WorkflowRepository>()));
+
+  // 📊 Dashboard Feature Layers
+  sl.registerLazySingleton<DashboardRepository>(
+    () => DashboardRepositoryImpl(sl<HttpService>()),
+  );
+  sl.registerFactory(() => DashboardController(sl<DashboardRepository>()));
 }
