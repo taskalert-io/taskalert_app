@@ -67,6 +67,12 @@ class _CustomAppBarState extends State<CustomAppBar> {
     // only that row shows a spinner and every row is disabled meanwhile.
     String? switchingToId;
 
+    // Captured before the sheet opens: the AnimatedBuilder/StatefulBuilder
+    // below each redeclare their own `context` param that shadows this one,
+    // and ModalRoute.of(that shadowed context) would resolve to the bottom
+    // sheet's own route instead of the screen behind it.
+    final appBarContext = context;
+
     await showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -181,24 +187,41 @@ class _CustomAppBarState extends State<CustomAppBar> {
                                           Navigator.pop(sheetCtx);
                                         }
                                         if (!mounted) return;
-                                        // Full app data refresh: every
-                                        // screen/controller in this app
-                                        // fetches its own org-scoped data
-                                        // once, on mount — there's no
-                                        // global cache to invalidate, so
-                                        // the reliable way to refresh
-                                        // everything is to tear down the
-                                        // whole navigation stack and land
-                                        // on a brand-new Home screen.
-                                        Navigator.of(
-                                          context,
-                                        ).pushAndRemoveUntil(
-                                          MaterialPageRoute(
-                                            builder: (_) =>
-                                                HomeScreen(userId: ''),
-                                          ),
-                                          (route) => false,
+                                        // Every screen/controller in this
+                                        // app fetches its own org-scoped
+                                        // data once, on mount — there's no
+                                        // global cache to invalidate, so a
+                                        // fresh instance's own initState
+                                        // re-fetch is the reliable way to
+                                        // refresh. Rebuild the CURRENT
+                                        // route in place (via its own
+                                        // builder) instead of tearing down
+                                        // the whole stack to Home, so the
+                                        // user stays on whatever screen
+                                        // they switched from.
+                                        final currentRoute = ModalRoute.of(
+                                          appBarContext,
                                         );
+                                        if (currentRoute
+                                            is MaterialPageRoute) {
+                                          Navigator.of(
+                                            appBarContext,
+                                          ).pushReplacement(
+                                            MaterialPageRoute(
+                                              builder: currentRoute.builder,
+                                            ),
+                                          );
+                                        } else {
+                                          Navigator.of(
+                                            appBarContext,
+                                          ).pushAndRemoveUntil(
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  HomeScreen(userId: ''),
+                                            ),
+                                            (route) => false,
+                                          );
+                                        }
                                       } else {
                                         ScaffoldMessenger.of(
                                           sheetCtx,
