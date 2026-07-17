@@ -64,7 +64,7 @@ TimeOfDay? parseSubtaskTime(SubTaskTime? reportingTime) {
   return TimeOfDay(hour: hour24, minute: minute);
 }
 
-InputDecoration _subtaskFieldDecoration(String hint) => InputDecoration(
+InputDecoration subtaskFieldDecoration(String hint) => InputDecoration(
   isDense: true,
   hintText: hint,
   hintStyle: GoogleFonts.inter(fontSize: 12.sp, color: const Color(0xFFB8BEC5)),
@@ -85,7 +85,7 @@ InputDecoration _subtaskFieldDecoration(String hint) => InputDecoration(
   ),
 );
 
-String? _employeeNameById(EmployeeController employeeController, String id) {
+String? employeeNameById(EmployeeController employeeController, String id) {
   for (final employee in employeeController.allEmployees) {
     if (employee.id == id) {
       final name = employee.fullName;
@@ -98,7 +98,7 @@ String? _employeeNameById(EmployeeController employeeController, String id) {
 /// Simple multi-select bottom sheet for the create-subtask form's
 /// assignees. Returns the confirmed selection, or null if dismissed
 /// without confirming.
-Future<List<String>?> _pickSubtaskAssignees({
+Future<List<String>?> pickSubtaskAssignees({
   required BuildContext context,
   required EmployeeController employeeController,
   required List<String> currentSelected,
@@ -170,7 +170,7 @@ Future<List<String>?> _pickSubtaskAssignees({
                   child: TextField(
                     controller: searchCtrl,
                     style: GoogleFonts.inter(fontSize: 12.sp),
-                    decoration: _subtaskFieldDecoration('Search employees')
+                    decoration: subtaskFieldDecoration('Search employees')
                         .copyWith(
                           prefixIcon: Icon(
                             CupertinoIcons.search,
@@ -273,7 +273,9 @@ void openCreateSubtaskDialog({
     isScrollControlled: true,
     useRootNavigator: true,
     builder: (_) => Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: StatefulBuilder(
         builder: (ctx, ss) => Container(
           constraints: BoxConstraints(
@@ -338,7 +340,7 @@ void openCreateSubtaskDialog({
                 TextField(
                   controller: titleCtrl,
                   style: GoogleFonts.inter(fontSize: 12.sp),
-                  decoration: _subtaskFieldDecoration('Enter subtask title'),
+                  decoration: subtaskFieldDecoration('Enter subtask title'),
                 ),
                 SizedBox(height: 12.h),
                 Text(
@@ -354,7 +356,7 @@ void openCreateSubtaskDialog({
                   controller: descCtrl,
                   maxLines: 3,
                   style: GoogleFonts.inter(fontSize: 12.sp),
-                  decoration: _subtaskFieldDecoration(
+                  decoration: subtaskFieldDecoration(
                     'Enter description (optional)',
                   ),
                 ),
@@ -370,7 +372,7 @@ void openCreateSubtaskDialog({
                 SizedBox(height: 6.h),
                 GestureDetector(
                   onTap: () async {
-                    final result = await _pickSubtaskAssignees(
+                    final result = await pickSubtaskAssignees(
                       context: ctx,
                       employeeController: employeeController,
                       currentSelected: selectedAssigneeIds,
@@ -396,7 +398,7 @@ void openCreateSubtaskDialog({
                           : selectedAssigneeIds
                                 .map(
                                   (id) =>
-                                      _employeeNameById(
+                                      employeeNameById(
                                         employeeController,
                                         id,
                                       ) ??
@@ -514,9 +516,7 @@ void openCreateSubtaskDialog({
                             : () async {
                                 final title = titleCtrl.text.trim();
                                 if (title.isEmpty) {
-                                  ss(
-                                    () => formError = 'Please enter a title.',
-                                  );
+                                  ss(() => formError = 'Please enter a title.');
                                   return;
                                 }
                                 ss(() {
@@ -527,8 +527,7 @@ void openCreateSubtaskDialog({
                                 String? time;
                                 String? period;
                                 if (selectedTime != null) {
-                                  final hour12 =
-                                      selectedTime!.hourOfPeriod == 0
+                                  final hour12 = selectedTime!.hourOfPeriod == 0
                                       ? 12
                                       : selectedTime!.hourOfPeriod;
                                   time =
@@ -543,8 +542,7 @@ void openCreateSubtaskDialog({
                                     .handleCreateSubTask(
                                       instanceId: instanceId,
                                       title: title,
-                                      description:
-                                          descCtrl.text.trim().isEmpty
+                                      description: descCtrl.text.trim().isEmpty
                                           ? null
                                           : descCtrl.text.trim(),
                                       assigneeIds: selectedAssigneeIds.isEmpty
@@ -565,9 +563,7 @@ void openCreateSubtaskDialog({
                                       );
                                   if (!context.mounted) return;
                                   onCreated?.call();
-                                  ScaffoldMessenger.of(
-                                    context,
-                                  ).showSnackBar(
+                                  ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
                                         subTaskController.successMessage ??
@@ -657,7 +653,9 @@ void openEditSubtaskDialog({
     isScrollControlled: true,
     useRootNavigator: true,
     builder: (_) => Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: StatefulBuilder(
         builder: (ctx, ss) => Container(
           constraints: BoxConstraints(
@@ -722,7 +720,7 @@ void openEditSubtaskDialog({
                 TextField(
                   controller: titleCtrl,
                   style: GoogleFonts.inter(fontSize: 12.sp),
-                  decoration: _subtaskFieldDecoration('Enter subtask title'),
+                  decoration: subtaskFieldDecoration('Enter subtask title'),
                 ),
                 SizedBox(height: 12.h),
                 Text(
@@ -738,7 +736,7 @@ void openEditSubtaskDialog({
                   controller: descCtrl,
                   maxLines: 3,
                   style: GoogleFonts.inter(fontSize: 12.sp),
-                  decoration: _subtaskFieldDecoration(
+                  decoration: subtaskFieldDecoration(
                     'Enter description (optional)',
                   ),
                 ),
@@ -754,7 +752,7 @@ void openEditSubtaskDialog({
                 SizedBox(height: 6.h),
                 GestureDetector(
                   onTap: () async {
-                    final result = await _pickSubtaskAssignees(
+                    final result = await pickSubtaskAssignees(
                       context: ctx,
                       employeeController: employeeController,
                       currentSelected: selectedAssigneeIds,
@@ -780,7 +778,7 @@ void openEditSubtaskDialog({
                           : selectedAssigneeIds
                                 .map(
                                   (id) =>
-                                      _employeeNameById(
+                                      employeeNameById(
                                         employeeController,
                                         id,
                                       ) ??
@@ -901,9 +899,7 @@ void openEditSubtaskDialog({
                             : () async {
                                 final title = titleCtrl.text.trim();
                                 if (title.isEmpty) {
-                                  ss(
-                                    () => formError = 'Please enter a title.',
-                                  );
+                                  ss(() => formError = 'Please enter a title.');
                                   return;
                                 }
                                 ss(() {
@@ -914,8 +910,7 @@ void openEditSubtaskDialog({
                                 String? time;
                                 String? period;
                                 if (selectedTime != null) {
-                                  final hour12 =
-                                      selectedTime!.hourOfPeriod == 0
+                                  final hour12 = selectedTime!.hourOfPeriod == 0
                                       ? 12
                                       : selectedTime!.hourOfPeriod;
                                   time =
@@ -930,8 +925,7 @@ void openEditSubtaskDialog({
                                     .handleUpdateSubTaskInstance(
                                       subTaskInstanceId: subTaskInstanceId,
                                       title: title,
-                                      description:
-                                          descCtrl.text.trim().isEmpty
+                                      description: descCtrl.text.trim().isEmpty
                                           ? null
                                           : descCtrl.text.trim(),
                                       assigneeIds: selectedAssigneeIds.isEmpty
@@ -948,9 +942,7 @@ void openEditSubtaskDialog({
                                   Navigator.pop(ctx);
                                   if (!context.mounted) return;
                                   onUpdated?.call();
-                                  ScaffoldMessenger.of(
-                                    context,
-                                  ).showSnackBar(
+                                  ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
                                         subTaskController.successMessage ??
@@ -1024,7 +1016,9 @@ Future<void> confirmDeleteSubtask({
     context: context,
     builder: (dialogCtx) => StatefulBuilder(
       builder: (dialogCtx, ss) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14.r),
+        ),
         title: Text(
           'Choose Delete Option',
           style: GoogleFonts.inter(
@@ -1079,7 +1073,10 @@ Future<void> confirmDeleteSubtask({
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(dialogCtx, true),
-            child: Text('Delete', style: GoogleFonts.inter(color: Colors.white)),
+            child: Text(
+              'Delete',
+              style: GoogleFonts.inter(color: Colors.white),
+            ),
           ),
         ],
       ),

@@ -7,10 +7,12 @@ import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
 import '../components/SubtaskDialogs.dart';
+import '../components/TaskInstanceDialogs.dart';
 import '../core/features/employees/controllers/employee_controller.dart';
 import '../core/features/subTasks/controllers/sub_task_controller.dart';
 import '../core/features/subTasks/data/models/sub_task_instance_model.dart'
     show SubTaskTime;
+import '../core/features/taskInstance/controllers/task_instance_controller.dart';
 import '../core/features/workflow/controllers/workflow_controller.dart';
 import '../core/features/workflow/data/models/workflow_model.dart';
 import '../utils/injection_container.dart';
@@ -37,6 +39,8 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late final WorkflowController _workflowController = sl<WorkflowController>();
   late final SubTaskController _subTaskController = sl<SubTaskController>();
+  late final TaskInstanceController _taskInstanceController =
+      sl<TaskInstanceController>();
   late final EmployeeController _employeeController = sl<EmployeeController>();
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
@@ -94,7 +98,7 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
 
   bool _canDeleteTimelineItem(WorkflowTimelineItem item) => _isCreatedByMe;
 
-  void _refreshWorkflow() => _workflowController.handleGetWorkflowById(
+  Future<void> _refreshWorkflow() => _workflowController.handleGetWorkflowById(
     taskInstanceId: widget.taskInstanceId,
   );
 
@@ -129,6 +133,35 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
       subTaskInstanceId: item.subTaskInstanceId,
       currentStatus: item.status,
       subTaskController: _subTaskController,
+      onUpdated: _refreshWorkflow,
+    );
+  }
+
+  // Editing/status-updating the main task instance itself (as opposed to
+  // one of its subtasks) is assigner-only — no delete here, since there is
+  // no delete-task-instance endpoint in this app yet.
+  void _showEditInstanceSheet(WorkflowDetailInstance instance) {
+    openEditTaskInstanceDialog(
+      context: context,
+      taskId: instance.task?.id ?? '',
+      instanceId: widget.taskInstanceId,
+      currentStatus: instance.status,
+      initialPriority: instance.priority,
+      initialAssigneeIds: instance.assignees.map((a) => a.id).toList(),
+      initialScheduledTime: instance.scheduledTime,
+      taskInstanceController: _taskInstanceController,
+      employeeController: _employeeController,
+      onUpdated: _refreshWorkflow,
+    );
+  }
+
+  Future<void> _showInstanceStatusSheet(WorkflowDetailInstance instance) async {
+    await showUpdateTaskInstanceStatusSheet(
+      context: context,
+      taskId: instance.task?.id ?? '',
+      instanceId: widget.taskInstanceId,
+      currentStatus: instance.status,
+      taskInstanceController: _taskInstanceController,
       onUpdated: _refreshWorkflow,
     );
   }
@@ -177,8 +210,18 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
   String _formatScheduledDate(DateTime? date) {
     if (date == null) return '';
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
@@ -194,22 +237,6 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
     ),
     padding: padding ?? EdgeInsets.all(14.w),
     child: child,
-  );
-
-  Widget _statusPill(String status) => Container(
-    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-    decoration: BoxDecoration(
-      color: _statusColor(status).withOpacity(0.12),
-      borderRadius: BorderRadius.circular(6.r),
-    ),
-    child: Text(
-      _statusLabel(status),
-      style: GoogleFonts.inter(
-        fontSize: 10.5.sp,
-        fontWeight: FontWeight.w600,
-        color: _statusColor(status),
-      ),
-    ),
   );
 
   Widget _priorityPill(String priority) {
@@ -251,9 +278,7 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      instance.title.isNotEmpty
-                          ? instance.title
-                          : 'Untitled',
+                      instance.title.isNotEmpty ? instance.title : 'Untitled',
                       style: GoogleFonts.inter(
                         fontSize: 15.sp,
                         fontWeight: FontWeight.w700,
@@ -275,7 +300,49 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
                 ),
               ),
               SizedBox(width: 8.w),
-              _statusPill(instance.status),
+              GestureDetector(
+                onTap: _isCreatedByMe
+                    ? () => _showInstanceStatusSheet(instance)
+                    : null,
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                  decoration: BoxDecoration(
+                    color: _statusColor(instance.status).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(6.r),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _statusLabel(instance.status),
+                        style: GoogleFonts.inter(
+                          fontSize: 10.5.sp,
+                          fontWeight: FontWeight.w600,
+                          color: _statusColor(instance.status),
+                        ),
+                      ),
+                      if (_isCreatedByMe) ...[
+                        SizedBox(width: 2.w),
+                        Icon(
+                          Icons.arrow_drop_down,
+                          size: 14.r,
+                          color: _statusColor(instance.status),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              if (_isCreatedByMe)
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(
+                    Icons.edit_outlined,
+                    size: 17.r,
+                    color: _primaryColor,
+                  ),
+                  onPressed: () => _showEditInstanceSheet(instance),
+                ),
             ],
           ),
           if ((instance.description ?? '').isNotEmpty) ...[
@@ -362,7 +429,10 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
     ),
   );
 
-  Widget _timelineItemCard(WorkflowTimelineItem item) {
+  Widget _timelineItemCard(
+    WorkflowTimelineItem item,
+    String? mainTaskInstanceId,
+  ) {
     final reportingTime = _formatScheduledTime(item.reportingTime);
     final assigneeNames = item.assignees
         .map((a) => a.fullName)
@@ -386,13 +456,29 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Text(
-                  item.title.isNotEmpty ? item.title : 'Untitled subtask',
-                  style: GoogleFonts.inter(
-                    fontSize: 12.5.sp,
-                    fontWeight: FontWeight.w600,
-                    color: _accentColor,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.title.isNotEmpty ? item.title : 'Untitled subtask',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5.sp,
+                        fontWeight: FontWeight.w600,
+                        color: _accentColor,
+                      ),
+                    ),
+                    if (mainTaskInstanceId != null &&
+                        mainTaskInstanceId.isNotEmpty) ...[
+                      SizedBox(height: 2.h),
+                      Text(
+                        'Subtask Id: $mainTaskInstanceId',
+                        style: GoogleFonts.inter(
+                          fontSize: 10.5.sp,
+                          color: _labelColor,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               SizedBox(width: 8.w),
@@ -401,10 +487,7 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
                     ? () => _showTimelineItemStatusSheet(item)
                     : null,
                 child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 8.w,
-                    vertical: 4.h,
-                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                   decoration: BoxDecoration(
                     color: subtaskStatusColor(item.status).withOpacity(0.12),
                     borderRadius: BorderRadius.circular(6.r),
@@ -469,10 +552,7 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
                 SizedBox(width: 4.w),
                 Text(
                   reportingTime,
-                  style: GoogleFonts.inter(
-                    fontSize: 11.sp,
-                    color: _labelColor,
-                  ),
+                  style: GoogleFonts.inter(fontSize: 11.sp, color: _labelColor),
                 ),
               ],
             ),
@@ -526,89 +606,92 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
             );
           }
 
-          return SingleChildScrollView(
-            padding: EdgeInsets.all(15.w),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    InkWell(
-                      onTap: () => Navigator.pop(context),
-                      child: Icon(
-                        Icons.arrow_back,
-                        size: 20.r,
-                        color: _primaryColor,
-                      ),
-                    ),
-                    SizedBox(width: 8.w),
-                    Expanded(
-                      child: Text(
-                        widget.title?.isNotEmpty == true
-                            ? widget.title!
-                            : 'Workflow Details',
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.inter(
-                          fontSize: 18.sp,
-                          fontWeight: FontWeight.w700,
+          return RefreshIndicator(
+            onRefresh: _refreshWorkflow,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.all(15.w),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      InkWell(
+                        onTap: () => Navigator.pop(context),
+                        child: Icon(
+                          Icons.arrow_back,
+                          size: 20.r,
                           color: _primaryColor,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 14.h),
-                _instanceCard(detail.instance),
-                if (detail.timeline.isEmpty)
-                  Padding(
-                    padding: EdgeInsets.symmetric(vertical: 14.h),
-                    child: Center(
-                      child: Text(
-                        'No subtasks in this workflow yet',
-                        style: GoogleFonts.inter(
-                          fontSize: 12.sp,
-                          color: const Color(0xFF9AA0AB),
+                      SizedBox(width: 8.w),
+                      Expanded(
+                        child: Text(
+                          widget.title?.isNotEmpty == true
+                              ? widget.title!
+                              : 'Workflow Details',
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.w700,
+                            color: _primaryColor,
+                          ),
                         ),
                       ),
-                    ),
-                  )
-                else ...[
-                  _flowArrow(),
-                  for (int i = 0; i < detail.timeline.length; i++) ...[
-                    _timelineItemCard(detail.timeline[i]),
-                    if (i != detail.timeline.length - 1) _flowArrow(),
-                  ],
-                ],
-                if (_isCreatedByMe) ...[
-                  SizedBox(height: 16.h),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _showAddEventSheet,
-                      style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: 12.h),
-                        side: BorderSide(color: _primaryColor),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.r),
-                        ),
-                      ),
-                      icon: Icon(
-                        Icons.add,
-                        size: 18.r,
-                        color: _primaryColor,
-                      ),
-                      label: Text(
-                        'Add Event',
-                        style: GoogleFonts.inter(
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.w600,
-                          color: _primaryColor,
-                        ),
-                      ),
-                    ),
+                    ],
                   ),
+                  SizedBox(height: 14.h),
+                  _instanceCard(detail.instance),
+                  if (detail.timeline.isEmpty)
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 14.h),
+                      child: Center(
+                        child: Text(
+                          'No subtasks in this workflow yet',
+                          style: GoogleFonts.inter(
+                            fontSize: 12.sp,
+                            color: const Color(0xFF9AA0AB),
+                          ),
+                        ),
+                      ),
+                    )
+                  else ...[
+                    _flowArrow(),
+                    for (int i = 0; i < detail.timeline.length; i++) ...[
+                      _timelineItemCard(
+                        detail.timeline[i],
+                        detail.instance.taskCode,
+                      ),
+                      if (i != detail.timeline.length - 1) _flowArrow(),
+                    ],
+                  ],
+                  if (_isCreatedByMe) ...[
+                    SizedBox(height: 16.h),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _showAddEventSheet,
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: 12.h),
+                          side: BorderSide(color: _primaryColor),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                        ),
+                        icon: Icon(Icons.add, size: 18.r, color: _primaryColor),
+                        label: Text(
+                          'Add Event',
+                          style: GoogleFonts.inter(
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w600,
+                            color: _primaryColor,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           );
         },
