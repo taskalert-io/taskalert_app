@@ -3,10 +3,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../components/CreateSubtaskDialog.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
+import '../components/SubtaskDialogs.dart';
 import '../core/features/employees/controllers/employee_controller.dart';
 import '../core/features/subTasks/controllers/sub_task_controller.dart';
 import '../core/features/subTasks/data/models/sub_task_instance_model.dart'
@@ -80,6 +80,56 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
       onCreated: () => _workflowController.handleGetWorkflowById(
         taskInstanceId: widget.taskInstanceId,
       ),
+    );
+  }
+
+  // Same permission model as `MyTaskDetails.dart`'s subtask list: the
+  // parent task's assigner can edit and delete every timeline item; a
+  // timeline item's own assignee(s) can edit it but not delete it.
+  bool _canEditTimelineItem(WorkflowTimelineItem item) =>
+      _isCreatedByMe ||
+      (_currentUserId != null &&
+          _currentUserId!.isNotEmpty &&
+          item.assignees.any((a) => a.id == _currentUserId));
+
+  bool _canDeleteTimelineItem(WorkflowTimelineItem item) => _isCreatedByMe;
+
+  void _refreshWorkflow() => _workflowController.handleGetWorkflowById(
+    taskInstanceId: widget.taskInstanceId,
+  );
+
+  void _showEditTimelineItemSheet(WorkflowTimelineItem item) {
+    openEditSubtaskDialog(
+      context: context,
+      subTaskInstanceId: item.subTaskInstanceId,
+      initialTitle: item.title,
+      initialDescription: item.description,
+      initialAssigneeIds: item.assignees.map((a) => a.id).toList(),
+      initialReportingTime: item.reportingTime,
+      canChooseScope: _isCreatedByMe,
+      subTaskController: _subTaskController,
+      employeeController: _employeeController,
+      onUpdated: _refreshWorkflow,
+    );
+  }
+
+  Future<void> _confirmDeleteTimelineItem(WorkflowTimelineItem item) async {
+    await confirmDeleteSubtask(
+      context: context,
+      subTaskInstanceId: item.subTaskInstanceId,
+      subtaskTitle: item.title,
+      subTaskController: _subTaskController,
+      onDeleted: _refreshWorkflow,
+    );
+  }
+
+  Future<void> _showTimelineItemStatusSheet(WorkflowTimelineItem item) async {
+    await showUpdateSubtaskStatusSheet(
+      context: context,
+      subTaskInstanceId: item.subTaskInstanceId,
+      currentStatus: item.status,
+      subTaskController: _subTaskController,
+      onUpdated: _refreshWorkflow,
     );
   }
 
@@ -318,6 +368,8 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
         .map((a) => a.fullName)
         .where((n) => n.isNotEmpty)
         .join(', ');
+    final canEdit = _canEditTimelineItem(item);
+    final canDelete = _canDeleteTimelineItem(item);
 
     return Container(
       width: double.infinity,
@@ -344,7 +396,62 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
                 ),
               ),
               SizedBox(width: 8.w),
-              _statusPill(item.status),
+              GestureDetector(
+                onTap: canEdit
+                    ? () => _showTimelineItemStatusSheet(item)
+                    : null,
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 8.w,
+                    vertical: 4.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color: subtaskStatusColor(item.status).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(6.r),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        subtaskStatusLabel(item.status),
+                        style: GoogleFonts.inter(
+                          fontSize: 10.5.sp,
+                          fontWeight: FontWeight.w600,
+                          color: subtaskStatusColor(item.status),
+                        ),
+                      ),
+                      if (canEdit) ...[
+                        SizedBox(width: 2.w),
+                        Icon(
+                          Icons.arrow_drop_down,
+                          size: 14.r,
+                          color: subtaskStatusColor(item.status),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              if (canEdit)
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(
+                    Icons.edit_outlined,
+                    size: 17.r,
+                    color: _primaryColor,
+                  ),
+                  onPressed: () => _showEditTimelineItemSheet(item),
+                ),
+              if (canDelete)
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(
+                    Icons.delete_outline,
+                    size: 17.r,
+                    color: Colors.red,
+                  ),
+                  onPressed: () => _confirmDeleteTimelineItem(item),
+                ),
             ],
           ),
           if ((item.description ?? '').isNotEmpty) ...[
