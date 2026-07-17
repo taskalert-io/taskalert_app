@@ -883,8 +883,8 @@ class MyTaskScreenState extends State<MyTaskScreen> {
         children: [
           for (int i = 0; i < items.length; i++) ...[
             GestureDetector(
-              onTap: () {
-                Navigator.push(
+              onTap: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => TaskDetailScreen(
@@ -894,6 +894,20 @@ class MyTaskScreenState extends State<MyTaskScreen> {
                     ),
                   ),
                 );
+                // Covers any mutation made on the details screen (status
+                // change, edit, delete) — a plain refetch on return is the
+                // reliable way to pick those up, matching this app's usual
+                // "no shared state, just refresh" convention.
+                if (mounted) {
+                  loadTasks(
+                    _assignedFilter,
+                    order,
+                    sortBy,
+                    startDate,
+                    endDate,
+                    overdue: _overdueFilter,
+                  );
+                }
               },
               child: _buildTodoItemWrap(item: items[i]),
             ),

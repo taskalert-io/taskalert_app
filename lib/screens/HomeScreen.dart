@@ -292,7 +292,9 @@ class HomeScreenState extends State<HomeScreen> {
                                                   taskId: item["instanceId"],
                                                 ),
                                           ),
-                                        );
+                                        ).then((_) {
+                                          if (mounted) _onRefresh();
+                                        });
                                         return;
                                       }
                                       _pageController.animateToPage(
@@ -556,7 +558,9 @@ class HomeScreenState extends State<HomeScreen> {
                                                     taskId: task["instanceId"],
                                                   ),
                                             ),
-                                          );
+                                          ).then((_) {
+                                            if (mounted) _onRefresh();
+                                          });
                                         },
                                         child: _buildTodoItem(
                                           image: "",
@@ -766,7 +770,9 @@ class HomeScreenState extends State<HomeScreen> {
                                                           task["instanceId"],
                                                     ),
                                               ),
-                                            );
+                                            ).then((_) {
+                                              if (mounted) _onRefresh();
+                                            });
                                           },
                                           child: _buildTodoItem(
                                             image: "",

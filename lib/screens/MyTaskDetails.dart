@@ -27,6 +27,7 @@ import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
 import '../components/SubtaskDialogs.dart';
+import '../components/TaskInstanceDialogs.dart';
 import '../components/ToggleSwitch.dart';
 import '../components/ZoomableImage.dart';
 import 'activity_bottom_sheet.dart';
@@ -1942,6 +1943,23 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     );
   }
 
+  // Deleting the main task instance itself (as opposed to one of its
+  // subtasks) is assigner-only — matches `WorkflowDetailScreen.dart`'s
+  // gating on the same instance-level action.
+  Future<void> _confirmDeleteTaskInstance() async {
+    await confirmDeleteTaskInstance(
+      context: context,
+      taskId: widget.mainTaskId ?? '',
+      instanceId: widget.taskId ?? '',
+      taskInstanceController: taskController,
+      // The instance being viewed no longer exists once this succeeds —
+      // pop back to whatever screen (task list) opened this one.
+      onDeleted: () {
+        if (mounted) Navigator.of(context).pop();
+      },
+    );
+  }
+
   Future<void> _confirmDeleteSubtask(SubTaskInstanceModel subtask) async {
     await confirmDeleteSubtask(
       context: context,
@@ -3592,6 +3610,17 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                   color: _textColor,
                                 ),
                               ),
+                              if (_isCreatedByMe) ...[
+                                SizedBox(width: 12.w),
+                                InkWell(
+                                  onTap: _confirmDeleteTaskInstance,
+                                  child: Icon(
+                                    Icons.delete_outline,
+                                    size: 20.r,
+                                    color: Colors.red,
+                                  ),
+                                ),
+                              ],
                               SizedBox(width: 12.w),
                               InkWell(
                                 onTap: () => Navigator.pop(context),
