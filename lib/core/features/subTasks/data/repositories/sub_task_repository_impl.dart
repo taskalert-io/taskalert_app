@@ -233,10 +233,12 @@ class SubTaskRepositoryImpl implements SubTaskRepository {
   @override
   Future<ApiResult<BaseApiResponse<dynamic>>> deleteSubTaskInstance({
     required String subTaskInstanceId,
+    String? scope,
   }) async {
     try {
       final responseData = await _httpService.delete(
         '/tasks/subtasks/instance/$subTaskInstanceId',
+        body: {if (scope != null && scope.isNotEmpty) 'scope': scope},
       );
 
       final apiResponse = BaseApiResponse.fromJson(

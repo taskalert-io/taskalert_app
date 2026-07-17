@@ -1750,7 +1750,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     switch (status.toLowerCase()) {
       case 'completed':
       case 'done':
-        return 'Done';
+        return 'Completed';
       case 'inprogress':
       case 'in progress':
         return 'In Progress';
@@ -1759,6 +1759,17 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         return 'Todo';
     }
   }
+
+  // Assigner (the main task's creator) can edit and delete every subtask.
+  // A subtask's own assignee(s) can edit it but not delete it. Anyone else
+  // (e.g. a main-task assignee not on this particular subtask) gets neither.
+  bool _canEditSubtask(SubTaskInstanceModel subtask) =>
+      _isCreatedByMe ||
+      (_currentUserId != null &&
+          _currentUserId!.isNotEmpty &&
+          subtask.assignees.any((a) => a.id == _currentUserId));
+
+  bool _canDeleteSubtask(SubTaskInstanceModel subtask) => _isCreatedByMe;
 
   Widget _buildSubtasksSection() {
     final subtasks = _subTaskController.subTaskInstances;
@@ -1822,10 +1833,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   }
 
   Widget _subtaskRow(SubTaskInstanceModel subtask) {
-    final assigneeNames = subtask.assignees
-        .map((a) => a.fullName)
-        .where((n) => n.isNotEmpty)
-        .join(', ');
+    final canEdit = _canEditSubtask(subtask);
+    final canDelete = _canDeleteSubtask(subtask);
 
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 10.h),
@@ -1846,10 +1855,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     color: _accentColor,
                   ),
                 ),
-                if (assigneeNames.isNotEmpty) ...[
+                if ((subtask.description ?? '').isNotEmpty) ...[
                   SizedBox(height: 3.h),
                   Text(
-                    assigneeNames,
+                    subtask.description!,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.inter(
                       fontSize: 11.sp,
@@ -1861,22 +1870,257 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             ),
           ),
           SizedBox(width: 8.w),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-            decoration: BoxDecoration(
-              color: _subtaskStatusColor(subtask.status).withOpacity(0.12),
-              borderRadius: BorderRadius.circular(6.r),
-            ),
-            child: Text(
-              _subtaskStatusLabel(subtask.status),
-              style: GoogleFonts.inter(
-                fontSize: 10.5.sp,
-                fontWeight: FontWeight.w600,
-                color: _subtaskStatusColor(subtask.status),
+          GestureDetector(
+            onTap: canEdit
+                ? () => _showUpdateSubtaskStatusSheet(subtask)
+                : null,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+              decoration: BoxDecoration(
+                color: _subtaskStatusColor(subtask.status).withOpacity(0.12),
+                borderRadius: BorderRadius.circular(6.r),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _subtaskStatusLabel(subtask.status),
+                    style: GoogleFonts.inter(
+                      fontSize: 10.5.sp,
+                      fontWeight: FontWeight.w600,
+                      color: _subtaskStatusColor(subtask.status),
+                    ),
+                  ),
+                  if (canEdit) ...[
+                    SizedBox(width: 2.w),
+                    Icon(
+                      Icons.arrow_drop_down,
+                      size: 14.r,
+                      color: _subtaskStatusColor(subtask.status),
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
+          if (canEdit)
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              icon: Icon(
+                Icons.edit_outlined,
+                size: 17.r,
+                color: _primaryColor,
+              ),
+              onPressed: () => _showEditSubtaskSheet(subtask),
+            ),
+          if (canDelete)
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              icon: Icon(
+                Icons.delete_outline,
+                size: 17.r,
+                color: Colors.red,
+              ),
+              onPressed: () => _confirmDeleteSubtask(subtask),
+            ),
         ],
+      ),
+    );
+  }
+
+  // Confirmed real API values.
+  static const _subtaskStatusOptions = ['todo', 'inProgress', 'completed'];
+
+  Future<void> _showUpdateSubtaskStatusSheet(
+    SubTaskInstanceModel subtask,
+  ) async {
+    final currentStatus = subtask.status.toLowerCase();
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      builder: (sheetCtx) => Container(
+        padding: EdgeInsets.symmetric(vertical: 8.h),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 4.h),
+                child: Text(
+                  'Update Status',
+                  style: GoogleFonts.inter(
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w700,
+                    color: _primaryColor,
+                  ),
+                ),
+              ),
+              for (final option in _subtaskStatusOptions)
+                ListTile(
+                  onTap: () async {
+                    Navigator.pop(sheetCtx);
+                    if (option.toLowerCase() == currentStatus) return;
+                    await _updateSubtaskStatus(subtask, option);
+                  },
+                  leading: Icon(
+                    Icons.circle,
+                    size: 12.r,
+                    color: _subtaskStatusColor(option),
+                  ),
+                  title: Text(
+                    _subtaskStatusLabel(option),
+                    style: GoogleFonts.inter(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w500,
+                      color: _accentColor,
+                    ),
+                  ),
+                  trailing: option.toLowerCase() == currentStatus
+                      ? Icon(
+                          Icons.check,
+                          size: 18.r,
+                          color: _primaryColor,
+                        )
+                      : null,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _updateSubtaskStatus(
+    SubTaskInstanceModel subtask,
+    String newStatus,
+  ) async {
+    final success = await _subTaskController
+        .handleUpdateSubTaskInstanceStatusAssigneePriority(
+          subTaskInstanceId: subtask.id,
+          status: newStatus,
+        );
+
+    if (!mounted) return;
+    setState(() {});
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? (_subTaskController.successMessage ?? 'Status updated')
+              : (_subTaskController.errorMessage ?? 'Could not update status'),
+          style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
+        ),
+        backgroundColor: success ? _greenOn : Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteSubtask(SubTaskInstanceModel subtask) async {
+    String deleteScope = 'single';
+
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, ss) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14.r),
+          ),
+          title: Text(
+            'Choose Delete Option',
+            style: GoogleFonts.inter(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w700,
+              color: _primaryColor,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              RadioListTile<String>(
+                value: 'single',
+                groupValue: deleteScope,
+                onChanged: (v) => ss(() => deleteScope = v!),
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                visualDensity: VisualDensity.compact,
+                activeColor: _primaryColor,
+                title: Text(
+                  'Only this subtask',
+                  style: GoogleFonts.inter(
+                    fontSize: 12.5.sp,
+                    color: _accentColor,
+                  ),
+                ),
+              ),
+              RadioListTile<String>(
+                value: 'following',
+                groupValue: deleteScope,
+                onChanged: (v) => ss(() => deleteScope = v!),
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                visualDensity: VisualDensity.compact,
+                activeColor: _primaryColor,
+                title: Text(
+                  'This and all future subtasks',
+                  style: GoogleFonts.inter(
+                    fontSize: 12.5.sp,
+                    color: _accentColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx, false),
+              child: Text('Cancel', style: GoogleFonts.inter(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.pop(dialogCtx, true),
+              child: Text(
+                'Delete',
+                style: GoogleFonts.inter(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (shouldDelete != true) return;
+    if (!mounted) return;
+
+    final success = await _subTaskController.handleDeleteSubTaskInstance(
+      subTaskInstanceId: subtask.id,
+      scope: deleteScope,
+    );
+
+    if (!mounted) return;
+    setState(() {});
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? (_subTaskController.successMessage ?? 'Subtask deleted')
+              : (_subTaskController.errorMessage ?? 'Could not delete subtask'),
+          style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
+        ),
+        backgroundColor: success ? _greenOn : Colors.red,
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
@@ -2062,6 +2306,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     final descCtrl = TextEditingController();
     List<String> selectedAssigneeIds = [];
     TimeOfDay? selectedTime;
+    String updateScope = 'single';
     bool isSubmitting = false;
     String? formError;
 
@@ -2256,7 +2501,48 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                       ),
                     ),
                   ),
-                  SizedBox(height: 20.h),
+                  SizedBox(height: 12.h),
+                  Text(
+                    'Choose Update Option',
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                      color: _labelColor,
+                    ),
+                  ),
+                  RadioListTile<String>(
+                    value: 'single',
+                    groupValue: updateScope,
+                    onChanged: (v) => ss(() => updateScope = v!),
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                    activeColor: _primaryColor,
+                    title: Text(
+                      'Only this subtask',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5.sp,
+                        color: _accentColor,
+                      ),
+                    ),
+                  ),
+                  RadioListTile<String>(
+                    value: 'following',
+                    groupValue: updateScope,
+                    onChanged: (v) => ss(() => updateScope = v!),
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                    activeColor: _primaryColor,
+                    title: Text(
+                      'This and all future subtasks',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5.sp,
+                        color: _accentColor,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 8.h),
                   SizedBox(
                     width: double.infinity,
                     child: DecoratedBox(
@@ -2316,7 +2602,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                             : selectedAssigneeIds,
                                         time: time,
                                         period: period,
-                                        scope: 'single',
+                                        scope: updateScope,
                                       );
 
                                   if (!ctx.mounted) return;
@@ -2387,6 +2673,411 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         ),
       ),
     );
+  }
+
+  /// Same form as `_showCreateSubtaskSheet`, pre-filled from [subtask] and
+  /// submitting via the full-update endpoint (#10) instead of create.
+  /// Reachable by the subtask's assigner (full edit) or its own
+  /// assignee(s) (see `_canEditSubtask`) — delete stays assigner-only.
+  void _showEditSubtaskSheet(SubTaskInstanceModel subtask) {
+    final titleCtrl = TextEditingController(text: subtask.title);
+    final descCtrl = TextEditingController(text: subtask.description ?? '');
+    List<String> selectedAssigneeIds = subtask.assignees
+        .map((a) => a.id)
+        .toList();
+    TimeOfDay? selectedTime = _parseSubtaskTime(subtask.reportingTime);
+    String updateScope = 'single';
+    bool isSubmitting = false;
+    String? formError;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      builder: (_) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: StatefulBuilder(
+          builder: (ctx, ss) => Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+            ),
+            padding: EdgeInsets.fromLTRB(18.w, 16.h, 18.w, 24.h),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Edit Subtask',
+                        style: GoogleFonts.inter(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w700,
+                          color: _primaryColor,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(ctx),
+                        child: Icon(
+                          Icons.close,
+                          size: 20.r,
+                          color: _labelColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 14.h),
+                  if (formError != null) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(10.w),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(8.r),
+                        border: Border.all(
+                          color: Colors.red.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Text(
+                        formError!,
+                        style: GoogleFonts.inter(
+                          fontSize: 11.sp,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 12.h),
+                  ],
+                  Text(
+                    'Title',
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                      color: _labelColor,
+                    ),
+                  ),
+                  SizedBox(height: 6.h),
+                  TextField(
+                    controller: titleCtrl,
+                    style: GoogleFonts.inter(fontSize: 12.sp),
+                    decoration: _subtaskFieldDecoration(
+                      'Enter subtask title',
+                    ),
+                  ),
+                  SizedBox(height: 12.h),
+                  Text(
+                    'Description',
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                      color: _labelColor,
+                    ),
+                  ),
+                  SizedBox(height: 6.h),
+                  TextField(
+                    controller: descCtrl,
+                    maxLines: 3,
+                    style: GoogleFonts.inter(fontSize: 12.sp),
+                    decoration: _subtaskFieldDecoration(
+                      'Enter description (optional)',
+                    ),
+                  ),
+                  SizedBox(height: 12.h),
+                  Text(
+                    'Assignees',
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                      color: _labelColor,
+                    ),
+                  ),
+                  SizedBox(height: 6.h),
+                  GestureDetector(
+                    onTap: () async {
+                      final result = await _pickSubtaskAssignees(
+                        selectedAssigneeIds,
+                      );
+                      if (result != null) {
+                        ss(() => selectedAssigneeIds = result);
+                      }
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 10.w,
+                        vertical: 10.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9FAFC),
+                        borderRadius: BorderRadius.circular(8.r),
+                        border: Border.all(color: const Color(0xFFD9DEE5)),
+                      ),
+                      child: Text(
+                        selectedAssigneeIds.isEmpty
+                            ? 'Select assignees (optional)'
+                            : selectedAssigneeIds
+                                  .map(
+                                    (id) =>
+                                        _employeeNameById(id) ?? 'Unknown',
+                                  )
+                                  .join(', '),
+                        style: GoogleFonts.inter(
+                          fontSize: 12.sp,
+                          color: selectedAssigneeIds.isEmpty
+                              ? const Color(0xFFB8BEC5)
+                              : _accentColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 12.h),
+                  Text(
+                    'Reporting Time',
+                    style: GoogleFonts.inter(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                      color: _labelColor,
+                    ),
+                  ),
+                  SizedBox(height: 6.h),
+                  GestureDetector(
+                    onTap: () async {
+                      final picked = await showTimePicker(
+                        context: ctx,
+                        initialTime: selectedTime ?? TimeOfDay.now(),
+                      );
+                      if (picked != null) ss(() => selectedTime = picked);
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 10.w,
+                        vertical: 10.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9FAFC),
+                        borderRadius: BorderRadius.circular(8.r),
+                        border: Border.all(color: const Color(0xFFD9DEE5)),
+                      ),
+                      child: Text(
+                        selectedTime == null
+                            ? 'Select time (optional)'
+                            : selectedTime!.format(ctx),
+                        style: GoogleFonts.inter(
+                          fontSize: 12.sp,
+                          color: selectedTime == null
+                              ? const Color(0xFFB8BEC5)
+                              : _accentColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Only the assigner can retarget an already-generated
+                  // occurrence vs. the whole recurring series — an assignee
+                  // editing their own subtask always patches just this one.
+                  if (_isCreatedByMe) ...[
+                    SizedBox(height: 12.h),
+                    Text(
+                      'Choose Update Option',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                        color: _labelColor,
+                      ),
+                    ),
+                    RadioListTile<String>(
+                      value: 'single',
+                      groupValue: updateScope,
+                      onChanged: (v) => ss(() => updateScope = v!),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                      activeColor: _primaryColor,
+                      title: Text(
+                        'Only this subtask',
+                        style: GoogleFonts.inter(
+                          fontSize: 12.5.sp,
+                          color: _accentColor,
+                        ),
+                      ),
+                    ),
+                    RadioListTile<String>(
+                      value: 'following',
+                      groupValue: updateScope,
+                      onChanged: (v) => ss(() => updateScope = v!),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                      activeColor: _primaryColor,
+                      title: Text(
+                        'This and all future subtasks',
+                        style: GoogleFonts.inter(
+                          fontSize: 12.5.sp,
+                          color: _accentColor,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 8.h),
+                  ] else
+                    SizedBox(height: 20.h),
+                  SizedBox(
+                    width: double.infinity,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFD96CFF), Color(0xFF5CE1E6)],
+                        ),
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8.r),
+                          onTap: isSubmitting
+                              ? null
+                              : () async {
+                                  final title = titleCtrl.text.trim();
+                                  if (title.isEmpty) {
+                                    ss(
+                                      () => formError =
+                                          'Please enter a title.',
+                                    );
+                                    return;
+                                  }
+                                  ss(() {
+                                    formError = null;
+                                    isSubmitting = true;
+                                  });
+
+                                  String? time;
+                                  String? period;
+                                  if (selectedTime != null) {
+                                    final hour12 =
+                                        selectedTime!.hourOfPeriod == 0
+                                        ? 12
+                                        : selectedTime!.hourOfPeriod;
+                                    time =
+                                        '${hour12.toString().padLeft(2, '0')}:'
+                                        '${selectedTime!.minute.toString().padLeft(2, '0')}';
+                                    period =
+                                        selectedTime!.period == DayPeriod.am
+                                        ? 'AM'
+                                        : 'PM';
+                                  }
+
+                                  final success = await _subTaskController
+                                      .handleUpdateSubTaskInstance(
+                                        subTaskInstanceId: subtask.id,
+                                        title: title,
+                                        description:
+                                            descCtrl.text.trim().isEmpty
+                                            ? null
+                                            : descCtrl.text.trim(),
+                                        assigneeIds:
+                                            selectedAssigneeIds.isEmpty
+                                            ? null
+                                            : selectedAssigneeIds,
+                                        time: time,
+                                        period: period,
+                                        scope: updateScope,
+                                      );
+
+                                  if (!ctx.mounted) return;
+
+                                  if (success) {
+                                    Navigator.pop(ctx);
+                                    await _subTaskController
+                                        .handleGetAllSubTaskInstances(
+                                          instanceId: widget.taskId ?? '',
+                                        );
+                                    if (!mounted) return;
+                                    setState(() {});
+                                    ScaffoldMessenger.of(
+                                      context,
+                                    ).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          _subTaskController.successMessage ??
+                                              'Subtask updated successfully',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13.sp,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        backgroundColor: _greenOn,
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  } else {
+                                    ss(() {
+                                      isSubmitting = false;
+                                      formError =
+                                          _subTaskController.errorMessage ??
+                                          'Failed to update subtask.';
+                                    });
+                                  }
+                                },
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 12.h),
+                            child: Center(
+                              child: isSubmitting
+                                  ? SizedBox(
+                                      width: 18.w,
+                                      height: 18.w,
+                                      child: const CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Text(
+                                      'Save Changes',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Parses a `SubTaskTime {time: "hh:mm", period: "AM"/"PM"}` back into a
+  /// `TimeOfDay` for the edit form's initial picker value.
+  TimeOfDay? _parseSubtaskTime(SubTaskTime? reportingTime) {
+    final time = reportingTime?.time;
+    final period = reportingTime?.period;
+    if (time == null || time.isEmpty) return null;
+
+    final parts = time.split(':');
+    if (parts.length != 2) return null;
+    final hour12 = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour12 == null || minute == null) return null;
+
+    var hour24 = hour12 % 12;
+    if (period?.toUpperCase() == 'PM') hour24 += 12;
+
+    return TimeOfDay(hour: hour24, minute: minute);
   }
 
   // ── Uploaded proofs list (already-submitted files, from the server) ──────
