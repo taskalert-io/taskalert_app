@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../components/CreateSubtaskDialog.dart';
 import '../components/CustomAppBar.dart';
 import '../components/CustomBottomNavBar.dart';
 import '../components/CustomDrawer.dart';
+import '../core/features/employees/controllers/employee_controller.dart';
+import '../core/features/subTasks/controllers/sub_task_controller.dart';
 import '../core/features/subTasks/data/models/sub_task_instance_model.dart'
     show SubTaskTime;
 import '../core/features/workflow/controllers/workflow_controller.dart';
@@ -32,20 +36,51 @@ class WorkflowDetailScreen extends StatefulWidget {
 class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late final WorkflowController _workflowController = sl<WorkflowController>();
+  late final SubTaskController _subTaskController = sl<SubTaskController>();
+  late final EmployeeController _employeeController = sl<EmployeeController>();
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   static const _primaryColor = Color(0xFF0A0258);
   static const _labelColor = Color(0xFF667085);
   static const _accentColor = Color(0xFF1D2939);
   static const _shadowColor = Color(0x14000000);
 
+  String? _currentUserId;
+
+  // Only the person who created/assigned the parent task can add new
+  // events (subtasks) to its workflow — mirrors `MyTaskDetails.dart`'s
+  // `_isCreatedByMe` gate on its own "Create Subtask" button.
+  bool get _isCreatedByMe =>
+      _currentUserId != null &&
+      _currentUserId!.isNotEmpty &&
+      _workflowController.selectedWorkflow?.instance.task?.createdBy?.id ==
+          _currentUserId;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _workflowController.handleGetWorkflowById(
-        taskInstanceId: widget.taskInstanceId,
-      );
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      _currentUserId = await _secureStorage.read(key: 'user_id');
+      await Future.wait([
+        _workflowController.handleGetWorkflowById(
+          taskInstanceId: widget.taskInstanceId,
+        ),
+        _employeeController.handleGetEmployees(),
+      ]);
+      if (mounted) setState(() {});
     });
+  }
+
+  void _showAddEventSheet() {
+    openCreateSubtaskDialog(
+      context: context,
+      instanceId: widget.taskInstanceId,
+      subTaskController: _subTaskController,
+      employeeController: _employeeController,
+      onCreated: () => _workflowController.handleGetWorkflowById(
+        taskInstanceId: widget.taskInstanceId,
+      ),
+    );
   }
 
   Color _statusColor(String status) {
@@ -436,6 +471,35 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
                     _timelineItemCard(detail.timeline[i]),
                     if (i != detail.timeline.length - 1) _flowArrow(),
                   ],
+                ],
+                if (_isCreatedByMe) ...[
+                  SizedBox(height: 16.h),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _showAddEventSheet,
+                      style: OutlinedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                        side: BorderSide(color: _primaryColor),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                      ),
+                      icon: Icon(
+                        Icons.add,
+                        size: 18.r,
+                        color: _primaryColor,
+                      ),
+                      label: Text(
+                        'Add Event',
+                        style: GoogleFonts.inter(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w600,
+                          color: _primaryColor,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ],
             ),
