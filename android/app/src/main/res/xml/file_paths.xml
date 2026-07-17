@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Declares which app-owned directories the FileProvider (see
+     AndroidManifest.xml) is allowed to hand out content:// URIs for.
+     Covers every location a downloaded file could land in via
+     path_provider's getDownloadsDirectory()/getApplicationDocumentsDirectory(). -->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <external-files-path name="external_files" path="." />
+    <files-path name="internal_files" path="." />
+    <cache-path name="cache_files" path="." />
+</paths>

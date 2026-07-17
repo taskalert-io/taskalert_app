@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 import 'package:taskalert_app/core/features/auth/controllers/login_controller.dart';
+import 'package:taskalert_app/core/features/sidebar/controllers/sidebar_controller.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../components/AssetSystemSection.dart';
@@ -1395,6 +1396,7 @@ class ProfileSettingState extends State<ProfileSetting> {
                                   Navigator.pop(context); // close OTP sheet
 
                                   await _loginController.handleLogout();
+                                  sl<SidebarController>().reset();
 
                                   if (!context.mounted) return;
 

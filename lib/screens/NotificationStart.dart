@@ -853,7 +853,7 @@ class _NotificationStartState extends State<NotificationStart> {
         showLeading: true,
         onBackPressed: () => Navigator.pop(context),
       ),
-      drawer: CustomDrawer(activeTile: "Home", onTileTap: (value) {}),
+      drawer: CustomDrawer(activeTile: "", onTileTap: (value) {}),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
