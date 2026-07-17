@@ -272,6 +272,7 @@ class SubTaskController extends ChangeNotifier {
   /// 11. Delete a SubTask Instance
   Future<bool> handleDeleteSubTaskInstance({
     required String subTaskInstanceId,
+    String? scope,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -281,6 +282,7 @@ class SubTaskController extends ChangeNotifier {
     try {
       final result = await _repository.deleteSubTaskInstance(
         subTaskInstanceId: subTaskInstanceId,
+        scope: scope,
       );
 
       if (result is Success) {

@@ -284,6 +284,7 @@ class _NotificationStartState extends State<NotificationStart> {
   bool _isLoading = true;
   bool _markingAllAsRead = false;
   final Set<String> _selectedIds = {};
+  final Set<String> _expandedDescriptionIds = {};
   Timer? _relativeTimeTicker;
 
   List<TaskNotification> get _allItems => _notificationController.notifications
@@ -662,6 +663,15 @@ class _NotificationStartState extends State<NotificationStart> {
     );
   }
 
+  bool _textOverflowsTwoLines(String text, TextStyle style, double maxWidth) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      maxLines: 2,
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: maxWidth);
+    return painter.didExceedMaxLines;
+  }
+
   Widget _card(TaskNotification n) {
     final style = kSeverityConfig[n.severity]!;
     return GestureDetector(
@@ -706,15 +716,59 @@ class _NotificationStartState extends State<NotificationStart> {
                   ),
                   if (n.description.isNotEmpty) ...[
                     SizedBox(height: 4.h),
-                    Text(
-                      n.description,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w400,
-                        color: _C.subtitle,
-                      ),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final expanded = _expandedDescriptionIds.contains(
+                          n.id,
+                        );
+                        final descriptionStyle = GoogleFonts.inter(
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w400,
+                          color: _C.subtitle,
+                        );
+                        final overflows = _textOverflowsTwoLines(
+                          n.description,
+                          descriptionStyle,
+                          constraints.maxWidth,
+                        );
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              n.description,
+                              maxLines: expanded ? null : 2,
+                              overflow: expanded
+                                  ? TextOverflow.visible
+                                  : TextOverflow.ellipsis,
+                              style: descriptionStyle,
+                            ),
+                            if (overflows)
+                              GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () {
+                                  setState(() {
+                                    if (expanded) {
+                                      _expandedDescriptionIds.remove(n.id);
+                                    } else {
+                                      _expandedDescriptionIds.add(n.id);
+                                    }
+                                  });
+                                },
+                                child: Padding(
+                                  padding: EdgeInsets.only(top: 2.h),
+                                  child: Text(
+                                    expanded ? 'Show less' : 'Show more',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 11.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: _C.primary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
                     ),
                   ],
                   SizedBox(height: 8.h),

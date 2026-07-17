@@ -22,8 +22,7 @@ class JobRoleRepositoryImpl implements JobRoleRepository {
           if (dataJson is List) {
             return dataJson
                 .map(
-                  (item) =>
-                      JobRoleModel.fromJson(item as Map<String, dynamic>),
+                  (item) => JobRoleModel.fromJson(item as Map<String, dynamic>),
                 )
                 .toList();
           }
@@ -84,6 +83,106 @@ class JobRoleRepositoryImpl implements JobRoleRepository {
       // backend populates differently than expected) so a parsing bug
       // surfaces as a normal failure instead of an uncaught exception
       // that leaves the controller's loading state stuck forever.
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
+    }
+  }
+
+  /// 3. GET: Fetch a single job role by id
+  @override
+  Future<ApiResult<BaseApiResponse<JobRoleModel>>> getJobRoleById({
+    required String id,
+  }) async {
+    try {
+      final responseData = await _httpService.get('/job-roles/$id');
+
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData as Map<String, dynamic>,
+        (json) => JobRoleModel.fromJson(json as Map<String, dynamic>),
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    } catch (e) {
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
+    }
+  }
+
+  /// 4. PUT: Update a job role
+  @override
+  Future<ApiResult<BaseApiResponse<JobRoleModel>>> updateJobRole({
+    required String id,
+    required String title,
+  }) async {
+    try {
+      final responseData = await _httpService.put(
+        '/job-roles/$id',
+        body: {'title': title},
+      );
+
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData as Map<String, dynamic>,
+        (json) => JobRoleModel.fromJson(json as Map<String, dynamic>),
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    } catch (e) {
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
+    }
+  }
+
+  /// 5. DELETE: Delete a job role
+  @override
+  Future<ApiResult<BaseApiResponse<dynamic>>> deleteJobRole({
+    required String id,
+  }) async {
+    try {
+      final responseData = await _httpService.delete('/job-roles/$id');
+
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData as Map<String, dynamic>,
+        (json) => json,
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    } catch (e) {
       return ApiResult.failure(
         NetworkException(
           errorType: NetworkErrorType.unknown,

@@ -309,4 +309,41 @@ class TaskInstanceRepositoryImpl implements TaskInstanceRepository {
       );
     }
   }
+
+  /// 7. DELETE: Delete a task instance ("single" or "following" scope)
+  @override
+  Future<ApiResult<BaseApiResponse<dynamic>>> deleteInstance({
+    required String taskId,
+    required String instanceId,
+    required String scope,
+  }) async {
+    try {
+      final responseData = await _httpService.delete(
+        '/tasks/$taskId/instances/$instanceId',
+        body: {'scope': scope},
+      );
+
+      final apiResponse = BaseApiResponse.fromJson(
+        responseData as Map<String, dynamic>,
+        (json) => json,
+      );
+
+      if (apiResponse.success) return ApiResult.success(apiResponse);
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: apiResponse.message,
+        ),
+      );
+    } on NetworkException catch (e) {
+      return ApiResult.failure(e);
+    } catch (e) {
+      return ApiResult.failure(
+        NetworkException(
+          errorType: NetworkErrorType.unknown,
+          userMessage: 'Something went wrong while processing the response.',
+        ),
+      );
+    }
+  }
 }

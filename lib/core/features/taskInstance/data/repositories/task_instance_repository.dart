@@ -58,4 +58,13 @@ abstract class TaskInstanceRepository {
     required String instanceId,
     required List<String> publicIds,
   });
+
+  /// Deletes a task instance. `scope: "single"` deletes just this
+  /// occurrence; `"following"` deletes this and all future occurrences of
+  /// the recurring series.
+  Future<ApiResult<BaseApiResponse<dynamic>>> deleteInstance({
+    required String taskId,
+    required String instanceId,
+    required String scope,
+  });
 }

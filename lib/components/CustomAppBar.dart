@@ -67,6 +67,12 @@ class _CustomAppBarState extends State<CustomAppBar> {
     // only that row shows a spinner and every row is disabled meanwhile.
     String? switchingToId;
 
+    // Captured before the sheet opens: the AnimatedBuilder/StatefulBuilder
+    // below each redeclare their own `context` param that shadows this one,
+    // and ModalRoute.of(that shadowed context) would resolve to the bottom
+    // sheet's own route instead of the screen behind it.
+    final appBarContext = context;
+
     await showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -153,6 +159,74 @@ class _CustomAppBarState extends State<CustomAppBar> {
                               onTap: (isActive || switchingToId != null)
                                   ? null
                                   : () async {
+                                      final shouldSwitch =
+                                          await showDialog<bool>(
+                                            context: sheetCtx,
+                                            builder: (dialogCtx) => AlertDialog(
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(14.r),
+                                              ),
+                                              title: Text(
+                                                'Switch Organization',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 16.sp,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: const Color(
+                                                    0xFF0A0258,
+                                                  ),
+                                                ),
+                                              ),
+                                              content: Text(
+                                                'Switch to "${org.name}"?',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 13.sp,
+                                                  color: const Color(
+                                                    0xFF324054,
+                                                  ),
+                                                ),
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                        dialogCtx,
+                                                        false,
+                                                      ),
+                                                  child: Text(
+                                                    'Cancel',
+                                                    style: GoogleFonts.inter(
+                                                      color: Colors.grey,
+                                                    ),
+                                                  ),
+                                                ),
+                                                ElevatedButton(
+                                                  style:
+                                                      ElevatedButton.styleFrom(
+                                                        backgroundColor:
+                                                            const Color(
+                                                              0xFF0A0258,
+                                                            ),
+                                                      ),
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                        dialogCtx,
+                                                        true,
+                                                      ),
+                                                  child: Text(
+                                                    'Switch',
+                                                    style: GoogleFonts.inter(
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+
+                                      if (shouldSwitch != true) return;
+                                      if (!sheetCtx.mounted) return;
+
                                       ss(() => switchingToId = org.id);
                                       bool success = false;
                                       try {
@@ -181,24 +255,40 @@ class _CustomAppBarState extends State<CustomAppBar> {
                                           Navigator.pop(sheetCtx);
                                         }
                                         if (!mounted) return;
-                                        // Full app data refresh: every
-                                        // screen/controller in this app
-                                        // fetches its own org-scoped data
-                                        // once, on mount — there's no
-                                        // global cache to invalidate, so
-                                        // the reliable way to refresh
-                                        // everything is to tear down the
-                                        // whole navigation stack and land
-                                        // on a brand-new Home screen.
-                                        Navigator.of(
-                                          context,
-                                        ).pushAndRemoveUntil(
-                                          MaterialPageRoute(
-                                            builder: (_) =>
-                                                HomeScreen(userId: ''),
-                                          ),
-                                          (route) => false,
+                                        // Every screen/controller in this
+                                        // app fetches its own org-scoped
+                                        // data once, on mount — there's no
+                                        // global cache to invalidate, so a
+                                        // fresh instance's own initState
+                                        // re-fetch is the reliable way to
+                                        // refresh. Rebuild the CURRENT
+                                        // route in place (via its own
+                                        // builder) instead of tearing down
+                                        // the whole stack to Home, so the
+                                        // user stays on whatever screen
+                                        // they switched from.
+                                        final currentRoute = ModalRoute.of(
+                                          appBarContext,
                                         );
+                                        if (currentRoute is MaterialPageRoute) {
+                                          Navigator.of(
+                                            appBarContext,
+                                          ).pushReplacement(
+                                            MaterialPageRoute(
+                                              builder: currentRoute.builder,
+                                            ),
+                                          );
+                                        } else {
+                                          Navigator.of(
+                                            appBarContext,
+                                          ).pushAndRemoveUntil(
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  HomeScreen(userId: ''),
+                                            ),
+                                            (route) => false,
+                                          );
+                                        }
                                       } else {
                                         ScaffoldMessenger.of(
                                           sheetCtx,
