@@ -83,14 +83,24 @@ class _WorkflowListScreenState extends State<WorkflowListScreen> {
   String _formatScheduledDate(DateTime? date) {
     if (date == null) return '';
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
-  void _openDetail(WorkflowModel workflow) {
-    Navigator.push(
+  Future<void> _openDetail(WorkflowModel workflow) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => WorkflowDetailScreen(
@@ -99,6 +109,11 @@ class _WorkflowListScreenState extends State<WorkflowListScreen> {
         ),
       ),
     );
+    // Covers the detail screen's own mutations (status/edit/delete on the
+    // instance or its subtasks) — there's no shared state between the two
+    // screens, so a plain refetch on return is the reliable way to pick
+    // those up, including a deleted instance disappearing from this list.
+    if (mounted) _workflowController.handleGetAllWorkflows();
   }
 
   Widget _workflowCard(WorkflowModel workflow) {
@@ -139,10 +154,7 @@ class _WorkflowListScreenState extends State<WorkflowListScreen> {
                 ),
                 SizedBox(width: 8.w),
                 Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 8.w,
-                    vertical: 4.h,
-                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                   decoration: BoxDecoration(
                     color: _statusColor(workflow.status).withOpacity(0.12),
                     borderRadius: BorderRadius.circular(6.r),
@@ -182,10 +194,7 @@ class _WorkflowListScreenState extends State<WorkflowListScreen> {
               Text(
                 assigneeNames,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.inter(
-                  fontSize: 11.5.sp,
-                  color: _labelColor,
-                ),
+                style: GoogleFonts.inter(fontSize: 11.5.sp, color: _labelColor),
               ),
             ],
             SizedBox(height: 8.h),
@@ -218,10 +227,7 @@ class _WorkflowListScreenState extends State<WorkflowListScreen> {
                 SizedBox(width: 3.w),
                 Text(
                   '${workflow.subtaskCount} subtask${workflow.subtaskCount == 1 ? '' : 's'}',
-                  style: GoogleFonts.inter(
-                    fontSize: 11.sp,
-                    color: _labelColor,
-                  ),
+                  style: GoogleFonts.inter(fontSize: 11.sp, color: _labelColor),
                 ),
               ],
             ),

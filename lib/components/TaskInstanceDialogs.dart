@@ -493,3 +493,117 @@ Future<void> showUpdateTaskInstanceStatusSheet({
     ),
   );
 }
+
+/// Reusable "Choose Delete Option" confirmation dialog + delete call for a
+/// main task instance — same single/following scope choice as
+/// `confirmDeleteSubtask` in `SubtaskDialogs.dart`. [onDeleted] fires
+/// after a successful delete, for the caller to navigate away (the
+/// instance being viewed no longer exists) or otherwise refresh.
+Future<void> confirmDeleteTaskInstance({
+  required BuildContext context,
+  required String taskId,
+  required String instanceId,
+  required TaskInstanceController taskInstanceController,
+  VoidCallback? onDeleted,
+}) async {
+  String deleteScope = 'single';
+
+  final shouldDelete = await showDialog<bool>(
+    context: context,
+    builder: (dialogCtx) => StatefulBuilder(
+      builder: (dialogCtx, ss) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14.r),
+        ),
+        title: Text(
+          'Choose Delete Option',
+          style: GoogleFonts.inter(
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w700,
+            color: _primaryColor,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            RadioListTile<String>(
+              value: 'single',
+              groupValue: deleteScope,
+              onChanged: (v) => ss(() => deleteScope = v!),
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
+              activeColor: _primaryColor,
+              title: Text(
+                'Only this task',
+                style: GoogleFonts.inter(
+                  fontSize: 12.5.sp,
+                  color: _accentColor,
+                ),
+              ),
+            ),
+            RadioListTile<String>(
+              value: 'following',
+              groupValue: deleteScope,
+              onChanged: (v) => ss(() => deleteScope = v!),
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
+              activeColor: _primaryColor,
+              title: Text(
+                'This and all future tasks',
+                style: GoogleFonts.inter(
+                  fontSize: 12.5.sp,
+                  color: _accentColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: Text('Cancel', style: GoogleFonts.inter(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: Text(
+              'Delete',
+              style: GoogleFonts.inter(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  if (shouldDelete != true) return;
+  if (!context.mounted) return;
+
+  final success = await taskInstanceController.handleDeleteInstance(
+    taskId: taskId,
+    instanceId: instanceId,
+    scope: deleteScope,
+  );
+
+  if (!context.mounted) return;
+
+  if (success) {
+    onDeleted?.call();
+  }
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        success
+            ? (taskInstanceController.successMessage ?? 'Task deleted')
+            : (taskInstanceController.errorMessage ?? 'Could not delete task'),
+        style: GoogleFonts.inter(fontSize: 13.sp, color: Colors.white),
+      ),
+      backgroundColor: success ? _greenOn : Colors.red,
+      behavior: SnackBarBehavior.floating,
+    ),
+  );
+}

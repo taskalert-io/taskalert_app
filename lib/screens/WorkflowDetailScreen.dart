@@ -137,9 +137,8 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
     );
   }
 
-  // Editing/status-updating the main task instance itself (as opposed to
-  // one of its subtasks) is assigner-only — no delete here, since there is
-  // no delete-task-instance endpoint in this app yet.
+  // Editing/status-updating/deleting the main task instance itself (as
+  // opposed to one of its subtasks) is assigner-only.
   void _showEditInstanceSheet(WorkflowDetailInstance instance) {
     openEditTaskInstanceDialog(
       context: context,
@@ -163,6 +162,21 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
       currentStatus: instance.status,
       taskInstanceController: _taskInstanceController,
       onUpdated: _refreshWorkflow,
+    );
+  }
+
+  Future<void> _confirmDeleteInstance(WorkflowDetailInstance instance) async {
+    await confirmDeleteTaskInstance(
+      context: context,
+      taskId: instance.task?.id ?? '',
+      instanceId: widget.taskInstanceId,
+      taskInstanceController: _taskInstanceController,
+      // The instance being viewed no longer exists once this succeeds —
+      // pop back to the workflow list rather than trying to refresh a
+      // now-deleted workflow.
+      onDeleted: () {
+        if (mounted) Navigator.of(context).pop();
+      },
     );
   }
 
@@ -342,6 +356,16 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
                     color: _primaryColor,
                   ),
                   onPressed: () => _showEditInstanceSheet(instance),
+                ),
+              if (_isCreatedByMe)
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(
+                    Icons.delete_outline,
+                    size: 17.r,
+                    color: Colors.red,
+                  ),
+                  onPressed: () => _confirmDeleteInstance(instance),
                 ),
             ],
           ),

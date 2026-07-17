@@ -314,4 +314,40 @@ class TaskInstanceController extends ChangeNotifier {
     }
     return false;
   }
+
+  /// 7. Delete a task instance
+  Future<bool> handleDeleteInstance({
+    required String taskId,
+    required String instanceId,
+    required String scope,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _successMessage = null;
+    notifyListeners();
+
+    final result = await _repository.deleteInstance(
+      taskId: taskId,
+      instanceId: instanceId,
+      scope: scope,
+    );
+
+    _isLoading = false;
+
+    if (result is Success) {
+      final apiResponse = (result as Success).data as BaseApiResponse<dynamic>;
+      _successMessage = apiResponse.message;
+      _instances.removeWhere((element) => element.id == instanceId);
+      if (_selectedInstance?.id == instanceId) {
+        _selectedInstance = null;
+      }
+      notifyListeners();
+      return true;
+    } else if (result is Failure) {
+      _errorMessage = (result as Failure).exception.userMessage;
+      notifyListeners();
+      return false;
+    }
+    return false;
+  }
 }
