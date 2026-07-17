@@ -159,6 +159,74 @@ class _CustomAppBarState extends State<CustomAppBar> {
                               onTap: (isActive || switchingToId != null)
                                   ? null
                                   : () async {
+                                      final shouldSwitch =
+                                          await showDialog<bool>(
+                                            context: sheetCtx,
+                                            builder: (dialogCtx) => AlertDialog(
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(14.r),
+                                              ),
+                                              title: Text(
+                                                'Switch Organization',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 16.sp,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: const Color(
+                                                    0xFF0A0258,
+                                                  ),
+                                                ),
+                                              ),
+                                              content: Text(
+                                                'Switch to "${org.name}"?',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 13.sp,
+                                                  color: const Color(
+                                                    0xFF324054,
+                                                  ),
+                                                ),
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                        dialogCtx,
+                                                        false,
+                                                      ),
+                                                  child: Text(
+                                                    'Cancel',
+                                                    style: GoogleFonts.inter(
+                                                      color: Colors.grey,
+                                                    ),
+                                                  ),
+                                                ),
+                                                ElevatedButton(
+                                                  style:
+                                                      ElevatedButton.styleFrom(
+                                                        backgroundColor:
+                                                            const Color(
+                                                              0xFF0A0258,
+                                                            ),
+                                                      ),
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                        dialogCtx,
+                                                        true,
+                                                      ),
+                                                  child: Text(
+                                                    'Switch',
+                                                    style: GoogleFonts.inter(
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+
+                                      if (shouldSwitch != true) return;
+                                      if (!sheetCtx.mounted) return;
+
                                       ss(() => switchingToId = org.id);
                                       bool success = false;
                                       try {
@@ -202,8 +270,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
                                         final currentRoute = ModalRoute.of(
                                           appBarContext,
                                         );
-                                        if (currentRoute
-                                            is MaterialPageRoute) {
+                                        if (currentRoute is MaterialPageRoute) {
                                           Navigator.of(
                                             appBarContext,
                                           ).pushReplacement(
