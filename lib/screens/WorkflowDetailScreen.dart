@@ -146,18 +146,6 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
     );
   }
 
-  Widget _sectionLabel(String text) => Padding(
-    padding: EdgeInsets.only(bottom: 8.h),
-    child: Text(
-      text,
-      style: GoogleFonts.inter(
-        fontSize: 13.sp,
-        fontWeight: FontWeight.w700,
-        color: _primaryColor,
-      ),
-    ),
-  );
-
   Widget _instanceCard(WorkflowDetailInstance instance) {
     final scheduledDate = _formatScheduledDate(instance.scheduledDate);
     final scheduledTime = _formatScheduledTime(instance.scheduledTime);
@@ -278,6 +266,17 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
     );
   }
 
+  Widget _flowArrow() => Center(
+    child: Padding(
+      padding: EdgeInsets.symmetric(vertical: 2.h),
+      child: Icon(
+        Icons.arrow_downward_rounded,
+        size: 20.r,
+        color: _primaryColor.withOpacity(0.4),
+      ),
+    ),
+  );
+
   Widget _timelineItemCard(WorkflowTimelineItem item) {
     final reportingTime = _formatScheduledTime(item.reportingTime);
     final assigneeNames = item.assignees
@@ -287,7 +286,6 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
 
     return Container(
       width: double.infinity,
-      margin: EdgeInsets.only(bottom: 10.h),
       padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -419,8 +417,6 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
                 ),
                 SizedBox(height: 14.h),
                 _instanceCard(detail.instance),
-                SizedBox(height: 20.h),
-                _sectionLabel('Timeline'),
                 if (detail.timeline.isEmpty)
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: 14.h),
@@ -434,8 +430,13 @@ class _WorkflowDetailScreenState extends State<WorkflowDetailScreen> {
                       ),
                     ),
                   )
-                else
-                  for (final item in detail.timeline) _timelineItemCard(item),
+                else ...[
+                  _flowArrow(),
+                  for (int i = 0; i < detail.timeline.length; i++) ...[
+                    _timelineItemCard(detail.timeline[i]),
+                    if (i != detail.timeline.length - 1) _flowArrow(),
+                  ],
+                ],
               ],
             ),
           );
