@@ -32,6 +32,12 @@ class DashboardRepositoryImpl implements DashboardRepository {
         queryParams: queryParameters.isEmpty ? null : queryParameters,
       );
 
+      // ignore: avoid_print
+      print(
+        'Dashboard /tasks/all-tasks (organization=$organization) response: '
+        '$responseData',
+      );
+
       final apiResponse = BaseApiResponse.fromJson(
         responseData as Map<String, dynamic>,
         (dataJson) {

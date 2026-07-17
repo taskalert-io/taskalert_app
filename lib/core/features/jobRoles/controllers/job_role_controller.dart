@@ -22,6 +22,9 @@ class JobRoleController extends ChangeNotifier {
   List<JobRoleModel> _jobRoles = [];
   List<JobRoleModel> get jobRoles => _jobRoles;
 
+  JobRoleModel? _selectedJobRole;
+  JobRoleModel? get selectedJobRole => _selectedJobRole;
+
   // --- Helper Methods ---
   void clearMessages() {
     _errorMessage = null;
@@ -70,6 +73,85 @@ class JobRoleController extends ChangeNotifier {
       if (apiResponse.data != null) {
         _jobRoles.insert(0, apiResponse.data!);
       }
+      notifyListeners();
+      return true;
+    } else if (result is Failure) {
+      _errorMessage = (result as Failure).exception.userMessage;
+      notifyListeners();
+      return false;
+    }
+    return false;
+  }
+
+  /// 3. Fetch a single Job Role by id
+  Future<void> handleGetJobRoleById({required String id}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    final result = await _repository.getJobRoleById(id: id);
+    _isLoading = false;
+
+    if (result is Success) {
+      final apiResponse =
+          (result as Success).data as BaseApiResponse<JobRoleModel>;
+      _selectedJobRole = apiResponse.data;
+    } else if (result is Failure) {
+      _errorMessage = (result as Failure).exception.userMessage;
+    }
+    notifyListeners();
+  }
+
+  /// 4. Update a Job Role
+  Future<bool> handleUpdateJobRole({
+    required String id,
+    required String title,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _successMessage = null;
+    notifyListeners();
+
+    final result = await _repository.updateJobRole(id: id, title: title);
+
+    _isLoading = false;
+
+    if (result is Success) {
+      final apiResponse =
+          (result as Success).data as BaseApiResponse<JobRoleModel>;
+      _successMessage = apiResponse.message;
+
+      if (apiResponse.data != null) {
+        final index = _jobRoles.indexWhere((role) => role.id == id);
+        if (index != -1) _jobRoles[index] = apiResponse.data!;
+        if (_selectedJobRole?.id == id) _selectedJobRole = apiResponse.data;
+      }
+      notifyListeners();
+      return true;
+    } else if (result is Failure) {
+      _errorMessage = (result as Failure).exception.userMessage;
+      notifyListeners();
+      return false;
+    }
+    return false;
+  }
+
+  /// 5. Delete a Job Role
+  Future<bool> handleDeleteJobRole({required String id}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _successMessage = null;
+    notifyListeners();
+
+    final result = await _repository.deleteJobRole(id: id);
+
+    _isLoading = false;
+
+    if (result is Success) {
+      final apiResponse = (result as Success).data as BaseApiResponse<dynamic>;
+      _successMessage = apiResponse.message;
+      _jobRoles.removeWhere((role) => role.id == id);
+      if (_selectedJobRole?.id == id) _selectedJobRole = null;
       notifyListeners();
       return true;
     } else if (result is Failure) {

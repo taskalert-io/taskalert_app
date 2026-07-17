@@ -54,5 +54,6 @@ abstract class SubTaskRepository {
   /// 11. DELETE /tasks/subtasks/instance/:subTaskInstanceId
   Future<ApiResult<BaseApiResponse<dynamic>>> deleteSubTaskInstance({
     required String subTaskInstanceId,
+    String? scope,
   });
 }

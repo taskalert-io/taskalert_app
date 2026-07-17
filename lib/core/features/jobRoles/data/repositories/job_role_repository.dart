@@ -8,4 +8,17 @@ abstract class JobRoleRepository {
   Future<ApiResult<BaseApiResponse<JobRoleModel>>> createJobRole({
     required String title,
   });
+
+  Future<ApiResult<BaseApiResponse<JobRoleModel>>> getJobRoleById({
+    required String id,
+  });
+
+  Future<ApiResult<BaseApiResponse<JobRoleModel>>> updateJobRole({
+    required String id,
+    required String title,
+  });
+
+  Future<ApiResult<BaseApiResponse<dynamic>>> deleteJobRole({
+    required String id,
+  });
 }
