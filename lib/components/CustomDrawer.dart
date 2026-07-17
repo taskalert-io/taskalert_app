@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:taskalert_app/core/features/auth/controllers/login_controller.dart';
 import 'package:taskalert_app/core/features/sidebar/controllers/sidebar_controller.dart';
 import 'package:taskalert_app/core/features/sidebar/data/models/sidebar_config_model.dart';
+import 'package:taskalert_app/screens/DashboardScreen.dart';
 import 'package:taskalert_app/screens/DepartmentListScreen.dart';
 import 'package:taskalert_app/screens/HomeScreen.dart';
 import 'package:taskalert_app/screens/InvitationScreen.dart';
@@ -24,9 +25,8 @@ import '../screens/EmployeesScreen.dart';
 /// might use to refer to it, so the fixed set of built screens can be
 /// filtered down to whatever the logged-in user's sidebar config actually
 /// grants. `screenBuilder` is nullable for entries whose screen isn't built
-/// yet (Dashboard currently) — those still get their own icon/title but
-/// fall back to the same "under development" snackbar as an unmapped API
-/// item.
+/// yet — those still get their own icon/title but fall back to the same
+/// "under development" snackbar as an unmapped API item.
 class _DrawerEntryDef {
   final List<String> matchKeys;
   final String title;
@@ -64,6 +64,7 @@ final List<_DrawerEntryDef> _apiGatedDrawerEntries = [
     matchKeys: const ['dashboard'],
     title: 'Dashboard',
     icon: Icons.space_dashboard_outlined,
+    screenBuilder: () => DashboardScreen(userId: ''),
   ),
   _DrawerEntryDef(
     matchKeys: const ['workflow', 'work flow', 'work_flow'],

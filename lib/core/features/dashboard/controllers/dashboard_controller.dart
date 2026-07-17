@@ -25,6 +25,14 @@ class DashboardController extends ChangeNotifier {
   PaginationModel? _pagination;
   PaginationModel? get pagination => _pagination;
 
+  // Per-organization fetch failures from the most recent
+  // `handleGetAllTasksForOrganizations` call, keyed by organization id —
+  // lets callers tell "this organization genuinely has zero tasks" apart
+  // from "this organization's request failed", which a single merged
+  // `_tasks` list can't distinguish on its own.
+  Map<String, String> _orgErrors = {};
+  Map<String, String> get orgErrors => _orgErrors;
+
   void clearMessages() {
     _errorMessage = null;
     _successMessage = null;
@@ -60,6 +68,61 @@ class DashboardController extends ChangeNotifier {
         _pagination = apiResponse.pagination;
       } else if (result is Failure) {
         _errorMessage = (result as Failure).exception.userMessage;
+      }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Fetches and merges tasks across every given organization. Unlike
+  /// [handleGetAllTasks] with no `organization` filter — which, in
+  /// practice, only ever returns the currently *active* organization's
+  /// tasks — this hits the endpoint once per organization id (in
+  /// parallel) so the Dashboard screen can show every organization the
+  /// user belongs to, not just the active one.
+  Future<void> handleGetAllTasksForOrganizations(
+    List<String> organizationIds, {
+    String? assigned,
+    bool? expand,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _orgErrors = {};
+    notifyListeners();
+
+    try {
+      final results = await Future.wait(
+        organizationIds.map(
+          (orgId) => _repository.getAllTasks(
+            assigned: assigned,
+            organization: orgId,
+            expand: expand,
+          ),
+        ),
+      );
+
+      final merged = <DashboardTaskModel>[];
+      final errors = <String, String>{};
+      for (var i = 0; i < organizationIds.length; i++) {
+        final result = results[i];
+        if (result is Success) {
+          final apiResponse =
+              (result as Success).data
+                  as BaseApiResponse<List<DashboardTaskModel>>;
+          merged.addAll(apiResponse.data ?? []);
+        } else if (result is Failure) {
+          errors[organizationIds[i]] =
+              (result as Failure).exception.userMessage;
+        }
+      }
+
+      _tasks = merged;
+      _pagination = null;
+      _orgErrors = errors;
+      if (errors.isNotEmpty) {
+        _errorMessage =
+            'Could not load tasks for ${errors.length} organization(s).';
       }
     } finally {
       _isLoading = false;
