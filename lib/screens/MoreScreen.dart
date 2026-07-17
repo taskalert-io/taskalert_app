@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:taskalert_app/core/features/auth/controllers/login_controller.dart';
+import 'package:taskalert_app/screens/JobRoleListScreen.dart';
 import 'package:taskalert_app/screens/NotificationStart.dart';
 import 'package:taskalert_app/screens/ProfileSetting.dart';
 import 'package:taskalert_app/utils/injection_container.dart';
@@ -278,6 +279,18 @@ class MoreScreenState extends State<MoreScreen> {
                           MaterialPageRoute(
                             builder: (_) =>
                                 NotificationSetting(userId: widget.userId),
+                          ),
+                        ),
+                      ),
+                      const Divider(height: 1, color: _dividerColor),
+                      _buildSettingItem(
+                        icon: CupertinoIcons.person_badge_plus,
+                        title: "Job Role Settings",
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                JobRoleListScreen(userId: widget.userId),
                           ),
                         ),
                       ),
