@@ -97,163 +97,174 @@ class _JobRoleListScreenState extends State<JobRoleListScreen> {
         ),
         child: StatefulBuilder(
           builder: (ctx, ss) => Container(
-            padding: EdgeInsets.fromLTRB(18.w, 16.h, 18.w, 24.h),
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+            ),
+
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      isEdit ? 'Edit Job Role' : 'Create Job Role',
-                      style: GoogleFonts.inter(
-                        fontSize: 15.sp,
-                        fontWeight: FontWeight.w700,
-                        color: _primaryColor,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(18.w, 16.h, 18.w, 24.h),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            isEdit ? 'Edit Job Role' : 'Create Job Role',
+                            style: GoogleFonts.inter(
+                              fontSize: 15.sp,
+                              fontWeight: FontWeight.w700,
+                              color: _primaryColor,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => Navigator.pop(ctx),
+                            child: Icon(Icons.close, size: 20.r, color: _labelColor),
+                          ),
+                        ],
                       ),
-                    ),
-                    GestureDetector(
-                      onTap: () => Navigator.pop(ctx),
-                      child: Icon(Icons.close, size: 20.r, color: _labelColor),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 14.h),
-                if (formError != null) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(10.w),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.06),
-                      borderRadius: BorderRadius.circular(8.r),
-                      border: Border.all(color: Colors.red.withOpacity(0.3)),
-                    ),
-                    child: Text(
-                      formError!,
-                      style: GoogleFonts.inter(
-                        fontSize: 11.sp,
-                        color: Colors.red,
+                      SizedBox(height: 14.h),
+                      if (formError != null) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(10.w),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.06),
+                            borderRadius: BorderRadius.circular(8.r),
+                            border: Border.all(color: Colors.red.withOpacity(0.3)),
+                          ),
+                          child: Text(
+                            formError!,
+                            style: GoogleFonts.inter(
+                              fontSize: 11.sp,
+                              color: Colors.red,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 12.h),
+                      ],
+                      Text(
+                        'Title',
+                        style: GoogleFonts.inter(
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w600,
+                          color: _labelColor,
+                        ),
                       ),
-                    ),
-                  ),
-                  SizedBox(height: 12.h),
-                ],
-                Text(
-                  'Title',
-                  style: GoogleFonts.inter(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w600,
-                    color: _labelColor,
-                  ),
-                ),
-                SizedBox(height: 6.h),
-                TextField(
-                  controller: titleCtrl,
-                  autofocus: true,
-                  style: GoogleFonts.inter(fontSize: 12.sp),
-                  decoration: _fieldDecoration('Enter job role title'),
-                ),
-                SizedBox(height: 20.h),
-                SizedBox(
-                  width: double.infinity,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFD96CFF), Color(0xFF5CE1E6)],
+                      SizedBox(height: 6.h),
+                      TextField(
+                        controller: titleCtrl,
+                        autofocus: true,
+                        style: GoogleFonts.inter(fontSize: 12.sp),
+                        decoration: _fieldDecoration('Enter job role title'),
                       ),
-                      borderRadius: BorderRadius.circular(8.r),
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(8.r),
-                        onTap: isSubmitting
-                            ? null
-                            : () async {
-                                final title = titleCtrl.text.trim();
-                                if (title.isEmpty) {
-                                  ss(() => formError = 'Please enter a title.');
-                                  return;
-                                }
-                                ss(() {
-                                  formError = null;
-                                  isSubmitting = true;
-                                });
-
-                                final success = isEdit
-                                    ? await _jobRoleController
-                                          .handleUpdateJobRole(
-                                            id: existing.id,
-                                            title: title,
-                                          )
-                                    : await _jobRoleController
-                                          .handleCreateJobRole(title: title);
-
-                                if (!ctx.mounted) return;
-
-                                if (success) {
-                                  Navigator.pop(ctx);
-                                  if (!mounted) return;
-                                  setState(() {});
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        _jobRoleController.successMessage ??
-                                            (isEdit
-                                                ? 'Job role updated successfully'
-                                                : 'Job role created successfully'),
-                                        style: GoogleFonts.inter(
-                                          fontSize: 13.sp,
-                                          color: Colors.white,
+                      SizedBox(height: 20.h),
+                      SizedBox(
+                        width: double.infinity,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFD96CFF), Color(0xFF5CE1E6)],
+                            ),
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(8.r),
+                              onTap: isSubmitting
+                                  ? null
+                                  : () async {
+                                      final title = titleCtrl.text.trim();
+                                      if (title.isEmpty) {
+                                        ss(() => formError = 'Please enter a title.');
+                                        return;
+                                      }
+                                      ss(() {
+                                        formError = null;
+                                        isSubmitting = true;
+                                      });
+              
+                                      final success = isEdit
+                                          ? await _jobRoleController
+                                                .handleUpdateJobRole(
+                                                  id: existing.id,
+                                                  title: title,
+                                                )
+                                          : await _jobRoleController
+                                                .handleCreateJobRole(title: title);
+              
+                                      if (!ctx.mounted) return;
+              
+                                      if (success) {
+                                        Navigator.pop(ctx);
+                                        if (!mounted) return;
+                                        setState(() {});
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              _jobRoleController.successMessage ??
+                                                  (isEdit
+                                                      ? 'Job role updated successfully'
+                                                      : 'Job role created successfully'),
+                                              style: GoogleFonts.inter(
+                                                fontSize: 13.sp,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                            backgroundColor: const Color(0xFF1DC230),
+                                            behavior: SnackBarBehavior.floating,
+                                          ),
+                                        );
+                                      } else {
+                                        ss(() {
+                                          isSubmitting = false;
+                                          formError =
+                                              _jobRoleController.errorMessage ??
+                                              (isEdit
+                                                  ? 'Failed to update job role.'
+                                                  : 'Failed to create job role.');
+                                        });
+                                      }
+                                    },
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(vertical: 12.h),
+                                child: Center(
+                                  child: isSubmitting
+                                      ? SizedBox(
+                                          width: 18.w,
+                                          height: 18.w,
+                                          child: const CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : Text(
+                                          isEdit ? 'Save Changes' : 'Create',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13.sp,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.white,
+                                          ),
                                         ),
-                                      ),
-                                      backgroundColor: const Color(0xFF1DC230),
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                } else {
-                                  ss(() {
-                                    isSubmitting = false;
-                                    formError =
-                                        _jobRoleController.errorMessage ??
-                                        (isEdit
-                                            ? 'Failed to update job role.'
-                                            : 'Failed to create job role.');
-                                  });
-                                }
-                              },
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12.h),
-                          child: Center(
-                            child: isSubmitting
-                                ? SizedBox(
-                                    width: 18.w,
-                                    height: 18.w,
-                                    child: const CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : Text(
-                                    isEdit ? 'Save Changes' : 'Create',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 13.sp,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
-                                    ),
-                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ),

@@ -913,12 +913,8 @@ class _NotificationStartState extends State<NotificationStart> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(height: 4.h),
-<<<<<<< Updated upstream
             Container(
               padding: EdgeInsets.fromLTRB(15.w, 10.h, 15.w, 0.h),
-=======
-            Container(padding: EdgeInsets.fromLTRB(15.w, 10.h, 15.w, 0.h),
->>>>>>> Stashed changes
 
               child: Row(
                 children: [
@@ -944,7 +940,6 @@ class _NotificationStartState extends State<NotificationStart> {
                 ],
               ),
             ),
-<<<<<<< Updated upstream
 
             // Text(
             //   'Notifications',
@@ -954,8 +949,6 @@ class _NotificationStartState extends State<NotificationStart> {
             //     color: _C.title,
             //   ),
             // ).paddingHorizontal(16.w),
-=======
->>>>>>> Stashed changes
             SizedBox(height: 10.h),
             Divider(height: 1, color: _C.cardBorder),
             SizedBox(height: 10.h),

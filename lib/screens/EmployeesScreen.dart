@@ -93,13 +93,6 @@ import 'LocationListScreen.dart' show openLocationFormDialog;
 // should sit relative to its anchor field, clamped to the real usable
 // screen space. Used by every dropdown/autocomplete overlay in this file
 // so none of them can ever render past the bottom of the visible screen.
-// ── Shared overlay placement helper ─────────────────────────────────────
-// Decides whether a field's dropdown should open below or above it, and
-// how tall it's allowed to be, based on real space left on screen
-// (accounting for the keyboard and safe-area/nav bar) — so a dropdown
-// never gets stuck rendering off the bottom of the screen.
-
-// 14.07.2026
 class _OverlayPlacement {
   const _OverlayPlacement({
     required this.dy,
@@ -107,60 +100,71 @@ class _OverlayPlacement {
     required this.showAbove,
   });
 
-  /// Vertical offset for `CompositedTransformFollower.offset`.
+  /// Vertical offset (in logical px) to pass to
+  /// `CompositedTransformFollower(offset: Offset(0, dy))`.
+  /// Positive = below the field, negative = above the field.
   final double dy;
 
-  /// Height reserved for the popup card.
+  /// Height the overlay's ConstrainedBox should be capped at.
   final double maxHeight;
 
-  /// True when the popup should open upward instead of downward.
+  /// Whether the dropdown had to flip upward due to lack of room below.
   final bool showAbove;
 }
 
 _OverlayPlacement _overlayPlacement({
   required BuildContext context,
   required GlobalKey fieldKey,
-  required double preferredMaxHeight,
+  double preferredMaxHeight = 260,
   double minUsableHeight = 120,
+  double gap = 6,
+  double bottomMargin = 12,
 }) {
+  final preferred = preferredMaxHeight.h;
+  final minUsable = minUsableHeight.h;
+  final gapPx = gap.h;
+  final marginPx = bottomMargin.h;
+
   final box = fieldKey.currentContext?.findRenderObject() as RenderBox?;
-  final fieldHeight = box?.size.height ?? 44.h;
-  final fieldTopGlobal = box?.localToGlobal(Offset.zero).dy ?? 0;
-
   final mq = MediaQuery.of(context);
-  final bottomInset =
-  mq.viewInsets.bottom > 0 ? mq.viewInsets.bottom : mq.padding.bottom;
-  final topInset = mq.padding.top;
-  final gap = 6.h;
-  const edgeMargin = 12.0;
 
-  final spaceBelow = mq.size.height -
-      bottomInset -
-      (fieldTopGlobal + fieldHeight) -
-      gap -
-      edgeMargin;
-  final spaceAbove = fieldTopGlobal - topInset - gap - edgeMargin;
-
-  final wantHeight = preferredMaxHeight.h;
-
-  // Only flip above when below is genuinely too tight AND above actually
-  // offers more room — otherwise always prefer opening below.
-  final showAbove = spaceBelow < minUsableHeight && spaceAbove > spaceBelow;
-
-  if (!showAbove) {
-    return _OverlayPlacement(
-      dy: fieldHeight + gap,
-      maxHeight: spaceBelow.clamp(minUsableHeight, wantHeight),
-      showAbove: false,
-    );
+  if (box == null || !box.attached) {
+    // Can't measure yet — fall back to the old fixed behaviour.
+    return _OverlayPlacement(dy: gapPx, maxHeight: preferred, showAbove: false);
   }
 
-  final height = spaceAbove.clamp(minUsableHeight, wantHeight);
-  return _OverlayPlacement(
-    dy: -(height + gap),
-    maxHeight: height,
-    showAbove: true,
-  );
+  final fieldHeight = box.size.height;
+  final fieldTopGlobal = box.localToGlobal(Offset.zero).dy;
+  final fieldBottomGlobal = fieldTopGlobal + fieldHeight;
+
+  // Real bottom edge of usable space: screen height minus the keyboard
+  // (viewInsets) and minus the system nav/gesture bar (viewPadding), which
+  // is what was clipping the dropdown in the screenshot.
+  final usableBottom =
+      mq.size.height - mq.viewInsets.bottom - mq.viewPadding.bottom - marginPx;
+  final usableTop = mq.viewPadding.top + marginPx;
+
+  final spaceBelow = usableBottom - fieldBottomGlobal - gapPx;
+  final spaceAbove = fieldTopGlobal - usableTop - gapPx;
+
+  final belowFits = spaceBelow >= minUsable;
+  final aboveIsBigger = spaceAbove > spaceBelow;
+
+  if (belowFits || !aboveIsBigger) {
+    final maxH = spaceBelow.clamp(minUsable, preferred);
+    return _OverlayPlacement(
+      dy: fieldHeight + gapPx,
+      maxHeight: maxH,
+      showAbove: false,
+    );
+  } else {
+    final maxH = spaceAbove.clamp(minUsable, preferred);
+    return _OverlayPlacement(
+      dy: -(maxH + gapPx),
+      maxHeight: maxH,
+      showAbove: true,
+    );
+  }
 }
 
 class EmployeesScreen extends StatefulWidget {
@@ -649,7 +653,6 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     final lastNameCtrl = TextEditingController(text: existing?.lastName ?? "");
     final emailCtrl = TextEditingController(text: existing?.email ?? "");
     final phoneCtrl = TextEditingController(text: existing?.phoneNumber ?? "");
-<<<<<<< Updated upstream
 
     final dobCtrl = TextEditingController(
       text: dateOfBirth != null
@@ -662,17 +665,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
     final dobDayCtrl = TextEditingController(
       text: dateOfBirth?.day.toString().padLeft(2, '0') ?? "",
-=======
-    // 14.07.2026
-    final dobCtrl = TextEditingController(
-      text: existing?.dateOfBirth != null
-          ? "${existing!.dateOfBirth!.day.toString().padLeft(2, '0')}-"
-          "${existing.dateOfBirth!.month.toString().padLeft(2, '0')}-"
-          "${existing.dateOfBirth!.year}"
-          : "",
->>>>>>> Stashed changes
     );
-    DateTime? selectedDob = existing?.dateOfBirth; // 14.07.2026
     final dobMonthCtrl = TextEditingController(
       text: dateOfBirth?.month.toString().padLeft(2, '0') ?? "",
     );
@@ -840,7 +833,6 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // 14.07.2026
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1120,7 +1112,6 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
                                         ss(() => isSubmitting = true);
 
-<<<<<<< Updated upstream
                                         String? dobText;
                                         if (selectedDob != null) {
                                           dobText = selectedDob!
@@ -1151,8 +1142,6 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                               ?.toIso8601String();
                                         }
 
-=======
->>>>>>> Stashed changes
                                         // final dobText =
                                         //     dobDayCtrl.text.trim().isNotEmpty &&
                                         //         dobMonthCtrl.text
@@ -1165,29 +1154,6 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                         //     : existing?.dateOfBirth
                                         //           ?.toIso8601String();
 
-<<<<<<< Updated upstream
-=======
-                                        // 14.07.2026
-
-                                        String? dobText;
-                                        if (selectedDob != null) {
-                                          dobText = selectedDob!.toIso8601String();
-                                        } else {
-                                          final parts = dobCtrl.text.trim().split('-');
-                                          if (parts.length == 3) {
-                                            final day = int.tryParse(parts[0]);
-                                            final month = int.tryParse(parts[1]);
-                                            final year = int.tryParse(parts[2]);
-                                            if (day != null && month != null && year != null) {
-                                              try {
-                                                dobText = DateTime(year, month, day).toIso8601String();
-                                              } catch (_) {}
-                                            }
-                                          }
-                                          dobText ??= existing?.dateOfBirth?.toIso8601String();
-                                        }
-
->>>>>>> Stashed changes
                                         final genderValue =
                                             (selectedGender ?? gender)
                                                 ?.toLowerCase();
@@ -1564,11 +1530,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   //     border: InputBorder.none,
   //     contentPadding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
   //   );
-<<<<<<< Updated upstream
 
-=======
-  //
->>>>>>> Stashed changes
   //   return Column(
   //     crossAxisAlignment: CrossAxisAlignment.start,
   //     children: [
@@ -1655,12 +1617,6 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   //   );
   // }
 
-<<<<<<< Updated upstream
-=======
-
-  // 14.07.2026
-
->>>>>>> Stashed changes
   Widget _buildDateField({
     required TextEditingController controller,
     required VoidCallback onTap,
@@ -1725,7 +1681,6 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                 borderSide: const BorderSide(color: Colors.red),
               ),
             ),
-<<<<<<< Updated upstream
           ),
         ),
       ),
@@ -1740,25 +1695,6 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     ],
   );
 
-=======
-          ),
-        ),
-      ),
-      if (errorText != null)
-        Padding(
-          padding: EdgeInsets.only(top: 4.h, left: 4.w),
-          child: Text(
-            errorText,
-            style: GoogleFonts.inter(color: Colors.red, fontSize: 10.sp),
-          ),
-        ),
-    ],
-  );
-
-  /// Opens Flutter's built-in Material date picker and, on a selection,
-  /// fills the day/month/year controllers together.
-  /// 14.07.2026
->>>>>>> Stashed changes
   Future<void> _pickDobDate({
     required BuildContext context,
     required void Function(void Function()) setState,
@@ -1776,13 +1712,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       if (day != null && month != null && year != null) {
         try {
           initialDate = DateTime(year, month, day);
-<<<<<<< Updated upstream
         } catch (_) {}
-=======
-        } catch (_) {
-          // keep fallback above if the stored text isn't a valid date
-        }
->>>>>>> Stashed changes
       }
     }
     if (initialDate.isAfter(now)) initialDate = now;
@@ -1812,11 +1742,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     if (picked != null) {
       setState(() {
         dobCtrl.text =
-<<<<<<< Updated upstream
             "${picked.day.toString().padLeft(2, '0')}-"
-=======
-        "${picked.day.toString().padLeft(2, '0')}-"
->>>>>>> Stashed changes
             "${picked.month.toString().padLeft(2, '0')}-"
             "${picked.year}";
       });
@@ -2871,7 +2797,7 @@ class _LocationSearchableFieldState extends State<_LocationSearchableField> {
 
     final overlay = Overlay.of(context);
     final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
-    final width = box?.size.width ?? 200.w; //14.07.2026
+    final width = box?.size.width ?? 200.w;
 
     // Precompute the filtered results once — they don't depend on the
     // keyboard, only `_overlayPlacement` (below, inside the builder) does.
@@ -3905,7 +3831,6 @@ class _DepartmentSearchableField extends StatefulWidget {
   final ValueChanged<DepartmentModel?> onChanged;
   final String? Function(String?)? validator;
 
-
   @override
   State<_DepartmentSearchableField> createState() =>
       _DepartmentSearchableFieldState();
@@ -4068,16 +3993,8 @@ class _DepartmentSearchableFieldState
     final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
     final width = box?.size.width ?? 200.w;
 
-    final placement = _overlayPlacement(
-      context: context,
-      fieldKey: _fieldKey,
-      preferredMaxHeight: 100,
-      // The "Add Department" row is pinned inside the box regardless of
-      // scroll, so keep a slightly larger floor than other overlays to
-      // make sure it (plus a couple of results) stays comfortably usable.
-      minUsableHeight: 90,
-    );
-
+    // Precompute the filtered results once — they don't depend on the
+    // keyboard, only `_overlayPlacement` (below, inside the builder) does.
     final q = _controller.text.trim().toLowerCase();
     final results = _departmentController.departments
         .where((d) => d.location.any((l) => l.id == widget.locationId))
@@ -4085,14 +4002,29 @@ class _DepartmentSearchableFieldState
         .toList();
 
     _overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        width: width,
-        child: CompositedTransformFollower(
-          link: _layerLink,
-          showWhenUnlinked: false,
-          offset: Offset(0, placement.dy),
-          child: SizedBox( //14.07.2026
-            height: placement.maxHeight, //14.07.2026
+      // ★ CHANGED (4/4): recompute placement from `overlayContext` on every
+      // rebuild so the dropdown tracks the keyboard's show/hide animation
+      // instead of freezing on a pre-keyboard measurement. See
+      // "KEYBOARD-TIMING FIX" note near the top of this file.
+      builder: (overlayContext) {
+        // ★ CHANGED (4/4): moved inside builder (was computed once, above,
+        // before the keyboard had finished animating in).
+        final placement = _overlayPlacement(
+          context: overlayContext,
+          fieldKey: _fieldKey,
+          preferredMaxHeight: 260,
+          // The "Add Department" row is pinned inside the box regardless of
+          // scroll, so keep a slightly larger floor than other overlays to
+          // make sure it (plus a couple of results) stays comfortably usable.
+          minUsableHeight: 160,
+        );
+
+        return Positioned(
+          width: width,
+          child: CompositedTransformFollower(
+            link: _layerLink,
+            showWhenUnlinked: false,
+            offset: Offset(0, placement.dy),
             child: Align(
               alignment: placement.showAbove
                   ? Alignment.bottomLeft
@@ -4213,8 +4145,8 @@ class _DepartmentSearchableFieldState
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
 
     overlay.insert(_overlayEntry!);
